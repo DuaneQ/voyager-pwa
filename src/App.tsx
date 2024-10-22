@@ -1,25 +1,35 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { Search } from "./components/pages/Search";
+import { Profile } from "./components/pages/Profile";
+import { Login } from "./components/auth/Login";
+import { Register } from "./components/auth/Register";
+import { Chat } from "./components/pages/Chat";
+import { AlertProvider } from "./Context/AlertContext";
+import BottomNav from "./components/layout/BottomNavigation";
+import { Reset } from "./components/auth/Reset";
 
 function App() {
+  const location = useLocation();
+  const hideBottomNav = ["/", "/Register", "/reset"].includes(location.pathname);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AlertProvider>
+      <div
+        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+      >
+        <div style={{ flex: 1 }}>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="Register" element={<Register />} />
+            <Route path="Profile" element={<Profile />} />
+            <Route path="Search" element={<Search />} />
+            <Route path="Chat" element={<Chat />} />
+            <Route path="Reset" element={<Reset />} />
+          </Routes>
+        </div>
+        {!hideBottomNav && <BottomNav />}
+      </div>
+    </AlertProvider>
   );
 }
 
