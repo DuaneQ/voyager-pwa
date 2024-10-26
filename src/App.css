@@ -1,15 +1,14 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
 }
 
-label {
+/* label {
   font-weight: bold;
   display: flex;
   margin-bottom: 5px;
-}
+} */
 
 textarea[name="userBio"] {
   width: 300px;

@@ -8,12 +8,14 @@ import { Chat } from "./components/pages/Chat";
 import { AlertProvider } from "./Context/AlertContext";
 import BottomNav from "./components/layout/BottomNavigation";
 import { Reset } from "./components/auth/Reset";
+import Header from "./components/layout/Header";
 
 function App() {
   const location = useLocation();
   const hideBottomNav = ["/", "/Register", "/reset"].includes(location.pathname);
   return (
     <AlertProvider>
+      <Header />
       <div
         style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
       >

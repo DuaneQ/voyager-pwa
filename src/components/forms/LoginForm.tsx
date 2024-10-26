@@ -31,7 +31,6 @@ export const LoginForm = () => {
   return (
     <div className={styles.loginFormContainer}>
       <form
-        className="emailPasswordForm"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
