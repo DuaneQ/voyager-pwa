@@ -4,12 +4,6 @@
   text-align: center;
 }
 
-/* label {
-  font-weight: bold;
-  display: flex;
-  margin-bottom: 5px;
-} */
-
 textarea[name="userBio"] {
   width: 300px;
   height: 100px;
@@ -19,10 +13,28 @@ textarea[name="userBio"] {
   border: 1px solid;
   border-radius: 4px;
   margin-bottom: 20px;
+  background-color: white;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  background-color: white;
 }
 
 .error {
-  color: red;
+  color: white;
   font-size: 18px;
   text-align: left;
+}
+
+.authFormContainer {
+  background-image: url('./assets/images/login-image.jpeg'); /* Adjust the path as needed */
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

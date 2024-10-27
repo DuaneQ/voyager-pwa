@@ -10,7 +10,6 @@ import {
 } from "../shared-strings/constants";
 import { Button, TextField } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import styles from './LoginForm.module.css';
 
 export const LoginForm = () => {
   type FormValues = {
@@ -29,19 +28,19 @@ export const LoginForm = () => {
   const { errors } = formState;
 
   return (
-    <div className={styles.loginFormContainer}>
+    <div className="authFormContainer">
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <div>
+
           <TextField
             required
             data-testid="email"
             type="text"
             id="email"
             label="Email"
-            style={{ width: 400 }}
+            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
             placeholder={EMAIL_PLACEHOLDER}
             {...register("email", {
               pattern: {
@@ -54,22 +53,20 @@ export const LoginForm = () => {
                 message: EMAIL_REQUIRED,
               },
             })}
-            sx={{
-              backgroundColor: 'white',
-            }}
+
           />
           <p className="error" data-testid="emailErr">
             {errors.email?.message}
           </p>
-        </div>
-        <div>
+
           <TextField
             data-testid="password"
             type="password"
             id="password"
             required
             label="Password"
-            style={{ width: 400 }}
+            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
+
             placeholder={PASSWORD_PLACEHOLDER}
             {...register("password", {
               required: {
@@ -81,12 +78,9 @@ export const LoginForm = () => {
                 message: PASSWORD_VALIDATION,
               },
             })}
-            sx={{
-              backgroundColor: 'white',
-            }}
           />
           <p className="error" data-testid="passErr">{errors.password?.message}</p>
-        </div>
+
         <div>
           <p style={{ color: 'white' }}>
             Don't have an account? <Link to="/Register">Register here</Link>
