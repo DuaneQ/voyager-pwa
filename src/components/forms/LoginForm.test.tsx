@@ -14,7 +14,7 @@ describe("Login Form", () => {
     const submit = screen.getByTestId("login-button");
 
     //Act
-    await user.type(emailElement, "in@valid.com");
+    user.type(emailElement, "in@valid.com");
     fireEvent.click(submit);
 
     //Assert
@@ -41,30 +41,28 @@ describe("Login Form", () => {
     });
   });
 
-  test.skip("Button was called with form values", async () => {
-    const consoleSpy = jest.spyOn(console, "log");
+  test.skip("Email and password form values change on submit", async () => {
     render(
       <MemoryRouter>
         <LoginForm />
       </MemoryRouter>
-    ); //Arrange
+    );
+
+    // Fill out the form
     const emailElement = screen.getByTestId("email");
     const passwordElement = screen.getByTestId("password");
     const submit = screen.getByTestId("login-button");
 
-    //Act
-    await user.type(emailElement, "test@example.com");
-    await user.type(passwordElement, "1234567890");
+    user.type(emailElement, "test@example.com");
+    user.type(passwordElement, "12345678901");
+
+    // Submit the form
     fireEvent.click(submit);
 
-    //Assert
+    // Assert
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith("Submitted", {
-        email: "test@example.com",
-        password: "1234567890",
-      });
+      expect(screen.getByText("test@example.com")).toBeInTheDocument();
+      expect(screen.getByText("12345678901")).toBeInTheDocument();
     });
-
-    consoleSpy.mockRestore();
   });
 });

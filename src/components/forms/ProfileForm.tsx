@@ -25,7 +25,7 @@ import { Link } from "react-router-dom";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 
-export const RegisterForm = () => {
+export const ProfileForm = () => {
   type FormValues = {
     email: string;
     password: string;
@@ -63,95 +63,6 @@ export const RegisterForm = () => {
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <Box>
-          <TextField
-            type="text"
-            label="*Username"
-            id="username"
-            data-testid="username"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
-            placeholder={USERNAME_PLACEHOLDER}
-            {...register("username", {
-              required: {
-                value: true,
-                message: USERNAME_REQUIRED,
-              },
-              minLength: {
-                value: 4,
-                message: USERNAME_INVALID,
-              },
-            })}
-          />
-          <p className="error" data-testid="emailErr">
-            {errors.username?.message}
-          </p>
-        </Box>
-        <Box>
-          <TextField
-            type="email"
-            label="*Email"
-            id="email"
-            data-testid="email"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
-            placeholder={EMAIL_PLACEHOLDER}
-            {...register("email", {
-              pattern: {
-                value:
-                  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/,
-                message: EMAIL_INVALID,
-              },
-              required: {
-                value: true,
-                message: EMAIL_REQUIRED,
-              },
-            })}
-          />
-          <p className="error" data-testid="emailErr">
-            {errors.email?.message}
-          </p>
-        </Box>
-        <Box>
-          <TextField
-            type="password"
-            label="*Password"
-            id="password"
-            data-testid="password"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
-            placeholder={PASSWORD_PLACEHOLDER}
-            {...register("password", {
-              required: {
-                value: true,
-                message: PASSWORD_REQUIRED,
-              },
-              minLength: {
-                value: 10,
-                message: PASSWORD_VALIDATION,
-              },
-            })}
-          />
-          <p className="error">{errors.password?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            label="*Confirm Password"
-            id="confirmPassword"
-            data-testid="confirm"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
-            placeholder={PASSWORD_PLACEHOLDER}
-            {...register("confirmPassword", {
-              required: {
-                value: true,
-                message: PASSWORD_REQUIRED,
-              },
-              minLength: {
-                value: 10,
-                message: PASSWORD_VALIDATION,
-              },
-            })}
-          />
-          <p className="error">{errors.password?.message}</p>
-        </Box>
-
         <Box mt={2}>
           <TextField
             id="userBio"
@@ -271,14 +182,6 @@ export const RegisterForm = () => {
           </TextField>
           <p className="error">{errors.smokingHabits?.message}</p>
         </Box>
-        <div>
-          <p style={{ color: "white" }}>
-            Already have an account? <Link to="/">Sign in</Link>
-          </p>
-        </div>
-        <Button type="submit" data-testid="register-button" variant="contained">
-          Register
-        </Button>
       </form>
     </div>
   );
