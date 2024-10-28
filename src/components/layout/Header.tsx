@@ -4,8 +4,9 @@ import { AppBar, Toolbar, Typography } from '@mui/material';
 const Header: React.FC = () => {
     return (
         <AppBar position="static">
-            <Toolbar style={{ borderBottom: '2px solid black'}}>
-                <Typography variant="h6" style={{ flexGrow: 1 }}>
+            <AppBar position="static"></AppBar>
+            <Toolbar style={{ borderBottom: '2px solid black', backgroundColor: 'white'}}>
+                <Typography variant="h6" style={{ color: 'black', flexGrow: 1 }}>
                     Voyager
                 </Typography>
             </Toolbar>

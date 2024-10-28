@@ -14,16 +14,12 @@ const BottomNav: React.FC = () => {
   const StyledBottomNavigationAction = styled(BottomNavigationAction)(
     ({ theme }) => ({
       "& .MuiBottomNavigationAction-label": {
-        fontSize: theme.typography.pxToRem(20),
+        fontSize: theme.typography.pxToRem(15),
       },
       "& .MuiSvgIcon-root": {
-        fontSize: theme.typography.pxToRem(50),
+        fontSize: theme.typography.pxToRem(30),
       },
-      "& .MuiBottomNavigationAction-root": {
-        maxWidth: "none",
-        flexGrow: 1,
-    },
-      paddingBottom: theme.spacing(5),
+      paddingBottom: theme.spacing(0),
     })
   );
 
