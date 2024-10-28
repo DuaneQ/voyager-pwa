@@ -3,17 +3,8 @@ import { DevTool } from "@hookform/devtools";
 import { useForm } from "react-hook-form";
 import {
   EDUCATION_OPTIONS,
-  EMAIL_INVALID,
-  EMAIL_PLACEHOLDER,
-  EMAIL_REQUIRED,
   FREQUENCY,
   GENDER_OPTIONS,
-  PASSWORD_PLACEHOLDER,
-  PASSWORD_REQUIRED,
-  PASSWORD_VALIDATION,
-  USERNAME_INVALID,
-  USERNAME_PLACEHOLDER,
-  USERNAME_REQUIRED,
 } from "../shared-strings/constants";
 import {
   Box,
@@ -21,9 +12,9 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { Link } from "react-router-dom";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
+import profilePlaceholder from "../../assets/images/imagePH.png";
 
 export const ProfileForm = () => {
   type FormValues = {
@@ -51,7 +42,6 @@ export const ProfileForm = () => {
       console.log("Submitted", data);
     }
   };
-
   const form = useForm<FormValues>();
   const { register, control, handleSubmit, formState, setValue } = form;
   const { errors } = formState;
@@ -63,6 +53,10 @@ export const ProfileForm = () => {
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
+        
+        <Box mt={-20} display="flex" justifyContent="center">          
+          <img src={profilePlaceholder} alt="Profile Placeholder" style={{ maxWidth: "100%", height: "auto" }} />
+        </Box>
         <Box mt={2}>
           <TextField
             id="userBio"
