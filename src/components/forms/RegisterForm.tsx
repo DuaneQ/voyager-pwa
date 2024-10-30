@@ -23,7 +23,7 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { isUserOver18 } from "../utilities/DateChecker";
-import { AlertContext } from "../../Context/AlertContext";
+import { useAlerts } from "../../Context/AlertContext";
 
 export const RegisterForm = () => {
   type FormValues = {
@@ -38,15 +38,15 @@ export const RegisterForm = () => {
     smokingHabits: string;
     confirmPassword: string;
   };
-  const { showAlert } = useContext(AlertContext);
+  const { showAlert } = useAlerts();
 
   const onSubmit = (data: FormValues) => {
     if (data.password !== data.confirmPassword) {
-      showAlert("Error", "Passwords do not match.");
+      showAlert("error", "Passwords do not match.");
       return;
     } else if (!isUserOver18(data.dob)) {
       console.log("Submitted", data.dob);
-      showAlert("Error", "Users must be 18 or older.");
+      showAlert("error", "Users must be 18 or older.");
     } else if (formState.isValid) {
       console.log("Submitted", data);
     }

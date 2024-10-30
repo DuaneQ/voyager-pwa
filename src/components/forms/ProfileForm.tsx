@@ -33,11 +33,11 @@ export const ProfileForm = () => {
 
   const onSubmit = (data: FormValues) => {
     if (data.password !== data.confirmPassword) {
-      showAlert("Error", "Passwords do not match.");
+      showAlert("error", "Passwords do not match.");
       return;
     } else if (!isUserOver18(data.dob)) {
       console.log("Submitted", data.dob);
-      showAlert("Error", "Users must be 18 or older.");
+      showAlert("error", "Users must be 18 or older.");
     } else if (formState.isValid) {
       console.log("Submitted", data);
     }

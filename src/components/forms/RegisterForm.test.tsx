@@ -3,14 +3,14 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RegisterForm } from "./RegisterForm";
 import user from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { AlertContext, AlertProvider } from "../../Context/AlertContext";
+import { AlertContext, AlertProvider, Alerts } from "../../Context/AlertContext";
 
 const mockShowAlert = jest.fn();
 
 import { ReactNode } from "react";
 
 const MockAlertProvider = ({ children }: { children: ReactNode }) => (
-  <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
+  <AlertContext.Provider value={{ showAlert: mockShowAlert } as any as Alerts}>
     {children}
   </AlertContext.Provider>
 );

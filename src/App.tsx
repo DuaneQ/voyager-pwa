@@ -9,6 +9,7 @@ import { AlertProvider } from "./Context/AlertContext";
 import BottomNav from "./components/layout/BottomNavigation";
 import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
+import AlertPopup from "./components/utilities/Alerts";
 
 function App() {
   const location = useLocation();
@@ -31,6 +32,7 @@ function App() {
         </div>
         {!hideBottomNav && <BottomNav />}
       </div>
+      <AlertPopup  />
     </AlertProvider>
   );
 }

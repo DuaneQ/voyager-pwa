@@ -2,13 +2,7 @@ import React from "react";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { styled } from "@mui/material/styles";
-
-interface AlertPopupProps {
-  open: boolean;
-  severity: "error" | "warning" | "info" | "success";
-  message: string;
-  onClose: () => void;
-}
+import { useAlerts } from "../../Context/AlertContext";
 
 const StyledAlert = styled(Alert)(({ theme }) => ({
   "& .MuiAlert-message": {
@@ -18,16 +12,14 @@ const StyledAlert = styled(Alert)(({ theme }) => ({
   top: "-90px",
 }));
 
-const AlertPopup: React.FC<AlertPopupProps> = ({
-  open,
-  severity,
-  message,
-  onClose,
-}) => {
+const AlertPopup: React.FC = () => {
+
+  const {alert, closeAlert} = useAlerts();
+
   return (
-    <Snackbar open={open} autoHideDuration={6000} onClose={onClose}>
-      <StyledAlert severity={severity} onClose={onClose}>
-        {message}
+    <Snackbar open={alert.open} autoHideDuration={6000} onClose={closeAlert}>
+      <StyledAlert severity={alert.severity} onClose={closeAlert}>
+        {alert.message}
       </StyledAlert>
     </Snackbar>
   );
