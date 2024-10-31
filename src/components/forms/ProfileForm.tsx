@@ -6,15 +6,11 @@ import {
   FREQUENCY,
   GENDER_OPTIONS,
 } from "../shared-strings/constants";
-import {
-  Box,
-  Button,
-  MenuItem,
-  TextField,
-} from "@mui/material";
+import { Box, Button, MenuItem, TextField } from "@mui/material";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 import profilePlaceholder from "../../assets/images/imagePH.png";
+import Chip from "@mui/material/Chip";
 
 export const ProfileForm = () => {
   type FormValues = {
@@ -48,14 +44,13 @@ export const ProfileForm = () => {
 
   return (
     <div className="authFormContainer">
-      <form
-        className="registerForm"
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-      >
-        
-        <Box mt={-20} display="flex" justifyContent="center">          
-          <img src={profilePlaceholder} alt="Profile Placeholder" style={{ maxWidth: "100%", height: "auto" }} />
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Box mt={-20} display="flex" justifyContent="center">
+          <img
+            src={profilePlaceholder}
+            alt="Profile Placeholder"
+            style={{ maxWidth: "100%", height: "auto" }}
+          />
         </Box>
         <Box mt={2}>
           <TextField
@@ -81,7 +76,12 @@ export const ProfileForm = () => {
             type="date"
             id="dob"
             data-testid="dob"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("dob", {
               required: {
                 value: true,
@@ -97,7 +97,12 @@ export const ProfileForm = () => {
             label="*Gender"
             id="gender"
             data-testid="gender"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("gender", {
               required: {
                 value: true,
@@ -117,7 +122,12 @@ export const ProfileForm = () => {
             label="*Education Level"
             id="education"
             data-testid="education"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("education", {
               required: {
                 value: true,
@@ -139,7 +149,12 @@ export const ProfileForm = () => {
             label="*Drinking Frequency"
             id="drinkingHabits"
             data-testid="drinkingHabits"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("drinkingHabits", {
               required: {
                 value: true,
@@ -159,7 +174,12 @@ export const ProfileForm = () => {
             label="*Smoking Frequency"
             id="smokingHabits"
             data-testid="smokingHabits"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("smokingHabits", {
               required: {
                 value: true,
@@ -175,6 +195,19 @@ export const ProfileForm = () => {
             ))}
           </TextField>
           <p className="error">{errors.smokingHabits?.message}</p>
+        </Box>
+        <Box mt={2} display="flex" alignItems="center" position="absolute">
+          <Chip label="Basic Chip" sx={{ backgroundColor: "white" }} />
+          <Chip
+            label="Clickable Chip"
+            onClick={() => console.log("Clicked!")}
+            sx={{ backgroundColor: "white" }}
+          />
+          <Chip
+            label="Deletable Chip"
+            onDelete={() => console.log("Deleted!")}
+            sx={{ backgroundColor: "white" }}
+          />
         </Box>
       </form>
     </div>

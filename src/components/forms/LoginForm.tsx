@@ -8,20 +8,24 @@ import {
   PASSWORD_REQUIRED,
   PASSWORD_VALIDATION,
 } from "../shared-strings/constants";
-import { Button, TextField } from "@mui/material";
+import { Button, Input, TextField } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-
+import { useState } from "react";
 
 export const LoginForm = () => {
+  const [inputValue, setInputValue] = useState('');
+  
   type FormValues = {
     email: string;
     password: string;
   };
+  
   const navigate = useNavigate();
 
   const onSubmit = (data: FormValues) => {
     console.log("Submitted", data);
-    navigate("/Profile");
+
+    // navigate("/Profile");
   };
 
   const form = useForm<FormValues>();
@@ -29,21 +33,24 @@ export const LoginForm = () => {
   const { errors } = formState;
 
   return (
-    <div className="authFormContainer">
+    <>
       <form
+      className="authFormContainer"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
+        data-testid="login-form"
       >
-
-          <TextField
+          <Input          
             required
             data-testid="email"
             type="text"
             id="email"
-            label="Email"
             sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
             placeholder={EMAIL_PLACEHOLDER}
             {...register("email", {
+              // onChange(event) {
+              //   setInputValue(event.target.value);
+              // },
               pattern: {
                 value:
                   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/,
@@ -60,12 +67,11 @@ export const LoginForm = () => {
             {errors.email?.message}
           </p>
 
-          <TextField
+          <Input
             data-testid="password"
             type="password"
             id="password"
             required
-            label="Password"
             sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
 
             placeholder={PASSWORD_PLACEHOLDER}
@@ -96,6 +102,6 @@ export const LoginForm = () => {
           Submit
         </Button>
       </form>
-    </div>
+    </>
   );
 };

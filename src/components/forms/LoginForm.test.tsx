@@ -1,7 +1,14 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  getByTestId,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { LoginForm } from "./LoginForm";
 import user from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
 
 describe("Login Form", () => {
   test("Null password renders error", async () => {
@@ -41,7 +48,7 @@ describe("Login Form", () => {
     });
   });
 
-  test.skip("Email and password form values change on submit", async () => {
+  test("Email and password form values change on submit", async () => {
     render(
       <MemoryRouter>
         <LoginForm />
@@ -51,18 +58,16 @@ describe("Login Form", () => {
     // Fill out the form
     const emailElement = screen.getByTestId("email");
     const passwordElement = screen.getByTestId("password");
-    const submit = screen.getByTestId("login-button");
 
-    user.type(emailElement, "test@example.com");
-    user.type(passwordElement, "12345678901");
-
-    // Submit the form
-    fireEvent.click(submit);
+    userEvent.type(emailElement, "test@example.com");
+    userEvent.type(passwordElement, "12345678901");
 
     // Assert
     await waitFor(() => {
-      expect(screen.getByText("test@example.com")).toBeInTheDocument();
-      expect(screen.getByText("12345678901")).toBeInTheDocument();
+      expect(screen.getByTestId("login-form")).toHaveFormValues({
+        email: "test@example.com",
+        password: "12345678901",
+      });
     });
   });
 });
