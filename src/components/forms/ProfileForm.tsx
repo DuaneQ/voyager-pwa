@@ -110,8 +110,10 @@ export const ProfileForm = () => {
               },
             })}
           >
-            {GENDER_OPTIONS.map((option) => (
-              <MenuItem value={option}>{option}</MenuItem>
+            {GENDER_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
             ))}
           </TextField>
           <p className="error">{errors.gender?.message}</p>
@@ -135,8 +137,8 @@ export const ProfileForm = () => {
               },
             })}
           >
-            {EDUCATION_OPTIONS.map((option) => (
-              <MenuItem key={option} value={option}>
+            {EDUCATION_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option}>
                 {option}
               </MenuItem>
             ))}
@@ -162,8 +164,10 @@ export const ProfileForm = () => {
               },
             })}
           >
-            {FREQUENCY.map((option) => (
-              <MenuItem value={option}>{option}</MenuItem>
+            {FREQUENCY.map((option, index) => (
+              <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
             ))}
           </TextField>
           <p className="error">{errors.drinkingHabits?.message}</p>
@@ -188,8 +192,8 @@ export const ProfileForm = () => {
               onChange: (e) => setValue("smokingHabits", e.target.value),
             })}
           >
-            {FREQUENCY.map((option) => (
-              <MenuItem key={option} value={option}>
+            {FREQUENCY.map((option, index) => (
+              <MenuItem key={index} value={option}>
                 {option}
               </MenuItem>
             ))}

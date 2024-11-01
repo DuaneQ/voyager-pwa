@@ -1,7 +1,9 @@
 // Placeholders
-export const USERNAME_PLACEHOLDER = "Enter your username";
-export const PASSWORD_PLACEHOLDER = "Enter your password of 10 characters or more";
-export const EMAIL_PLACEHOLDER = "Enter your email address";
+export const USERNAME_PLACEHOLDER = "*Username";
+export const PASSWORD_PLACEHOLDER = "*Password";
+export const CONFIRM_PASSWORD_PLACEHOLDER = "*Confirm Password";
+
+export const EMAIL_PLACEHOLDER = "*Email";
 
 export const REGISTER_FORM_SUCCESS_MESSAGE = "Registration successful!";
 export const REGISTER_FORM_ERROR_MESSAGE = "Registration failed. Please try again.";
