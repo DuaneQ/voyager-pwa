@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { DevTool } from "@hookform/devtools";
 import { useForm } from "react-hook-form";
 import {
+  CONFIRM_PASSWORD_PLACEHOLDER,
   EDUCATION_OPTIONS,
   EMAIL_INVALID,
   EMAIL_PLACEHOLDER,
@@ -15,12 +16,7 @@ import {
   USERNAME_PLACEHOLDER,
   USERNAME_REQUIRED,
 } from "../shared-strings/constants";
-import {
-  Box,
-  Button,
-  MenuItem,
-  TextField,
-} from "@mui/material";
+import { Box, Button, Input, MenuItem, TextField } from "@mui/material";
 import { Link } from "react-router-dom";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
@@ -53,7 +49,7 @@ export const RegisterForm = () => {
   };
 
   const form = useForm<FormValues>();
-  const { register, control, handleSubmit, formState, setValue } = form;
+  const { register, handleSubmit, formState, setValue } = form;
   const { errors } = formState;
 
   return (
@@ -64,12 +60,11 @@ export const RegisterForm = () => {
         noValidate
       >
         <Box>
-          <TextField
+          <Input
             type="text"
-            label="*Username"
             id="username"
             data-testid="username"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
+            sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={USERNAME_PLACEHOLDER}
             {...register("username", {
               required: {
@@ -87,12 +82,11 @@ export const RegisterForm = () => {
           </p>
         </Box>
         <Box>
-          <TextField
+          <Input
             type="email"
-            label="*Email"
             id="email"
             data-testid="email"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
+            sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={EMAIL_PLACEHOLDER}
             {...register("email", {
               pattern: {
@@ -111,12 +105,11 @@ export const RegisterForm = () => {
           </p>
         </Box>
         <Box>
-          <TextField
+          <Input
             type="password"
-            label="*Password"
             id="password"
             data-testid="password"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
+            sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={PASSWORD_PLACEHOLDER}
             {...register("password", {
               required: {
@@ -132,12 +125,11 @@ export const RegisterForm = () => {
           <p className="error">{errors.password?.message}</p>
         </Box>
         <Box>
-          <TextField
-            label="*Confirm Password"
+          <Input
             id="confirmPassword"
             data-testid="confirm"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto' }}
-            placeholder={PASSWORD_PLACEHOLDER}
+            sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
+            placeholder={CONFIRM_PASSWORD_PLACEHOLDER}
             {...register("confirmPassword", {
               required: {
                 value: true,
@@ -153,9 +145,8 @@ export const RegisterForm = () => {
         </Box>
 
         <Box mt={2}>
-          <TextField
+          <Input
             id="userBio"
-            label="User Bio"
             data-testid="userBio"
             multiline
             rows={4}
@@ -176,7 +167,12 @@ export const RegisterForm = () => {
             type="date"
             id="dob"
             data-testid="dob"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("dob", {
               required: {
                 value: true,
@@ -192,7 +188,12 @@ export const RegisterForm = () => {
             label="*Gender"
             id="gender"
             data-testid="gender"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("gender", {
               required: {
                 value: true,
@@ -200,8 +201,10 @@ export const RegisterForm = () => {
               },
             })}
           >
-            {GENDER_OPTIONS.map((option) => (
-              <MenuItem value={option}>{option}</MenuItem>
+            {GENDER_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
             ))}
           </TextField>
           <p className="error">{errors.gender?.message}</p>
@@ -212,7 +215,12 @@ export const RegisterForm = () => {
             label="*Education Level"
             id="education"
             data-testid="education"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("education", {
               required: {
                 value: true,
@@ -220,8 +228,8 @@ export const RegisterForm = () => {
               },
             })}
           >
-            {EDUCATION_OPTIONS.map((option) => (
-              <MenuItem key={option} value={option}>
+            {EDUCATION_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option}>
                 {option}
               </MenuItem>
             ))}
@@ -234,7 +242,12 @@ export const RegisterForm = () => {
             label="*Drinking Frequency"
             id="drinkingHabits"
             data-testid="drinkingHabits"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("drinkingHabits", {
               required: {
                 value: true,
@@ -242,8 +255,10 @@ export const RegisterForm = () => {
               },
             })}
           >
-            {FREQUENCY.map((option) => (
-              <MenuItem value={option}>{option}</MenuItem>
+            {FREQUENCY.map((option, index) => (
+              <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
             ))}
           </TextField>
           <p className="error">{errors.drinkingHabits?.message}</p>
@@ -254,7 +269,12 @@ export const RegisterForm = () => {
             label="*Smoking Frequency"
             id="smokingHabits"
             data-testid="smokingHabits"
-            sx={{ width: '100%', maxWidth: 300, mx: 'auto', backgroundColor: "white" }}
+            sx={{
+              width: "100%",
+              maxWidth: 300,
+              mx: "auto",
+              backgroundColor: "white",
+            }}
             {...register("smokingHabits", {
               required: {
                 value: true,
@@ -263,8 +283,8 @@ export const RegisterForm = () => {
               onChange: (e) => setValue("smokingHabits", e.target.value),
             })}
           >
-            {FREQUENCY.map((option) => (
-              <MenuItem key={option} value={option}>
+            {FREQUENCY.map((option, index) => (
+              <MenuItem key={index} value={option}>
                 {option}
               </MenuItem>
             ))}
