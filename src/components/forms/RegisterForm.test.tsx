@@ -15,7 +15,7 @@ const MockAlertProvider = ({ children }: { children: ReactNode }) => (
   </AlertContext.Provider>
 );
 
-describe.skip("RegisterForm", () => {
+describe("RegisterForm", () => {
   it("renders the form fields correctly", () => {
     render(
       <MockAlertProvider>
@@ -87,25 +87,25 @@ describe.skip("RegisterForm", () => {
     expect(drinking).toHaveValue("Never");
     expect(submit).toBeEnabled();
 
-    // fireEvent.click(submit);
+    fireEvent.click(submit);
 
-    // //Assert
-    // await waitFor(() => {
-    //   expect(consoleSpy).toHaveBeenCalledWith("Submitted", {
-    //     email: "test@example.com",
-    //     password: "1234567890",
-    //     userBio: "this is my bio",
-    //     username: "username",
-    //     dob: new Date(new Date().setFullYear(new Date().getFullYear() - 18))
-    //       .toISOString()
-    //       .split("T")[0],
-    //     education: "Other",
-    //     gender: "Female",
-    //     drinkingHabits: "Never",
-    //     smokingHabits: "Occasionally",
-    //   });
-    // });
+    //Assert
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith("Submitted", {
+        email: "test@example.com",
+        password: "1234567890",
+        userBio: "this is my bio",
+        username: "username",
+        dob: new Date(new Date().setFullYear(new Date().getFullYear() - 18))
+          .toISOString()
+          .split("T")[0],
+        education: "Other",
+        gender: "Female",
+        drinkingHabits: "Never",
+        smokingHabits: "Occasionally",
+      });
+    });
 
-    // consoleSpy.mockRestore();
+    consoleSpy.mockRestore();
   });
 });
