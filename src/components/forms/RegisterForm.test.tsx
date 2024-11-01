@@ -36,7 +36,7 @@ describe("RegisterForm", () => {
     expect(screen.getByTestId("smokingHabits")).toBeInTheDocument();
   });
 
-  test.skip("Button was called with form values", async () => {
+  test("Button was called with form values", async () => {
     const consoleSpy = jest.spyOn(console, "log");
     render(
       <AlertProvider>
