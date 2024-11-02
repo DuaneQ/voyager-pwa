@@ -43,9 +43,11 @@ export const ProfileForm = () => {
   const { errors } = formState;
 
   return (
-    <div className="authFormContainer">
+    
+    <div className="authFormContainer" style={{ minHeight: "140vh" }}>
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Box mt={-20} display="flex" justifyContent="center">
+        
+        <Box mt={0} display="flex" justifyContent="center">
           <img
             src={profilePlaceholder}
             alt="Profile Placeholder"
@@ -54,6 +56,8 @@ export const ProfileForm = () => {
         </Box>
         <Box mt={2}>
           <TextField
+          sx={{ paddingTop: 5 }}
+          InputLabelProps={{ style: { color: "white" } }}
             id="userBio"
             label="User Bio"
             data-testid="userBio"
@@ -200,7 +204,37 @@ export const ProfileForm = () => {
           </TextField>
           <p className="error">{errors.smokingHabits?.message}</p>
         </Box>
-        <Box mt={2} display="flex" alignItems="center" position="absolute">
+        <Box display="flex" flexWrap="wrap" justifyContent="center" mt={2}>
+          <Box m={1}>
+            <img
+              src={profilePlaceholder}
+              alt="Image 1"
+              style={{ width: "150px", height: "150px" }}
+            />
+          </Box>
+          <Box m={1}>
+            <img
+              src={profilePlaceholder}
+              alt="Image 2"
+              style={{ width: "150px", height: "150px" }}
+            />
+          </Box>
+          <Box m={1}>
+            <img
+              src={profilePlaceholder}
+              alt="Image 3"
+              style={{ width: "150px", height: "150px" }}
+            />
+          </Box>
+          <Box m={1}>
+            <img
+              src={profilePlaceholder}
+              alt="Image 4"
+              style={{ width: "150px", height: "150px" }}
+            />
+          </Box>
+        </Box>
+        <div>
           <Chip label="Basic Chip" sx={{ backgroundColor: "white" }} />
           <Chip
             label="Clickable Chip"
@@ -212,7 +246,7 @@ export const ProfileForm = () => {
             onDelete={() => console.log("Deleted!")}
             sx={{ backgroundColor: "white" }}
           />
-        </Box>
+        </div>
       </form>
     </div>
   );
