@@ -58,6 +58,7 @@ export const RegisterForm = () => {
         className="registerForm"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
+        data-testid="reg-form"
       >
         <Box>
           <Input
