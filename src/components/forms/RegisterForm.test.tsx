@@ -70,17 +70,13 @@ describe("RegisterForm", () => {
         .split("T")[0]
     );
 
-    expect(gender).toBeInTheDocument();
-    fireEvent.change(gender, { target: { name: "Female" } });
+    userEvent.type(gender, "Female");
+    userEvent.type(education, "Other");
+    userEvent.type(drinking, "Never");
+    userEvent.type(smoking, "Occasionally");
 
-    expect(education).toBeInTheDocument();
-    fireEvent.change(education, { target: { name: "Other" } });
 
-    expect(drinking).toBeInTheDocument();
-    fireEvent.change(drinking, { target: { name: "Never" } });
-
-    expect(smoking).toBeInTheDocument();
-    fireEvent.change(smoking, { target: { name: "Occasionally" } });
+    fireEvent.click(submit);
 
     // Assert
     await waitFor(() => {

@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { DevTool } from "@hookform/devtools";
 import { useForm } from "react-hook-form";
 import {
@@ -35,6 +35,10 @@ export const RegisterForm = () => {
     confirmPassword: string;
   };
   const { showAlert } = useContext(AlertContext);
+  const [smoking, setSmoking] = useState("");
+  const [drinking, setDrinking] = useState("");
+  const [edu, setEdu] = useState("");
+  const [gender, setGender] = useState("");
 
   const onSubmit = (data: FormValues) => {
     if (data.password !== data.confirmPassword) {
@@ -58,8 +62,7 @@ export const RegisterForm = () => {
         className="registerForm"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        data-testid="reg-form"
-      >
+        data-testid="reg-form">
         <Box>
           <Input
             type="text"
@@ -188,6 +191,7 @@ export const RegisterForm = () => {
             select
             label="*Gender"
             id="gender"
+            value={gender}
             data-testid="gender"
             sx={{
               width: "100%",
@@ -196,12 +200,14 @@ export const RegisterForm = () => {
               backgroundColor: "white",
             }}
             {...register("gender", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setGender(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Gender is required",
               },
-            })}
-          >
+            })}>
             {GENDER_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -216,6 +222,7 @@ export const RegisterForm = () => {
             label="*Education Level"
             id="education"
             data-testid="education"
+            value={edu}
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -223,12 +230,14 @@ export const RegisterForm = () => {
               backgroundColor: "white",
             }}
             {...register("education", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setEdu(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Education level is required",
               },
-            })}
-          >
+            })}>
             {EDUCATION_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -242,6 +251,7 @@ export const RegisterForm = () => {
             select
             label="*Drinking Frequency"
             id="drinkingHabits"
+            value={drinking}
             data-testid="drinkingHabits"
             sx={{
               width: "100%",
@@ -250,12 +260,14 @@ export const RegisterForm = () => {
               backgroundColor: "white",
             }}
             {...register("drinkingHabits", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setDrinking(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Required",
               },
-            })}
-          >
+            })}>
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -270,6 +282,7 @@ export const RegisterForm = () => {
             label="*Smoking Frequency"
             id="smokingHabits"
             data-testid="smokingHabits"
+            value={smoking}
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -281,9 +294,11 @@ export const RegisterForm = () => {
                 value: true,
                 message: "Required",
               },
-              onChange: (e) => setValue("smokingHabits", e.target.value),
-            })}
-          >
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setSmoking(e.target.value);
+              },
+              value: "smokingHabits",
+            })}>
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
