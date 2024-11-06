@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { DevTool } from "@hookform/devtools";
 import { useForm } from "react-hook-form";
 import {
@@ -26,6 +26,10 @@ export const ProfileForm = () => {
     confirmPassword: string;
   };
   const { showAlert } = useContext(AlertContext);
+  const [smoking, setSmoking] = useState("");
+  const [drinking, setDrinking] = useState("");
+  const [edu, setEdu] = useState("");
+  const [gender, setGender] = useState("");
 
   const onSubmit = (data: FormValues) => {
     if (data.password !== data.confirmPassword) {
@@ -43,10 +47,8 @@ export const ProfileForm = () => {
   const { errors } = formState;
 
   return (
-    
     <div className="authFormContainer" style={{ minHeight: "140vh" }}>
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        
         <Box mt={0} display="flex" justifyContent="center">
           <img
             src={profilePlaceholder}
@@ -56,8 +58,8 @@ export const ProfileForm = () => {
         </Box>
         <Box mt={2}>
           <TextField
-          sx={{ paddingTop: 5 }}
-          InputLabelProps={{ style: { color: "white" } }}
+            sx={{ paddingTop: 5 }}
+            InputLabelProps={{ style: { color: "white" } }}
             id="userBio"
             label="User Bio"
             data-testid="userBio"
@@ -100,6 +102,7 @@ export const ProfileForm = () => {
             select
             label="*Gender"
             id="gender"
+            value={gender}
             data-testid="gender"
             sx={{
               width: "100%",
@@ -108,12 +111,14 @@ export const ProfileForm = () => {
               backgroundColor: "white",
             }}
             {...register("gender", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setGender(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Gender is required",
               },
-            })}
-          >
+            })}>
             {GENDER_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -128,6 +133,7 @@ export const ProfileForm = () => {
             label="*Education Level"
             id="education"
             data-testid="education"
+            value={edu}
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -135,12 +141,14 @@ export const ProfileForm = () => {
               backgroundColor: "white",
             }}
             {...register("education", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setEdu(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Education level is required",
               },
-            })}
-          >
+            })}>
             {EDUCATION_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -154,6 +162,7 @@ export const ProfileForm = () => {
             select
             label="*Drinking Frequency"
             id="drinkingHabits"
+            value={drinking}
             data-testid="drinkingHabits"
             sx={{
               width: "100%",
@@ -162,12 +171,14 @@ export const ProfileForm = () => {
               backgroundColor: "white",
             }}
             {...register("drinkingHabits", {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setDrinking(e.target.value);
+              },
               required: {
                 value: true,
                 message: "Required",
               },
-            })}
-          >
+            })}>
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -182,6 +193,7 @@ export const ProfileForm = () => {
             label="*Smoking Frequency"
             id="smokingHabits"
             data-testid="smokingHabits"
+            value={smoking}
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -193,9 +205,10 @@ export const ProfileForm = () => {
                 value: true,
                 message: "Required",
               },
-              onChange: (e) => setValue("smokingHabits", e.target.value),
-            })}
-          >
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                setSmoking(e.target.value);
+              },
+            })}>
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}

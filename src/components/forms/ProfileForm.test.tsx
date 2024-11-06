@@ -1,11 +1,10 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AlertContext, AlertProvider } from "../../Context/AlertContext";
-
-const mockShowAlert = jest.fn();
-
 import { ReactNode } from "react";
 import { ProfileForm } from "./ProfileForm";
+
+const mockShowAlert = jest.fn();
 
 const MockAlertProvider = ({ children }: { children: ReactNode }) => (
   <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
