@@ -20,7 +20,6 @@ export const LoginForm = () => {
 
   const onSubmit = (data: FormValues) => {
     console.log("Submitted", data);
-
     navigate("/Profile");
   };
 

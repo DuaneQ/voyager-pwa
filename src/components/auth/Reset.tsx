@@ -7,9 +7,9 @@ export const Reset = () => {
   type FormValues = {
     email: string;
   };
+
   const navigate = useNavigate();
-  const form = useForm<FormValues>();
-  const { register, handleSubmit, formState } = form;
+  const { register, handleSubmit, formState } = useForm<FormValues>();
   const { errors } = formState;
 
   const onSubmit = (data: FormValues) => {

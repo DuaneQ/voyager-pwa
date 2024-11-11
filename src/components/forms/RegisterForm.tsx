@@ -1,5 +1,4 @@
 import React, { useContext, useState } from "react";
-import { DevTool } from "@hookform/devtools";
 import { useForm } from "react-hook-form";
 import {
   CONFIRM_PASSWORD_PLACEHOLDER,
@@ -33,27 +32,34 @@ export const RegisterForm = () => {
     drinkingHabits: string;
     smokingHabits: string;
     confirmPassword: string;
+    temp: string;
   };
   const { showAlert } = useContext(AlertContext);
   const [smoking, setSmoking] = useState("");
   const [drinking, setDrinking] = useState("");
   const [edu, setEdu] = useState("");
   const [gender, setGender] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = (data: FormValues) => {
-    if (data.password !== data.confirmPassword) {
-      showAlert("Error", "Passwords do not match.");
-      return;
-    } else if (!isUserOver18(data.dob)) {
-      console.log("Submitted", data.dob);
-      showAlert("Error", "Users must be 18 or older.");
-    } else if (formState.isValid) {
-      console.log("Submitted", data);
+    setIsSubmitting(true);
+    try {
+      if (data.password !== data.confirmPassword) {
+        showAlert("Error", "Passwords do not match.");
+        return;
+      } else if (!isUserOver18(data.dob)) {
+        console.log("Submitted", data.dob);
+        showAlert("Error", "Users must be 18 or older.");
+        return
+      } else if (formState.isValid) {
+        console.log("Submitted", data);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const form = useForm<FormValues>();
-  const { register, handleSubmit, formState, setValue } = form;
+  const { register, handleSubmit, formState } = useForm<FormValues>();
   const { errors } = formState;
 
   return (
@@ -67,7 +73,6 @@ export const RegisterForm = () => {
           <Input
             type="text"
             id="username"
-            data-testid="username"
             sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={USERNAME_PLACEHOLDER}
             {...register("username", {
@@ -89,7 +94,6 @@ export const RegisterForm = () => {
           <Input
             type="email"
             id="email"
-            data-testid="email"
             sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={EMAIL_PLACEHOLDER}
             {...register("email", {
@@ -147,11 +151,12 @@ export const RegisterForm = () => {
           />
           <p className="error">{errors.password?.message}</p>
         </Box>
-
         <Box mt={2}>
-          <Input
+          <TextField
+            sx={{ paddingTop: 5 }}
+            InputLabelProps={{ style: { color: "white" } }}
             id="userBio"
-            data-testid="userBio"
+            label="User Bio"
             multiline
             rows={4}
             placeholder="Tell us about yourself"
@@ -170,7 +175,6 @@ export const RegisterForm = () => {
             label="*Date of birth"
             type="date"
             id="dob"
-            data-testid="dob"
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -192,7 +196,6 @@ export const RegisterForm = () => {
             label="*Gender"
             id="gender"
             value={gender}
-            data-testid="gender"
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -209,9 +212,9 @@ export const RegisterForm = () => {
               },
             })}>
             {GENDER_OPTIONS.map((option, index) => (
-              <MenuItem key={index} value={option}>
+              <option key={index} value={option}>
                 {option}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
           <p className="error">{errors.gender?.message}</p>
@@ -221,7 +224,6 @@ export const RegisterForm = () => {
             select
             label="*Education Level"
             id="education"
-            data-testid="education"
             value={edu}
             sx={{
               width: "100%",
@@ -231,6 +233,7 @@ export const RegisterForm = () => {
             }}
             {...register("education", {
               onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                console.log("Education Level selected:", e.target.value);
                 setEdu(e.target.value);
               },
               required: {
@@ -252,7 +255,6 @@ export const RegisterForm = () => {
             label="*Drinking Frequency"
             id="drinkingHabits"
             value={drinking}
-            data-testid="drinkingHabits"
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -281,7 +283,6 @@ export const RegisterForm = () => {
             select
             label="*Smoking Frequency"
             id="smokingHabits"
-            data-testid="smokingHabits"
             value={smoking}
             sx={{
               width: "100%",
@@ -297,7 +298,6 @@ export const RegisterForm = () => {
               onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                 setSmoking(e.target.value);
               },
-              value: "smokingHabits",
             })}>
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
@@ -312,7 +312,12 @@ export const RegisterForm = () => {
             Already have an account? <Link to="/">Sign in</Link>
           </p>
         </div>
-        <Button type="submit" data-testid="register-button" variant="contained">
+        <Button 
+        type="submit" 
+        data-testid="register-button" 
+        variant="contained"
+        disabled={isSubmitting}
+        >
           Register
         </Button>
       </form>
