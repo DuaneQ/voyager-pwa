@@ -9,6 +9,10 @@ import {
 } from "../shared-strings/constants";
 import { Box, Button, Input } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../environments/environment";
+import { AlertContext } from "../../Context/AlertContext";
+import { useContext } from "react";
 
 export const LoginForm = () => {
   type FormValues = {
@@ -17,10 +21,20 @@ export const LoginForm = () => {
   };
 
   const navigate = useNavigate();
+  const { showAlert } = useContext(AlertContext);
 
   const onSubmit = (data: FormValues) => {
-    console.log("Submitted", data);
-    navigate("/Profile");
+    try {
+      signInWithEmailAndPassword(auth, data.email, data.password)
+        .then(() => {
+          navigate("/");
+        })
+        .catch((error) => {
+          const errorMessage = error.message;
+          showAlert("Error", error.message);
+        });
+    } finally {
+    }
   };
 
   const form = useForm<FormValues>();
@@ -32,9 +46,7 @@ export const LoginForm = () => {
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        data-testid="login-form"
-      >
-         
+        data-testid="login-form">
         <Box>
           <Input
             required

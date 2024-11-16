@@ -13,7 +13,7 @@ const MockAlertProvider = ({ children }: { children: ReactNode }) => (
 );
 
 describe("ProfileForm", () => {
-  test("Renders the form fields correctly", () => {
+  test.only("Renders the form fields correctly", () => {
     render(
       <MockAlertProvider>
         <MemoryRouter>

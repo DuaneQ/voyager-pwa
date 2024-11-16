@@ -9,24 +9,52 @@ import { AlertProvider } from "./Context/AlertContext";
 import BottomNav from "./components/layout/BottomNavigation";
 import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
+import { Protected } from "./Context/Protected";
 
 function App() {
   const location = useLocation();
-  const hideBottomNav = ["/", "/Register", "/reset"].includes(location.pathname);
+  const hideBottomNav = ["/Login", "/Register", "/reset"].includes(
+    location.pathname
+  );
   return (
     <AlertProvider>
       <Header />
       <div
-        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
-      >
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+        }}>
         <div style={{ flex: 1 }}>
           <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="Register" element={<Register />} />
-            <Route path="Profile" element={<Profile />} />
-            <Route path="Search" element={<Search />} />
-            <Route path="Chat" element={<Chat />} />
-            <Route path="Reset" element={<Reset />} />
+            <Route path="/Login" element={<Login />} />
+            <Route path="/Register" element={<Register />} />
+            <Route
+              path="/"
+              element={
+                <Protected>
+                  <Profile />
+                </Protected>
+              }
+            />
+            <Route
+              path="/Search"
+              element={
+                <Protected>
+                  <Search />
+                </Protected>
+              }
+            />
+            <Route
+              path="/Chat"
+              element={
+                <Protected>
+                  <Chat />
+                </Protected>
+              }
+            />
+
+            <Route path="/Reset" element={<Reset />} />
           </Routes>
         </div>
         {!hideBottomNav && <BottomNav />}

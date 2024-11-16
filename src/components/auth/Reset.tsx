@@ -46,7 +46,7 @@ export const Reset = () => {
         </Box>
         <div>
           <p style={{ color: "white" }}>
-            Already have an account? <Link to="/">Sign in</Link>
+            Already have an account? <Link to="/Login">Sign in</Link>
           </p>
         </div>
         <Button type="submit" data-testid="login-button" variant="contained">

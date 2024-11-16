@@ -9,13 +9,24 @@ import { LoginForm } from "./LoginForm";
 import user from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
+import { AlertContext, AlertProvider } from "../../Context/AlertContext";
+import { ReactNode } from "react";
+
+const mockShowAlert = jest.fn();
+const MockAlertProvider = ({ children }: { children: ReactNode }) => (
+  <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
+    {children}
+  </AlertContext.Provider>
+);
 
 describe("Login Form", () => {
-  test("Null password renders error", async () => {
+  test.only("Null password renders error", async () => {
     render(
-      <MemoryRouter>
-        <LoginForm />
-      </MemoryRouter>
+      <MockAlertProvider>
+        <MemoryRouter>
+          <LoginForm />
+        </MemoryRouter>
+      </MockAlertProvider>
     ); //Arrange
     const emailElement = screen.getByTestId("email");
     const submit = screen.getByTestId("login-button");
@@ -30,11 +41,13 @@ describe("Login Form", () => {
     });
   });
 
-  test("Both elements required error rendered", async () => {
+  test.only("Both elements required error rendered", async () => {
     render(
-      <MemoryRouter>
-        <LoginForm />
-      </MemoryRouter>
+      <MockAlertProvider>
+        <MemoryRouter>
+          <LoginForm />
+        </MemoryRouter>
+      </MockAlertProvider>
     ); //Arrange
     const submit = screen.getByTestId("login-button");
 
@@ -48,11 +61,13 @@ describe("Login Form", () => {
     });
   });
 
-  test("Email and password form values change on submit", async () => {
+  test.only("Email and password form values change on submit", async () => {
     render(
-      <MemoryRouter>
-        <LoginForm />
-      </MemoryRouter>
+      <MockAlertProvider>
+        <MemoryRouter>
+          <LoginForm />
+        </MemoryRouter>
+      </MockAlertProvider>
     );
 
     // Fill out the form
