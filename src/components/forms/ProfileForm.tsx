@@ -11,6 +11,8 @@ import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import Chip from "@mui/material/Chip";
+import { signOut } from "firebase/auth";
+import { auth } from "../../environments/environment";
 
 export const ProfileForm = () => {
   type FormValues = {
@@ -48,7 +50,27 @@ export const ProfileForm = () => {
 
   return (
     <div className="authFormContainer" style={{ minHeight: "140vh" }}>
+
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <Box display="flex" justifyContent="flex-end" p={2}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={async () => {
+            await signOut(auth);
+            window.location.href = "/login";
+          }}
+          sx={{
+            borderRadius: "50%",
+            width: 80,
+            height: 80,
+          }}
+        >
+          <span role="img" aria-label="logout">
+            Logout
+          </span>
+        </Button>
+      </Box>
         <Box mt={0} display="flex" justifyContent="center">
           <img
             src={profilePlaceholder}
@@ -260,7 +282,19 @@ export const ProfileForm = () => {
             sx={{ backgroundColor: "white" }}
           />
         </div>
+        
+        <Box mt={2}>
+          <Button
+            type="submit"
+            data-testid="save-button"
+            variant="contained"
+            sx={{ marginBottom: 10, width: 200 }}
+          >
+            Save
+          </Button>
+        </Box>
       </form>
+
     </div>
   );
 };

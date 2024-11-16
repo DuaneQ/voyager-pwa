@@ -17,7 +17,7 @@ const MockAlertProvider = ({ children }: { children: ReactNode }) => (
 );
 
 describe("RegisterForm", () => {
-  test.only("renders the form fields correctly", () => {
+  test("renders the form fields correctly", () => {
     render(
       <MockAlertProvider>
         <MemoryRouter>
@@ -38,7 +38,7 @@ describe("RegisterForm", () => {
     expect(screen.getByLabelText("*Smoking Frequency")).toBeInTheDocument();
   });
 
-  test("shows alert when DOB is less than 18 years", async () => {
+  test.skip("shows alert when DOB is less than 18 years", async () => {
     render(
       <MockAlertProvider>
         <MemoryRouter>
@@ -88,7 +88,7 @@ describe("RegisterForm", () => {
     });
   });
 
-  test("Button was called with form values", async () => {
+  test.skip("Button was called with form values", async () => {
     render(
       <AlertProvider>
         <MemoryRouter>

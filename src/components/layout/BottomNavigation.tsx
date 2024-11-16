@@ -41,7 +41,7 @@ const BottomNav: React.FC = () => {
       <StyledBottomNavigationAction
         label="Profile"
         value="Profile"
-        onClick={() => navigate("/Profile")}
+        onClick={() => navigate("/")}
         icon={<AccountCircleIcon />}
       />
       <StyledBottomNavigationAction
