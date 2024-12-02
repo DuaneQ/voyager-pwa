@@ -30,7 +30,6 @@ export const LoginForm = () => {
           navigate("/");
         })
         .catch((error) => {
-          const errorMessage = error.message;
           showAlert("Error", error.message);
         });
     } finally {

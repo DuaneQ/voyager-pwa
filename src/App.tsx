@@ -10,10 +10,11 @@ import BottomNav from "./components/layout/BottomNavigation";
 import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
 import { Protected } from "./Context/Protected";
+import { ResendEmail } from "./components/auth/ResendEmail";
 
 function App() {
   const location = useLocation();
-  const hideBottomNav = ["/Login", "/Register", "/reset"].includes(
+  const hideBottomNav = ["/Login", "/Register", "/reset", "/ResendEmail"].includes(
     location.pathname
   );
   return (
@@ -29,6 +30,7 @@ function App() {
           <Routes>
             <Route path="/Login" element={<Login />} />
             <Route path="/Register" element={<Register />} />
+            <Route path="/ResendEmail" element={<ResendEmail />} />
             <Route
               path="/"
               element={
