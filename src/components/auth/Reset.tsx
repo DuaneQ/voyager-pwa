@@ -23,7 +23,7 @@ export const Reset = () => {
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        data-testid="login-form"
+        data-testid="reset-form"
       >
         <Box>
           <Input
@@ -49,7 +49,7 @@ export const Reset = () => {
             Already have an account? <Link to="/Login">Sign in</Link>
           </p>
         </div>
-        <Button type="submit" data-testid="login-button" variant="contained">
+        <Button type="submit" fullWidth data-testid="login-button" variant="contained">
           Submit
         </Button>
       </form>

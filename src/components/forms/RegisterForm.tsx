@@ -49,7 +49,6 @@ export const RegisterForm = () => {
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    console.log('is form valid', formState.isValid)
     try {
       if (data.password !== data.confirmPassword) {
         showAlert("Error", "Passwords do not match.");
@@ -64,7 +63,7 @@ export const RegisterForm = () => {
         .then((userCredential) => {
             // Signed in
             const user = userCredential.user;
-            console.log(user);
+                       console.log(user);
             navigate("/Login");
             // ...
         })

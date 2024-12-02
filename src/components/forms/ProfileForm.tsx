@@ -6,7 +6,17 @@ import {
   FREQUENCY,
   GENDER_OPTIONS,
 } from "../shared-strings/constants";
-import { Box, Button, MenuItem, TextField } from "@mui/material";
+import {
+  Box,
+  Button,
+  Card,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 import profilePlaceholder from "../../assets/images/imagePH.png";
@@ -28,10 +38,13 @@ export const ProfileForm = () => {
     confirmPassword: string;
   };
   const { showAlert } = useContext(AlertContext);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [smoking, setSmoking] = useState("");
   const [drinking, setDrinking] = useState("");
   const [edu, setEdu] = useState("");
   const [gender, setGender] = useState("");
+  const [dob, setDob] = useState("<string | null>(null)");
+  const [bio, setBio] = useState("");
 
   const onSubmit = (data: FormValues) => {
     if (data.password !== data.confirmPassword) {
@@ -50,27 +63,25 @@ export const ProfileForm = () => {
 
   return (
     <div className="authFormContainer" style={{ minHeight: "140vh" }}>
-
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <Box display="flex" justifyContent="flex-end" p={2}>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={async () => {
-            await signOut(auth);
-            window.location.href = "/login";
-          }}
-          sx={{
-            borderRadius: "50%",
-            width: 80,
-            height: 80,
-          }}
-        >
-          <span role="img" aria-label="logout">
-            Logout
-          </span>
-        </Button>
-      </Box>
+        <Box display="flex" justifyContent="flex-end" p={2}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={async () => {
+              await signOut(auth);
+              window.location.href = "/login";
+            }}
+            sx={{
+              borderRadius: "50%",
+              width: 80,
+              height: 80,
+            }}>
+            <span role="img" aria-label="logout">
+              Logout
+            </span>
+          </Button>
+        </Box>
         <Box mt={0} display="flex" justifyContent="center">
           <img
             src={profilePlaceholder}
@@ -78,167 +89,102 @@ export const ProfileForm = () => {
             style={{ maxWidth: "100%", height: "auto" }}
           />
         </Box>
-        <Box mt={2}>
-          <TextField
-            sx={{ paddingTop: 5 }}
-            InputLabelProps={{ style: { color: "white" } }}
-            id="userBio"
-            label="User Bio"
-            data-testid="userBio"
-            multiline
-            rows={4}
-            placeholder="Tell us about yourself"
-            {...register("userBio", {
-              maxLength: {
-                value: 200,
-                message: "Bio should not exceed 200 characters",
-              },
-            })}
-          />
-          <p className="error">{errors.userBio?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            InputLabelProps={{ shrink: true }}
-            label="*Date of birth"
-            type="date"
-            id="dob"
-            data-testid="dob"
-            sx={{
-              width: "100%",
-              maxWidth: 300,
-              mx: "auto",
-              backgroundColor: "white",
-            }}
-            {...register("dob", {
-              required: {
-                value: true,
-                message: "Date of birth is required",
-              },
-            })}
-          />
-          <p className="error">{errors.dob?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            select
-            label="*Gender"
-            id="gender"
-            value={gender}
-            data-testid="gender"
-            sx={{
-              width: "100%",
-              maxWidth: 300,
-              mx: "auto",
-              backgroundColor: "white",
-            }}
-            {...register("gender", {
-              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                setGender(e.target.value);
-              },
-              required: {
-                value: true,
-                message: "Gender is required",
-              },
-            })}>
-            {GENDER_OPTIONS.map((option, index) => (
-              <MenuItem key={index} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-          <p className="error">{errors.gender?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            select
-            label="*Education Level"
-            id="education"
-            data-testid="education"
-            value={edu}
-            sx={{
-              width: "100%",
-              maxWidth: 300,
-              mx: "auto",
-              backgroundColor: "white",
-            }}
-            {...register("education", {
-              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                setEdu(e.target.value);
-              },
-              required: {
-                value: true,
-                message: "Education level is required",
-              },
-            })}>
-            {EDUCATION_OPTIONS.map((option, index) => (
-              <MenuItem key={index} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-          <p className="error">{errors.education?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            select
-            label="*Drinking Frequency"
-            id="drinkingHabits"
-            value={drinking}
-            data-testid="drinkingHabits"
-            sx={{
-              width: "100%",
-              maxWidth: 300,
-              mx: "auto",
-              backgroundColor: "white",
-            }}
-            {...register("drinkingHabits", {
-              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                setDrinking(e.target.value);
-              },
-              required: {
-                value: true,
-                message: "Required",
-              },
-            })}>
-            {FREQUENCY.map((option, index) => (
-              <MenuItem key={index} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-          <p className="error">{errors.drinkingHabits?.message}</p>
-        </Box>
-        <Box>
-          <TextField
-            select
-            label="*Smoking Frequency"
-            id="smokingHabits"
-            data-testid="smokingHabits"
-            value={smoking}
-            sx={{
-              width: "100%",
-              maxWidth: 300,
-              mx: "auto",
-              backgroundColor: "white",
-            }}
-            {...register("smokingHabits", {
-              required: {
-                value: true,
-                message: "Required",
-              },
-              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                setSmoking(e.target.value);
-              },
-            })}>
-            {FREQUENCY.map((option, index) => (
-              <MenuItem key={index} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-          <p className="error">{errors.smokingHabits?.message}</p>
-        </Box>
+
+        <Card
+          variant="outlined"
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            p: 2,
+            maxWidth: 300,
+            margin: "20px auto 0 auto",
+          }}>
+          <FormControl>
+            <TextField
+              id="userBio"
+              label="User Bio"
+              multiline
+              rows={4}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell us about yourself"
+            />
+          </FormControl>
+          <FormControl required>
+            <TextField
+              label="*Date of birth"
+              type="date"
+              id="dob"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+            />
+          </FormControl>
+          <FormControl>
+            <InputLabel id="gender-label">Gender</InputLabel>
+            <Select
+              labelId="gender-label"
+              id="gender-select"
+              value={gender}
+              required
+              autoFocus
+              fullWidth
+              name="gender-select"
+              label="Gender *"
+              onChange={(e) => setGender(e.target.value)}>
+              {GENDER_OPTIONS.map((option, index) => (
+                <MenuItem key={index} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl required>
+            <InputLabel id="edu-label">Education</InputLabel>
+            <Select
+              labelId="edu-label"
+              id="edu-select"
+              value={edu}
+              label="Education*"
+              onChange={(e) => setEdu(e.target.value)}>
+              {EDUCATION_OPTIONS.map((option, index) => (
+                <MenuItem key={index} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl required>
+            <InputLabel id="drinking-label">Drinking</InputLabel>
+            <Select
+              labelId="drinking-label"
+              id="drinking-select"
+              value={drinking}
+              label="Drinking *"
+              onChange={(e) => setDrinking(e.target.value)}>
+              {FREQUENCY.map((option, index) => (
+                <MenuItem key={index} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl required>
+            <InputLabel id="smoking-label">Smoking</InputLabel>
+            <Select
+              labelId="smoking-label"
+              id="drinking-select"
+              value={smoking}
+              label="Smoking *"
+              onChange={(e) => setSmoking(e.target.value)}>
+              {FREQUENCY.map((option, index) => (
+                <MenuItem key={index} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Card>
         <Box display="flex" flexWrap="wrap" justifyContent="center" mt={2}>
           <Box m={1}>
             <img
@@ -282,19 +228,18 @@ export const ProfileForm = () => {
             sx={{ backgroundColor: "white" }}
           />
         </div>
-        
+
         <Box mt={2}>
           <Button
             type="submit"
+            fullWidth
             data-testid="save-button"
             variant="contained"
-            sx={{ marginBottom: 10, width: 200 }}
-          >
+            sx={{ marginBottom: 10, width: 300 }}>
             Save
           </Button>
         </Box>
       </form>
-
     </div>
   );
 };
