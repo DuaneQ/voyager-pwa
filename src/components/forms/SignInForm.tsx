@@ -16,8 +16,6 @@ import { useContext } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
   signInWithEmailAndPassword,
-  sendEmailVerification,
-  getAuth,
 } from "firebase/auth";
 import app, { auth } from "../../environments/environment";
 
@@ -103,32 +101,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
     }
   };
 
-  const validateInputs = () => {
-    const email = document.getElementById("email") as HTMLInputElement;
-    const password = document.getElementById("password") as HTMLInputElement;
-    let isValid = true;
-
-    if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
-      setEmailError(true);
-      setEmailErrorMessage("Please enter a valid email address.");
-      isValid = false;
-    } else {
-      setEmailError(false);
-      setEmailErrorMessage("");
-    }
-
-    if (!password.value || password.value.length < 10) {
-      setPasswordError(true);
-      setPasswordErrorMessage("Password must be at least 10 characters long.");
-      isValid = false;
-    } else {
-      setPasswordError(false);
-      setPasswordErrorMessage("");
-    }
-
-    return isValid;
-  };
-
   return (
     <>
       <CssBaseline enableColorScheme />
@@ -154,7 +126,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               width: "100%",
               gap: 2,
             }}>
-            <FormControl sx={{ textAlign: "left" }}>
+            <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel htmlFor="email">Email</FormLabel>
               <TextField
                 error={emailError}
@@ -165,13 +137,12 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 placeholder="your@email.com"
                 autoComplete="email"
                 autoFocus
-                required
                 fullWidth
                 variant="outlined"
                 color={emailError ? "error" : "primary"}
               />
             </FormControl>
-            <FormControl sx={{ textAlign: "left" }}>
+            <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel htmlFor="password">Password</FormLabel>
               <TextField
                 error={passwordError}
@@ -182,7 +153,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 id="password"
                 autoComplete="current-password"
                 autoFocus
-                required
                 fullWidth
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
@@ -191,8 +161,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
             <Button
               type="submit"
               fullWidth
-              variant="contained"
-              onClick={validateInputs}>
+              variant="contained">
               Sign in
             </Button>
             <Link

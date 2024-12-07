@@ -19,14 +19,7 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { auth } from "../../environments/environment";
-import { FormHelperText, InputLabel, MenuItem, Select } from "@mui/material";
-import {
-  EDUCATION_OPTIONS,
-  FREQUENCY,
-  GENDER_OPTIONS,
-} from "../shared-strings/constants";
-import { isUserOver18 } from "../utilities/DateChecker";
-import { isValidDate } from "../utilities/DateValidation";
+import { FormHelperText } from "@mui/material";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -73,35 +66,17 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
   const [passwordError, setPasswordError] = React.useState(false);
   const [passwordConfError, setPasswordConfError] = React.useState(false);
   const [usernameError, setUsernameError] = React.useState(false);
-  const [genderError, setGenderError] = useState(false);
-  const [eduError, setEduError] = useState(false);
-  const [smokingError, setSmokingError] = useState(false);
-  const [drinkingError, setDrinkingError] = useState(false);
-  const [dobError, setDobError] = useState(false);
   const [formValid, setFormValid] = useState(true);
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [input, setInputs] = useState({
+  const [inputs, setInputs] = useState({
     username: "",
     email: "",
     password: "",
     confirm: "",
-    bio: "",
-    gender: "",
-    edu: "",
-    drinking: "",
-    smoking: "",
-    dob: "<string | null>(null)",
   });
-
-  const handleChange = (e: any) => {
-    setInputs((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
-  };
 
   const handleNameChange = (e: any) => {
     setInputs((prevState) => ({
@@ -154,23 +129,31 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    if (input.password !== input.confirm) {
+    if (inputs.password !== inputs.confirm) {
       showAlert(
         "Error",
         "The passwords you entered do not match. Please make sure both fields have the same password."
       );
-    }
-    if (formValid) {
+      return
+    } else if (!inputs.email || !inputs.username || inputs.password ) {
+      showAlert(
+        "Error",
+        "Please fill out all of the fields."
+      );
+      return
+    } else {
       try {
-        await createUserWithEmailAndPassword(auth, input.email, input.password)
+        await createUserWithEmailAndPassword(auth, inputs.email, inputs.password)
           .then(async (userCredential) => {
             // Signed in
             const user = userCredential.user;
             console.log(user);
             await sendEmailVerification(userCredential.user);
-            localStorage.setItem('userCredential', JSON.stringify(userCredential));
-            localStorage.setItem('formData', JSON.stringify(input));
-
+            localStorage.setItem(
+              "userCredential",
+              JSON.stringify(userCredential)
+            );
+            localStorage.setItem("SIGNUP", JSON.stringify(inputs));
             showAlert(
               "Info",
               "A verification link has been sent to your email for verification."
@@ -187,32 +170,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
       } finally {
         setIsSubmitting(false);
       }
-    }
-  };
-
-  const validateInputs = () => {
-    if (!isUserOver18(new Date(input.dob)) || !isValidDate(new Date(input.dob))) {
-      setDobError(true);
-      setFormValid(false);
-    } else if (!input.gender) {
-      setGenderError(true);
-      setFormValid(false);
-    } else if (!input.drinking) {
-      setDrinkingError(true);
-      setFormValid(false);
-    } else if (!input.smoking) {
-      setSmokingError(true);
-      setFormValid(false);
-    } else if (!input.edu) {
-      setEduError(true);
-      setFormValid(false);
-    } else {
-      setDobError(false);
-      setGenderError(false);
-      setSmokingError(false);
-      setDrinkingError(false);
-      setEduError(false);
-      setFormValid(true);
     }
   };
 
@@ -244,7 +201,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 name="username"
                 placeholder="Username"
                 autoFocus
-                value={input.username}
+                value={inputs.username}
                 required
                 fullWidth
                 variant="outlined"
@@ -265,7 +222,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 placeholder="your@email.com"
                 autoComplete="email"
                 autoFocus
-                value={input.email}
+                value={inputs.email}
                 required
                 fullWidth
                 variant="outlined"
@@ -288,7 +245,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 autoFocus
                 required
                 fullWidth
-                value={input.password}
+                value={inputs.password}
                 onChange={handlePasswordChange}
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
@@ -308,7 +265,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 type="text"
                 id="confirm"
                 autoFocus
-                value={input.confirm}
+                value={inputs.confirm}
                 required
                 fullWidth
                 onChange={handlePasswordConfChange}
@@ -321,110 +278,11 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 </FormHelperText>
               ) : null}
             </FormControl>
-            <FormControl>
-              <TextField
-                id="bio"
-                label="User Bio"
-                multiline
-                rows={4}
-                name="bio"
-                value={input.bio}
-                onChange={handleChange}
-                placeholder="Tell us about yourself"
-              />
-            </FormControl>
-            <FormControl required>
-              <TextField
-                label="Date of birth"
-                type="date"
-                name="dob"
-                required
-                id="dob"
-                error={dobError}
-                value={input.dob}
-                onChange={handleChange}
-              />
-              {dobError ? (
-                <FormHelperText>Please enter a valid date. User must be 18 or older.</FormHelperText>
-              ) : null}
-            </FormControl>
-            <FormControl required>
-              <InputLabel>Gender</InputLabel>
-              <Select
-                id="gender"
-                value={input.gender}
-                autoFocus
-                fullWidth
-                name="gender"
-                label="Gender"
-                error={genderError}
-                onChange={handleChange}>
-                {GENDER_OPTIONS.map((option, index) => (
-                  <MenuItem key={index} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-              {genderError ? <FormHelperText>Required</FormHelperText> : null}
-            </FormControl>
-            <FormControl required>
-              <InputLabel>Education</InputLabel>
-              <Select
-                id="edu"
-                value={input.edu}
-                name="edu"
-                label="Education*"
-                error={eduError}
-                onChange={handleChange}>
-                {EDUCATION_OPTIONS.map((option, index) => (
-                  <MenuItem key={index} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-              {eduError ? <FormHelperText>Required</FormHelperText> : null}
-            </FormControl>
-            <FormControl required>
-              <InputLabel>Drinking</InputLabel>
-              <Select
-                id="drinking"
-                value={input.drinking}
-                required
-                name="drinking"
-                label="Drinking"
-                error={drinkingError}
-                onChange={handleChange}>
-                {FREQUENCY.map((option, index) => (
-                  <MenuItem key={index} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-              {drinkingError ? <FormHelperText>Required</FormHelperText> : null}
-            </FormControl>
-            <FormControl required>
-              <InputLabel>Smoking</InputLabel>
-              <Select
-                id="smoking"
-                value={input.smoking}
-                name="smoking"
-                label="Smoking"
-                error={smokingError}
-                onChange={handleChange}>
-                {FREQUENCY.map((option, index) => (
-                  <MenuItem key={index} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-              {smokingError ? <FormHelperText>Required</FormHelperText> : null}
-            </FormControl>
             <Button
               type="submit"
               fullWidth
               disabled={isSubmitting}
-              variant="contained"
-              onClick={validateInputs}>
+              variant="contained">
               Sign up
             </Button>
           </form>
