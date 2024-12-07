@@ -30,4 +30,18 @@ export const EDUCATION_OPTIONS = [
     "GED"
 ];
 
+export const SEXUAL_ORIENTATION_OPTIONS = [
+    "Heterosexual",
+    "Homosexual",
+    "Bisexual",
+    "Asexual",
+    "Pansexual",
+    "Queer",
+    "Questioning",
+    "Other",
+    "Prefer not to say",
+    "Transgender Woman",
+    "Transgender Man"
+];
+
 export const FREQUENCY = ["Never", "Occasionally", "Frequently"]

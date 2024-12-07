@@ -2,6 +2,7 @@ import React from "react";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { styled } from "@mui/material/styles";
+import { common } from "@mui/material/colors";
 
 interface AlertPopupProps {
   open: boolean;
@@ -12,10 +13,11 @@ interface AlertPopupProps {
 
 const StyledAlert = styled(Alert)(({ theme }) => ({
   "& .MuiAlert-message": {
-    fontSize: "2rem",
+    fontSize: "1rem",
   },
   position: "relative",
   top: "-90px",
+  backgroundColor: common.white,
 }));
 
 const AlertPopup: React.FC<AlertPopupProps> = ({

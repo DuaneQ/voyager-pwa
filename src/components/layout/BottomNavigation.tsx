@@ -1,9 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { BottomNavigation, BottomNavigationAction } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import SearchIcon from "@mui/icons-material/Search";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 
 const BottomNav: React.FC = () => {
@@ -41,7 +41,7 @@ const BottomNav: React.FC = () => {
       <StyledBottomNavigationAction
         label="Profile"
         value="Profile"
-        onClick={() => navigate("/Profile")}
+        onClick={() => navigate("/")}
         icon={<AccountCircleIcon />}
       />
       <StyledBottomNavigationAction
