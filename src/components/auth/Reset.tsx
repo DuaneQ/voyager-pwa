@@ -12,7 +12,7 @@ const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   alignSelf: "center",
-  width: "100%",
+  width: "80%",
   padding: theme.spacing(4),
   gap: theme.spacing(2),
   margin: "auto",
@@ -39,6 +39,7 @@ export const Reset = () => {
 
   const onSubmit = (data: FormValues) => {
     const auth = getAuth(app);
+
     sendPasswordResetEmail(auth, data.email)
       .then(() => {
         showAlert("Info", "Check your email for the reset link.");
@@ -66,7 +67,9 @@ export const Reset = () => {
               },
             })}
           />
-          <p className="error">{errors.email?.message}</p>
+          <p className="error" style={{ color: "black" }}>
+            {errors.email?.message}
+          </p>
           <div>
             <p>
               Already have an account? <Link to="/Login">Sign in</Link>
