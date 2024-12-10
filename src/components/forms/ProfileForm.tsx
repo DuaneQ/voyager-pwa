@@ -91,7 +91,6 @@ export const ProfileForm = () => {
             style={{ maxWidth: "100%", height: "auto" }}
           />
         </Box>
-
         <Card
           variant="outlined"
           sx={{
@@ -124,12 +123,13 @@ export const ProfileForm = () => {
               onChange={(e) => setInputs({...inputs, dob: e.target.value})}
             />
           </FormControl>
-          <FormControl required>
-            <InputLabel>Gender</InputLabel>
-            <Select
+          <FormControl>
+            <TextField
               id="gender"
               value={inputs.gender}
               autoFocus
+              select
+              required
               fullWidth
               name="gender"
               label="Gender"
@@ -139,14 +139,15 @@ export const ProfileForm = () => {
                   {option}
                 </MenuItem>
               ))}
-            </Select>
+            </TextField>
           </FormControl>
-          <FormControl required>
-            <InputLabel>Sexual Orientation</InputLabel>
-            <Select
+          <FormControl>
+            <TextField
               id="sexo"
               value={inputs.sexo}
               autoFocus
+              required
+              select
               fullWidth
               name="sexo"
               label="Sexual Orientation"
@@ -156,13 +157,14 @@ export const ProfileForm = () => {
                   {option}
                 </MenuItem>
               ))}
-            </Select>
+            </TextField>
           </FormControl>
-          <FormControl required>
-            <InputLabel>Education</InputLabel>
-            <Select
+          <FormControl>
+            <TextField
               id="edu"
               value={inputs.edu}
+              select
+              required
               label="Education"
               name="edu"
               onChange={(e) => setInputs({...inputs, edu: e.target.value})}>
@@ -171,12 +173,13 @@ export const ProfileForm = () => {
                   {option}
                 </MenuItem>
               ))}
-            </Select>
+            </TextField>
           </FormControl>
-          <FormControl required>
-            <InputLabel>Drinking</InputLabel>
-            <Select
+          <FormControl>
+            <TextField
               id="drinking"
+              select
+              required
               value={inputs.drinking}
               label="Drinking"
               name="drinking"
@@ -186,12 +189,13 @@ export const ProfileForm = () => {
                   {option}
                 </MenuItem>
               ))}
-            </Select>
+            </TextField>
           </FormControl>
-          <FormControl required>
-            <InputLabel>Smoking</InputLabel>
-            <Select
+          <FormControl>
+            <TextField
               id="smoking"
+              select
+              required
               value={inputs.smoking}
               label="Smoking"
               name="smoking"
@@ -201,7 +205,7 @@ export const ProfileForm = () => {
                   {option}
                 </MenuItem>
               ))}
-            </Select>
+            </TextField>
           </FormControl>
           <Box>
           <Button

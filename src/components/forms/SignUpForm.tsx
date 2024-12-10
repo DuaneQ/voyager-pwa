@@ -192,8 +192,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
             onSubmit={handleSubmit}
             noValidate>
-            <FormControl sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="email">Username</FormLabel>
+            <FormControl required sx={{ textAlign: "left" }}>
+              <FormLabel htmlFor="username">Username</FormLabel>
               <TextField
                 error={usernameError}
                 id="username"
@@ -202,7 +202,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 placeholder="Username"
                 autoFocus
                 value={inputs.username}
-                required
                 fullWidth
                 variant="outlined"
                 onChange={handleNameChange}
@@ -213,6 +212,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                   Username must be greater than 2 characters.
                 </FormHelperText>
               ) : null}
+              </FormControl>
+              <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel htmlFor="email">Email</FormLabel>
               <TextField
                 error={emailError}
@@ -223,7 +224,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 autoComplete="email"
                 autoFocus
                 value={inputs.email}
-                required
                 fullWidth
                 variant="outlined"
                 onChange={handleEmailChange}
@@ -233,17 +233,16 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 <FormHelperText>Please enter a valid email.</FormHelperText>
               ) : null}
             </FormControl>
-            <FormControl sx={{ textAlign: "left" }}>
+            <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel htmlFor="password">Password</FormLabel>
               <TextField
                 error={passwordError}
                 name="password"
-                placeholder="••••••••••"
+                placeholder="Enter your password"
                 type="password"
                 id="password"
                 autoComplete="current-password"
                 autoFocus
-                required
                 fullWidth
                 value={inputs.password}
                 onChange={handlePasswordChange}
@@ -256,17 +255,16 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 </FormHelperText>
               ) : null}
             </FormControl>
-            <FormControl sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="password">Confirm Password</FormLabel>
+            <FormControl required sx={{ textAlign: "left" }}>
+              <FormLabel htmlFor="confirm">Confirm Password</FormLabel>
               <TextField
                 error={passwordConfError}
                 name="confirm"
-                placeholder="••••••••••"
+                placeholder="Confirm your password"
                 type="text"
                 id="confirm"
                 autoFocus
                 value={inputs.confirm}
-                required
                 fullWidth
                 onChange={handlePasswordConfChange}
                 variant="outlined"

@@ -76,11 +76,20 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       event.preventDefault();
       return;
     }
+
     const data = new FormData(event.currentTarget);
     try {
       const email = data.get("email") as string | null;
       const password = data.get("password") as string | null;
-      if (email && password) {
+      if (!email || !password) {
+        event.preventDefault();
+        showAlert(
+          "Error",
+          "Please enter your email and password."
+        );
+        return;
+      }
+      else {
         signInWithEmailAndPassword(auth, email, password)
           .then((userCredential) => {
             if (!userCredential.user.emailVerified) {
