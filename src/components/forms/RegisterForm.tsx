@@ -16,9 +16,12 @@ import {
   USERNAME_REQUIRED,
 } from "../shared-strings/constants";
 import { Box, Button, Input, MenuItem, TextField } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
+import { auth } from "../../environments/environment";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { DevTool } from "@hookform/devtools";
 
 export const RegisterForm = () => {
   type FormValues = {
@@ -32,16 +35,19 @@ export const RegisterForm = () => {
     drinkingHabits: string;
     smokingHabits: string;
     confirmPassword: string;
-    temp: string;
   };
+  
   const { showAlert } = useContext(AlertContext);
   const [smoking, setSmoking] = useState("");
   const [drinking, setDrinking] = useState("");
   const [edu, setEdu] = useState("");
   const [gender, setGender] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { register, handleSubmit, formState, control } = useForm<FormValues>();
+  const { errors } = formState;
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
       if (data.password !== data.confirmPassword) {
@@ -51,16 +57,25 @@ export const RegisterForm = () => {
         console.log("Submitted", data.dob);
         showAlert("Error", "Users must be 18 or older.");
         return
-      } else if (formState.isValid) {
+      } else {
         console.log("Submitted", data);
+        await createUserWithEmailAndPassword(auth, data.email, data.password)
+        .then((userCredential) => {
+            // Signed in
+            const user = userCredential.user;
+                       console.log(user);
+            navigate("/Login");
+            // ...
+        })
+        .catch((error) => {
+            const errorMessage = error.message;
+            showAlert("Error", errorMessage);
+        });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const { register, handleSubmit, formState } = useForm<FormValues>();
-  const { errors } = formState;
 
   return (
     <div className="authFormContainer">
@@ -212,9 +227,9 @@ export const RegisterForm = () => {
               },
             })}>
             {GENDER_OPTIONS.map((option, index) => (
-              <option key={index} value={option}>
+              <MenuItem key={index} value={option}>
                 {option}
-              </option>
+              </MenuItem>
             ))}
           </TextField>
           <p className="error">{errors.gender?.message}</p>
@@ -309,7 +324,7 @@ export const RegisterForm = () => {
         </Box>
         <div>
           <p style={{ color: "white" }}>
-            Already have an account? <Link to="/">Sign in</Link>
+            Already have an account? <Link to="/Login">Sign in</Link>
           </p>
         </div>
         <Button 
@@ -321,6 +336,7 @@ export const RegisterForm = () => {
           Register
         </Button>
       </form>
+      <DevTool control={control} />
     </div>
   );
 };
