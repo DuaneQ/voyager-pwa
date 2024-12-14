@@ -161,7 +161,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 type="password"
                 id="password"
                 autoComplete="current-password"
-                autoFocus
                 fullWidth
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
