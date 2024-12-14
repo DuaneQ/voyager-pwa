@@ -106,6 +106,7 @@ export const ProfileForm = () => {
               id="bio"
               label="User Bio"
               multiline
+              autoFocus
               rows={4}
               value={inputs.bio}
               name="bio"
@@ -127,7 +128,6 @@ export const ProfileForm = () => {
             <TextField
               id="gender"
               value={inputs.gender}
-              autoFocus
               select
               required
               fullWidth
@@ -145,7 +145,6 @@ export const ProfileForm = () => {
             <TextField
               id="sexo"
               value={inputs.sexo}
-              autoFocus
               required
               select
               fullWidth

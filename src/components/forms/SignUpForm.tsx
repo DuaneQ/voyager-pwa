@@ -222,7 +222,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 name="email"
                 placeholder="your@email.com"
                 autoComplete="email"
-                autoFocus
                 value={inputs.email}
                 fullWidth
                 variant="outlined"
@@ -242,7 +241,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 type="password"
                 id="password"
                 autoComplete="current-password"
-                autoFocus
                 fullWidth
                 value={inputs.password}
                 onChange={handlePasswordChange}
@@ -263,7 +261,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 placeholder="Confirm your password"
                 type="text"
                 id="confirm"
-                autoFocus
                 value={inputs.confirm}
                 fullWidth
                 onChange={handlePasswordConfChange}
