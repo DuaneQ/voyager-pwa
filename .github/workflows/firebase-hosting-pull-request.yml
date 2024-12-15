@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: npm init
+      - run: npm install --save firebase
       - run: npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
