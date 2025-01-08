@@ -48,6 +48,7 @@ export const RegisterForm = () => {
   const { errors } = formState;
 
   const onSubmit = async (data: FormValues) => {
+    console.log("onSubmit called: ", data);
     setIsSubmitting(true);
     try {
       if (data.password !== data.confirmPassword) {
@@ -63,7 +64,7 @@ export const RegisterForm = () => {
         .then((userCredential) => {
             // Signed in
             const user = userCredential.user;
-                       console.log(user);
+                       //console.log(user);
             navigate("/Login");
             // ...
         })
@@ -88,6 +89,7 @@ export const RegisterForm = () => {
           <Input
             type="text"
             id="username"
+            data-testid="username"
             sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={USERNAME_PLACEHOLDER}
             {...register("username", {
@@ -101,7 +103,7 @@ export const RegisterForm = () => {
               },
             })}
           />
-          <p className="error" data-testid="emailErr">
+          <p className="error" data-testid="usernameErr">
             {errors.username?.message}
           </p>
         </Box>
@@ -109,6 +111,7 @@ export const RegisterForm = () => {
           <Input
             type="email"
             id="email"
+            data-testid="email"
             sx={{ width: "100%", maxWidth: 300, mx: "auto" }}
             placeholder={EMAIL_PLACEHOLDER}
             {...register("email", {
@@ -123,9 +126,9 @@ export const RegisterForm = () => {
               },
             })}
           />
-          <p className="error" data-testid="emailErr">
-            {errors.email?.message}
-          </p>
+            <p className="error" data-testid="emailErr">
+              {errors.email?.message}
+            </p>
         </Box>
         <Box>
           <Input
@@ -145,7 +148,7 @@ export const RegisterForm = () => {
               },
             })}
           />
-          <p className="error">{errors.password?.message}</p>
+          <p className="error" data-testid="passwordErr">{errors.password?.message}</p>
         </Box>
         <Box>
           <Input
@@ -171,6 +174,7 @@ export const RegisterForm = () => {
             sx={{ paddingTop: 5 }}
             InputLabelProps={{ style: { color: "white" } }}
             id="userBio"
+            data-testid="userBio"
             label="User Bio"
             multiline
             rows={4}
@@ -190,6 +194,7 @@ export const RegisterForm = () => {
             label="*Date of birth"
             type="date"
             id="dob"
+            data-testid="dob"
             sx={{
               width: "100%",
               maxWidth: 300,
@@ -210,6 +215,7 @@ export const RegisterForm = () => {
             select
             label="*Gender"
             id="gender"
+            data-testid="gender"
             value={gender}
             sx={{
               width: "100%",
@@ -239,6 +245,7 @@ export const RegisterForm = () => {
             select
             label="*Education Level"
             id="education"
+            data-testid="education"
             value={edu}
             sx={{
               width: "100%",
@@ -248,7 +255,6 @@ export const RegisterForm = () => {
             }}
             {...register("education", {
               onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                console.log("Education Level selected:", e.target.value);
                 setEdu(e.target.value);
               },
               required: {
@@ -269,6 +275,7 @@ export const RegisterForm = () => {
             select
             label="*Drinking Frequency"
             id="drinkingHabits"
+            data-testid="drinkingHabits"
             value={drinking}
             sx={{
               width: "100%",
@@ -298,6 +305,7 @@ export const RegisterForm = () => {
             select
             label="*Smoking Frequency"
             id="smokingHabits"
+            data-testid="smokingHabits"
             value={smoking}
             sx={{
               width: "100%",
