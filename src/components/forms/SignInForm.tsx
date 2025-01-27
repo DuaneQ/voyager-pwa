@@ -17,7 +17,7 @@ import { AlertContext } from "../../Context/AlertContext";
 import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import app, { auth } from "../../environments/environment";
+import { auth } from "../../environments/environment";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",

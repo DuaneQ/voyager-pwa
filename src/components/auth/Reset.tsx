@@ -3,7 +3,7 @@ import { EMAIL_PLACEHOLDER, EMAIL_REQUIRED } from "../shared-strings/constants";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { getAuth, sendPasswordResetEmail } from "firebase/auth";
-import app from "../../environments/environment";
+import { app } from "../../environments/environment";
 import { AlertContext } from "../../Context/AlertContext";
 import { useContext } from "react";
 import MuiCard from "@mui/material/Card";
