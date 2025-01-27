@@ -18,8 +18,9 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
 } from "firebase/auth";
-import { auth } from "../../environments/environment";
+import { app, auth } from "../../environments/environment";
 import { FormHelperText } from "@mui/material";
+import { doc, getFirestore, setDoc } from "firebase/firestore";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -66,7 +67,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
   const [passwordError, setPasswordError] = React.useState(false);
   const [passwordConfError, setPasswordConfError] = React.useState(false);
   const [usernameError, setUsernameError] = React.useState(false);
-  const [formValid, setFormValid] = useState(true);
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +76,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     email: "",
     password: "",
     confirm: "",
+    bio: "",
+    gender: "",
+    sexo: "",
+    edu: "",
+    drinking: "",
+    smoking: "",
+    dob: "",
   });
 
   const handleNameChange = (e: any) => {
@@ -134,31 +141,33 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         "Error",
         "The passwords you entered do not match. Please make sure both fields have the same password."
       );
-      return
-    } else if (!inputs.email || !inputs.username || inputs.password ) {
-      showAlert(
-        "Error",
-        "Please fill out all of the fields."
-      );
-      return
+      return;
+    } else if (!inputs.email || !inputs.username || !inputs.password) {
+      showAlert("Error", "Please fill out all of the fields.");
+      return;
     } else {
       try {
-        await createUserWithEmailAndPassword(auth, inputs.email, inputs.password)
+        await createUserWithEmailAndPassword(
+          auth,
+          inputs.email,
+          inputs.password
+        )
           .then(async (userCredential) => {
-            // Signed in
             const user = userCredential.user;
-            console.log(user);
             await sendEmailVerification(userCredential.user);
+            const { password, confirm, ...userData } = inputs;
             localStorage.setItem(
-              "userCredential",
+              "USER_CREDENTIALS",
               JSON.stringify(userCredential)
             );
-            localStorage.setItem("SIGNUP", JSON.stringify(inputs));
+            localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
             showAlert(
               "Info",
               "A verification link has been sent to your email for verification."
             );
-            // ...
+            const db = getFirestore(app);
+            const docRef = doc(db, "users", userCredential.user.uid);
+            await setDoc(docRef, userData);
           })
           .then(() => {
             navigate("/Login");
@@ -212,8 +221,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                   Username must be greater than 2 characters.
                 </FormHelperText>
               ) : null}
-              </FormControl>
-              <FormControl required sx={{ textAlign: "left" }}>
+            </FormControl>
+            <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel htmlFor="email">Email</FormLabel>
               <TextField
                 error={emailError}

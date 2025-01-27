@@ -21,8 +21,12 @@ import { AlertContext } from "../../Context/AlertContext";
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import { signOut } from "firebase/auth";
 import { auth } from "../../environments/environment";
+import useGetUserProfileFromDb from "../../hooks/useGetUserProfileFromDb";
 
 export const ProfileForm = () => {
+
+  const {userProfile, isLoading} = useGetUserProfileFromDb("OvSlkcGCwyU1GmDTXkPoWgiHdAS2");
+  console.log("userProfile", userProfile, isLoading);
   type FormValues = {
     email: string;
     password: string;
