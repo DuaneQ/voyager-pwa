@@ -1,32 +1,43 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  EDUCATION_OPTIONS,
-  FREQUENCY,
-  GENDER_OPTIONS,
-  SEXUAL_ORIENTATION_OPTIONS,
-} from "../shared-strings/constants";
 import {
   Box,
   Button,
   Card,
   FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   TextField,
+  Typography,
 } from "@mui/material";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import { signOut } from "firebase/auth";
 import { auth } from "../../environments/environment";
-import useGetUserProfileFromDb from "../../hooks/useGetUserProfileFromDb";
+import { EditProfileModal } from "./EditProfileModal";
+import useGetUserProfile from "../../hooks/useGetUserProfile";
+import { useUserProfile } from "../../Context/UserProfileContext";
 
 export const ProfileForm = () => {
+  const [profile, setProfile] = useState({
+    username: "",
+    bio: "",
+    gender: "",
+    sexo: "",
+    edu: "",
+    drinking: "",
+    smoking: "",
+    dob: "",
+  });
+  const [showLogin, setShowLogin] = useState(false);
+  const { userProfile, setUserProfile } = useGetUserProfile();
+  const { userProfileContext, setUserProfileContext } = useUserProfile()
 
-  const {userProfile, isLoading} = useGetUserProfileFromDb("OvSlkcGCwyU1GmDTXkPoWgiHdAS2");
-  console.log("userProfile", userProfile, isLoading);
+  useEffect(() => {
+    if (userProfile) {
+      setProfile(userProfile);
+    }
+  }, [userProfile, setUserProfile]);
+
   type FormValues = {
     email: string;
     password: string;
@@ -40,16 +51,6 @@ export const ProfileForm = () => {
     smokingHabits: string;
     confirmPassword: string;
   };
-
-  const [inputs, setInputs] = useState({
-    bio: "",
-    gender: "",
-    sexo: "",
-    edu: "",
-    drinking: "",
-    smoking: "",
-    dob: "<string | null>(null)",
-  });
 
   const { showAlert } = useContext(AlertContext);
 
@@ -65,7 +66,7 @@ export const ProfileForm = () => {
     }
   };
   const form = useForm<FormValues>();
-  const { register, control, handleSubmit, formState, setValue } = form;
+  const { handleSubmit, formState, setValue } = form;
 
   return (
     <>
@@ -94,6 +95,22 @@ export const ProfileForm = () => {
             alt="Profile Placeholder"
             style={{ maxWidth: "100%", height: "auto" }}
           />
+          <Box sx={{ flexDirection: "column" }}>
+            <Typography
+              ml={2}
+              fontSize={{ base: "sm", md: "lg" }}
+              color="white"
+              sx={{ fontSize: "2rem" }}>
+              {profile?.username || ""}
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setShowLogin(true)}
+              sx={{ marginTop: 2, background: "white", color: "black" }}>
+              Edit Profile
+            </Button>
+          </Box>
         </Box>
         <Card
           variant="outlined"
@@ -112,10 +129,12 @@ export const ProfileForm = () => {
               multiline
               autoFocus
               rows={4}
-              value={inputs.bio}
+              value={profile?.bio || ""}
               name="bio"
-              onChange={(e) => setInputs({...inputs, bio: e.target.value})}
               placeholder="Tell us about yourself"
+              InputProps={{
+                readOnly: true,
+              }}
             />
           </FormControl>
           <FormControl required>
@@ -124,103 +143,76 @@ export const ProfileForm = () => {
               type="date"
               id="dob"
               name="dob"
-              value={inputs.dob}
-              onChange={(e) => setInputs({...inputs, dob: e.target.value})}
+              value={
+                profile?.dob
+                  ? new Date(profile?.dob).toISOString().split("T")[0]
+                  : new Date().toISOString().split("T")[0]
+              }
+              InputProps={{
+                readOnly: true,
+              }}
             />
           </FormControl>
           <FormControl>
             <TextField
               id="gender"
-              value={inputs.gender}
-              select
+              value={profile?.gender || ""}
               required
               fullWidth
               name="gender"
               label="Gender"
-              onChange={(e) => setInputs({...inputs, gender: e.target.value})}>
-              {GENDER_OPTIONS.map((option, index) => (
-                <MenuItem key={index} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
           <FormControl>
             <TextField
               id="sexo"
-              value={inputs.sexo}
+              value={profile?.sexo || ""}
               required
-              select
               fullWidth
               name="sexo"
               label="Sexual Orientation"
-              onChange={(e) => setInputs({...inputs, sexo: e.target.value})}>
-              {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
-                <MenuItem key={index} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
           <FormControl>
             <TextField
               id="edu"
-              value={inputs.edu}
-              select
+              value={profile?.edu || ""}
               required
               label="Education"
               name="edu"
-              onChange={(e) => setInputs({...inputs, edu: e.target.value})}>
-              {EDUCATION_OPTIONS.map((option, index) => (
-                <MenuItem key={index} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
           <FormControl>
             <TextField
               id="drinking"
-              select
               required
-              value={inputs.drinking}
+              value={profile?.drinking || ""}
               label="Drinking"
               name="drinking"
-              onChange={(e) => setInputs({...inputs, drinking: e.target.value})}>
-              {FREQUENCY.map((option, index) => (
-                <MenuItem key={index} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
           <FormControl>
             <TextField
               id="smoking"
-              select
               required
-              value={inputs.smoking}
+              value={profile?.smoking || ""}
               label="Smoking"
               name="smoking"
-              onChange={(e) => setInputs({...inputs, smoking: e.target.value})}>
-              {FREQUENCY.map((option, index) => (
-                <MenuItem key={index} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
-          <Box>
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ marginBottom: 1, width: 300 }}>
-            Save
-          </Button>
-        </Box>
         </Card>
       </form>
+      <EditProfileModal show={showLogin} close={() => setShowLogin(false)} />
     </>
   );
 };

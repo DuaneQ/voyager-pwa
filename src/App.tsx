@@ -11,12 +11,16 @@ import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
 import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
+import { UserProfileProvider } from "./Context/UserProfileContext";
 
 function App() {
   const location = useLocation();
-  const hideBottomNav = ["/Login", "/Register", "/reset", "/ResendEmail"].includes(
-    location.pathname
-  );
+  const hideBottomNav = [
+    "/Login",
+    "/Register",
+    "/reset",
+    "/ResendEmail",
+  ].includes(location.pathname);
   return (
     <AlertProvider>
       <Header />
@@ -35,7 +39,9 @@ function App() {
               path="/"
               element={
                 <Protected>
-                  <Profile />
+                  <UserProfileProvider>
+                    <Profile />
+                  </UserProfileProvider>
                 </Protected>
               }
             />
@@ -43,7 +49,9 @@ function App() {
               path="/Search"
               element={
                 <Protected>
-                  <Search />
+                  <UserProfileProvider>
+                    <Search />
+                  </UserProfileProvider>
                 </Protected>
               }
             />
@@ -51,7 +59,9 @@ function App() {
               path="/Chat"
               element={
                 <Protected>
-                  <Chat />
+                  <UserProfileProvider>
+                    <Chat />
+                  </UserProfileProvider>
                 </Protected>
               }
             />
