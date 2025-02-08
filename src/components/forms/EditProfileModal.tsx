@@ -7,7 +7,7 @@ import {
   Modal,
   TextField,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   EDUCATION_OPTIONS,
   FREQUENCY,
@@ -17,12 +17,17 @@ import {
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import useGetUserProfile from "../../hooks/useGetUserProfile";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
+import { UserProfileContext } from "../../Context/UserProfileContext";
+import { isUserOver18 } from "../utilities/DateChecker";
+import { AlertContext } from "../../Context/AlertContext";
 
 export const EditProfileModal = (props: any) => {
-  const { userRef, setUserDbData } = usePostUserProfileToDb();
-  const { userStorageData, setUserStorageData } = usePostUserProfileToStorage();
-  const { userProfile, setUserProfile } = useGetUserProfile();
-
+  const { setUserDbData } = usePostUserProfileToDb();
+  const { setUserStorageData } = usePostUserProfileToStorage();
+  const { userProfile } = useGetUserProfile();
+  const { userProfileContext, setUserProfileContext } =
+    useContext(UserProfileContext);
+  const { showAlert } = useContext(AlertContext);
   const [profile, setProfile] = useState({
     username: "",
     bio: "",
@@ -36,9 +41,10 @@ export const EditProfileModal = (props: any) => {
 
   useEffect(() => {
     if (userProfile) {
-      setProfile(userProfile);
+      setUserProfileContext(userProfile);
+      console.log(userProfileContext);
     }
-  }, [userProfile, setUserProfile]);
+  }, [userProfile]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const style = {
@@ -55,9 +61,13 @@ export const EditProfileModal = (props: any) => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (!isUserOver18(userProfileContext?.dob)) {
+      showAlert("error", "You must be over 18 years old or older.");
+      return;
+    }
     try {
-      setUserStorageData(profile);
-      setUserDbData(profile);
+      setUserStorageData(userProfileContext);
+      setUserDbData(userProfileContext);
       props.close();
     } finally {
       setIsSubmitting(false);
@@ -89,10 +99,13 @@ export const EditProfileModal = (props: any) => {
                   multiline
                   autoFocus
                   rows={4}
-                  value={profile?.bio || ""}
+                  value={userProfileContext?.bio || ""}
                   name="bio"
                   onChange={(e) =>
-                    setProfile({ ...profile, bio: e.target.value })
+                    setUserProfileContext({
+                      ...userProfileContext,
+                      bio: e.target.value,
+                    })
                   }
                   placeholder="Tell us about yourself"
                 />
@@ -103,24 +116,27 @@ export const EditProfileModal = (props: any) => {
                   type="date"
                   id="dob"
                   name="dob"
-                  value={profile?.dob || ""}
+                  value={userProfileContext?.dob || ""}
                   onChange={(e) =>
-                    setProfile({ ...profile, dob: e.target.value })
+                    setUserProfileContext({
+                      ...userProfileContext,
+                      dob: e.target.value,
+                    })
                   }
                 />
               </FormControl>
               <FormControl>
                 <TextField
                   id="gender"
-                  value={profile?.gender || ""}
+                  value={userProfileContext?.gender || ""}
                   select
                   required
                   fullWidth
                   name="gender"
                   label="Gender"
                   onChange={(e) =>
-                    setProfile({
-                      ...profile,
+                    setUserProfileContext({
+                      ...userProfileContext,
                       gender: e.target.value,
                     })
                   }>
@@ -134,14 +150,17 @@ export const EditProfileModal = (props: any) => {
               <FormControl>
                 <TextField
                   id="sexo"
-                  value={profile?.sexo}
+                  value={userProfileContext?.sexo}
                   required
                   select
                   fullWidth
                   name="sexo"
                   label="Sexual Orientation"
                   onChange={(e) =>
-                    setProfile({ ...profile, sexo: e.target.value })
+                    setUserProfileContext({
+                      ...userProfileContext,
+                      sexo: e.target.value,
+                    })
                   }>
                   {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
                     <MenuItem key={index} value={option}>
@@ -153,13 +172,16 @@ export const EditProfileModal = (props: any) => {
               <FormControl>
                 <TextField
                   id="edu"
-                  value={profile?.edu}
+                  value={userProfileContext?.edu}
                   select
                   required
                   label="Education"
                   name="edu"
                   onChange={(e) =>
-                    setProfile({ ...profile, edu: e.target.value })
+                    setUserProfileContext({
+                      ...userProfileContext,
+                      edu: e.target.value,
+                    })
                   }>
                   {EDUCATION_OPTIONS.map((option, index) => (
                     <MenuItem key={index} value={option}>
@@ -173,12 +195,12 @@ export const EditProfileModal = (props: any) => {
                   id="drinking"
                   select
                   required
-                  value={profile?.drinking}
+                  value={userProfileContext?.drinking}
                   label="Drinking"
                   name="drinking"
                   onChange={(e) =>
-                    setProfile({
-                      ...profile,
+                    setUserProfileContext({
+                      ...userProfileContext,
                       drinking: e.target.value,
                     })
                   }>
@@ -194,12 +216,12 @@ export const EditProfileModal = (props: any) => {
                   id="smoking"
                   select
                   required
-                  value={profile?.smoking}
+                  value={userProfileContext?.smoking}
                   label="Smoking"
                   name="smoking"
                   onChange={(e) =>
-                    setProfile({
-                      ...profile,
+                    setUserProfileContext({
+                      ...userProfileContext,
                       smoking: e.target.value,
                     })
                   }>
