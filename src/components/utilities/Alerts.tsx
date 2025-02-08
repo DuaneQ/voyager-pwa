@@ -16,7 +16,7 @@ const StyledAlert = styled(Alert)(({ theme }) => ({
     fontSize: "1rem",
   },
   position: "relative",
-  top: "-90px",
+  top: "-40px",
   backgroundColor: common.white,
 }));
 
