@@ -11,9 +11,11 @@ import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
 import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
-import { UserProfileProvider } from "./Context/UserProfileContext";
+import { UserProfileContext } from "./Context/UserProfileContext";
+import { useState } from "react";
 
 function App() {
+  const [userProfileContext, setUserProfileContext] = useState({});
   const location = useLocation();
   const hideBottomNav = [
     "/Login",
@@ -39,9 +41,10 @@ function App() {
               path="/"
               element={
                 <Protected>
-                  <UserProfileProvider>
+                  <UserProfileContext.Provider
+                    value={{ userProfileContext, setUserProfileContext }}>
                     <Profile />
-                  </UserProfileProvider>
+                  </UserProfileContext.Provider>
                 </Protected>
               }
             />
@@ -49,9 +52,10 @@ function App() {
               path="/Search"
               element={
                 <Protected>
-                  <UserProfileProvider>
+                  <UserProfileContext.Provider
+                    value={{ userProfileContext, setUserProfileContext }}>
                     <Search />
-                  </UserProfileProvider>
+                  </UserProfileContext.Provider>
                 </Protected>
               }
             />
@@ -59,9 +63,10 @@ function App() {
               path="/Chat"
               element={
                 <Protected>
-                  <UserProfileProvider>
+                  <UserProfileContext.Provider
+                    value={{ userProfileContext, setUserProfileContext }}>
                     <Chat />
-                  </UserProfileProvider>
+                  </UserProfileContext.Provider>
                 </Protected>
               }
             />

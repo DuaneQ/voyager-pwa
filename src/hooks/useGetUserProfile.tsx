@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import useGetUserId from "./useGetUserId";
 import { app } from "../environments/environment";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
-import { useUserProfile } from "../Context/UserProfileContext";
+import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
   type profile = {
@@ -21,7 +21,6 @@ const useGetUserProfile = () => {
   const userId: string | null = useGetUserId();
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any | null>(null);
-  const { userProfileContext, setUserProfileContext } = useUserProfile()
 
   useEffect(() => {
     const userProfile = async () => {
