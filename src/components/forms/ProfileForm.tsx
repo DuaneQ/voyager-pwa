@@ -15,7 +15,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../environments/environment";
 import { EditProfileModal } from "./EditProfileModal";
 import useGetUserProfile from "../../hooks/useGetUserProfile";
-import { useUserProfile } from "../../Context/UserProfileContext";
+import { UserProfileContext } from "../../Context/UserProfileContext";
 
 export const ProfileForm = () => {
   const [profile, setProfile] = useState({
@@ -30,11 +30,12 @@ export const ProfileForm = () => {
   });
   const [showLogin, setShowLogin] = useState(false);
   const { userProfile, setUserProfile } = useGetUserProfile();
-  const { userProfileContext, setUserProfileContext } = useUserProfile()
-
+  const {userProfileContext, setUserProfileContext} = useContext(UserProfileContext)
+  
   useEffect(() => {
     if (userProfile) {
-      setProfile(userProfile);
+      setUserProfileContext(userProfile);
+      console.log('proifile', userProfileContext)
     }
   }, [userProfile, setUserProfile]);
 
@@ -70,7 +71,7 @@ export const ProfileForm = () => {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form noValidate>
         <Box display="flex" justifyContent="flex-end" p={2}>
           <Button
             variant="contained"
@@ -101,7 +102,7 @@ export const ProfileForm = () => {
               fontSize={{ base: "sm", md: "lg" }}
               color="white"
               sx={{ fontSize: "2rem" }}>
-              {profile?.username || ""}
+              {userProfileContext?.username || ""}
             </Typography>
             <Button
               variant="contained"
@@ -129,7 +130,7 @@ export const ProfileForm = () => {
               multiline
               autoFocus
               rows={4}
-              value={profile?.bio || ""}
+              value={userProfileContext?.bio || ""}
               name="bio"
               placeholder="Tell us about yourself"
               InputProps={{
@@ -144,8 +145,8 @@ export const ProfileForm = () => {
               id="dob"
               name="dob"
               value={
-                profile?.dob
-                  ? new Date(profile?.dob).toISOString().split("T")[0]
+                userProfileContext?.dob
+                  ? new Date(userProfileContext?.dob).toISOString().split("T")[0]
                   : new Date().toISOString().split("T")[0]
               }
               InputProps={{
@@ -156,7 +157,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="gender"
-              value={profile?.gender || ""}
+              value={userProfileContext?.gender || ""}
               required
               fullWidth
               name="gender"
@@ -168,7 +169,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="sexo"
-              value={profile?.sexo || ""}
+              value={userProfileContext?.sexo || ""}
               required
               fullWidth
               name="sexo"
@@ -180,7 +181,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="edu"
-              value={profile?.edu || ""}
+              value={userProfileContext?.edu || ""}
               required
               label="Education"
               name="edu"
@@ -192,7 +193,7 @@ export const ProfileForm = () => {
             <TextField
               id="drinking"
               required
-              value={profile?.drinking || ""}
+              value={userProfileContext?.drinking || ""}
               label="Drinking"
               name="drinking"
               InputProps={{
@@ -203,7 +204,7 @@ export const ProfileForm = () => {
             <TextField
               id="smoking"
               required
-              value={profile?.smoking || ""}
+              value={userProfileContext?.smoking || ""}
               label="Smoking"
               name="smoking"
               InputProps={{
