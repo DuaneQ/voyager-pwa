@@ -1,7 +1,9 @@
 import { useContext, useEffect, useState } from "react";
 import useGetUserId from "./useGetUserId";
-import { app } from "../environments/environment";
+import { firebaseConfig } from "../environments/environment";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
+import 'firebase/firestore';
+import { initializeApp } from "firebase/app";
 import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
@@ -17,10 +19,9 @@ const useGetUserProfile = () => {
     smokingHabits: string;
   };
 
-  const db = getFirestore(app);
   const userId: string | null = useGetUserId();
   const [isLoading, setIsLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const {  updateUserProfile  } = useContext(UserProfileContext);
 
   useEffect(() => {
     const userProfile = async () => {
@@ -29,14 +30,17 @@ const useGetUserProfile = () => {
         const userRef = localStorage.getItem("PROFILE_INFO");
         if (userRef) {
           const profile: profile = JSON.parse(userRef);
-          setUserProfile(profile);
+          updateUserProfile(profile);
+          console.log("profile", profile);
         } else {
+          const app = initializeApp(firebaseConfig);
+          const db = getFirestore(app);
           if (userId) {
             const id = JSON.parse(userId);
             const userRef = await getDoc(doc(db, "users", id.user.uid));
             if (userRef.exists()) {
               const profile = userRef.data();
-              setUserProfile(profile);
+              updateUserProfile(profile);
             }
           }
         }
@@ -47,10 +51,9 @@ const useGetUserProfile = () => {
       }
     };
     userProfile();
-  }, [setUserProfile]);
+  }, [updateUserProfile, userId]);
   return {
-    isLoading,
-    userProfile, setUserProfile
+    isLoading
   };
 };
 

@@ -8,8 +8,6 @@ const usePostUserProfileToDb = () => {
   const [userRef, setuserRef] = useState<any | null>(null);
   const [userDbData, setUserDbData] = useState<any | null>(null);
 
-  const db = getFirestore(app);
-
   useEffect(() => {
     const userProfile = async () => {
       setIsLoading(true);

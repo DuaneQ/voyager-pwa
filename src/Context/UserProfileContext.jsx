@@ -1,3 +1,19 @@
-import { createContext } from 'react';
+import { createContext, useCallback, useState } from 'react';
 
-export const UserProfileContext = createContext();
+const UserProfileContext = createContext();
+
+const UserProfileProvider = ({ children }) => {
+  const [userProfile, setUserProfile] = useState(null);
+
+  const updateUserProfile = useCallback((newProfile) => {   
+    setUserProfile(newProfile);   
+    }, []);
+
+  return (
+    <UserProfileContext.Provider value={{ userProfile, setUserProfile, updateUserProfile }}>
+      {children}
+    </UserProfileContext.Provider>
+  );
+}
+
+export { UserProfileContext, UserProfileProvider }; 
