@@ -31,7 +31,6 @@ const useGetUserProfile = () => {
         if (userRef) {
           const profile: profile = JSON.parse(userRef);
           updateUserProfile(profile);
-          console.log("profile", profile);
         } else {
           const app = initializeApp(firebaseConfig);
           const db = getFirestore(app);
