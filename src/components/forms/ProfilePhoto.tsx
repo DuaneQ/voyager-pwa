@@ -1,6 +1,6 @@
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import { Menu, MenuItem } from "@mui/material";
-import { useContext, useRef } from "react";
+import { useContext, useRef, useState } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
 import { PhotoContext } from "../../Context/PhotoContext";
 import React from "react";
@@ -10,11 +10,11 @@ export const ProfilePhoto = () => {
   const { handleImageUpload } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
   const { photos } = useContext(PhotoContext);
-  const [open, setOpen] = React.useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
   function handleUploadPic(): void {
     fileRef.current?.click();
-    console.log("upload pic");
+    setMenuAnchor(null);
   }
 
   function handleDeletePic(): void {
@@ -23,11 +23,11 @@ export const ProfilePhoto = () => {
       updatedPhotos[0] = "";
       photos(updatedPhotos);
     }
-    setOpen(false);
+    setMenuAnchor(null);
   }
 
   function handleCancel(): void {
-    setOpen(false);
+    setMenuAnchor(null);
   }
 
   const handleFileChange = async (
@@ -36,7 +36,7 @@ export const ProfilePhoto = () => {
     try {
       if (event.target.files) {
         handleImageUpload(event, 0);
-        setOpen(false);
+        setMenuAnchor(null);
       }
     } catch (error) {}
   };
@@ -57,8 +57,8 @@ export const ProfilePhoto = () => {
           width: "auto",
           objectFit: "cover",
         }}
-        onClick={() => {
-          setOpen(true);
+        onClick={(event) => {
+          setMenuAnchor(event.currentTarget);
         }}
       />
       <Input
@@ -68,8 +68,9 @@ export const ProfilePhoto = () => {
         style={{ display: "none" }}
       />
       <Menu
-        open={open}
-        onClose={() => setOpen(false)}
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleCancel}
         anchorOrigin={{
           vertical: "top",
           horizontal: "center",
@@ -77,7 +78,9 @@ export const ProfilePhoto = () => {
         transformOrigin={{
           vertical: "top",
           horizontal: "center",
-        }}>
+        }}
+        autoFocus={false}
+        >
         <MenuItem onClick={handleUploadPic}>Upload Pic</MenuItem>
         <MenuItem onClick={handleDeletePic}>Delete Pic</MenuItem>
         <MenuItem onClick={handleCancel}>Cancel</MenuItem>
