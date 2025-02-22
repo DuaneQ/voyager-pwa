@@ -11,11 +11,10 @@ import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
 import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
-import { UserProfileContext } from "./Context/UserProfileContext";
-import { useState } from "react";
+import {  UserProfileProvider } from "./Context/UserProfileContext";
 
 function App() {
-  const [userProfileContext, setUserProfileContext] = useState({});
+  // const [userProfileContext, setUserProfileContext] = useState({});
   const location = useLocation();
   const hideBottomNav = [
     "/Login",
@@ -41,10 +40,9 @@ function App() {
               path="/"
               element={
                 <Protected>
-                  <UserProfileContext.Provider
-                    value={{ userProfileContext, setUserProfileContext }}>
+                  <UserProfileProvider>
                     <Profile />
-                  </UserProfileContext.Provider>
+                  </UserProfileProvider>
                 </Protected>
               }
             />
@@ -52,10 +50,9 @@ function App() {
               path="/Search"
               element={
                 <Protected>
-                  <UserProfileContext.Provider
-                    value={{ userProfileContext, setUserProfileContext }}>
+                  <UserProfileProvider>
                     <Search />
-                  </UserProfileContext.Provider>
+                  </UserProfileProvider>
                 </Protected>
               }
             />
@@ -63,14 +60,12 @@ function App() {
               path="/Chat"
               element={
                 <Protected>
-                  <UserProfileContext.Provider
-                    value={{ userProfileContext, setUserProfileContext }}>
+                  <UserProfileProvider>
                     <Chat />
-                  </UserProfileContext.Provider>
+                  </UserProfileProvider>
                 </Protected>
               }
             />
-
             <Route path="/Reset" element={<Reset />} />
           </Routes>
         </div>

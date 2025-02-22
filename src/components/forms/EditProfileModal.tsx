@@ -7,7 +7,7 @@ import {
   Modal,
   TextField,
 } from "@mui/material";
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import {
   EDUCATION_OPTIONS,
   FREQUENCY,
@@ -22,30 +22,12 @@ import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 
 export const EditProfileModal = (props: any) => {
+  // useGetUserProfile();
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
-  const { userProfile } = useGetUserProfile();
-  const { userProfileContext, setUserProfileContext } =
-    useContext(UserProfileContext);
+  const { userProfile, updateUserProfile } = useContext(UserProfileContext);
+
   const { showAlert } = useContext(AlertContext);
-  const [profile, setProfile] = useState({
-    username: "",
-    bio: "",
-    gender: "",
-    sexo: "",
-    edu: "",
-    drinking: "",
-    smoking: "",
-    dob: "",
-  });
-
-  useEffect(() => {
-    if (userProfile) {
-      setUserProfileContext(userProfile);
-      console.log(userProfileContext);
-    }
-  }, [userProfile]);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const style = {
     position: "absolute",
@@ -61,13 +43,13 @@ export const EditProfileModal = (props: any) => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    if (!isUserOver18(userProfileContext?.dob)) {
+    if (!isUserOver18(userProfile?.dob)) {
       showAlert("error", "You must be over 18 years old or older.");
       return;
     }
     try {
-      setUserStorageData(userProfileContext);
-      setUserDbData(userProfileContext);
+      setUserStorageData(userProfile);
+      setUserDbData(userProfile);
       props.close();
     } finally {
       setIsSubmitting(false);
@@ -92,6 +74,9 @@ export const EditProfileModal = (props: any) => {
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}
               onSubmit={handleSubmit}
               noValidate>
+                <Box sx={{ textAlign: "center", mb: 2 }}>
+                  <h2>Edit Profile</h2>
+                </Box>
               <FormControl>
                 <TextField
                   id="bio"
@@ -99,11 +84,11 @@ export const EditProfileModal = (props: any) => {
                   multiline
                   autoFocus
                   rows={4}
-                  value={userProfileContext?.bio || ""}
+                  value={userProfile?.bio || ""}
                   name="bio"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       bio: e.target.value,
                     })
                   }
@@ -116,10 +101,10 @@ export const EditProfileModal = (props: any) => {
                   type="date"
                   id="dob"
                   name="dob"
-                  value={userProfileContext?.dob || ""}
+                  value={userProfile?.dob || ""}
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       dob: e.target.value,
                     })
                   }
@@ -128,15 +113,15 @@ export const EditProfileModal = (props: any) => {
               <FormControl>
                 <TextField
                   id="gender"
-                  value={userProfileContext?.gender || ""}
+                  value={userProfile?.gender || ""}
                   select
                   required
                   fullWidth
                   name="gender"
                   label="Gender"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       gender: e.target.value,
                     })
                   }>
@@ -150,15 +135,15 @@ export const EditProfileModal = (props: any) => {
               <FormControl>
                 <TextField
                   id="sexo"
-                  value={userProfileContext?.sexo}
+                  value={userProfile?.sexo}
                   required
                   select
                   fullWidth
                   name="sexo"
                   label="Sexual Orientation"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       sexo: e.target.value,
                     })
                   }>
@@ -172,14 +157,14 @@ export const EditProfileModal = (props: any) => {
               <FormControl>
                 <TextField
                   id="edu"
-                  value={userProfileContext?.edu}
+                  value={userProfile?.edu}
                   select
                   required
                   label="Education"
                   name="edu"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       edu: e.target.value,
                     })
                   }>
@@ -195,12 +180,12 @@ export const EditProfileModal = (props: any) => {
                   id="drinking"
                   select
                   required
-                  value={userProfileContext?.drinking}
+                  value={userProfile?.drinking}
                   label="Drinking"
                   name="drinking"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       drinking: e.target.value,
                     })
                   }>
@@ -216,12 +201,12 @@ export const EditProfileModal = (props: any) => {
                   id="smoking"
                   select
                   required
-                  value={userProfileContext?.smoking}
+                  value={userProfile?.smoking}
                   label="Smoking"
                   name="smoking"
                   onChange={(e) =>
-                    setUserProfileContext({
-                      ...userProfileContext,
+                    updateUserProfile({
+                      ...userProfile,
                       smoking: e.target.value,
                     })
                   }>

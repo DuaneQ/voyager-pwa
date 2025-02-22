@@ -1,14 +1,10 @@
-import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { app } from "../environments/environment";
 
 const usePostUserProfileToStorage = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [userRef, setuserRef] = useState<any | null>(null);
   const [userStorageData, setUserStorageData] = useState<any | null>(null);
-
-  const db = getFirestore(app);
 
   useEffect(() => {
     const userProfile = async () => {
