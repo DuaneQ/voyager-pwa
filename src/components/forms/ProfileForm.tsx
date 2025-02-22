@@ -1,5 +1,4 @@
-import { useContext, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useContext, useState } from "react";
 import {
   Box,
   Button,
@@ -8,66 +7,17 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { isUserOver18 } from "../utilities/DateChecker";
-import { AlertContext } from "../../Context/AlertContext";
-import profilePlaceholder from "../../assets/images/imagePH.png";
 import { signOut } from "firebase/auth";
 import { auth } from "../../environments/environment";
 import { EditProfileModal } from "./EditProfileModal";
 import useGetUserProfile from "../../hooks/useGetUserProfile";
 import { UserProfileContext } from "../../Context/UserProfileContext";
+import { ProfilePhoto } from "./ProfilePhoto";
 
 export const ProfileForm = () => {
-  const [profile, setProfile] = useState({
-    username: "",
-    bio: "",
-    gender: "",
-    sexo: "",
-    edu: "",
-    drinking: "",
-    smoking: "",
-    dob: "",
-  });
+  useGetUserProfile();
   const [showLogin, setShowLogin] = useState(false);
-  const { userProfile, setUserProfile } = useGetUserProfile();
-  const {userProfileContext, setUserProfileContext} = useContext(UserProfileContext)
-  
-  useEffect(() => {
-    if (userProfile) {
-      setUserProfileContext(userProfile);
-      console.log('proifile', userProfileContext)
-    }
-  }, [userProfile, setUserProfile]);
-
-  type FormValues = {
-    email: string;
-    password: string;
-    username: string;
-    userBio: string;
-    dob: Date;
-    gender: string;
-    sexo: string;
-    education: string;
-    drinkingHabits: string;
-    smokingHabits: string;
-    confirmPassword: string;
-  };
-
-  const { showAlert } = useContext(AlertContext);
-
-  const onSubmit = (data: FormValues) => {
-    if (data.password !== data.confirmPassword) {
-      showAlert("Error", "Passwords do not match.");
-      return;
-    } else if (!isUserOver18(data.dob)) {
-      console.log("Submitted", data.dob);
-      showAlert("Error", "Users must be 18 or older.");
-    } else if (formState.isValid) {
-      console.log("Submitted", data);
-    }
-  };
-  const form = useForm<FormValues>();
-  const { handleSubmit, formState, setValue } = form;
+  const { userProfile } = useContext(UserProfileContext);
 
   return (
     <>
@@ -91,18 +41,14 @@ export const ProfileForm = () => {
           </Button>
         </Box>
         <Box mt={0} display="flex" justifyContent="center">
-          <img
-            src={profilePlaceholder}
-            alt="Profile Placeholder"
-            style={{ maxWidth: "100%", height: "auto" }}
-          />
+          <ProfilePhoto/>
           <Box sx={{ flexDirection: "column" }}>
             <Typography
               ml={2}
               fontSize={{ base: "sm", md: "lg" }}
               color="white"
               sx={{ fontSize: "2rem" }}>
-              {userProfileContext?.username || ""}
+              {userProfile?.username || ""}
             </Typography>
             <Button
               variant="contained"
@@ -130,7 +76,7 @@ export const ProfileForm = () => {
               multiline
               autoFocus
               rows={4}
-              value={userProfileContext?.bio || ""}
+              value={userProfile?.bio || ""}
               name="bio"
               placeholder="Tell us about yourself"
               InputProps={{
@@ -145,8 +91,10 @@ export const ProfileForm = () => {
               id="dob"
               name="dob"
               value={
-                userProfileContext?.dob
-                  ? new Date(userProfileContext?.dob).toISOString().split("T")[0]
+                userProfile?.dob
+                  ? new Date(userProfile?.dob)
+                      .toISOString()
+                      .split("T")[0]
                   : new Date().toISOString().split("T")[0]
               }
               InputProps={{
@@ -157,7 +105,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="gender"
-              value={userProfileContext?.gender || ""}
+              value={userProfile?.gender || ""}
               required
               fullWidth
               name="gender"
@@ -169,7 +117,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="sexo"
-              value={userProfileContext?.sexo || ""}
+              value={userProfile?.sexo || ""}
               required
               fullWidth
               name="sexo"
@@ -181,7 +129,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="edu"
-              value={userProfileContext?.edu || ""}
+              value={userProfile?.edu || ""}
               required
               label="Education"
               name="edu"
@@ -193,7 +141,7 @@ export const ProfileForm = () => {
             <TextField
               id="drinking"
               required
-              value={userProfileContext?.drinking || ""}
+              value={userProfile?.drinking || ""}
               label="Drinking"
               name="drinking"
               InputProps={{
@@ -204,7 +152,7 @@ export const ProfileForm = () => {
             <TextField
               id="smoking"
               required
-              value={userProfileContext?.smoking || ""}
+              value={userProfile?.smoking || ""}
               label="Smoking"
               name="smoking"
               InputProps={{

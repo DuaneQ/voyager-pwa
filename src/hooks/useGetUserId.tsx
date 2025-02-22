@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const useGetUserId = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -10,7 +9,7 @@ const useGetUserId = () => {
     if (storedUserId) {
       setUserId(storedUserId);
     } else {
-      const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
         if (user) {
           const uid = user.uid;
           localStorage.setItem("USER_CREDENTIALS", uid);

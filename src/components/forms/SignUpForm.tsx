@@ -153,7 +153,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           inputs.password
         )
           .then(async (userCredential) => {
-            const user = userCredential.user;
             await sendEmailVerification(userCredential.user);
             const { password, confirm, ...userData } = inputs;
             localStorage.setItem(
