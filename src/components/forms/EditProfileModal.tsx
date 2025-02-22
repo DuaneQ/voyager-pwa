@@ -15,14 +15,12 @@ import {
   SEXUAL_ORIENTATION_OPTIONS,
 } from "../shared-strings/constants";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
-import useGetUserProfile from "../../hooks/useGetUserProfile";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
 
 export const EditProfileModal = (props: any) => {
-  // useGetUserProfile();
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
   const { userProfile, updateUserProfile } = useContext(UserProfileContext);

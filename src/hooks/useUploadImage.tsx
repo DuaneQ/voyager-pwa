@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../environments/environment";
 import useGetUserId from "./useGetUserId";
@@ -24,12 +24,8 @@ const useUploadImage = () => {
       );
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      updatePhotos(url, index);
-      const userProfile = JSON.parse(localStorage.getItem('PROFILE_INFO') || '{}');
-      userProfile.photos = photos;
-      console.log("userProfile", userProfile, photos);
-
-      localStorage.setItem('PROFILE_INFO', JSON.stringify(userProfile));
+      await updatePhotos(url, index);
+      
     } catch (err) {
       console.log(err);
     } finally {
@@ -37,13 +33,29 @@ const useUploadImage = () => {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handleImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
     const file = event.target.files?.[0];
-    console.log("file", file);
     if (file) {
       uploadImage(file, index);
     }
   };
+
+  // Update user profile with photos whenever it changes
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const userProfile = await JSON.parse(
+        localStorage.getItem("PROFILE_INFO") || "{}"
+      );
+      userProfile.photos = photos;
+      console.log("userProfile", userProfile, photos);
+      localStorage.setItem("PROFILE_INFO", JSON.stringify(userProfile));
+    };
+
+    fetchUserProfile();
+  }, [photos]);
 
   return { uploading, error, handleImageUpload };
 };
