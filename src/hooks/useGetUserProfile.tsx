@@ -17,6 +17,7 @@ const useGetUserProfile = () => {
     education: string;
     drinkingHabits: string;
     smokingHabits: string;
+    photos?: string[];
   };
 
   const userId: string | null = useGetUserId();
@@ -30,6 +31,7 @@ const useGetUserProfile = () => {
         const userRef = localStorage.getItem("PROFILE_INFO");
         if (userRef) {
           const profile: profile = JSON.parse(userRef);
+          console.log("useGetUserProfile", profile);
           updateUserProfile(profile);
         } else {
           const app = initializeApp(firebaseConfig);
