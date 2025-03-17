@@ -4,6 +4,7 @@ import { app } from "../environments/environment";
 import useGetUserId from "./useGetUserId";
 import { PhotoContext } from "../Context/PhotoContext";
 import React from "react";
+import { UserProfileContext } from "../Context/UserProfileContext";
 
 const storage = getStorage(app);
 
@@ -12,7 +13,8 @@ const useUploadImage = () => {
   const [error, setError] = useState<string | null>(null);
   const userId: string | null = useGetUserId();
   const { updatePhotos, photos } = useContext(PhotoContext);
-
+  const { updateUserProfile, userProfile } = useContext(UserProfileContext);
+  
   const uploadImage = async (file: File, index: number) => {
     setUploading(true);
     setError(null);
@@ -25,7 +27,9 @@ const useUploadImage = () => {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       await updatePhotos(url, index);
-      
+      userProfile.photos[index] = url;
+      updateUserProfile(userProfile);
+      console.log("userProfile from context in image", userProfile);
     } catch (err) {
       console.log(err);
     } finally {
@@ -40,6 +44,7 @@ const useUploadImage = () => {
     const file = event.target.files?.[0];
     if (file) {
       uploadImage(file, index);
+      console.log("file", file);
     }
   };
 
@@ -49,9 +54,15 @@ const useUploadImage = () => {
       const userProfile = await JSON.parse(
         localStorage.getItem("PROFILE_INFO") || "{}"
       );
-      userProfile.photos = photos;
-      console.log("userProfile", userProfile, photos);
+      photos.forEach((photo: string, index: number) => {
+        if (!userProfile.photos[index]) {
+          userProfile.photos[index] = photo;
+        }
+      });
+      userProfile.photos = photos.length ? [...photos] : userProfile.photos;
+      console.log("userProfile in useUploadImage", userProfile, photos);
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userProfile));
+      updateUserProfile(userProfile);
     };
 
     fetchUserProfile();
