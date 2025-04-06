@@ -83,6 +83,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     drinking: "",
     smoking: "",
     dob: "",
+    photos: [] as string[]
   });
 
   const handleNameChange = (e: any) => {

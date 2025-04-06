@@ -14,7 +14,6 @@ import { ResendEmail } from "./components/auth/ResendEmail";
 import {  UserProfileProvider } from "./Context/UserProfileContext";
 
 function App() {
-  // const [userProfileContext, setUserProfileContext] = useState({});
   const location = useLocation();
   const hideBottomNav = [
     "/Login",

@@ -6,7 +6,6 @@ import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
-import { PhotoProvider } from "./Context/PhotoContext";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -15,9 +14,7 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <UserAuthContextProvider>
-        <PhotoProvider>
           <App />
-        </PhotoProvider>
       </UserAuthContextProvider>
     </BrowserRouter>
   </React.StrictMode>
