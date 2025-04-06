@@ -18,6 +18,7 @@ const usePostUserProfileToDb = () => {
         const db = getFirestore(app);
         const docRef = doc(db, "users", userRef.user.uid);
         if (userDbData){
+          console.log("Updating user profile in Firestore...useEffect", userDbData);
           await setDoc(docRef, userDbData);
         }
       } catch (error) {

@@ -12,12 +12,14 @@ import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
+  onAuthStateChanged,
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../../environments/environment";
+import { signOut } from "firebase/auth";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -68,8 +70,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState("");
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
-
-
+  
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (emailError || passwordError) {
@@ -91,15 +92,22 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       }
       else {
         signInWithEmailAndPassword(auth, email, password)
-          .then((userCredential) => {
-            if (!userCredential.user.emailVerified) {
+          .then(async (userCredential) => {
+            const user = userCredential.user;
+            // Refresh the user's authentication state
+            await user.reload();
+            console.log('verified user', user.emailVerified);
+            if (!user.emailVerified) {
+              console.log("Email not verified");
               showAlert(
                 "Email not verified",
                 "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
               );
               navigate("/Login");
             } else {
-              navigate("/");
+              // window.location.reload();
+              console.log("Email verified, signing in...");
+              window.location.href = "/";
             }
           })
           .catch((error) => {

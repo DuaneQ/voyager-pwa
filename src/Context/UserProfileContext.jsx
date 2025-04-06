@@ -6,6 +6,7 @@ const UserProfileProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
 
   const updateUserProfile = useCallback((newProfile) => {   
+    console.log("Updating user profile:", newProfile);
     setUserProfile(newProfile);   
     }, []);
 

@@ -15,7 +15,7 @@ import { UserProfileContext } from "../../Context/UserProfileContext";
 import { ProfilePhoto } from "./ProfilePhoto";
 
 export const ProfileForm = () => {
-  useGetUserProfile();
+  // useGetUserProfile();
   const [showLogin, setShowLogin] = useState(false);
   const { userProfile } = useContext(UserProfileContext);
 

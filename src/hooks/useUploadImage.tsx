@@ -2,9 +2,9 @@ import { useContext, useEffect, useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../environments/environment";
 import useGetUserId from "./useGetUserId";
-import { PhotoContext } from "../Context/PhotoContext";
 import React from "react";
 import { UserProfileContext } from "../Context/UserProfileContext";
+import usePostUserProfileToStorage from "./usePostUserProfileToStorage";
 
 const storage = getStorage(app);
 
@@ -12,7 +12,7 @@ const useUploadImage = () => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const userId: string | null = useGetUserId();
-  const { updatePhotos, photos } = useContext(PhotoContext);
+  const { setUserStorageData } = usePostUserProfileToStorage();
   const { updateUserProfile, userProfile } = useContext(UserProfileContext);
   
   const uploadImage = async (file: File, index: number) => {
@@ -26,10 +26,12 @@ const useUploadImage = () => {
       );
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      await updatePhotos(url, index);
+      console.log("Uploaded image URL:", url);
+      // await updatePhotos(url, index);
       userProfile.photos[index] = url;
       updateUserProfile(userProfile);
-      console.log("userProfile from context in image", userProfile);
+      console.log("Updated user profile with new photo URL:", userProfile);
+      setUserStorageData(userProfile);
     } catch (err) {
       console.log(err);
     } finally {
@@ -54,19 +56,18 @@ const useUploadImage = () => {
       const userProfile = await JSON.parse(
         localStorage.getItem("PROFILE_INFO") || "{}"
       );
-      photos.forEach((photo: string, index: number) => {
+      userProfile?.photos.forEach((photo: string, index: number) => {
         if (!userProfile.photos[index]) {
           userProfile.photos[index] = photo;
         }
       });
-      userProfile.photos = photos.length ? [...photos] : userProfile.photos;
-      console.log("userProfile in useUploadImage", userProfile, photos);
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userProfile));
       updateUserProfile(userProfile);
+      console.log("useEffect in useUploadImage:", userProfile);
     };
 
     fetchUserProfile();
-  }, [photos]);
+  }, [updateUserProfile]);
 
   return { uploading, error, handleImageUpload };
 };
