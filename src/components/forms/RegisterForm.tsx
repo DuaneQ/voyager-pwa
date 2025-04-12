@@ -38,6 +38,8 @@ export const RegisterForm = () => {
   };
   
   const { showAlert } = useContext(AlertContext);
+
+  console.log("!!!!AlertContext!!!!", AlertContext);
   const [smoking, setSmoking] = useState("");
   const [drinking, setDrinking] = useState("");
   const [edu, setEdu] = useState("");
@@ -77,7 +79,7 @@ export const RegisterForm = () => {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
     <div className="authFormContainer">
       <form
