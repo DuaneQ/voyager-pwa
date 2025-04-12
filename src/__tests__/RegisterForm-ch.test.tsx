@@ -75,23 +75,15 @@ describe("RegisterForm", () => {
       fireEvent.change(screen.getByPlaceholderText("*Username"), {
         target: { value: "testuser" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Email"), {
         target: { value: "test@example.com" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Password"), {
         target: { value: "password123" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
-        target: { value: "password123" },
+        target: { value: "password321" },
       });
-    });
-    await act(async () => {
       fireEvent.click(screen.getByTestId("register-button"));
     });
 
@@ -111,23 +103,31 @@ describe("RegisterForm", () => {
       fireEvent.change(screen.getByPlaceholderText("*Username"), {
         target: { value: "testuser" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Email"), {
         target: { value: "test@example.com" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Password"), {
         target: { value: "password123" },
       });
-    });
-    await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
         target: { value: "password123" },
       });
-    });
-    await act(async () => {
+      //   fireEvent.change(screen.getByPlaceholderText(""), {
+      //     target: { value: "" },
+      //   });
+      //   fireEvent.change(screen.getByPlaceholderText(""), {
+      //     target: { value: "" },
+      //   });
+      //   fireEvent.change(screen.getByPlaceholderText(""), {
+      //     target: { value: "" },
+      //   });
+      //   fireEvent.change(screen.getByPlaceholderText(""), {
+      //     target: { value: "" },
+      //   });
+      //   fireEvent.change(screen.getByPlaceholderText(""), {
+      //     target: { value: "" },
+      //   });
+
       fireEvent.click(screen.getByRole("button", { name: "Register" }));
     });
 

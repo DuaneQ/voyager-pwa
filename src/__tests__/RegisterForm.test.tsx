@@ -265,7 +265,7 @@ describe.skip("RegisterForm", () => {
     render(
       <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
         <MemoryRouter>
-          <RegisterForm onSubmit={mockOnSubmit} />
+          <RegisterForm />
         </MemoryRouter>
       </AlertContext.Provider>
     );
