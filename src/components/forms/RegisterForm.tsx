@@ -36,10 +36,8 @@ export const RegisterForm = () => {
     smokingHabits: string;
     confirmPassword: string;
   };
-  
-  const { showAlert } = useContext(AlertContext);
 
-  console.log("!!!!AlertContext!!!!", AlertContext);
+  const { showAlert } = useContext(AlertContext);
   const [smoking, setSmoking] = useState("");
   const [drinking, setDrinking] = useState("");
   const [edu, setEdu] = useState("");
@@ -50,7 +48,6 @@ export const RegisterForm = () => {
   const { errors } = formState;
 
   const onSubmit = async (data: FormValues) => {
-    console.log("onSubmit called: ", data);
     setIsSubmitting(true);
     try {
       if (data.password !== data.confirmPassword) {
@@ -59,34 +56,34 @@ export const RegisterForm = () => {
       } else if (!isUserOver18(data.dob)) {
         console.log("Submitted", data.dob);
         showAlert("Error", "Users must be 18 or older.");
-        return
+        return;
       } else {
         console.log("Submitted", data);
         await createUserWithEmailAndPassword(auth, data.email, data.password)
-        .then((userCredential) => {
+          .then((userCredential) => {
             // Signed in
             const user = userCredential.user;
-                       //console.log(user);
             navigate("/Login");
             // ...
-        })
-        .catch((error) => {
+          })
+          .catch((error) => {
             const errorMessage = error.message;
             showAlert("Error", errorMessage);
-        });
+          });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="authFormContainer">
       <form
         className="registerForm"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        data-testid="reg-form">
+        data-testid="reg-form"
+      >
         <Box>
           <Input
             type="text"
@@ -128,9 +125,9 @@ export const RegisterForm = () => {
               },
             })}
           />
-            <p className="error" data-testid="emailErr">
-              {errors.email?.message}
-            </p>
+          <p className="error" data-testid="emailErr">
+            {errors.email?.message}
+          </p>
         </Box>
         <Box>
           <Input
@@ -150,7 +147,9 @@ export const RegisterForm = () => {
               },
             })}
           />
-          <p className="error" data-testid="passwordErr">{errors.password?.message}</p>
+          <p className="error" data-testid="passwordErr">
+            {errors.password?.message}
+          </p>
         </Box>
         <Box>
           <Input
@@ -233,7 +232,8 @@ export const RegisterForm = () => {
                 value: true,
                 message: "Gender is required",
               },
-            })}>
+            })}
+          >
             {GENDER_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -263,7 +263,8 @@ export const RegisterForm = () => {
                 value: true,
                 message: "Education level is required",
               },
-            })}>
+            })}
+          >
             {EDUCATION_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -293,7 +294,8 @@ export const RegisterForm = () => {
                 value: true,
                 message: "Required",
               },
-            })}>
+            })}
+          >
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -323,7 +325,8 @@ export const RegisterForm = () => {
               onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                 setSmoking(e.target.value);
               },
-            })}>
+            })}
+          >
             {FREQUENCY.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -337,11 +340,11 @@ export const RegisterForm = () => {
             Already have an account? <Link to="/Login">Sign in</Link>
           </p>
         </div>
-        <Button 
-        type="submit" 
-        data-testid="register-button" 
-        variant="contained"
-        disabled={isSubmitting}
+        <Button
+          type="submit"
+          data-testid="register-button"
+          variant="contained"
+          disabled={isSubmitting}
         >
           Register
         </Button>
