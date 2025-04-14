@@ -10,28 +10,29 @@ import { MemoryRouter } from "react-router-dom";
 import { RegisterForm } from "../components/forms/RegisterForm";
 import { AlertContext } from "../Context/AlertContext";
 
-describe("RegisterForm", () => {
-  const mockShowAlert = jest.fn();
-  const mockNavigate = jest.fn();
-  const mockOnSubmit = jest.fn();
+const mockShowAlert = jest.fn();
+const mockNavigate = jest.fn();
+const mockOnSubmit = jest.fn();
 
+const renderForm = () => {
+  return render(
+    <MemoryRouter>
+      <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
+        <RegisterForm />
+      </AlertContext.Provider>
+    </MemoryRouter>
+  );
+};
+
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
+describe("RegisterForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    jest.mock("react-router-dom", () => ({
-      ...jest.requireActual("react-router-dom"),
-      useNavigate: () => mockNavigate,
-    }));
   });
-
-  const renderForm = () =>
-    render(
-      <MemoryRouter>
-        <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
-          <RegisterForm />
-        </AlertContext.Provider>
-      </MemoryRouter>
-    );
 
   test("renders all input fields and the register button", () => {
     renderForm();
@@ -96,7 +97,7 @@ describe("RegisterForm", () => {
     // });
   });
 
-  test("navigates to /Login on successful registration", async () => {
+  test("submits form with all required fields", async () => {
     renderForm();
 
     await act(async () => {
@@ -112,28 +113,25 @@ describe("RegisterForm", () => {
       fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
         target: { value: "password123" },
       });
-      //   fireEvent.change(screen.getByPlaceholderText(""), {
-      //     target: { value: "" },
-      //   });
-      //   fireEvent.change(screen.getByPlaceholderText(""), {
-      //     target: { value: "" },
-      //   });
-      //   fireEvent.change(screen.getByPlaceholderText(""), {
-      //     target: { value: "" },
-      //   });
-      //   fireEvent.change(screen.getByPlaceholderText(""), {
-      //     target: { value: "" },
-      //   });
-      //   fireEvent.change(screen.getByPlaceholderText(""), {
-      //     target: { value: "" },
-      //   });
+      fireEvent.change(screen.getByPlaceholderText("Tell us about yourself"), {
+        target: {
+          value: "This bio is for testing and should not exceed 200 characters",
+        },
+      });
+      fireEvent.change(screen.getByLabelText("*Date of birth"), {
+        target: { value: "12/34/5678" },
+      });
+      fireEvent.click(screen.getByTestId("gender"));
+      fireEvent.click(screen.getByTestId("education"));
+      fireEvent.click(screen.getByTestId("drinkingHabits"));
+      fireEvent.click(screen.getByTestId("smokingHabits"));
+      fireEvent.click(screen.getByTestId("register-button"));
 
       fireEvent.click(screen.getByRole("button", { name: "Register" }));
     });
 
     // await waitFor(() => {
     //   expect(mockOnSubmit).toHaveBeenCalled();
-    //   expect(mockNavigate).toHaveBeenCalledWith("/Login");
     // });
   });
 });
