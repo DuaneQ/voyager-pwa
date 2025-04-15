@@ -1,7 +1,7 @@
 import { Button } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
-import { getAuth, sendEmailVerification } from "firebase/auth";
-import { app } from "../../environments/environment";
+import { Link } from "react-router-dom";
+import { sendEmailVerification } from "firebase/auth";
+import { auth } from "../../environments/environment";
 import { useContext } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import MuiCard from "@mui/material/Card";
@@ -28,11 +28,10 @@ const Card = styled(MuiCard)(({ theme }) => ({
 
 export const ResendEmail = () => {
 
-  const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
 
   const resendEmailVerification = () => {
-    const auth = getAuth(app);
+    // const auth = getAuth(app);
     console.log("from storage", auth.currentUser);
     if (auth.currentUser) {
       if (auth.currentUser) {

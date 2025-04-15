@@ -1,6 +1,5 @@
-import { doc, getFirestore, setDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
-import { app } from "../environments/environment";
+import { useContext, useEffect, useState } from "react";
+import { UserProfileContext } from "../Context/UserProfileContext";
 
 const usePostUserProfileToStorage = () => {
 
@@ -8,14 +7,14 @@ const usePostUserProfileToStorage = () => {
   const [userRef, setuserRef] = useState<any | null>(null);
   const [userStorageData, setUserStorageData] = useState<any | null>(null);
 
-  const db = getFirestore(app);
-
   useEffect(() => {
     const userProfile = async () => {
       setIsLoading(true);
       try {
+        console.log("Fetching user profile from localStorage...");
         if (userStorageData){
           localStorage.setItem("PROFILE_INFO", JSON.stringify(userStorageData))
+          console.log("User profile already in localStorage:", userStorageData); 
         }
       } catch (error) {
         console.log("error", error);
