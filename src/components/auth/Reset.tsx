@@ -2,8 +2,8 @@ import { Button, Input, styled } from "@mui/material";
 import { EMAIL_PLACEHOLDER, EMAIL_REQUIRED } from "../shared-strings/constants";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
-import { app } from "../../environments/environment";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../../environments/environment";
 import { AlertContext } from "../../Context/AlertContext";
 import { useContext } from "react";
 import MuiCard from "@mui/material/Card";
@@ -38,7 +38,6 @@ export const Reset = () => {
   const { errors } = formState;
 
   const onSubmit = (data: FormValues) => {
-    const auth = getAuth(app);
 
     sendPasswordResetEmail(auth, data.email)
       .then(() => {
