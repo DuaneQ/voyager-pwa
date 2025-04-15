@@ -5,16 +5,16 @@ import useUploadImage from "../../hooks/useUploadImage";
 import React from "react";
 import { Input } from "@mui/material";
 import { UserProfileContext } from "../../Context/UserProfileContext";
+import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
+import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
 
 export const ProfilePhoto = () => {
-  const { handleImageUpload } = useUploadImage();
+  const { uploadImage } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
-  const { userProfile } = useContext(UserProfileContext);
+  const { userProfile, updateUserProfile } = useContext(UserProfileContext);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-
-  useEffect(() => {
-    console.log("ProfilePhoto", userProfile);
-  }, [userProfile]);
+  const { setUserDbData } = usePostUserProfileToDb();
+  const { setUserStorageData } = usePostUserProfileToStorage();
 
   function handleUploadPic(): void {
     fileRef.current?.click();
@@ -22,11 +22,15 @@ export const ProfilePhoto = () => {
   }
 
   function handleDeletePic(): void {
-    // if (photos) {
-    //   const updatedPhotos = [...photos];
-    //   updatedPhotos[0] = "";
-    //   photos(updatedPhotos);
-    // }
+    console.log("handleDeletePic called", userProfile);
+    if (userProfile) {
+      const updatedPhotos = [...userProfile.photos];
+      updatedPhotos[0] = ""; // Remove the first photo
+      userProfile.photos = updatedPhotos;
+      updateUserProfile(userProfile);
+      setUserStorageData(userProfile);
+      setUserDbData(userProfile);
+    }
     setMenuAnchor(null);
   }
 
@@ -39,8 +43,13 @@ export const ProfilePhoto = () => {
   ) => {
     try {
       if (event.target.files) {
-        console.log("event", event.target.files);
-        handleImageUpload(event, 0);
+        const file = event.target.files?.[0];
+        const url = await uploadImage(file, 0);
+        console.log("file in component", url);
+        userProfile.photos[0] = url;
+        updateUserProfile(userProfile);
+        setUserStorageData(userProfile);
+        setUserDbData(userProfile);
         setMenuAnchor(null);
       }
     } catch (error) {}
@@ -67,13 +76,14 @@ export const ProfilePhoto = () => {
         onClick={(event) => {
           setMenuAnchor(event.currentTarget);
         }}
-      />
-      <Input
+            />
+            <Input
         type="file"
         inputRef={fileRef}
         onChange={handleFileChange}
+        inputProps={{ "data-testid": "file-input" }}
         style={{ display: "none" }}
-      />
+            />
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
