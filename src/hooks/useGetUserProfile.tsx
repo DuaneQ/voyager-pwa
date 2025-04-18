@@ -31,7 +31,6 @@ const useGetUserProfile = () => {
         const userRef = localStorage.getItem("PROFILE_INFO");
         if (userRef) {
           const profile: profile = JSON.parse(userRef);
-          console.log("useGetUserProfile storage", profile);
           updateUserProfile(profile);
         } else {
           const app = initializeApp(firebaseConfig);
@@ -41,7 +40,6 @@ const useGetUserProfile = () => {
             const userRef = await getDoc(doc(db, "users", id.user.uid));
             if (userRef.exists()) {
               const profile = userRef.data();
-              console.log("useGetUserProfile firestore", profile);
               updateUserProfile(profile);
             }
           }
