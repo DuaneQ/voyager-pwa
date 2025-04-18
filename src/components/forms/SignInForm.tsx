@@ -96,9 +96,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
             const user = userCredential.user;
             // Refresh the user's authentication state
             await user.reload();
-            console.log('verified user', user.emailVerified);
             if (!user.emailVerified) {
-              console.log("Email not verified");
               showAlert(
                 "Email not verified",
                 "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
@@ -106,7 +104,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               navigate("/Login");
             } else {
               // window.location.reload();
-              console.log("Email verified, signing in...");
               window.location.href = "/";
             }
           })
