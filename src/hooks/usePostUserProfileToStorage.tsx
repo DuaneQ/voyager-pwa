@@ -11,10 +11,8 @@ const usePostUserProfileToStorage = () => {
     const userProfile = async () => {
       setIsLoading(true);
       try {
-        console.log("Fetching user profile from localStorage...");
         if (userStorageData){
           localStorage.setItem("PROFILE_INFO", JSON.stringify(userStorageData))
-          console.log("User profile already in localStorage:", userStorageData); 
         }
       } catch (error) {
         console.log("error", error);

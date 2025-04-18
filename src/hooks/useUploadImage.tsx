@@ -22,30 +22,12 @@ const useUploadImage = () => {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       return url;
-      // console.log("Uploaded image URL:", url);
-      // // await updatePhotos(url, index);
-      // userProfile.photos[index] = url;
-      // updateUserProfile(userProfile);
-      // console.log("Updated user profile with new photo URL:", userProfile);
-      // setUserStorageData(userProfile);
-      // setUserDbData(userProfile);
     } catch (err) {
       console.log(err);
     } finally {
       setUploading(false);
     }
   };
-
-  // const handleImageUpload = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  //   index: number
-  // ) => {
-  //   const file = event.target.files?.[0];
-  //   if (file) {
-  //     uploadImage(file, index);
-  //     console.log("file", file);
-  //   }
-  // };
 
   return { uploading, error, uploadImage };
 };
