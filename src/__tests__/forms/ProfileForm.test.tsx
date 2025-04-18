@@ -13,7 +13,7 @@ jest.mock("firebase/auth", () => ({
   onAuthStateChanged: jest.fn(),
 }));
 
-describe.only("ProfileForm", () => {
+describe("ProfileForm", () => {
   const mockUserProfile = {
     username: "TestUser",
     bio: "This is a test bio",
