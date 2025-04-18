@@ -31,8 +31,6 @@ export const ResendEmail = () => {
   const { showAlert } = useContext(AlertContext);
 
   const resendEmailVerification = () => {
-    // const auth = getAuth(app);
-    console.log("from storage", auth.currentUser);
     if (auth.currentUser) {
       if (auth.currentUser) {
         sendEmailVerification(auth.currentUser)

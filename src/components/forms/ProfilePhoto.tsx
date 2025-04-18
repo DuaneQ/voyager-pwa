@@ -22,7 +22,6 @@ export const ProfilePhoto = () => {
   }
 
   function handleDeletePic(): void {
-    console.log("handleDeletePic called", userProfile);
     if (userProfile) {
       const updatedPhotos = [...userProfile.photos];
       updatedPhotos[0] = ""; // Remove the first photo
@@ -45,7 +44,6 @@ export const ProfilePhoto = () => {
       if (event.target.files) {
         const file = event.target.files?.[0];
         const url = await uploadImage(file, 0);
-        console.log("file in component", url);
         userProfile.photos[0] = url;
         updateUserProfile(userProfile);
         setUserStorageData(userProfile);
