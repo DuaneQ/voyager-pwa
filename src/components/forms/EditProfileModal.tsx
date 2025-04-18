@@ -47,8 +47,8 @@ export const EditProfileModal = (props: any) => {
     }
     try {
       setUserStorageData(userProfile);
-      console.log("Submitting user profile to DB:", userProfile);
       setUserDbData(userProfile);
+      updateUserProfile(userProfile);
       props.close();
     } finally {
       setIsSubmitting(false);
