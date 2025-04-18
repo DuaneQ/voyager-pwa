@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm init
-      - run: npm install --save firebase
+      - run: npm install --save --legacy-peer-deps firebase
       - run: CI=false npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
