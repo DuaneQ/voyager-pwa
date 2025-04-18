@@ -1,20 +1,20 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { EditProfileModal } from "../../../components/forms/EditProfileModal";
-import { UserProfileContext } from "../../../Context/UserProfileContext";
-import { AlertContext } from "../../../Context/AlertContext";
+import { EditProfileModal } from "../../components/forms/EditProfileModal";
+import { UserProfileContext } from "../../Context/UserProfileContext";
+import { AlertContext } from "../../Context/AlertContext";
 
 const mockSetUserDbData = jest.fn();
 const mockSetUserStorageData = jest.fn();
 
-jest.mock("../../../hooks/usePostUserProfileToDb", () => ({
+jest.mock("../../hooks/usePostUserProfileToDb", () => ({
   __esModule: true,
   default: () => ({
     setUserDbData: mockSetUserDbData,
   }),
 }));
 
-jest.mock("../../../hooks/usePostUserProfileToStorage", () => ({
+jest.mock("../../hooks/usePostUserProfileToStorage", () => ({
   __esModule: true,
   default: () => ({
     setUserStorageData: mockSetUserStorageData,

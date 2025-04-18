@@ -19,7 +19,6 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../../environments/environment";
-import { signOut } from "firebase/auth";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
