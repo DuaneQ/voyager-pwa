@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ProfilePhoto } from "../../components/forms/ProfilePhoto";
+import { PhotoGrid } from "../../components/forms/PhotoGrid";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 
 const mockUpdateUserProfile = jest.fn();
@@ -28,7 +28,7 @@ jest.mock("../../hooks/usePostUserProfileToStorage", () => ({
   }),
 }));
 
-describe("ProfilePhoto Component", () => {
+describe("PhotoGrid Component", () => {
   const mockUserProfile = {
     uid: "12345",
     username: "TestUser",
@@ -39,7 +39,7 @@ describe("ProfilePhoto Component", () => {
     edu: "Bachelor's Degree",
     drinking: "Occasionally",
     smoking: "Never",
-    photos: ["", "", "", "", ""],
+    photos: ["", "", "", "", ""], // Ensure the photos array has at least 4 elements
   };
 
   const renderComponent = () =>
@@ -49,61 +49,38 @@ describe("ProfilePhoto Component", () => {
           userProfile: mockUserProfile,
           updateUserProfile: mockUpdateUserProfile,
         }}>
-        <ProfilePhoto />
+        <PhotoGrid />
       </UserProfileContext.Provider>
     );
 
-  test("should render the profile placeholder image when no photo is available", () => {
+  test("should render 4 photo placeholders when no photos are available", () => {
     // Arrange
     renderComponent();
 
     // Act
-    const imgElement = screen.getByAltText("Profile Placeholder");
+    const placeholders = screen.getAllByAltText(/Profile Placeholder/i);
 
     // Assert
-    expect(imgElement).toBeInTheDocument();
-    expect(imgElement).toHaveAttribute(
-      "src",
-      expect.stringContaining("imagePH.png")
-    );
+    expect(placeholders).toHaveLength(4);
+    placeholders.forEach((placeholder) => {
+      expect(placeholder).toHaveAttribute(
+        "src",
+        expect.stringContaining("imagePH.png")
+      );
+    });
   });
 
-  test("should open the menu when the image is clicked", () => {
+  test("should open the menu when a placeholder is clicked", () => {
     // Arrange
     renderComponent();
 
     // Act
-    const imgElement = screen.getByAltText("Profile Placeholder");
-    fireEvent.click(imgElement);
+    const placeholders = screen.getAllByAltText(/Profile Placeholder/i);
+    fireEvent.click(placeholders[0]);
 
     // Assert
     const uploadMenuItem = screen.getByText("Upload Pic");
     expect(uploadMenuItem).toBeInTheDocument();
-  });
-
-  test("should call handleDeletePic and update the user profile when 'Delete Pic' is clicked", () => {
-    // Arrange
-    renderComponent();
-
-    // Act
-    const imgElement = screen.getByAltText("Profile Placeholder");
-    fireEvent.click(imgElement);
-    const deleteMenuItem = screen.getByText("Delete Pic");
-    fireEvent.click(deleteMenuItem);
-
-    // Assert
-    expect(mockUpdateUserProfile).toHaveBeenCalledWith({
-      ...mockUserProfile,
-      photos: ["", "", "", "", ""],
-    });
-    expect(mockSetUserDbData).toHaveBeenCalledWith({
-      ...mockUserProfile,
-      photos: ["", "", "", "", ""],
-    });
-    expect(mockSetUserStorageData).toHaveBeenCalledWith({
-      ...mockUserProfile,
-      photos: ["", "", "", "", ""],
-    });
   });
 
   test("should handle file upload and update the user profile", async () => {
@@ -112,8 +89,8 @@ describe("ProfilePhoto Component", () => {
     renderComponent();
 
     // Act
-    const imgElement = screen.getByAltText("Profile Placeholder");
-    fireEvent.click(imgElement);
+    const placeholders = screen.getAllByAltText(/Profile Placeholder/i);
+    fireEvent.click(placeholders[0]);
     const uploadMenuItem = screen.getByText("Upload Pic");
     fireEvent.click(uploadMenuItem);
     const fileInput = screen.getByTestId("file-input");
@@ -124,18 +101,45 @@ describe("ProfilePhoto Component", () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockUploadImage).toHaveBeenCalledWith(file, 4);
+      expect(mockUploadImage).toHaveBeenCalledWith(file, 0);
       expect(mockUpdateUserProfile).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: ["uploaded-image-url", "", "", "", ""],
       });
       expect(mockSetUserDbData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: ["uploaded-image-url", "", "", "", ""],
       });
       expect(mockSetUserStorageData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: ["uploaded-image-url", "", "", "", ""],
+      });
+    });
+  });
+
+  test("should handle photo deletion and update the user profile", async () => {
+    // Arrange
+    renderComponent();
+
+    // Act
+    const placeholders = screen.getAllByAltText(/Profile Placeholder/i);
+    fireEvent.click(placeholders[0]);
+    const deleteMenuItem = screen.getByText("Delete Pic");
+    fireEvent.click(deleteMenuItem);
+
+    // Assert
+    await waitFor(() => {
+      expect(mockUpdateUserProfile).toHaveBeenCalledWith({
+        ...mockUserProfile,
+        photos: ["", "", "", "", ""],
+      });
+      expect(mockSetUserDbData).toHaveBeenCalledWith({
+        ...mockUserProfile,
+        photos: ["", "", "", "", ""],
+      });
+      expect(mockSetUserStorageData).toHaveBeenCalledWith({
+        ...mockUserProfile,
+        photos: ["", "", "", "", ""],
       });
     });
   });
@@ -145,9 +149,8 @@ describe("ProfilePhoto Component", () => {
     renderComponent();
 
     // Act
-    const imgElement = screen.getByAltText("Profile Placeholder");
-    fireEvent.click(imgElement);
-    expect(screen.getByText("Upload Pic")).toBeInTheDocument();
+    const placeholders = screen.getAllByAltText(/Profile Placeholder/i);
+    fireEvent.click(placeholders[0]);
     const cancelMenuItem = screen.getByText("Cancel");
     fireEvent.click(cancelMenuItem);
 

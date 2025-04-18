@@ -15,7 +15,7 @@ export const Profile = () => {
           <PhotoGrid />
         </Box>
         <Box mt={-10} mb={10}>
-          <Chips />
+          {/* <Chips /> */}
         </Box>
       </Stack>
     </>
