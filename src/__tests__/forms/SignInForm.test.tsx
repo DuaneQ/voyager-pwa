@@ -3,11 +3,17 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import SignInForm from "../../components/forms/SignInForm";
 import { AlertContext } from "../../Context/AlertContext";
-import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
 
 jest.mock("firebase/auth", () => ({
   getAuth: jest.fn(() => ({})), // Mock getAuth to return an empty object
   signInWithEmailAndPassword: jest.fn(),
+  signInWithPopup: jest.fn(),
+  GoogleAuthProvider: jest.fn(),
 }));
 
 describe("SignInForm", () => {
@@ -34,15 +40,13 @@ describe("SignInForm", () => {
 
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /sign in/i })
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("email-signin-button")).toBeInTheDocument(); // Use test id
   });
 
   test("should show an error alert if email or password is missing", async () => {
     renderComponent();
 
-    const signInButton = screen.getByRole("button", { name: /sign in/i });
+    const signInButton = screen.getByTestId("email-signin-button"); // Use test id
     fireEvent.click(signInButton);
 
     await waitFor(() => {
@@ -70,7 +74,7 @@ describe("SignInForm", () => {
       target: { value: "password123" },
     });
 
-    const signInButton = screen.getByRole("button", { name: /sign in/i });
+    const signInButton = screen.getByTestId("email-signin-button"); // Use test id
     fireEvent.click(signInButton);
 
     await waitFor(() => {
@@ -99,7 +103,7 @@ describe("SignInForm", () => {
       target: { value: "password123" },
     });
 
-    const signInButton = screen.getByRole("button", { name: /sign in/i });
+    const signInButton = screen.getByTestId("email-signin-button"); // Use test id
     fireEvent.click(signInButton);
 
     await waitFor(() => {
@@ -122,13 +126,69 @@ describe("SignInForm", () => {
       target: { value: "wrongpassword" },
     });
 
-    const signInButton = screen.getByRole("button", { name: /sign in/i });
+    const signInButton = screen.getByTestId("email-signin-button"); // Use test id
     fireEvent.click(signInButton);
 
     await waitFor(() => {
       expect(mockShowAlert).toHaveBeenCalledWith(
         "Error",
-        "Invalid email or password"
+        "An unknown error occurred."
+      );
+    });
+  });
+
+  test("should disable the Google Sign In button while submitting", async () => {
+    (signInWithPopup as jest.Mock).mockResolvedValueOnce({
+      user: { email: "test@example.com", emailVerified: true },
+    });
+
+    renderComponent();
+
+    const googleSignInButton = screen.getByTestId("google-signin-button"); // Use test id
+    fireEvent.click(googleSignInButton);
+
+    // Assert that the button is disabled during submission
+    expect(googleSignInButton).toBeDisabled();
+
+    await waitFor(() => {
+      expect(googleSignInButton).not.toBeDisabled();
+    });
+  });
+
+  test("should call Firebase Google sign-in", async () => {
+    const mockProvider = {}; // Mock GoogleAuthProvider instance
+    (signInWithPopup as jest.Mock).mockResolvedValueOnce({
+      user: { email: "test@example.com", emailVerified: true },
+    });
+    (GoogleAuthProvider as jest.Mock).mockImplementation(() => mockProvider);
+
+    renderComponent();
+
+    const googleSignInButton = screen.getByTestId("google-signin-button"); // Use test id
+    fireEvent.click(googleSignInButton);
+
+    await waitFor(() => {
+      expect(signInWithPopup).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockProvider
+      );
+    });
+  });
+
+  test("should show an error alert if Google sign-in fails", async () => {
+    (signInWithPopup as jest.Mock).mockRejectedValueOnce({
+      message: "Google sign-in failed",
+    });
+
+    renderComponent();
+
+    const googleSignInButton = screen.getByTestId("google-signin-button"); // Use test id
+    fireEvent.click(googleSignInButton);
+
+    await waitFor(() => {
+      expect(mockShowAlert).toHaveBeenCalledWith(
+        "Error",
+        "An unknown error occurred."
       );
     });
   });

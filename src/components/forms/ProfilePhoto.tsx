@@ -53,8 +53,8 @@ export const ProfilePhoto = () => {
         updatedPhotos[4] = url; // Add the new photo URL at index 4
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos }; // Create a new userProfile object
         updateUserProfile(updatedUserProfile); // Update the context
-        await setUserStorageData(updatedUserProfile); // Update storage
-        await setUserDbData(updatedUserProfile); // Update database
+        setUserStorageData(updatedUserProfile); // Update storage
+        setUserDbData(updatedUserProfile); // Update database
       } catch (error) {
         console.error("Error uploading photo:", error);
       } finally {
