@@ -115,7 +115,6 @@ export const PhotoGrid = () => {
         onChange={handleFileChange}
         inputProps={{
           accept: "image/*", // Restrict to image files
-          capture: "environment", // Allow camera capture on mobile
           "data-testid": "file-input",
         }}
         style={{ display: "none" }}
