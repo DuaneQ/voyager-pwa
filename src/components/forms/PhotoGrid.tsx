@@ -50,7 +50,7 @@ export const PhotoGrid = () => {
       try {
         const file = event.target.files[0];
         const url = await uploadImage(file, selectedPhotoIndex);
-        const updatedPhotos = [...(userProfile?.photos || [])];
+        const updatedPhotos = [...userProfile.photos];
         updatedPhotos[selectedPhotoIndex] = url;
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
         updateUserProfile(updatedUserProfile);
