@@ -73,9 +73,9 @@ export const EditProfileModal = (props: any) => {
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}
               onSubmit={handleSubmit}
               noValidate>
-                <Box sx={{ textAlign: "center", mb: 2 }}>
-                  <h2>Edit Profile</h2>
-                </Box>
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <h2>Edit Profile</h2>
+              </Box>
               <FormControl>
                 <TextField
                   id="bio"
@@ -101,6 +101,10 @@ export const EditProfileModal = (props: any) => {
                   id="dob"
                   name="dob"
                   value={userProfile?.dob || ""}
+                  placeholder="YYYY-MM-DD" // Add a standard placeholder
+                  InputLabelProps={{
+                    shrink: true, // Ensure the label doesn't overlap with the placeholder
+                  }}
                   onChange={(e) =>
                     updateUserProfile({
                       ...userProfile,
