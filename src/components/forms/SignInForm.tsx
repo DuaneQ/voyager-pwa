@@ -89,7 +89,19 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
         );
         navigate("/Login");
       } else {
-        // Navigate to the home page
+        const userCredentials = {
+          user: {
+            uid: user.uid,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            isAnonymous: user.isAnonymous,
+            providerData: user.providerData,
+          },
+        };
+        localStorage.setItem(
+          "USER_CREDENTIALS",
+          JSON.stringify(userCredentials)
+        );
         window.location.href = "/";
       }
     } catch (error) {
@@ -139,6 +151,20 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
         );
         navigate("/Login");
       } else {
+        const userCredentials = {
+          user: {
+            uid: user.uid,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            isAnonymous: user.isAnonymous,
+            providerData: user.providerData,
+          },
+        };
+
+        localStorage.setItem(
+          "USER_CREDENTIALS",
+          JSON.stringify(userCredentials)
+        );
         window.location.href = "/";
       }
     } catch (error) {
