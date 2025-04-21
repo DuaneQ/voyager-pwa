@@ -28,6 +28,7 @@ export const ProfileForm = () => {
             color="secondary"
             onClick={async () => {
               await signOut(auth);
+              localStorage.clear();
               window.location.href = "/login";
             }}
             sx={{
