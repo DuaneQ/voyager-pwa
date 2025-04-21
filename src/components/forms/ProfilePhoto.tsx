@@ -37,6 +37,9 @@ export const ProfilePhoto = () => {
       } finally {
         setLoading(false); // Set loading to false
         setMenuAnchor(null);
+        if (fileRef.current) {
+          fileRef.current.value = ""; // Reset the file input
+        }
       }
     }
   }
@@ -75,7 +78,8 @@ export const ProfilePhoto = () => {
           userProfile?.photos &&
           userProfile?.photos.length > 0 &&
           userProfile?.photos[4] !== "" &&
-          userProfile?.photos[4] !== null
+          userProfile?.photos[4] !== null &&
+          userProfile?.photos[4] !== undefined
             ? userProfile.photos[4]
             : profilePlaceholder
         }
@@ -97,7 +101,11 @@ export const ProfilePhoto = () => {
         type="file"
         inputRef={fileRef}
         onChange={handleFileChange}
-        inputProps={{ "data-testid": "file-input" }}
+        inputProps={{
+          accept: "image/*", // Restrict to image files
+          capture: "environment", // Allow camera capture on mobile
+          "data-testid": "file-input",
+        }}
         style={{ display: "none" }}
       />
       <Menu
