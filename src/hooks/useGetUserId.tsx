@@ -11,9 +11,21 @@ const useGetUserId = () => {
     } else {
       const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
         if (user) {
-          const uid = user.uid;
-          localStorage.setItem("USER_CREDENTIALS", uid);
-          setUserId(uid);
+          const userCredentials = {
+            user: {
+              uid: user.uid,
+              email: user.email,
+              emailVerified: user.emailVerified,
+              isAnonymous: user.isAnonymous,
+              providerData: user.providerData,
+            },
+          };
+
+          localStorage.setItem(
+            "USER_CREDENTIALS",
+            JSON.stringify(userCredentials)
+          );
+          setUserId(user.uid);
         }
       });
 

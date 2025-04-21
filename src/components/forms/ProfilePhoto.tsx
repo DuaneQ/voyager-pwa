@@ -37,6 +37,9 @@ export const ProfilePhoto = () => {
       } finally {
         setLoading(false); // Set loading to false
         setMenuAnchor(null);
+        if (fileRef.current) {
+          fileRef.current.value = ""; // Reset the file input
+        }
       }
     }
   }
@@ -53,8 +56,8 @@ export const ProfilePhoto = () => {
         updatedPhotos[4] = url; // Add the new photo URL at index 4
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos }; // Create a new userProfile object
         updateUserProfile(updatedUserProfile); // Update the context
-        await setUserStorageData(updatedUserProfile); // Update storage
-        await setUserDbData(updatedUserProfile); // Update database
+        setUserStorageData(updatedUserProfile); // Update storage
+        setUserDbData(updatedUserProfile); // Update database
       } catch (error) {
         console.error("Error uploading photo:", error);
       } finally {
@@ -75,7 +78,8 @@ export const ProfilePhoto = () => {
           userProfile?.photos &&
           userProfile?.photos.length > 0 &&
           userProfile?.photos[4] !== "" &&
-          userProfile?.photos[4] !== null
+          userProfile?.photos[4] !== null &&
+          userProfile?.photos[4] !== undefined
             ? userProfile.photos[4]
             : profilePlaceholder
         }
@@ -97,7 +101,10 @@ export const ProfilePhoto = () => {
         type="file"
         inputRef={fileRef}
         onChange={handleFileChange}
-        inputProps={{ "data-testid": "file-input" }}
+        inputProps={{
+          accept: "image/*", // Restrict to image files
+          "data-testid": "file-input",
+        }}
         style={{ display: "none" }}
       />
       <Menu

@@ -17,10 +17,13 @@ import { AlertContext } from "../../Context/AlertContext";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { app, auth } from "../../environments/environment";
 import { FormHelperText } from "@mui/material";
 import { doc, getFirestore, setDoc } from "firebase/firestore";
+import { GoogleIcon } from "../custom-icons/GoogleIcon";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -83,7 +86,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     drinking: "",
     smoking: "",
     dob: "",
-    photos: [] as string[]
+    photos: [],
   });
 
   const handleNameChange = (e: any) => {
@@ -135,50 +138,123 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    const provider = new GoogleAuthProvider();
+    setIsSubmitting(true); // Disable the button
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Extract user data
+      const userData = {
+        username: user.displayName || "",
+        email: user.email || "",
+        bio: "",
+        gender: "",
+        sexo: "",
+        edu: "",
+        drinking: "",
+        smoking: "",
+        dob: "",
+        photos: [],
+      };
+
+      // Format USER_CREDENTIALS to match email/password sign-up
+      const userCredentials = {
+        user: {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          isAnonymous: user.isAnonymous,
+          providerData: user.providerData,
+        },
+      };
+
+      // Save user data to Firestore
+      const db = getFirestore(app);
+      const docRef = doc(db, "users", user.uid);
+      await setDoc(docRef, userData);
+
+      // Save user credentials and profile info to localStorage
+      localStorage.setItem("USER_CREDENTIALS", JSON.stringify(userCredentials));
+      localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
+
+      // Show success alert and navigate to the next page
+      showAlert("Success", "You have successfully signed up with Google!");
+      navigate("/");
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error as any).code === "auth/popup-closed-by-user"
+      ) {
+        // Handle the case where the user closes the popup
+        showAlert("Info", "Google sign-up was canceled.");
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
+        showAlert("Error", errorMessage);
+      }
+    } finally {
+      setIsSubmitting(false); // Re-enable the button
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    if (inputs.password !== inputs.confirm) {
-      showAlert(
-        "Error",
-        "The passwords you entered do not match. Please make sure both fields have the same password."
-      );
-      return;
-    } else if (!inputs.email || !inputs.username || !inputs.password) {
-      showAlert("Error", "Please fill out all of the fields.");
-      return;
-    } else {
-      try {
-        await createUserWithEmailAndPassword(
-          auth,
-          inputs.email,
-          inputs.password
-        )
-          .then(async (userCredential) => {
-            await sendEmailVerification(userCredential.user);
-            const { password, confirm, ...userData } = inputs;
-            localStorage.setItem(
-              "USER_CREDENTIALS",
-              JSON.stringify(userCredential)
-            );
-            localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
-            showAlert(
-              "Info",
-              "A verification link has been sent to your email for verification."
-            );
-            const db = getFirestore(app);
-            const docRef = doc(db, "users", userCredential.user.uid);
-            await setDoc(docRef, userData);
-          })
-          .then(() => {
-            navigate("/Login");
-          })
-          .catch((error) => {
-            const errorMessage = error.message;
-            showAlert("Error", errorMessage);
-          });
-      } finally {
-        setIsSubmitting(false);
+    setIsSubmitting(true); // Disable the button
+    try {
+      if (inputs.password !== inputs.confirm) {
+        showAlert(
+          "Error",
+          "The passwords you entered do not match. Please make sure both fields have the same password."
+        );
+        return;
+      } else if (!inputs.email || !inputs.username || !inputs.password) {
+        showAlert("Error", "Please fill out all of the fields.");
+        return;
       }
+
+      await createUserWithEmailAndPassword(auth, inputs.email, inputs.password)
+        .then(async (userCredential) => {
+          await sendEmailVerification(userCredential.user);
+          const { password, confirm, ...userData } = inputs;
+
+          // Format USER_CREDENTIALS
+          const userCredentials = {
+            user: {
+              uid: userCredential.user.uid,
+              email: userCredential.user.email,
+              emailVerified: userCredential.user.emailVerified,
+              isAnonymous: userCredential.user.isAnonymous,
+              providerData: userCredential.user.providerData,
+            },
+          };
+
+          // Save user credentials and profile info to localStorage
+          localStorage.setItem(
+            "USER_CREDENTIALS",
+            JSON.stringify(userCredentials)
+          );
+          localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
+
+          showAlert(
+            "Info",
+            "A verification link has been sent to your email for verification."
+          );
+
+          const db = getFirestore(app);
+          const docRef = doc(db, "users", userCredential.user.uid);
+          await setDoc(docRef, userData);
+        })
+        .then(() => {
+          navigate("/Login");
+        })
+        .catch((error) => {
+          const errorMessage = error.message;
+          showAlert("Error", errorMessage);
+        });
+    } finally {
+      setIsSubmitting(false); // Re-enable the button
     }
   };
 
@@ -286,10 +362,23 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
               type="submit"
               fullWidth
               disabled={isSubmitting}
-              variant="contained">
+              variant="contained"
+              data-testid="email-signup-button">
               Sign up
             </Button>
           </form>
+          <Divider>or</Divider>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleGoogleSignUp}
+              startIcon={<GoogleIcon />}
+              disabled={isSubmitting}
+              data-testid="google-signup-button">
+              Sign up with Google
+            </Button>
+          </Box>
           <Divider>or</Divider>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography sx={{ textAlign: "center" }}>
