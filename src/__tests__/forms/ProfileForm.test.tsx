@@ -20,7 +20,7 @@ describe("ProfileForm", () => {
     dob: "1990-01-01",
     gender: "Male",
     sexo: "Heterosexual",
-    edu: "Bachelor's",
+    edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
   };
@@ -66,7 +66,7 @@ describe("ProfileForm", () => {
     expect(screen.getByDisplayValue("1990-01-01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Male")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Heterosexual")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Bachelor's")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("GED")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Occasionally")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Never")).toBeInTheDocument();
   });

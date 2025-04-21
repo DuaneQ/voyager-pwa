@@ -36,7 +36,7 @@ describe("PhotoGrid Component", () => {
     dob: "1990-01-01",
     gender: "Male",
     sexo: "Heterosexual",
-    edu: "Bachelor's Degree",
+    edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
     photos: ["", "", "", "", ""], // Ensure the photos array has at least 4 elements
