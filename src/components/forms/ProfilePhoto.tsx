@@ -52,8 +52,11 @@ export const ProfilePhoto = () => {
       try {
         const file = event.target.files[0];
         const url = await uploadImage(file, 4); // Upload the file and get the URL
-        const updatedPhotos = [...userProfile.photos];
+
+        // Ensure userProfile.photos is an array
+        const updatedPhotos = [...(userProfile?.photos || [])];
         updatedPhotos[4] = url; // Add the new photo URL at index 4
+
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos }; // Create a new userProfile object
         updateUserProfile(updatedUserProfile); // Update the context
         setUserStorageData(updatedUserProfile); // Update storage
