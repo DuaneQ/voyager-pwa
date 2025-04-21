@@ -61,6 +61,9 @@ export const PhotoGrid = () => {
       } finally {
         setLoading(false); // Set loading to false
         setMenuAnchor(null);
+        if (fileRef.current) {
+          fileRef.current.value = ""; // Reset the file input
+        }
       }
     }
   };
@@ -86,7 +89,8 @@ export const PhotoGrid = () => {
                 userProfile?.photos &&
                 userProfile?.photos.length > index &&
                 userProfile?.photos[index] !== "" &&
-                userProfile?.photos[index] !== null
+                userProfile?.photos[index] !== null &&
+                userProfile?.photos[index] !== undefined
                   ? userProfile?.photos[index]
                   : profilePlaceholder
               }
@@ -109,7 +113,10 @@ export const PhotoGrid = () => {
         type="file"
         inputRef={fileRef}
         onChange={handleFileChange}
-        inputProps={{ "data-testid": "file-input" }}
+        inputProps={{
+          accept: "image/*", // Restrict to image files
+          "data-testid": "file-input",
+        }}
         style={{ display: "none" }}
       />
       <Menu

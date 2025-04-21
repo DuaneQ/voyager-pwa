@@ -12,13 +12,16 @@ import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../../environments/environment";
+import { GoogleIcon } from "../custom-icons/GoogleIcon";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -67,50 +70,109 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   const [emailErrorMessage, setEmailErrorMessage] = React.useState("");
   const [passwordError, setPasswordError] = React.useState(false);
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // State to track submission
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
-  
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    setIsSubmitting(true); // Disable buttons
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if the user's email is verified
+      if (!user.emailVerified) {
+        showAlert(
+          "Email not verified",
+          "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
+        );
+        navigate("/Login");
+      } else {
+        const userCredentials = {
+          user: {
+            uid: user.uid,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            isAnonymous: user.isAnonymous,
+            providerData: user.providerData,
+          },
+        };
+        localStorage.setItem(
+          "USER_CREDENTIALS",
+          JSON.stringify(userCredentials)
+        );
+        window.location.href = "/";
+      }
+    } catch (error) {
+      if ((error as { code?: string }).code === "auth/popup-closed-by-user") {
+        // Handle the case where the user closes the popup
+        showAlert("Info", "Google sign-in was canceled.");
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
+        showAlert("Error", errorMessage);
+      }
+    } finally {
+      setIsSubmitting(false); // Re-enable buttons
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (emailError || passwordError) {
-      event.preventDefault();
       return;
     }
 
     const data = new FormData(event.currentTarget);
+    const email = data.get("email") as string | null;
+    const password = data.get("password") as string | null;
+
+    if (!email || !password) {
+      showAlert("Error", "Please enter your email and password.");
+      return;
+    }
+
+    setIsSubmitting(true); // Disable buttons
     try {
-      const email = data.get("email") as string | null;
-      const password = data.get("password") as string | null;
-      if (!email || !password) {
-        event.preventDefault();
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // Refresh the user's authentication state
+      await user.reload();
+      if (!user.emailVerified) {
         showAlert(
-          "Error",
-          "Please enter your email and password."
+          "Email not verified",
+          "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
         );
-        return;
+        navigate("/Login");
+      } else {
+        const userCredentials = {
+          user: {
+            uid: user.uid,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            isAnonymous: user.isAnonymous,
+            providerData: user.providerData,
+          },
+        };
+
+        localStorage.setItem(
+          "USER_CREDENTIALS",
+          JSON.stringify(userCredentials)
+        );
+        window.location.href = "/";
       }
-      else {
-        signInWithEmailAndPassword(auth, email, password)
-          .then(async (userCredential) => {
-            const user = userCredential.user;
-            // Refresh the user's authentication state
-            await user.reload();
-            if (!user.emailVerified) {
-              showAlert(
-                "Email not verified",
-                "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
-              );
-              navigate("/Login");
-            } else {
-              // window.location.reload();
-              window.location.href = "/";
-            }
-          })
-          .catch((error) => {
-            showAlert("Error", error.message);
-          });
-      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "An unknown error occurred.";
+      showAlert("Error", errorMessage); // Pass the correct error message
     } finally {
+      setIsSubmitting(false); // Re-enable buttons
     }
   };
 
@@ -173,7 +235,10 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
             <Button
               type="submit"
               fullWidth
-              variant="contained">
+              variant="contained"
+              data-testid="email-signin-button"
+              disabled={isSubmitting} // Disable button while submitting
+            >
               Sign in
             </Button>
             <Link
@@ -190,6 +255,19 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               sx={{ alignSelf: "center" }}>
               Resend email verification
             </Link>
+          </Box>
+          <Divider>or</Divider>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleGoogleSignIn}
+              startIcon={<GoogleIcon />}
+              data-testid="google-signin-button"
+              disabled={isSubmitting} // Disable button while submitting
+            >
+              Sign in with Google
+            </Button>
           </Box>
           <Divider>or</Divider>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
