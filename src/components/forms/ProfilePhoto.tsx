@@ -88,13 +88,14 @@ export const ProfilePhoto = () => {
           maxWidth: "30%",
           height: "auto",
           maxHeight: "300px",
+          marginRight: "10px",
           width: "auto",
           objectFit: "cover",
-          cursor: loading ? "not-allowed" : "pointer", // Disable pointer events while loading
-          opacity: loading ? 0.5 : 1, // Dim the image while loading
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.5 : 1,
         }}
         onClick={(event) => {
-          if (!loading) setMenuAnchor(event.currentTarget); // Prevent menu interaction while loading
+          if (!loading) setMenuAnchor(event.currentTarget);
         }}
       />
       <Input

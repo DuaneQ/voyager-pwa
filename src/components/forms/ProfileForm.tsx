@@ -42,7 +42,7 @@ export const ProfileForm = () => {
           </Button>
         </Box>
         <Box mt={0} display="flex" justifyContent="center">
-          <ProfilePhoto/>
+          <ProfilePhoto />
           <Box sx={{ flexDirection: "column" }}>
             <Typography
               ml={2}

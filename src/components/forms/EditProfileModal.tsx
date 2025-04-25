@@ -24,6 +24,7 @@ export const EditProfileModal = (props: any) => {
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
   const { userProfile, updateUserProfile } = useContext(UserProfileContext);
+  console.log("User Profile in EditProfileModal:", userProfile);
 
   const { showAlert } = useContext(AlertContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
