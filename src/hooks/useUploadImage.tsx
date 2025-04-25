@@ -14,10 +14,10 @@ const useUploadImage = () => {
     setUploading(true);
     setError(null);
     try {
-      const id = userId ? JSON.parse(userId) : null;
+      const id = userId ? userId : null;
       const storageRef = ref(
         storage,
-        `photos/${id.user.uid}/profilePic/${file.name}`
+        `photos/${id}/profilePic/${file.name}`
       );
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
