@@ -36,7 +36,7 @@ describe("ProfilePhoto Component", () => {
     dob: "1990-01-01",
     gender: "Male",
     sexo: "Heterosexual",
-    edu: "Bachelor's Degree",
+    edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
     photos: ["", "", "", "", ""],

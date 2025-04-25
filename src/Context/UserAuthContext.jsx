@@ -15,7 +15,7 @@ export function UserAuthContextProvider({ children }) {
     unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setLoading(false)
       if (currentUser && currentUser.emailVerified) {
-        navigate("/");
+        // navigate("/");
         setUser(currentUser)
       }
       else {
