@@ -19,7 +19,7 @@ export const EMAIL_INVALID = "Invalid email format";
 export const USERNAME_REQUIRED = "Username is required";
 export const USERNAME_INVALID = "Username should be at least 4 characters";
 
-export const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say", "Transgender Woman", "Transgender Man", "Gender Neutral"];
+export const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say", "Transgender Woman", "Transgender Man", "Gender Neutral", "Couple"];
 export const EDUCATION_OPTIONS = [
     "High School",
     "Associate Degree",
