@@ -5,7 +5,6 @@ const useGetUserId = () => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-   
       const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
         if (user) {
           const userCredentials = {
@@ -23,12 +22,13 @@ const useGetUserId = () => {
             JSON.stringify(userCredentials)
           );
           setUserId(user.uid);
+        } else {
+          setUserId(null);
         }
       });
 
       return () => unsubscribe();
-    
-  }, [userId]);
+  }, []);
 
   return userId;
 };

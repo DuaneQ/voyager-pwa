@@ -12,16 +12,17 @@ import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signOut,
 } from "firebase/auth";
 import { auth } from "../../environments/environment";
 import { GoogleIcon } from "../custom-icons/GoogleIcon";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -67,41 +68,41 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 
 export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   const [emailError, setEmailError] = React.useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = React.useState("");
   const [passwordError, setPasswordError] = React.useState(false);
-  const [passwordErrorMessage, setPasswordErrorMessage] = React.useState("");
   const [isSubmitting, setIsSubmitting] = useState(false); // State to track submission
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
 
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setEmailError(!emailPattern.test(e.target.value));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordError(e.target.value.length < 6);
+  };
+
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
-    setIsSubmitting(true); // Disable buttons
+    setIsSubmitting(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if the user's email is verified
-      if (!user.emailVerified) {
+      const db = getFirestore();
+
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
         showAlert(
-          "Email not verified",
-          "Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email."
+          "Account not found",
+          "No account record was found for this user. Please contact support or register for a new account."
         );
-        navigate("/Login");
+        await signOut(auth);
+        navigate("/register");
+        return;
       } else {
-        const userCredentials = {
-          user: {
-            uid: user.uid,
-            email: user.email,
-            emailVerified: user.emailVerified,
-            isAnonymous: user.isAnonymous,
-            providerData: user.providerData,
-          },
-        };
-        localStorage.setItem(
-          "USER_CREDENTIALS",
-          JSON.stringify(userCredentials)
-        );
         window.location.href = "/";
       }
     } catch (error) {
@@ -205,7 +206,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               <FormLabel htmlFor="email">Email</FormLabel>
               <TextField
                 error={emailError}
-                helperText={emailErrorMessage}
+                onChange={handleEmailChange}
                 id="email"
                 type="email"
                 name="email"
@@ -221,7 +222,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               <FormLabel htmlFor="password">Password</FormLabel>
               <TextField
                 error={passwordError}
-                helperText={passwordErrorMessage}
+                onChange={handlePasswordChange}
                 name="password"
                 placeholder="••••••••••"
                 type="password"
