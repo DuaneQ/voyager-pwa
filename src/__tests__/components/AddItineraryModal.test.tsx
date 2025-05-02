@@ -5,6 +5,7 @@ import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
+import { AlertContext } from "../../Context/AlertContext";
 
 // Mock dependencies
 jest.mock("../../hooks/useGetUserId");
@@ -34,6 +35,8 @@ describe("AddItineraryModal Component", () => {
   const mockPostItinerary = jest.fn();
   const mockOnClose = jest.fn();
   const mockOnItineraryAdded = jest.fn();
+  const mockShowAlert = jest.fn();
+  const mockUpdateUserProfile = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -154,14 +157,14 @@ describe("AddItineraryModal Component", () => {
     fireEvent.click(saveButton);
 
     // Assert
-    const errorMessage = screen.getByText(
-      /End Date cannot be earlier than today or the Start Date./i
+    const errorMessage = screen.getAllByText(
+      /End Date cannot be less than Start Date./i
     );
-    expect(errorMessage).toBeInTheDocument();
+    expect(errorMessage).toHaveLength(1);
     expect(mockPostItinerary).not.toHaveBeenCalled();
   });
 
-  test("displays an error if dates are invalid", async () => {
+  test("displays error if start date is earlier than today", async () => {
     // Arrange
     renderWithContext(
       <AddItineraryModal
@@ -171,19 +174,27 @@ describe("AddItineraryModal Component", () => {
       />
     );
 
+    const today = new Date();
+    const startDate = new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000) // One day earlier than today
+      .toISOString()
+      .split("T")[0];
+    const endDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000) // Two days after today
+      .toISOString()
+      .split("T")[0];
+
     // Act
     const startDateInput = screen.getByLabelText(/start date/i);
-    fireEvent.change(startDateInput, { target: { value: "2025-05-10" } });
+    fireEvent.change(startDateInput, { target: { value: startDate } });
 
     const endDateInput = screen.getByLabelText(/end date/i);
-    fireEvent.change(endDateInput, { target: { value: "2025-05-01" } });
+    fireEvent.change(endDateInput, { target: { value: endDate } });
 
     const saveButton = screen.getByRole("button", { name: /save itinerary/i });
     fireEvent.click(saveButton);
 
     // Assert
     const errorMessage = screen.getByText(
-      /Start Date cannot be earlier than today or greater than the end date./i
+      /Start Date cannot be earlier than today./i
     );
     expect(errorMessage).toBeInTheDocument();
     expect(mockPostItinerary).not.toHaveBeenCalled();
@@ -205,5 +216,35 @@ describe("AddItineraryModal Component", () => {
 
     // Assert
     expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  test("should not allow saving an itinerary if gender or dob is missing", async () => {
+    // Arrange
+    const incompleteProfile = { ...mockUserProfile, gender: "", dob: "" };
+
+    render(
+      <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
+        <UserProfileContext.Provider
+          value={{
+            userProfile: incompleteProfile,
+            updateUserProfile: mockUpdateUserProfile,
+          }}>
+          <AddItineraryModal
+            open={true}
+            onClose={mockOnClose}
+            onItineraryAdded={mockOnItineraryAdded}
+          />
+        </UserProfileContext.Provider>
+      </AlertContext.Provider>
+    );
+
+    const saveButton = screen.getByRole("button", { name: /save itinerary/i });
+
+    // Act
+    fireEvent.click(saveButton);
+
+    // Assert
+    expect(mockPostItinerary).not.toHaveBeenCalled();
+    expect(mockOnItineraryAdded).not.toHaveBeenCalled();
   });
 });
