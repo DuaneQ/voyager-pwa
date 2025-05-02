@@ -10,7 +10,7 @@ const usePostItineraryToFirestore = () => {
     if (!userId) throw new Error("User not authenticated");
 
     const db = getFirestore(app);
-    const itinerariesCollection = collection(db, `itineraries/${userId}/list`);
+    const itinerariesCollection = collection(db, `itineraries`);
 
     try {
       await addDoc(itinerariesCollection, itinerary); // Save the itinerary to Firestore

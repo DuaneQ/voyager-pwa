@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext } from "react";
 import {
   Modal,
   Box,
@@ -27,10 +27,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   onItineraryAdded,
 }) => {
   const { userProfile } = useContext(UserProfileContext);
-
-  useEffect(() => {
-    console.log("User Profile in AddItineraryModal:", userProfile);
-  }, [userProfile]);
+  const { postItinerary } = usePostItineraryToFirestore();
+  const userId: string | null = useGetUserId();
 
   const [newItinerary, setNewItinerary] = useState({
     destination: "",
@@ -41,76 +39,61 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     gender: "",
     startDay: 0,
     endDay: 0,
-    lowerRange: 0,
+    lowerRange: 18,
     upperRange: 100,
     likes: [] as string[],
   });
-  const [activityInput, setActivityInput] = useState(""); // Input for adding activities
-  const [dateError, setDateError] = useState<string | null>(null); // State for date validation error
-  const { postItinerary } = usePostItineraryToFirestore();
-  const userId: string | null = useGetUserId();
+  const [activityInput, setActivityInput] = useState("");
+  const [startDateError, setStartDateError] = useState<string | null>(null);
+  const [endDateError, setEndDateError] = useState<string | null>(null);
 
-  const getCurrentDate = () => {
-    const today = new Date();
-    return today.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+  // Helper function to validate the itinerary
+  const validateItinerary = (): string | null => {
+    if (!userProfile?.dob || !userProfile?.gender) {
+      return "Please complete your profile by setting your date of birth and gender before creating an itinerary.";
+    }
+    if (!newItinerary.destination) {
+      return "Destination is required.";
+    }
+    if (!newItinerary.startDate) {
+      return "Start Date is required.";
+    }
+    if (!newItinerary.endDate) {
+      return "End Date is required.";
+    }
+    if (!newItinerary.gender) {
+      return "Please select a gender preference.";
+    }
+    if (startDateError || endDateError) {
+      return "Please fix the date errors before saving.";
+    }
+    return null;
   };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const startDate = e.target.value;
-    const currentDate = getCurrentDate();
-
-    if (startDate < currentDate) {
-      setDateError(
-        "Start Date cannot be earlier than today or greater than the end date."
-      );
-    } else if (newItinerary.endDate && startDate > newItinerary.endDate) {
-      setDateError("Start Date cannot be greater than End Date.");
-    } else {
-      setDateError(null);
-    }
-    const startDay = new Date(startDate).getTime();
-
-    setNewItinerary((prev) => ({ ...prev, startDate, startDay }));
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const endDate = e.target.value;
-
-    if (newItinerary.startDate && endDate < newItinerary.startDate) {
-      setDateError("End Date cannot be less than Start Date.");
-    } else {
-      setDateError(null);
-    }
-    const endDay = new Date(endDate).getTime();
-
-    setNewItinerary((prev) => ({ ...prev, endDate, endDay }));
-    console.log("End Date changed:", endDate, endDay);
+  // Helper function to reset the itinerary form
+  const resetItineraryForm = () => {
+    setNewItinerary({
+      destination: "",
+      startDate: "",
+      endDate: "",
+      description: "",
+      activities: [],
+      gender: "",
+      startDay: 0,
+      endDay: 0,
+      lowerRange: 18,
+      upperRange: 100,
+      likes: [],
+    });
+    setActivityInput("");
+    setStartDateError(null);
+    setEndDateError(null);
   };
 
   const handleSaveItinerary = async () => {
-    if (!newItinerary.destination) {
-      alert("Destination is required.");
-      return;
-    }
-    if (!newItinerary.startDate) {
-      alert("Start Date is required.");
-      return;
-    }
-    if (!newItinerary.endDate) {
-      alert("End Date is required.");
-      return;
-    }
-    if (!newItinerary.gender) {
-      alert("Please select a gender preference.");
-      return;
-    }
-
-    if (dateError) {
-      alert("Please fix the date errors before saving.");
-      return;
-    }
-    if (dateError) {
-      alert("Please fix the date errors before saving.");
+    const validationError = validateItinerary();
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
@@ -123,29 +106,16 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       };
       const itineraryWithUserInfo = {
         ...newItinerary,
-        userInfo, // Add userInfo to the itinerary
+        userInfo,
       };
 
-      console.log("Saving itinerary:", itineraryWithUserInfo);
-      await postItinerary(itineraryWithUserInfo); // Save itinerary to Firestore
-      onItineraryAdded(newItinerary.destination); // Notify parent component
-      setNewItinerary({
-        destination: "",
-        startDate: "",
-        endDate: "",
-        description: "",
-        activities: [],
-        gender: "",
-        startDay: 0,
-        endDay: 0,
-        lowerRange: 18,
-        upperRange: 100,
-        likes: [],
-      });
+      await postItinerary(itineraryWithUserInfo);
+      onItineraryAdded(newItinerary.destination);
+      resetItineraryForm();
       alert("Itinerary successfully created!");
       onClose();
     } catch (error) {
-      console.error("Error saving itinerary:", error);
+      alert("An error occurred while saving the itinerary. Please try again.");
     }
   };
 
@@ -159,11 +129,33 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     }
   };
 
-  const handleAgeRangeChange = (event: Event, newValue: number | number[]) => {
-    setNewItinerary((prev) => ({
-      ...prev,
-      ageRange: newValue as [number, number],
-    }));
+  const handleDateChange = (type: "startDate" | "endDate", value: string) => {
+    const currentDate = new Date().toISOString().split("T")[0];
+    if (type === "startDate") {
+      if (value < currentDate) {
+        setStartDateError("Start Date cannot be earlier than today.");
+      } else if (newItinerary.endDate && value > newItinerary.endDate) {
+        setStartDateError("Start Date cannot be greater than End Date.");
+      } else {
+        setStartDateError(null);
+      }
+      setNewItinerary((prev) => ({
+        ...prev,
+        startDate: value,
+        startDay: new Date(value).getTime(),
+      }));
+    } else if (type === "endDate") {
+      if (newItinerary.startDate && value < newItinerary.startDate) {
+        setEndDateError("End Date cannot be less than Start Date.");
+      } else {
+        setEndDateError(null);
+      }
+      setNewItinerary((prev) => ({
+        ...prev,
+        endDate: value,
+        endDay: new Date(value).getTime(),
+      }));
+    }
   };
 
   return (
@@ -182,7 +174,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         }}>
         <h2>Add New Itinerary</h2>
         <GooglePlacesAutocomplete
-          apiKey="AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+          apiKey="YOUR_GOOGLE_API_KEY"
           selectProps={{
             value: newItinerary.destination
               ? {
@@ -198,7 +190,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             placeholder: "Search for a city...",
           }}
           autocompletionRequest={{
-            types: ["(cities)"], // Restrict to cities
+            types: ["(cities)"],
           }}
         />
         <TextField
@@ -208,12 +200,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           margin="normal"
           InputLabelProps={{ shrink: true }}
           value={newItinerary.startDate}
-          onChange={handleStartDateChange}
-          error={!!dateError} // Show error state if dateError exists
-          helperText={
-            dateError &&
-            "Start Date cannot be earlier than today or greater than the End Date."
-          }
+          onChange={(e) => handleDateChange("startDate", e.target.value)}
+          error={!!startDateError}
+          helperText={startDateError}
         />
         <TextField
           label="End Date"
@@ -222,12 +211,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           margin="normal"
           InputLabelProps={{ shrink: true }}
           value={newItinerary.endDate}
-          onChange={handleEndDateChange}
-          error={!!dateError} // Show error state if dateError exists
-          helperText={
-            dateError &&
-            "End Date cannot be earlier than today or the Start Date."
-          }
+          onChange={(e) => handleDateChange("endDate", e.target.value)}
+          error={!!endDateError}
+          helperText={endDateError}
         />
         <TextField
           label="Provide a description of your trip"
