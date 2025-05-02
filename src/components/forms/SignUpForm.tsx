@@ -86,7 +86,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     drinking: "",
     smoking: "",
     dob: "",
-    photos: [],
+    photos: ["", "", "", "", ""],
   });
 
   const handleNameChange = (e: any) => {
@@ -156,7 +156,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         drinking: "",
         smoking: "",
         dob: "",
-        photos: [],
+        photos: ["", "", "", "", ""],
       };
 
       // Format USER_CREDENTIALS to match email/password sign-up

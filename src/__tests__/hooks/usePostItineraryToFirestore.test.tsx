@@ -29,7 +29,7 @@ describe("usePostItineraryToFirestore", () => {
     (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
   });
 
-  it("should post an itinerary successfully", async () => {
+  test("should post an itinerary successfully", async () => {
     // Arrange
     const mockAddDoc = jest.fn().mockResolvedValue({});
     (getFirestore as jest.Mock).mockReturnValue({});
@@ -43,14 +43,11 @@ describe("usePostItineraryToFirestore", () => {
 
     // Assert
     expect(getFirestore).toHaveBeenCalledWith(app);
-    expect(collection).toHaveBeenCalledWith(
-      {},
-      `itineraries/${mockUserId}/list`
-    );
+    expect(collection).toHaveBeenCalledWith({}, `itineraries`);
     expect(addDoc).toHaveBeenCalledWith({}, mockItinerary);
   });
 
-  it("should throw an error if user is not authenticated", async () => {
+  test("should throw an error if user is not authenticated", async () => {
     // Arrange
     (useGetUserId as jest.Mock).mockReturnValue(null);
 
@@ -65,7 +62,7 @@ describe("usePostItineraryToFirestore", () => {
     expect(addDoc).not.toHaveBeenCalled();
   });
 
-  it("should throw an error if posting itinerary fails", async () => {
+  test("should throw an error if posting itinerary fails", async () => {
     // Arrange
     const mockError = new Error("Failed to post itinerary");
     (getFirestore as jest.Mock).mockReturnValue({});
@@ -79,10 +76,7 @@ describe("usePostItineraryToFirestore", () => {
       "Failed to post itinerary"
     );
     expect(getFirestore).toHaveBeenCalledWith(app);
-    expect(collection).toHaveBeenCalledWith(
-      {},
-      `itineraries/${mockUserId}/list`
-    );
+    expect(collection).toHaveBeenCalledWith({}, `itineraries`);
     expect(addDoc).toHaveBeenCalledWith({}, mockItinerary);
   });
 });
