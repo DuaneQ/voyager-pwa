@@ -14,7 +14,7 @@ const mockShowAlert = jest.fn();
 const mockNavigate = jest.fn();
 const mockOnSubmit = jest.fn();
 
-const renderForm = () => {
+const renderRegisterForm = () => {
   return render(
     <MemoryRouter>
       <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
@@ -35,7 +35,7 @@ describe("RegisterForm", () => {
   });
 
   test("renders all input fields and the register button", () => {
-    renderForm();
+    renderRegisterForm();
 
     expect(screen.getByTestId("username")).toBeInTheDocument();
     expect(screen.getByTestId("email")).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("RegisterForm", () => {
   });
 
   test("displays validation errors when fields are empty", async () => {
-    renderForm();
+    renderRegisterForm();
 
     const submitButton = screen.getByTestId("register-button");
     await act(async () => {
@@ -70,7 +70,7 @@ describe("RegisterForm", () => {
   });
 
   test("calls showAlert when passwords do not match", async () => {
-    renderForm();
+    renderRegisterForm();
 
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Username"), {
@@ -98,7 +98,7 @@ describe("RegisterForm", () => {
   });
 
   test("submits form with all required fields", async () => {
-    renderForm();
+    renderRegisterForm();
 
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText("*Username"), {
@@ -126,13 +126,12 @@ describe("RegisterForm", () => {
       fireEvent.click(screen.getByTestId("drinkingHabits"));
       fireEvent.click(screen.getByTestId("smokingHabits"));
       fireEvent.click(screen.getByTestId("register-button"));
-
-      fireEvent.click(screen.getByRole("button", { name: "Register" }));
+      const registerbtn = screen.getByRole("button", { name: "Register" });
+      fireEvent.click(registerbtn);
+      fireEvent.submit(screen.getByTestId("reg-form"));
     });
 
-    // await waitFor(() => {
-    //   expect(mockOnSubmit).toHaveBeenCalled();
-    // });
+    // await act(async () => expect(mockOnSubmit).toHaveBeenCalled());
   });
 
   // it(shows an error messages if the password is too short)
