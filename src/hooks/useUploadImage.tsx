@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { app } from "../environments/environment";
+import { app } from "../environments/firebaseConfig";
 import useGetUserId from "./useGetUserId";
 
 const storage = getStorage(app);

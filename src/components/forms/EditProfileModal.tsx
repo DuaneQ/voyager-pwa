@@ -42,6 +42,7 @@ export const EditProfileModal = (props: any) => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    console.log("dbob", userProfile);
     if (!isUserOver18(userProfile?.dob)) {
       showAlert("error", "You must be over 18 years old or older.");
       return;
@@ -106,12 +107,14 @@ export const EditProfileModal = (props: any) => {
                   InputLabelProps={{
                     shrink: true, // Ensure the label doesn't overlap with the placeholder
                   }}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const newDob = e.target.value;
                     updateUserProfile({
                       ...userProfile,
-                      dob: e.target.value,
-                    })
-                  }
+                      dob: newDob,
+                    });
+                    console.log("Updated DOB:", newDob);
+                  }}
                 />
               </FormControl>
               <FormControl>

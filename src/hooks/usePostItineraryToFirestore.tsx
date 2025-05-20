@@ -1,5 +1,5 @@
 import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { app } from "../environments/environment";
+import { app } from "../environments/firebaseConfig";
 import useGetUserId from "./useGetUserId";
 import { Itinerary } from "../types/Itinerary"; // Import the Itinerary type
 
@@ -13,7 +13,8 @@ const usePostItineraryToFirestore = () => {
     const itinerariesCollection = collection(db, `itineraries`);
 
     try {
-      await addDoc(itinerariesCollection, itinerary); // Save the itinerary to Firestore
+      const docRef = await addDoc(itinerariesCollection, itinerary); // Save the itinerary to Firestore
+      return { id: docRef.id, ...itinerary };
     } catch (error) {
       console.error("Error posting itinerary:", error);
       throw error;

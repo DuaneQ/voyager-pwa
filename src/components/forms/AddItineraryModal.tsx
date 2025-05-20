@@ -8,23 +8,28 @@ import {
   MenuItem,
   Slider,
   FormControl,
+  Typography,
 } from "@mui/material";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
+import { Itinerary } from "../../types/Itinerary"; // Adjust the path as needed
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { GENDER_OPTIONS } from "../shared-strings/constants";
+import ItineraryCard from "../forms/ItineraryCard";
 
 interface AddItineraryModalProps {
   open: boolean;
   onClose: () => void;
-  onItineraryAdded: (newItinerary: string) => void;
+  onItineraryAdded: (destination: string) => void; // Trigger the re-fetch in Search.tsx
+  itineraries: Itinerary[]; // Pass itineraries as a prop
 }
 
 const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   open,
   onClose,
   onItineraryAdded,
+  itineraries,
 }) => {
   const { userProfile } = useContext(UserProfileContext);
   const { postItinerary } = usePostItineraryToFirestore();
@@ -110,7 +115,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       };
 
       await postItinerary(itineraryWithUserInfo);
-      onItineraryAdded(newItinerary.destination);
+      onItineraryAdded(newItinerary.destination); // Pass the destination to the callback
       resetItineraryForm();
       alert("Itinerary successfully created!");
       onClose();
@@ -171,10 +176,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           boxShadow: 24,
           p: 4,
           borderRadius: 2,
+          maxHeight: "80vh",
+          overflowY: "auto",
         }}>
         <h2>Add New Itinerary</h2>
         <GooglePlacesAutocomplete
-          apiKey="YOUR_GOOGLE_API_KEY"
+          apiKey="tempkeyremoved"
           selectProps={{
             value: newItinerary.destination
               ? {
@@ -319,6 +326,20 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           onClick={onClose}>
           Cancel
         </Button>
+        <Box mt={4}>
+          <Typography variant="h6" gutterBottom>
+            Your Itineraries
+          </Typography>
+          {itineraries.length > 0 ? (
+            itineraries.map((itinerary) => (
+              <ItineraryCard key={itinerary.id} itinerary={itinerary} />
+            ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              No itineraries available.
+            </Typography>
+          )}
+        </Box>
       </Box>
     </Modal>
   );

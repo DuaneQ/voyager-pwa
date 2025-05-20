@@ -7,6 +7,8 @@ import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
 
+console.log("App Environment:", process.env.REACT_APP_ENV);
+
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
@@ -14,7 +16,7 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <UserAuthContextProvider>
-          <App />
+        <App />
       </UserAuthContextProvider>
     </BrowserRouter>
   </React.StrictMode>
