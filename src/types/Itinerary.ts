@@ -1,6 +1,8 @@
 export interface Itinerary {
   id: string;
   destination: string;
+  gender?: string;
+  likes?: string[];
   startDate?: string;
   endDate?: string;
   startDay?: number;

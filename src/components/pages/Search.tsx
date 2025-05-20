@@ -16,24 +16,24 @@ import ItineraryCard from "../forms/ItineraryCard";
 
 export const Search = () => {
   useGetUserProfile();
-  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [selectedItinerary, setSelectedItinerary] = useState<string>("");
+  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
-  const { matchingItineraries, searchItineraries } =
-    useSearchItineraries();
+  const { matchingItineraries, searchItineraries } = useSearchItineraries();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchItineraries(); // Fetch itineraries on component mount
     const loadItineraries = async () => {
       try {
         const fetchedItineraries = await fetchItineraries();
         if (!fetchedItineraries || fetchedItineraries.length === 0) {
           setLoading(true);
         } else {
-          setItineraries(fetchedItineraries);
           setLoading(false);
+          setItineraries(fetchedItineraries);
+          console.log("Itineraries state:", itineraries);
         }
       } catch (error) {
         console.error("Error loading itineraries:", error);
@@ -41,13 +41,15 @@ export const Search = () => {
     };
 
     loadItineraries();
-  }, [itineraries]);
+  }, [refreshKey]);
 
   const handleItinerarySelect = (destination: string) => {
     setSelectedItinerary(destination);
     const selected = itineraries.find(
       (itinerary) => itinerary.destination === destination
     );
+    console.log("Selected itinerary:", selected);
+
     if (selected) {
       console.log("Selected itinerary:", selected);
       searchItineraries(selected); // Search for matching itineraries
@@ -114,8 +116,7 @@ export const Search = () => {
           variant="h6"
           sx={{
             display: "flex",
-            textAlign: "center",
-            justifyContent: "center",
+            textAlign: "left",
             backgroundColor: "#f9f9f9",
             borderRadius: "8px",
             padding: "20px",
@@ -152,12 +153,8 @@ export const Search = () => {
       <AddItineraryModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        onItineraryAdded={(newItinerary) =>
-          setItineraries((prev) => [
-            ...prev,
-            { id: Date.now().toString(), destination: newItinerary },
-          ])
-        }
+        onItineraryAdded={() => setRefreshKey((prev) => prev + 1)} // Trigger re-fetch
+        itineraries={itineraries} // Pass itineraries as a prop
       />
     </Box>
   );

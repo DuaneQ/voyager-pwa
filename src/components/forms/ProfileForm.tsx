@@ -8,7 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import { signOut } from "firebase/auth";
-import { auth } from "../../environments/environment";
+import { auth } from "../../environments/firebaseConfig";
 import { EditProfileModal } from "./EditProfileModal";
 import useGetUserProfile from "../../hooks/useGetUserProfile";
 import { UserProfileContext } from "../../Context/UserProfileContext";

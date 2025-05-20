@@ -48,9 +48,9 @@
     "workbox-streams": "^6.6.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "REACT_APP_ENV=development react-scripts start",
+    "build": "REACT_APP_ENV=production react-scripts build",
+    "test": "REACT_APP_ENV=development react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react-hooks";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import useGetUserId from "../../hooks/useGetUserId";
 import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { app } from "../../environments/environment";
+import { app } from "../../environments/firebaseConfig";
 
 // Mock dependencies
 jest.mock("firebase/firestore");

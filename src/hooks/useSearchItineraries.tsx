@@ -6,7 +6,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
-import { app } from "../environments/environment";
+import { app } from "../environments/firebaseConfig";
 import { Itinerary } from "../types/Itinerary";
 
 const useSearchItineraries = () => {
@@ -24,7 +24,8 @@ const useSearchItineraries = () => {
       const db = getFirestore(app);
       const itinerariesCollection = query(
         collection(db, `itineraries`),
-        where("destination", "==", itinerary.destination)
+        where("destination", "==", itinerary.destination),
+        where("userInfo.gender", "==", itinerary.gender)
       );
 
       console.log("query", itinerariesCollection);
