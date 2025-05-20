@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import SignUpForm from "../components/forms/SignUpForm";
 import { AlertContext } from "../Context/AlertContext";
 import { BrowserRouter as Router } from "react-router-dom";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
 
 jest.mock("firebase/auth");
 
@@ -29,7 +32,9 @@ describe("SignUpForm", () => {
     const usernameInput = screen.getByLabelText(/Username/i);
     fireEvent.change(usernameInput, { target: { value: "a" } });
     fireEvent.blur(usernameInput);
-    expect(screen.getByText(/Username must be greater than 2 characters./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Username must be greater than 2 characters./i)
+    ).toBeInTheDocument();
   });
 
   test("shows error when email is invalid", () => {
@@ -37,7 +42,9 @@ describe("SignUpForm", () => {
     const emailInput = screen.getByLabelText(/Email/i);
     fireEvent.change(emailInput, { target: { value: "invalid-email" } });
     fireEvent.blur(emailInput);
-    expect(screen.getByText(/Please enter a valid email./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Please enter a valid email./i)
+    ).toBeInTheDocument();
   });
 
   test("shows error when password is less than 10 characters", () => {
@@ -45,15 +52,21 @@ describe("SignUpForm", () => {
     const passwordInput = screen.getByPlaceholderText("Enter your password");
     fireEvent.change(passwordInput, { target: { value: "short" } });
     fireEvent.blur(passwordInput);
-    expect(screen.getByText(/Please enter a password of 10 characters or more./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Please enter a password of 10 characters or more./i)
+    ).toBeInTheDocument();
   });
 
   test("shows error when passwords do not match", async () => {
     renderComponent();
     const passwordInput = screen.getByPlaceholderText("Enter your password");
-    const confirmPasswordInput = screen.getByPlaceholderText("Confirm your password");
+    const confirmPasswordInput = screen.getByPlaceholderText(
+      "Confirm your password"
+    );
     fireEvent.change(passwordInput, { target: { value: "password123" } });
-    fireEvent.change(confirmPasswordInput, { target: { value: "different123" } });
+    fireEvent.change(confirmPasswordInput, {
+      target: { value: "different123" },
+    });
     fireEvent.submit(screen.getByRole("button", { name: /Sign up/i }));
     await waitFor(() => {
       expect(mockShowAlert).toHaveBeenCalledWith(
@@ -81,7 +94,9 @@ describe("SignUpForm", () => {
     const usernameInput = screen.getByLabelText(/Username/i);
     const emailInput = screen.getByLabelText(/Email/i);
     const passwordInput = screen.getByPlaceholderText("Enter your password");
-    const confirmPasswordInput = screen.getByPlaceholderText("Confirm your password");
+    const confirmPasswordInput = screen.getByPlaceholderText(
+      "Confirm your password"
+    );
     fireEvent.change(usernameInput, { target: { value: "testuser" } });
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
     fireEvent.change(passwordInput, { target: { value: "1111111111" } });

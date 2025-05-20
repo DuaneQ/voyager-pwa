@@ -1,26 +1,19 @@
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { BrowserRouter as Router } from "react-router-dom";
 import { RegisterForm } from "../components/forms/RegisterForm";
 import { AlertContext } from "../Context/AlertContext";
 
 const mockShowAlert = jest.fn();
 const mockNavigate = jest.fn();
-const mockOnSubmit = jest.fn();
 
 const renderRegisterForm = () => {
   return render(
-    <MemoryRouter>
+    <Router>
       <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
         <RegisterForm />
       </AlertContext.Provider>
-    </MemoryRouter>
+    </Router>
   );
 };
 
@@ -73,68 +66,73 @@ describe("RegisterForm", () => {
     renderRegisterForm();
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText("*Username"), {
-        target: { value: "testuser" },
-      });
-      fireEvent.change(screen.getByPlaceholderText("*Email"), {
-        target: { value: "test@example.com" },
-      });
       fireEvent.change(screen.getByPlaceholderText("*Password"), {
         target: { value: "password123" },
       });
       fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
-        target: { value: "password321" },
+        target: { value: "123password" },
       });
-      fireEvent.click(screen.getByTestId("register-button"));
+      fireEvent.submit(screen.getByRole("button", { name: "Register" }));
     });
-
-    // await waitFor(() => {
-    //   expect(mockOnSubmit).toHaveBeenCalled();
-    //   expect(mockShowAlert).toHaveBeenCalledWith(
-    //     "Error",
-    //     "Passwords do not match."
-    //   );
-    // });
+    expect(screen.getByTestId("passwordErr")).toBeInTheDocument();
   });
 
-  test("submits form with all required fields", async () => {
+  test("shows error when password is less than 10 characters", () => {
     renderRegisterForm();
-
-    await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText("*Username"), {
-        target: { value: "testuser" },
-      });
-      fireEvent.change(screen.getByPlaceholderText("*Email"), {
-        target: { value: "test@example.com" },
-      });
-      fireEvent.change(screen.getByPlaceholderText("*Password"), {
-        target: { value: "password123" },
-      });
-      fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
-        target: { value: "password123" },
-      });
-      fireEvent.change(screen.getByPlaceholderText("Tell us about yourself"), {
-        target: {
-          value: "This bio is for testing and should not exceed 200 characters",
-        },
-      });
-      fireEvent.change(screen.getByLabelText("*Date of birth"), {
-        target: { value: "12/34/5678" },
-      });
-      fireEvent.click(screen.getByTestId("gender"));
-      fireEvent.click(screen.getByTestId("education"));
-      fireEvent.click(screen.getByTestId("drinkingHabits"));
-      fireEvent.click(screen.getByTestId("smokingHabits"));
-      fireEvent.click(screen.getByTestId("register-button"));
-      const registerbtn = screen.getByRole("button", { name: "Register" });
-      fireEvent.click(registerbtn);
-      fireEvent.submit(screen.getByTestId("reg-form"));
+    fireEvent.change(screen.getByPlaceholderText("*Password"), {
+      target: { value: "short" },
     });
-
-    // await act(async () => expect(mockOnSubmit).toHaveBeenCalled());
+    expect(screen.getByTestId("passwordErr")).toBeInTheDocument();
   });
 
-  // it(shows an error messages if the password is too short)
+  test("shows error when username is less than 2 characters", () => {
+    renderRegisterForm();
+    fireEvent.change(screen.getByPlaceholderText("*Username"), {
+      target: { value: "t" },
+    });
+    expect(screen.getByTestId("usernameErr")).toBeInTheDocument();
+  });
 
-  // it(shows an error message if the email is the incorrect format)
+  test("shows error when email is incorrect format", () => {
+    renderRegisterForm();
+    fireEvent.change(screen.getByPlaceholderText("*Email"), {
+      target: { value: "invalid-email" },
+    });
+    expect(screen.getByTestId("emailErr")).toBeInTheDocument();
+  });
+});
+
+test("submits form with all required fields", async () => {
+  renderRegisterForm();
+
+  await act(async () => {
+    fireEvent.change(screen.getByPlaceholderText("*Username"), {
+      target: { value: "testuser" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("*Email"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("*Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("*Confirm Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Tell us about yourself"), {
+      target: {
+        value: "This bio is for testing and should not exceed 200 characters",
+      },
+    });
+    fireEvent.change(screen.getByLabelText("*Date of birth"), {
+      target: { value: "12/34/1978" },
+    });
+    fireEvent.click(screen.getByTestId("gender"));
+    fireEvent.click(screen.getByTestId("education"));
+    fireEvent.click(screen.getByTestId("drinkingHabits"));
+    fireEvent.click(screen.getByTestId("smokingHabits"));
+    fireEvent.click(screen.getByTestId("register-button"));
+    const registerbtn = screen.getByRole("button", { name: "Register" });
+    fireEvent.click(registerbtn);
+    fireEvent.submit(screen.getByTestId("reg-form"));
+  });
 });
