@@ -6,6 +6,7 @@ import useGetUserId from "../../hooks/useGetUserId";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { AlertContext } from "../../Context/AlertContext";
+import { Itinerary } from "../../types/Itinerary";
 
 // Mock dependencies
 jest.mock("../../hooks/useGetUserId");
@@ -37,6 +38,29 @@ describe("AddItineraryModal Component", () => {
   const mockOnItineraryAdded = jest.fn();
   const mockShowAlert = jest.fn();
   const mockUpdateUserProfile = jest.fn();
+
+  const mockItineraries: Itinerary[] = [
+    {
+      id: "1",
+      destination: "Paris",
+      startDate: "2023-12-01",
+      endDate: "2023-12-10",
+      description: "A trip to Paris",
+      activities: ["Sightseeing", "Dining"],
+      gender: "Female",
+      startDay: 0,
+      endDay: 0,
+      lowerRange: 18,
+      upperRange: 100,
+      likes: [],
+      userInfo: {
+        username: "Test User",
+        gender: "Other",
+        dob: "1990-01-01",
+        uid: "testUserId",
+      },
+    },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -75,6 +99,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries} // Pass mock itineraries
       />
     );
     const today = new Date().toISOString().split("T")[0];
@@ -135,6 +160,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries} // Pass mock itineraries
       />
     );
 
@@ -171,6 +197,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries} // Pass mock itineraries
       />
     );
 
@@ -207,6 +234,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries} // Pass mock itineraries
       />
     );
 
@@ -233,6 +261,7 @@ describe("AddItineraryModal Component", () => {
             open={true}
             onClose={mockOnClose}
             onItineraryAdded={mockOnItineraryAdded}
+            itineraries={mockItineraries} // Pass mock itineraries
           />
         </UserProfileContext.Provider>
       </AlertContext.Provider>
@@ -246,5 +275,23 @@ describe("AddItineraryModal Component", () => {
     // Assert
     expect(mockPostItinerary).not.toHaveBeenCalled();
     expect(mockOnItineraryAdded).not.toHaveBeenCalled();
+  });
+
+  test("displays itineraries passed as props", () => {
+    // Arrange
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries} // Pass mock itineraries
+      />
+    );
+
+    // Assert that itineraries are displayed
+    mockItineraries.forEach((itinerary) => {
+      expect(screen.getByText(itinerary.destination)).toBeInTheDocument();
+      expect(screen.getByText(itinerary.description)).toBeInTheDocument();
+    });
   });
 });

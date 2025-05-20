@@ -1,6 +1,6 @@
 import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { app } from "../environments/environment";
+import { app } from "../environments/firebaseConfig";
 
 const usePostUserProfileToDb = () => {
 

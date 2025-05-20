@@ -20,7 +20,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { app, auth } from "../../environments/environment";
+import { app, auth } from "../../environments/firebaseConfig";
 import { FormHelperText } from "@mui/material";
 import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { GoogleIcon } from "../custom-icons/GoogleIcon";

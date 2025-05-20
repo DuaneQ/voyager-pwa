@@ -11,13 +11,13 @@ export function UserAuthContextProvider({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let unsubscribe;
+    unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setLoading(false);
       if (currentUser && currentUser.emailVerified) {
         setUser(currentUser);
       } else {
         setUser(null);
-        navigate("/Login");
       }
     });
     return () => {

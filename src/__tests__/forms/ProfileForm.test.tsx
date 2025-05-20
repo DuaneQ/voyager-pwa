@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ProfileForm } from "../../components/forms/ProfileForm";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { AlertContext } from "../../Context/AlertContext";
-import { auth } from "../../environments/environment";
+import { auth } from "../../environments/firebaseConfig";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 
 jest.mock("firebase/auth", () => ({

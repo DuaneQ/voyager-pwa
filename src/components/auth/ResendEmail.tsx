@@ -1,7 +1,7 @@
 import { Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import { sendEmailVerification } from "firebase/auth";
-import { auth } from "../../environments/environment";
+import { auth } from "../../environments/firebaseConfig";
 import { useContext } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import MuiCard from "@mui/material/Card";

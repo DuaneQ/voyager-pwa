@@ -9,15 +9,16 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: npm init
-      - run: npm install --save firebase --legacy-peer-deps
-      - run: CI=false npm run build
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: echo "Environment: $REACT_APP_ENV"
+      - run: npm run build
+        env:
+          REACT_APP_ENV: development
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}
-          projectId: mundo1-1
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          projectId: mundo1-dev
