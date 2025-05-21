@@ -8,6 +8,9 @@ import { UserProfileContext } from "../../Context/UserProfileContext";
 // Mock dependencies
 jest.mock("../../hooks/useGetItinerariesFromFirestore");
 jest.mock("../../hooks/useGetUserProfile");
+jest.mock("react-google-places-autocomplete", () => () => (
+  <div data-testid="mock-google-places-autocomplete" />
+));
 
 describe("Search Component", () => {
   const mockFetchItineraries = jest.fn();
@@ -60,7 +63,10 @@ describe("Search Component", () => {
     const addButton = screen.getByRole("button", { name: /add itinerary/i });
     expect(addButton).toBeInTheDocument();
     addButton.click();
-    const modal = await screen.findByText(/add new itinerary/i); // Adjust text based on modal content
-    expect(modal).toBeInTheDocument();
+    screen.debug();
+    const modalHeading = await screen.findByRole("heading", {
+      name: /Add New Itinerary/i,
+    });
+    expect(modalHeading).toBeInTheDocument();
   });
 });
