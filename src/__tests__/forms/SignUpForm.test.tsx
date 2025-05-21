@@ -16,7 +16,7 @@ const mockShowAlert = jest.fn();
 jest.mock("../../environments/firebaseConfig", () => {
   const mockAuth = {};
   return {
-    auth: mockAuth, // Use mockAuth here
+    auth: mockAuth,
   };
 });
 
