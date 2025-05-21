@@ -1,4 +1,4 @@
-name: React Unit Tests
+name: React Unit Tests and Build
 
 on:
   push:
@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [22.x]
@@ -37,14 +36,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-  build_and_test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: npm ci --legacy-peer-deps
-      - run: npm run test
-        env:
-          REACT_APP_ENV: development
-      - run: npm run build
+      - name: Build project
+        run: npm run build
         env:
           REACT_APP_ENV: production
