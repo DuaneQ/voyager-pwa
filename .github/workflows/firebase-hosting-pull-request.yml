@@ -2,27 +2,20 @@
 # https://github.com/firebase/firebase-tools
 
 name: Deploy to Firebase Hosting on PR
-
 on: pull_request
-
 permissions:
   checks: write
   contents: read
   pull-requests: write
-
 jobs:
   build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - run: npm ci --legacy-peer-deps
-      - run: 'echo "Environment: $REACT_APP_ENV"'
-      - run: npm run build
-        env:
-          REACT_APP_ENV: development
-          CI: false
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
-          projectId: mundo1-dev
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}
+          projectId: mundo1-1
