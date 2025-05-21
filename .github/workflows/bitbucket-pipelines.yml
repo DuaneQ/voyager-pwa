@@ -32,7 +32,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Log Environment
-        run: echo "Environment: $REACT_APP_ENV"
+        run: "echo 'Environment: $REACT_APP_ENV'"
 
       - name: Run tests
         run: npm test
