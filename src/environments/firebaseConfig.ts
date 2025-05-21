@@ -25,8 +25,5 @@ const prodConfig = {
 const firebaseConfig =
   process.env.REACT_APP_ENV === "production" ? prodConfig : devConfig;
 
-console.log("Firebase Config Environment:", process.env.REACT_APP_ENV);
-console.log("Firebase Config Details:", firebaseConfig);
-
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
