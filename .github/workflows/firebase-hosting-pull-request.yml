@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: npm install
-      - run: echo "Environment: $REACT_APP_ENV"
+      - run: npm ci --legacy-peer-deps
+      - run: 'echo "Environment: $REACT_APP_ENV"'
       - run: npm run build
         env:
           REACT_APP_ENV: development
