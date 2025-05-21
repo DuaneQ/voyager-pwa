@@ -181,7 +181,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         }}>
         <h2>Add New Itinerary</h2>
         <GooglePlacesAutocomplete
-          apiKey="REMOVED"
+          apiKey={process.env.REACT_APP_GOOGLE_PLACES_API_KEY}
           selectProps={{
             value: newItinerary.destination
               ? {
