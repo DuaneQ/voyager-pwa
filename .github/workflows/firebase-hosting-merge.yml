@@ -14,6 +14,8 @@ jobs:
       - run: npm init
       - run: npm install --save --legacy-peer-deps firebase
       - run: CI=false npm run build
+        env:
+          REACT_APP_ENV: production
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
