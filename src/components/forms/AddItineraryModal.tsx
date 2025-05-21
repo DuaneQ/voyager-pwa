@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
-import { Itinerary } from "../../types/Itinerary"; // Adjust the path as needed
+import { Itinerary } from "../../types/Itinerary";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
@@ -21,8 +21,8 @@ import ItineraryCard from "../forms/ItineraryCard";
 interface AddItineraryModalProps {
   open: boolean;
   onClose: () => void;
-  onItineraryAdded: (destination: string) => void; // Trigger the re-fetch in Search.tsx
-  itineraries: Itinerary[]; // Pass itineraries as a prop
+  onItineraryAdded: (destination: string) => void;
+  itineraries: Itinerary[]; 
 }
 
 const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
