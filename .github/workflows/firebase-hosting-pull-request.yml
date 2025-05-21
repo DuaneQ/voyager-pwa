@@ -13,15 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - run: npm ci --legacy-peer-deps
-      - run: npm run build
-        env:
-          REACT_APP_ENV: production
-          CI: false
+      - run: npm init
+      - run: npm install --save firebase --legacy-peer-deps
+      - run: CI=false npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
