@@ -1,3 +1,4 @@
+import React from 'react';
 import { screen, fireEvent, waitFor, render } from "@testing-library/react";
 import SignUpForm from "../../components/forms/SignUpForm";
 import { BrowserRouter as Router } from "react-router-dom";
@@ -15,7 +16,7 @@ const mockShowAlert = jest.fn();
 jest.mock("../../environments/firebaseConfig", () => {
   const mockAuth = {};
   return {
-    auth: mockAuth, // Use mockAuth here
+    auth: mockAuth,
   };
 });
 

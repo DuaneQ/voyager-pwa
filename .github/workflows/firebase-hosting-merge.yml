@@ -10,14 +10,15 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - run: npm install
-      - run: echo "Environment: $REACT_APP_ENV"
-      - run: npm run build
+      - uses: actions/checkout@v4
+      - run: npm init
+      - run: npm install --save --legacy-peer-deps firebase
+      - run: CI=false npm run build
         env:
           REACT_APP_ENV: production
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}
+          channelId: live
           projectId: mundo1-1

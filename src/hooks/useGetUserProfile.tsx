@@ -3,7 +3,6 @@ import useGetUserId from "./useGetUserId";
 import { app } from "../environments/firebaseConfig";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
 import 'firebase/firestore';
-import { initializeApp } from "firebase/app";
 import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
