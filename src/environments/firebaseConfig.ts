@@ -23,7 +23,11 @@ const prodConfig = {
 };
 
 const firebaseConfig =
-  process.env.REACT_APP_ENV === "production" ? prodConfig : devConfig;
+  typeof process !== "undefined" &&
+  process.env &&
+  process.env.REACT_APP_ENV === "production"
+    ? prodConfig
+    : devConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
