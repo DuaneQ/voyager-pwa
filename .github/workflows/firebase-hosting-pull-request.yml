@@ -27,7 +27,11 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
           projectId: mundo1-dev
-
+      - name: Debug Firebase Deploy Outputs
+        run: |
+          echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
+          echo "details_url: ${{ steps.firebase_deploy.outputs.details_url }}"
+          echo "details_path: ${{ steps.firebase_deploy.outputs.details_path }}"
   cypress_tests:
     needs: build_and_preview
     runs-on: ubuntu-latest
