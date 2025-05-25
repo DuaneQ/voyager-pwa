@@ -11,6 +11,8 @@ jobs:
   build_and_preview:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}
     steps:
       - uses: actions/checkout@v4
       - run: npm init
@@ -33,5 +35,5 @@ jobs:
         - run: npm ci --legacy-peer-deps
         - name: Run Cypress E2E and Component Tests
           env:
-            CYPRESS_BASE_URL: ${{ steps.firebase_deploy.outputs.preview_url }}
+            CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}
           run: npm run test:ci
