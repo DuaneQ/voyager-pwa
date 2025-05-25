@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     outputs:
-      preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}
+      preview_url: ${{ steps.set_preview_url.outputs.preview_url }}
     steps:
       - uses: actions/checkout@v4
       - run: npm init
@@ -27,6 +27,9 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
           projectId: mundo1-dev
+      - name: Set Preview URL Output
+        id: set_preview_url
+        run: echo "preview_url=$(jq -r '.urls[0]' < "${{ steps.firebase_deploy.outputs.details_path }}")" >> $GITHUB_OUTPUT
   cypress_tests:
     needs: build_and_preview
     runs-on: ubuntu-latest
