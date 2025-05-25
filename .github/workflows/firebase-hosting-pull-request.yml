@@ -28,12 +28,17 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
           projectId: mundo1-dev
   cypress_tests:
-      needs: build_and_preview
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - run: npm ci --legacy-peer-deps
-        - name: Run Cypress E2E and Component Tests
-          env:
-            CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}
-          run: npm run test:ci
+    needs: build_and_preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci --legacy-peer-deps
+      - name: Debug Preview URL
+        run: echo "Preview URL is $CYPRESS_BASE_URL"
+        env:
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}      
+      - name: Run Cypress E2E and Component Tests
+        env:
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}
+        run: npm run test:ci
+
