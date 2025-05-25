@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}
+      details_url: ${{ steps.firebase_deploy.outputs.details_url }}
     steps:
       - uses: actions/checkout@v4
       - run: npm init
@@ -47,7 +48,7 @@ jobs:
             echo "Preview URL is $CYPRESS_BASE_URL"
           fi
         env:
-          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.details_url }}
       - name: Wait for Server to Start
         run: |
           for i in {1..10}; do
@@ -55,5 +56,5 @@ jobs:
           done
       - name: Run Cypress E2E and Component Tests
         env:
-          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.preview_url }}
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.details_url }}
         run: npm run test:ci
