@@ -26,7 +26,7 @@ jest.mock("react-google-places-autocomplete", () => {
   ));
 });
 
-describe("AddItineraryModal Component", () => {
+describe.only("AddItineraryModal Component", () => {
   const mockUserId = "testUserId";
   const mockUserProfile = {
     username: "Test User",
