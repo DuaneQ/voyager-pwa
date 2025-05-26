@@ -64,6 +64,7 @@ describe("AddItineraryModal Component", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    window.alert = jest.fn();
     (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
     (usePostItineraryToFirestore as jest.Mock).mockReturnValue({
       postItinerary: mockPostItinerary,
