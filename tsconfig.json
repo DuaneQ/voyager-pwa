@@ -22,6 +22,7 @@
   },
   "include": [
     "src",
+    "cypress",
     "startUp.ts"
-  ]
+, "jest.fetch-polyfill.js"  ]
 }

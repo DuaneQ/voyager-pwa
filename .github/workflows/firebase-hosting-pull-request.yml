@@ -2,7 +2,11 @@
 # https://github.com/firebase/firebase-tools
 
 name: Deploy to Firebase Hosting on PR
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 permissions:
   checks: write
   contents: read
@@ -11,6 +15,9 @@ jobs:
   build_and_preview:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}
+      details_url: ${{ steps.firebase_deploy.outputs.details_url }}
     steps:
       - uses: actions/checkout@v4
       - run: npm init
@@ -20,7 +27,72 @@ jobs:
           REACT_APP_ENV: development
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
+        id: firebase_deploy
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
           projectId: mundo1-dev
+      - name: Debug Firebase Deploy Outputs
+        run: |
+          echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
+          echo "details_url: ${{ steps.firebase_deploy.outputs.details_url }}"
+          echo "details_path: ${{ steps.firebase_deploy.outputs.details_path }}"
+  cypress_tests:
+    needs: build_and_preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci --legacy-peer-deps
+      - name: Debug Preview URL
+        run: |
+          if [ -z "$CYPRESS_BASE_URL" ]; then
+            echo "CYPRESS_BASE_URL is empty! Check the build_and_preview job outputs."
+            exit 1
+          else
+            echo "Preview URL is $CYPRESS_BASE_URL"
+          fi
+        env:
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.details_url }}
+      - name: Wait for Server to Start
+        run: |
+          for i in {1..10}; do
+            curl -s $CYPRESS_BASE_URL && break || sleep 5
+          done
+      - name: Run Cypress E2E and Component Tests
+        env:
+          CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.details_url }}
+        run: npm run test:ci
+  codeql:
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        language: ["javascript"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+  coverage:
+    needs: cypress_tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci --legacy-peer-deps
+      - name: Run tests with coverage
+        run: npm test -- --coverage --watchAll=false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
