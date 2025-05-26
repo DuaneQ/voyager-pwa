@@ -26,7 +26,7 @@ jest.mock("react-google-places-autocomplete", () => {
   ));
 });
 
-describe.only("AddItineraryModal Component", () => {
+describe("AddItineraryModal Component", () => {
   const mockUserId = "testUserId";
   const mockUserProfile = {
     username: "Test User",
@@ -64,6 +64,7 @@ describe.only("AddItineraryModal Component", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    window.alert = jest.fn();
     (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
     (usePostItineraryToFirestore as jest.Mock).mockReturnValue({
       postItinerary: mockPostItinerary,
