@@ -11,11 +11,17 @@ import favicon from "../../assets/images/ic-like.png";
 import noLikeIcon from "../../assets/images/ic-nolike.png";
 import { Itinerary } from "../../types/Itinerary";
 
-interface ItineraryCardProps {
+export interface ItineraryCardProps {
   itinerary: Itinerary;
+  onLike: (itinerary: Itinerary) => void;
+  onDislike: (itinerary: Itinerary) => void;
 }
 
-const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
+const ItineraryCard: React.FC<ItineraryCardProps> = ({
+  itinerary,
+  onLike,
+  onDislike,
+}) => {
   const startDate = itinerary.startDate
     ? new Date(itinerary.startDate).toLocaleDateString()
     : "N/A";
@@ -92,11 +98,13 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
             backgroundColor: "transparent",
             padding: 0,
             minWidth: "auto",
-          }}>
+          }}
+          onClick={() => onDislike(itinerary)}
+          aria-label="Dislike">
           <img
             src={noLikeIcon}
             alt="No Like Icon"
-            style={{ width: "60px", height: "60px" }} // Increased size by 100%
+            style={{ width: "60px", height: "60px" }}
           />
         </Button>
         <Button
@@ -104,11 +112,13 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
             backgroundColor: "transparent",
             padding: 0,
             minWidth: "auto",
-          }}>
+          }}
+          onClick={() => onLike(itinerary)}
+          aria-label="Like">
           <img
             src={favicon}
             alt="Favicon Icon"
-            style={{ width: "60px", height: "60px" }} // Increased size by 100%
+            style={{ width: "60px", height: "60px" }}
           />
         </Button>
       </CardActions>
