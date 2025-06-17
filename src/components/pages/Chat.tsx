@@ -34,7 +34,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ImageIcon from "@mui/icons-material/Image";
 import { Connection } from "../../types/Connection";
 import { Message } from "../../types/Message";
-import { Itinerary } from "../../types/Itinerary";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
