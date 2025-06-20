@@ -9,39 +9,35 @@ It demonstrates advanced software engineering, quality engineering, and DevOps p
 
 ```mermaid
 graph TD
-  subgraph Client
-    A[React PWA (MUI, React Router)]
-    B[Service Worker]
-    C[Cypress/Jest Tests]
-  end
+  Client[React PWA]
+  ServiceWorker[Service Worker]
+  Tests[Cypress/Jest]
+  Firestore[Firestore]
+  Auth[Auth]
+  Functions[Functions]
+  Storage[Storage]
+  Hosting[Firebase Hosting]
+  GH[GitHub Actions]
+  Codecov[Codecov]
+  ESLint[ESLint]
+  CodeQL[CodeQL]
+  SendGrid[SendGrid]
 
-  subgraph Firebase
-    D[Firestore]
-    E[Auth]
-    F[Functions]
-    G[Storage]
-    H[Firebase Hosting]
-  end
+  Client -->|REST/SDK| Firestore
+  Client -->|REST/SDK| Auth
+  Client -->|REST/SDK| Storage
+  Client -->|REST/SDK| Functions
+  Client -->|HTTPS| Hosting
+  ServiceWorker -.-> Client
+  Tests -.-> Client
 
-  subgraph CI/CD
-    I[GitHub Actions]
-    J[Codecov]
-    K[ESLint]
-    L[GitHub CodeQL]
-  end
-
-  A -- REST/SDK --> D
-  A -- REST/SDK --> E
-  A -- REST/SDK --> G
-  A -- REST/SDK --> F
-  A -- HTTPS --> H
-  I -- Deploy --> H
-  I -- Run Tests --> C
-  I -- Coverage --> J
-  I -- Lint --> K
-  I -- Security Scan --> L
-  F -- Triggers --> D
-  F -- Email Notification --> M[SendGrid (via mail collection)]
+  GH -->|Deploy| Hosting
+  GH -->|Run Tests| Tests
+  GH -->|Coverage| Codecov
+  GH -->|Lint| ESLint
+  GH -->|Security Scan| CodeQL
+  Functions -->|Triggers| Firestore
+  Functions -->|Email Notification| SendGrid
 ```
 
 ---
