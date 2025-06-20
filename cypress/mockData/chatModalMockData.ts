@@ -1,36 +1,14 @@
 export const mockConnection = {
   id: "conn1",
-  users: ["user1", "user2"],
-  itineraryIds: ["it1", "it2"],
-  itineraries: [
-    {
-      id: "it1",
-      destination: "Rome",
-      startDate: "2024-01-01",
-      endDate: "2024-01-10",
-      description: "Rome trip",
-      userInfo: {
-        username: "Alice",
-        uid: "user1",
-        gender: "Female",
-        dob: "1990-01-01",
-      },
-    },
-    {
-      id: "it2",
-      destination: "Paris",
-      startDate: "2024-02-01",
-      endDate: "2024-02-10",
-      description: "Paris trip",
-      userInfo: {
-        username: "Bob",
-        uid: "user2",
-        gender: "Male",
-        dob: "1992-02-02",
-      },
-    },
-  ],
-  createdAt: "2024-01-01T00:00:00Z",
+  users: ["userA", "userB"],
+  itineraryIds: [],
+  itineraries: [],
+  createdAt: { seconds: 123, nanoseconds: 0 },
+  // Add the unreadCounts property as required by your Chat logic
+  unreadCounts: {
+    userA: 2, // Example: userA has 2 unread messages
+    userB: 0, // Example: userB has no unread messages
+  },
 };
 
 export const mockMessages = [
