@@ -18,12 +18,14 @@ import {
   doc,
   updateDoc,
   arrayUnion,
-  setDoc,
   addDoc,
   collection,
+  serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
+import { useNewConnection } from "../../Context/NewConnectionContext";
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
@@ -44,6 +46,7 @@ export const Search = () => {
   const { matchingItineraries, searchItineraries } = useSearchItineraries();
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const { setHasNewConnection } = useNewConnection();
   const userId = useGetUserId();
   const db = getFirestore(app);
 
@@ -97,16 +100,20 @@ export const Search = () => {
     await updateDoc(itineraryRef, {
       likes: arrayUnion(userId),
     });
-    console.log(`Added userId ${userId} to likes of itinerary ${itinerary.id}`);
+    console.log(`User ${userId} liked itinerary ${itinerary.id}`);
 
-    // 2. Find the current user's selected itinerary
-    const myItinerary = itineraries.find((it) => it.id === selectedItineraryId);
+    // 2. Fetch the latest version of the current user's selected itinerary from Firestore
+    const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
+    const myItinerarySnap = await getDoc(myItineraryRef);
+    const myItinerary = myItinerarySnap.data();
     if (!myItinerary) {
-      console.log("No selected itinerary found for current user.");
       setCurrentMatchIndex((prev) => prev + 1);
       return;
     }
-    console.log("Current user's selected itinerary:", myItinerary);
+    console.log(
+      "Freshly fetched current user's selected itinerary:",
+      myItinerary
+    );
 
     // 3. Check if the other user's UID is in your itinerary's likes array
     const otherUserUid = itinerary.userInfo?.uid ?? "";
@@ -117,22 +124,31 @@ export const Search = () => {
     }
     console.log("Other user's UID:", otherUserUid);
 
+    console.log("myItinerary.likes:", myItinerary.likes);
+    console.log("Looking for:", otherUserUid);
+
+    // 4. Create a new connection document with a unique ID
     if ((myItinerary.likes || []).includes(otherUserUid)) {
-      // 4. Create a new connection document with a unique ID
+      console.log("Mutual like detected! Creating connection...");
+      const myEmail = myItinerary?.userInfo?.email ?? "";
+      const otherEmail = itinerary?.userInfo?.email ?? "";
+
       await addDoc(collection(db, "connections"), {
         users: [userId, otherUserUid],
-        itineraryIds: [myItinerary.id, itinerary.id],
+        emails: [myEmail, otherEmail], 
+        unreadCounts: {
+          [userId]: 0,
+          [otherUserUid]: 0,
+        },
+        itineraryIds: [myItineraryRef.id, itinerary.id],
         itineraries: [myItinerary, itinerary],
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
       });
-      console.log("It's a match! Connection created.");
+      setHasNewConnection(true);
+      console.log("Connection created!");
       alert("It's a match! You can now chat with this user.");
     } else {
-      console.log(
-        `No mutual like yet. myItinerary.likes: ${JSON.stringify(
-          myItinerary.likes
-        )}, looking for: ${otherUserUid}`
-      );
+      console.log("No mutual like yet.");
     }
 
     setCurrentMatchIndex((prev) => prev + 1);
@@ -141,6 +157,13 @@ export const Search = () => {
   // Get the selected itinerary for display
   const selectedItinerary = itineraries.find(
     (it) => it.id === selectedItineraryId
+  );
+
+  // Sort itineraries by startDate ascending (oldest first)
+  const sortedItineraries = [...itineraries].sort(
+    (a, b) =>
+      new Date(a.startDate ?? "").getTime() -
+      new Date(b.startDate ?? "").getTime()
   );
 
   return (
@@ -187,14 +210,14 @@ export const Search = () => {
             <MenuItem value="" disabled>
               Select an itinerary
             </MenuItem>
-            {itineraries.map((itinerary) => (
+            {sortedItineraries.map((itinerary) => (
               <MenuItem
                 key={itinerary.id}
                 value={itinerary.id}
                 style={{
-                  whiteSpace: "normal", // allow wrapping
+                  whiteSpace: "normal",
                   wordBreak: "break-word",
-                  maxWidth: "350px", // increase if needed
+                  maxWidth: "350px",
                 }}>
                 <span>
                   {itinerary.destination}
@@ -224,7 +247,7 @@ export const Search = () => {
             alignItems: "center",
             maxWidth: "350px",
             margin: "0 auto",
-            marginBottom: "400px",
+            marginBottom: "300px",
           }}>
           Create an itinerary to find matches for your future trips. Once
           created, select one of your itineraries from the dropdown, and we'll
