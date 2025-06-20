@@ -8,9 +8,6 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
-  getDocs,
-  writeBatch,
-  arrayUnion,
   doc,
   updateDoc,
 } from "firebase/firestore";
@@ -33,6 +30,7 @@ export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const { setHasNewConnection } = useNewConnection();
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
+  const [selectedPhotoURL, setSelectedPhotoURL] = useState<string>("");
 
   // Fetch connections and unread status
   useEffect(() => {
@@ -76,11 +74,12 @@ export const Chat: React.FC = () => {
   // Combined: Fetch messages for selected connection in real-time and mark as read
   useEffect(() => {
     if (!selectedConnection || !userId) return;
+    // Listen for messages in real-time
     const q = query(
       collection(db, "connections", selectedConnection.id, "messages"),
       orderBy("createdAt")
     );
-    const unsub = onSnapshot(q, async (snapshot) => {
+    const unsub = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         return {
@@ -93,32 +92,14 @@ export const Chat: React.FC = () => {
         };
       });
       setMessages(msgs);
-
-      // Find unread messages for this user
-      const unreadDocs = snapshot.docs.filter((docSnap) => {
-        const msg = docSnap.data();
-        return (
-          msg.sender !== userId && (!msg.readBy || !msg.readBy.includes(userId))
-        );
-      });
-
-      // Mark unread messages as read
-      if (unreadDocs.length > 0) {
-        const batch = writeBatch(db);
-        unreadDocs.forEach((docSnap) => {
-          batch.update(docSnap.ref, {
-            readBy: arrayUnion(userId),
-          });
-        });
-        await batch.commit();
-
-        // Immediately update unreadMap for this connection
-        setUnreadMap((prev) => ({
-          ...prev,
-          [selectedConnection.id]: false,
-        }));
-      }
     });
+
+    // Reset unread count for this user on this connection
+    const connectionRef = doc(db, "connections", selectedConnection.id);
+    updateDoc(connectionRef, {
+      [`unreadCounts.${userId}`]: 0,
+    });
+
     return () => unsub();
   }, [selectedConnection, userId]);
 
@@ -128,15 +109,6 @@ export const Chat: React.FC = () => {
       setHasNewConnection(false);
     }
   }, [unreadMap, setHasNewConnection]);
-
-  // Reset unread count when a connection is selected
-  useEffect(() => {
-    if (!selectedConnection || !userId) return;
-    const connectionRef = doc(db, "connections", selectedConnection.id);
-    updateDoc(connectionRef, {
-      [`unreadCounts.${userId}`]: 0,
-    });
-  }, [selectedConnection, userId]);
 
   return (
     <div className="authFormContainer">
@@ -178,7 +150,11 @@ export const Chat: React.FC = () => {
                   key={conn.id}
                   conn={conn}
                   userId={userId}
-                  onClick={() => setSelectedConnection(conn)}
+                  onClick={(photoURL: string) => {
+                        console.log("Chat.tsx: Received photoURL from ChatListItem", photoURL);
+                    setSelectedConnection(conn)
+                    setSelectedPhotoURL(photoURL)
+                  }}
                   unread={!!unreadMap[conn.id]}
                 />
               );
@@ -192,6 +168,7 @@ export const Chat: React.FC = () => {
             connection={selectedConnection}
             messages={messages}
             userId={userId!}
+            otherUserPhotoURL={selectedPhotoURL}
           />
         )}
       </Box>

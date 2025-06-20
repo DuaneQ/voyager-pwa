@@ -58,6 +58,7 @@ describe("AddItineraryModal Component", () => {
         gender: "Other",
         dob: "1990-01-01",
         uid: "testUserId",
+        email: "email@user.com"
       },
     },
   ];

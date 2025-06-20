@@ -42,7 +42,7 @@ function getOtherItinerary(connection: Connection, userId: string) {
 export const ChatListItem: React.FC<{
   conn: Connection;
   userId: string;
-  onClick: () => void;
+  onClick: (photoURL: string) => void;
   unread: boolean;
 }> = ({ conn, userId, onClick, unread }) => {
   const otherUser = getOtherUser(conn, userId);
@@ -58,7 +58,11 @@ export const ChatListItem: React.FC<{
         boxShadow: 10,
         background: "transparent",
       }}>
-      <ListItemButton onClick={onClick}>
+      <ListItemButton
+        onClick={() => {
+          console.log("ChatListItem: otherUserPhoto", otherUserPhoto);
+          onClick(otherUserPhoto);
+        }}>
         <ListItemAvatar>
           <Badge
             color="error"

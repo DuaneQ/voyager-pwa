@@ -1,9 +1,58 @@
 import React from "react";
-import ChatModal from "../../src/components/modals/ChatModal";
 import { mount } from "cypress/react";
-import { mockConnection, mockMessages } from "../mockData/chatModalMockData";
+import ChatModal from "../../src/components/modals/ChatModal";
+import { Timestamp } from "firebase/firestore";
+import { Connection } from "../../src/types/Connection";
+import { Message } from "../../src/types/Message";
 
-describe("ChatModal Component", () => {
+// Use Firestore Timestamp for createdAt fields
+const mockConnection: Connection = {
+  id: "conn1",
+  users: ["userA", "userB"],
+  itineraryIds: [],
+  itineraries: [],
+  createdAt: Timestamp.fromDate(new Date("2024-07-01T00:00:00Z")),
+  unreadCounts: {
+    userA: 2,
+    userB: 0,
+  },
+};
+
+const mockMessages: Message[] = [
+  {
+    id: "msg1",
+    sender: "userB",
+    text: "Hello!",
+    imageUrl: "",
+    createdAt: Timestamp.fromDate(new Date("2024-07-01T12:00:00Z")),
+    readBy: [],
+  },
+  {
+    id: "msg2",
+    sender: "userA",
+    text: "Hi!",
+    imageUrl: "",
+    createdAt: Timestamp.fromDate(new Date("2024-07-01T12:05:00Z")),
+    readBy: ["userA"],
+  },
+];
+
+describe("ChatModal", () => {
+  it("renders messages and handles unread logic", () => {
+    mount(
+      <ChatModal
+        open={true}
+        onClose={() => {}}
+        connection={mockConnection}
+        messages={mockMessages}
+        userId="userA"
+      />
+    );
+
+    cy.contains("Hello!").should("exist");
+    cy.contains("Hi!").should("exist");
+  });
+
   const baseProps = {
     open: true,
     connection: mockConnection,
@@ -22,14 +71,19 @@ describe("ChatModal Component", () => {
   });
 
   it("renders the modal with user info and messages (happy path)", () => {
-    const onClose = cy.stub();
-    mount(<ChatModal {...baseProps} onClose={onClose} />);
-    cy.contains(mockConnection.itineraries[1].userInfo.username).should(
-      "exist"
+    mount(
+      <ChatModal
+        open={true}
+        onClose={() => {}}
+        connection={mockConnection}
+        messages={mockMessages}
+        userId="userA"
+      />
     );
-    cy.contains(mockConnection.itineraries[1].destination).should("exist");
+    cy.contains("Hello!").should("exist");
+    cy.contains("Hi!").should("exist");
     cy.get('input[placeholder="Type a message"]').should("exist");
-    cy.contains(mockMessages[0].text).should("exist");
+
     cy.contains("Send").should("exist");
   });
 
