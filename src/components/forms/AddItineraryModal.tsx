@@ -108,6 +108,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         gender: userProfile?.gender || "Not specified",
         dob: userProfile?.dob || "Unknown",
         uid: userId || "Unknown",
+        email: userProfile?.email || "",
       };
       const itineraryWithUserInfo = {
         ...newItinerary,

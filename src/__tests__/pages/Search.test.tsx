@@ -7,6 +7,7 @@ import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import useSearchItineraries from "../../hooks/useSearchItineraries";
 import * as firestore from "firebase/firestore";
+import { NewConnectionProvider } from "../../Context/NewConnectionContext";
 
 // Mock dependencies
 jest.mock("../../hooks/useGetItinerariesFromFirestore");
@@ -19,11 +20,17 @@ jest.mock("firebase/firestore", () => ({
   updateDoc: jest.fn(),
   addDoc: jest.fn(),
   collection: jest.fn(),
+  getDoc: jest.fn(),
 }));
 
 jest.mock("react-google-places-autocomplete", () => () => (
   <div data-testid="mock-google-places-autocomplete" />
 ));
+
+// Mock window.alert for jsdom
+beforeAll(() => {
+  window.alert = jest.fn();
+});
 
 describe("Search Component", () => {
   const mockFetchItineraries = jest.fn();
@@ -43,20 +50,30 @@ describe("Search Component", () => {
       searchItineraries: mockSearchItineraries,
     });
     (firestore.collection as jest.Mock).mockReturnValue("mockCollection");
-    (firestore.doc as jest.Mock).mockReturnValue("mockDoc");
     (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
     (firestore.addDoc as jest.Mock).mockResolvedValue(undefined);
+
+    // Always return a snapshot with a .data() method
+    (firestore.getDoc as jest.Mock).mockResolvedValue({
+      data: () => ({
+        id: "1",
+        destination: "Paris",
+        likes: [],
+      }),
+    });
   });
 
   const renderWithContext = (ui: React.ReactElement) => {
     return render(
-      <UserProfileContext.Provider
-        value={{
-          userProfile: mockUserProfile,
-          updateUserProfile: jest.fn(),
-        }}>
-        {ui}
-      </UserProfileContext.Provider>
+      <NewConnectionProvider>
+        <UserProfileContext.Provider
+          value={{
+            userProfile: mockUserProfile,
+            updateUserProfile: jest.fn(),
+          }}>
+          {ui}
+        </UserProfileContext.Provider>
+      </NewConnectionProvider>
     );
   };
 
@@ -98,8 +115,6 @@ describe("Search Component", () => {
     expect(modalHeading).toBeInTheDocument();
   });
 
-  // --- New Tests for Connection Creation ---
-
   test("creates a connection when there is a mutual like", async () => {
     // Arrange
     const myItinerary = {
@@ -116,6 +131,16 @@ describe("Search Component", () => {
     (useSearchItineraries as jest.Mock).mockReturnValue({
       matchingItineraries: [otherItinerary],
       searchItineraries: mockSearchItineraries,
+    });
+
+    // Mock doc to return objects with id property for connection creation
+    (firestore.doc as jest.Mock).mockImplementation((db, collection, id) => ({
+      id,
+    }));
+
+    // Mock getDoc to return the correct likes array
+    (firestore.getDoc as jest.Mock).mockResolvedValue({
+      data: () => myItinerary,
     });
 
     renderWithContext(<Search />);
@@ -169,6 +194,16 @@ describe("Search Component", () => {
       searchItineraries: mockSearchItineraries,
     });
 
+    // Mock doc to return objects with id property for connection creation
+    (firestore.doc as jest.Mock).mockImplementation((db, collection, id) => ({
+      id,
+    }));
+
+    // Mock getDoc to return the correct likes array
+    (firestore.getDoc as jest.Mock).mockResolvedValue({
+      data: () => myItinerary,
+    });
+
     renderWithContext(<Search />);
 
     // Wait for itineraries to load
@@ -213,6 +248,9 @@ describe("Search Component", () => {
       matchingItineraries: [otherItinerary],
       searchItineraries: mockSearchItineraries,
     });
+
+    // For updateDoc, doc should return a string
+    (firestore.doc as jest.Mock).mockReturnValue("mockDoc");
 
     renderWithContext(<Search />);
 
