@@ -16,6 +16,7 @@ describe("ItineraryCard", () => {
       gender: "Male",
       dob: "1990-01-01",
       uid: "12345",
+      email: "email@user.com"
     },
   };
 

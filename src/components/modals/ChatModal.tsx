@@ -71,6 +71,7 @@ interface ChatModalProps {
   connection: Connection;
   messages: Message[];
   userId: string;
+  otherUserPhotoURL: string;
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({
@@ -79,6 +80,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
   connection,
   messages,
   userId,
+  otherUserPhotoURL
 }) => {
   const [messageInput, setMessageInput] = useState<string>("");
   const [sending, setSending] = useState(false);
@@ -179,7 +181,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
           overflowY: "auto",
         }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Avatar src={getUserPhotoURL(otherUser)} />
+          <Avatar src={otherUserPhotoURL || DEFAULT_AVATAR} />
           <Box ml={2}>
             <Typography variant="subtitle1">{otherUser.username}</Typography>
             <Typography variant="caption" color="textSecondary">
