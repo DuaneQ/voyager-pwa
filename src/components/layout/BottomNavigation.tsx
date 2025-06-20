@@ -1,15 +1,21 @@
 import React from "react";
-import { BottomNavigation, BottomNavigationAction } from "@mui/material";
+import { BottomNavigation, BottomNavigationAction, Badge } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate, useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import { useNewConnection } from "../../Context/NewConnectionContext";
 
-const BottomNav: React.FC = () => {
+interface BottomNavProps {
+  unreadCount?: number; // or use hasUnread?: boolean
+}
+
+const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // Get the current route
-  const [value, setValue] = React.useState(location.pathname); // Initialize with the current route
+  const location = useLocation();
+  const [value, setValue] = React.useState(location.pathname);
+  const { hasNewConnection } = useNewConnection();
 
   const StyledBottomNavigationAction = styled(BottomNavigationAction)(
     ({ theme }) => ({
@@ -24,7 +30,6 @@ const BottomNav: React.FC = () => {
   );
 
   React.useEffect(() => {
-    // Update the value when the route changes
     setValue(location.pathname);
   }, [location.pathname]);
 
@@ -34,13 +39,21 @@ const BottomNav: React.FC = () => {
       value={value}
       onChange={(event, newValue) => {
         setValue(newValue);
-        navigate(newValue); // Navigate to the selected route
+        navigate(newValue);
       }}
       sx={{ width: "100%", position: "fixed", bottom: 0 }}>
       <StyledBottomNavigationAction
         label="Chat"
         value="/Chat"
-        icon={<ChatIcon />}
+        icon={
+          <Badge
+            color="secondary"
+            variant={hasNewConnection ? "dot" : "standard"}
+            badgeContent={unreadCount > 0 ? unreadCount : undefined}
+            overlap="circular">
+            <ChatIcon />
+          </Badge>
+        }
       />
       <StyledBottomNavigationAction
         label="Profile"
