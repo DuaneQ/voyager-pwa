@@ -31,3 +31,11 @@ const firebaseConfig =
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+export const getMessagingInstance = () => {
+  if (typeof window !== "undefined") {
+    const { getMessaging } = require("firebase/messaging");
+    return getMessaging(app);
+  }
+  return null;
+};
