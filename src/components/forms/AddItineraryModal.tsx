@@ -108,6 +108,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         gender: userProfile?.gender || "Not specified",
         dob: userProfile?.dob || "Unknown",
         uid: userId || "Unknown",
+        email: userProfile?.email || "",
       };
       const itineraryWithUserInfo = {
         ...newItinerary,
@@ -332,7 +333,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           </Typography>
           {itineraries.length > 0 ? (
             itineraries.map((itinerary) => (
-              <ItineraryCard key={itinerary.id} itinerary={itinerary} />
+              <ItineraryCard
+                key={itinerary.id}
+                itinerary={itinerary}
+                onLike={() => {}}
+                onDislike={() => {}}
+              />
             ))
           ) : (
             <Typography variant="body2" color="textSecondary">

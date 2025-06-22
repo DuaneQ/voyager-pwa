@@ -16,5 +16,6 @@ export interface Itinerary {
     gender: string;
     dob: string;
     uid: string;
+    email: string;
   };
 }

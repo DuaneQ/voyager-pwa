@@ -11,7 +11,8 @@ import { Reset } from "./components/auth/Reset";
 import Header from "./components/layout/Header";
 import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
-import {  UserProfileProvider } from "./Context/UserProfileContext";
+import { UserProfileProvider } from "./Context/UserProfileContext";
+import { NewConnectionProvider } from "./Context/NewConnectionContext";
 
 function App() {
   const location = useLocation();
@@ -24,52 +25,54 @@ function App() {
   return (
     <AlertProvider>
       <Header />
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-        }}>
-        <div style={{ flex: 1 }}>
-          <Routes>
-            <Route path="/Login" element={<Login />} />
-            <Route path="/Register" element={<Register />} />
-            <Route path="/ResendEmail" element={<ResendEmail />} />
-            <Route
-              path="/"
-              element={
-                <Protected>
-                  <UserProfileProvider>
-                    <Profile />
-                  </UserProfileProvider>
-                </Protected>
-              }
-            />
-            <Route
-              path="/Search"
-              element={
-                <Protected>
-                  <UserProfileProvider>
-                    <Search />
-                  </UserProfileProvider>
-                </Protected>
-              }
-            />
-            <Route
-              path="/Chat"
-              element={
-                <Protected>
-                  <UserProfileProvider>
-                    <Chat />
-                  </UserProfileProvider>
-                </Protected>
-              }
-            />
-            <Route path="/Reset" element={<Reset />} />
-          </Routes>
+      <NewConnectionProvider>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "100vh",
+          }}>
+          <div style={{ flex: 1 }}>
+            <Routes>
+              <Route path="/Login" element={<Login />} />
+              <Route path="/Register" element={<Register />} />
+              <Route path="/ResendEmail" element={<ResendEmail />} />
+              <Route
+                path="/"
+                element={
+                  <Protected>
+                    <UserProfileProvider>
+                      <Profile />
+                    </UserProfileProvider>
+                  </Protected>
+                }
+              />
+              <Route
+                path="/Search"
+                element={
+                  <Protected>
+                    <UserProfileProvider>
+                      <Search />
+                    </UserProfileProvider>
+                  </Protected>
+                }
+              />
+              <Route
+                path="/Chat"
+                element={
+                  <Protected>
+                    <UserProfileProvider>
+                      <Chat />
+                    </UserProfileProvider>
+                  </Protected>
+                }
+              />
+              <Route path="/Reset" element={<Reset />} />
+            </Routes>
+          </div>
+          {!hideBottomNav && <BottomNav />}
         </div>
-        {!hideBottomNav && <BottomNav />}
-      </div>
+      </NewConnectionProvider>
     </AlertProvider>
   );
 }
