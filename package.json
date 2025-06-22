@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@cypress/react": "^9.0.1",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@google-cloud/secret-manager": "^5.6.0",
@@ -16,7 +17,6 @@
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^27.5.2",
-    "@types/material-ui": "^0.21.17",
     "@types/node": "^17.0.45",
     "ajv": "^6.12.6",
     "ajv-keywords": "^3.5.2",
@@ -94,5 +94,10 @@
   },
   "resolutions": {
     "@types/react": "18.3.11"
-  }
+  },
+  "description": "Voyager PWA is a modern, production-grade Progressive Web Application for travel itinerary management.   It demonstrates advanced software engineering, quality engineering, and DevOps practices using a robust, scalable, and maintainable architecture.",
+  "main": "jest.fetch-polyfill.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

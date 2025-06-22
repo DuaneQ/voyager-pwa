@@ -5,6 +5,43 @@ It demonstrates advanced software engineering, quality engineering, and DevOps p
 
 ---
 
+## 🏗️ Architecture Diagram
+
+```mermaid
+graph TD
+  Client[React PWA]
+  ServiceWorker[Service Worker]
+  Tests[Cypress/Jest]
+  Firestore[Firestore]
+  Auth[Auth]
+  Functions[Functions]
+  Storage[Storage]
+  Hosting[Firebase Hosting]
+  GH[GitHub Actions]
+  Codecov[Codecov]
+  ESLint[ESLint]
+  CodeQL[CodeQL]
+  SendGrid[SendGrid]
+
+  Client -->|REST/SDK| Firestore
+  Client -->|REST/SDK| Auth
+  Client -->|REST/SDK| Storage
+  Client -->|REST/SDK| Functions
+  Client -->|HTTPS| Hosting
+  ServiceWorker -.-> Client
+  Tests -.-> Client
+
+  GH -->|Deploy| Hosting
+  GH -->|Run Tests| Tests
+  GH -->|Coverage| Codecov
+  GH -->|Lint| ESLint
+  GH -->|Security Scan| CodeQL
+  Functions -->|Triggers| Firestore
+  Functions -->|Email Notification| SendGrid
+```
+
+---
+
 ## 🚀 Features
 
 - **User Authentication** (Firebase Auth)
@@ -19,6 +56,9 @@ It demonstrates advanced software engineering, quality engineering, and DevOps p
 - **Automated CI/CD** (GitHub Actions, Firebase Hosting)
 - **Code Coverage Reporting** (Codecov)
 - **Environment-based Configuration** (dev/prod)
+- **Chat & Messaging** (with ChatModal component and real-time Firestore updates)
+- **Pull-to-Refresh & Pagination** for chat connections (MUI, custom logic)
+- **Email Notifications** for new connections (Firebase Functions + SendGrid)
 
 ---
 
@@ -30,10 +70,13 @@ It demonstrates advanced software engineering, quality engineering, and DevOps p
 - **PWA:** Service Worker, Workbox
 - **Testing:**
   - **Unit:** Jest, React Testing Library
-  - **Component & E2E:** Cypress
+  - **Component & E2E:** Cypress (with support for React 18 and MUI)
   - **Coverage:** Codecov
 - **Quality & Security:** ESLint, GitHub CodeQL
 - **CI/CD:** GitHub Actions, Firebase Hosting
+- **Email:** SendGrid (via Firebase Functions and Firestore mail collection)
+- **Pull-to-Refresh:** MUI Button (with support for libraries like `react-pull-to-refresh` if desired)
+- **Pagination:** Firestore query with `limit` and `startAfter`
 
 ---
 
@@ -73,3 +116,64 @@ npm install
 
 - To run locally: `npm start`
 - To run unit tests: `npm test`
+
+---
+
+## 🧪 Cypress Component & E2E Testing
+
+### Component Testing
+
+- **Component tests are located in:**  
+  `cypress/component/`
+- **Mock data for component tests is in:**  
+  `cypress/mockData/`
+
+#### Running Cypress Component Tests
+
+- To open the Cypress component test runner UI:
+  ```bash
+  npx cypress open --component
+  ```
+- To run all component tests headlessly:
+  ```bash
+  npx cypress run --component
+  ```
+- To run a specific component test (e.g., ChatModal):
+  ```bash
+  npx cypress run --component --spec "cypress/component/ChatModal.cy.tsx"
+  ```
+
+### E2E Testing
+
+- To run all E2E tests:
+  ```bash
+  npx cypress run --e2e
+  ```
+
+---
+
+## 🗂️ Notable Architecture & Code Structure
+
+- **ChatModal** is now a standalone component in `src/components/modals/ChatModal.tsx` and is tested directly with Cypress component tests.
+- **Chat page** (`src/components/pages/Chat.tsx`) consumes `ChatModal` and passes all required props, including `userId`.
+- **Component tests** use [@cypress/react](https://docs.cypress.io/guides/component-testing/introduction) and are compatible with React 18 and MUI.
+- **Mock data** for component tests is organized in `cypress/mockData/`.
+- **Pull-to-refresh and pagination** are implemented for chat connections to optimize Firestore reads and improve UX.
+- **Email notifications** for new connections are sent via Firebase Functions and SendGrid integration (see `functions/src/index.ts`).
+
+---
+
+## 📝 Additional Notes
+
+- If you add or update any component, create or update its Cypress component test in `cypress/component/`.
+- For new features, ensure you provide both unit and component tests.
+- For more details on Cypress component testing, see the [Cypress docs](https://docs.cypress.io/guides/component-testing/introduction).
+- **New:**
+  - **Pull-to-refresh and pagination** for chat connections.
+  - **Email notifications** for new connections (Firebase Functions + SendGrid).
+  - **Architectural diagram** (see above).
+
+---
+
+email api key
+SG.Z3IXdCJFRMSh3eG-sig7iw.Q37trH5v1PTph8*HSmPSE4fIPfuLxa*-2mM2DtAwgj8

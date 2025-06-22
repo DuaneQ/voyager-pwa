@@ -16,32 +16,39 @@ describe("ItineraryCard", () => {
       gender: "Male",
       dob: "1990-01-01",
       uid: "12345",
+      email: "email@user.com"
     },
   };
 
-  test("renders the itinerary destination", () => {
-    render(<ItineraryCard itinerary={mockItinerary} />);
+  const noop = () => {};
 
+  test("renders the itinerary destination", () => {
+    render(
+      <ItineraryCard itinerary={mockItinerary} onLike={noop} onDislike={noop} />
+    );
     expect(screen.getByText(/paris/i)).toBeInTheDocument();
   });
 
   test("renders the username", () => {
-    render(<ItineraryCard itinerary={mockItinerary} />);
-
+    render(
+      <ItineraryCard itinerary={mockItinerary} onLike={noop} onDislike={noop} />
+    );
     expect(screen.getByText(/username: johndoe/i)).toBeInTheDocument();
   });
 
   test("renders the description", () => {
-    render(<ItineraryCard itinerary={mockItinerary} />);
-
+    render(
+      <ItineraryCard itinerary={mockItinerary} onLike={noop} onDislike={noop} />
+    );
     expect(
       screen.getByText(/A wonderful trip to Europe./i)
     ).toBeInTheDocument();
   });
 
   test("renders the activities if provided", () => {
-    render(<ItineraryCard itinerary={mockItinerary} />);
-
+    render(
+      <ItineraryCard itinerary={mockItinerary} onLike={noop} onDislike={noop} />
+    );
     expect(screen.getByText(/activities:/i)).toBeInTheDocument();
     expect(screen.getByText(/visit eiffel tower/i)).toBeInTheDocument();
     expect(screen.getByText(/explore louvre museum/i)).toBeInTheDocument();
@@ -49,8 +56,13 @@ describe("ItineraryCard", () => {
 
   test("does not render activities section if activities are not provided", () => {
     const itineraryWithoutActivities = { ...mockItinerary, activities: [] };
-    render(<ItineraryCard itinerary={itineraryWithoutActivities} />);
-
+    render(
+      <ItineraryCard
+        itinerary={itineraryWithoutActivities}
+        onLike={noop}
+        onDislike={noop}
+      />
+    );
     expect(screen.queryByText(/activities:/i)).not.toBeInTheDocument();
   });
 });

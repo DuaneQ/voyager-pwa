@@ -58,6 +58,7 @@ describe("AddItineraryModal Component", () => {
         gender: "Other",
         dob: "1990-01-01",
         uid: "testUserId",
+        email: "email@user.com"
       },
     },
   ];
@@ -292,7 +293,7 @@ describe("AddItineraryModal Component", () => {
     // Assert that itineraries are displayed
     mockItineraries.forEach((itinerary) => {
       expect(screen.getByText(itinerary.destination)).toBeInTheDocument();
-      expect(screen.getByText(itinerary.description)).toBeInTheDocument();
+      expect(screen.getByText(itinerary.description ?? "")).toBeInTheDocument();
     });
   });
 });
