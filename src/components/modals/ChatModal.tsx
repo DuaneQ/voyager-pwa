@@ -25,6 +25,7 @@ import {
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../../environments/firebaseConfig";
+import PullToRefresh from "react-simple-pull-to-refresh";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -72,6 +73,8 @@ interface ChatModalProps {
   messages: Message[];
   userId: string;
   otherUserPhotoURL: string;
+  onPullToRefresh: () => Promise<void>;
+  hasMoreMessages: boolean;
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({
@@ -80,7 +83,9 @@ const ChatModal: React.FC<ChatModalProps> = ({
   connection,
   messages,
   userId,
-  otherUserPhotoURL
+  otherUserPhotoURL,
+  onPullToRefresh,
+  hasMoreMessages,
 }) => {
   const [messageInput, setMessageInput] = useState<string>("");
   const [sending, setSending] = useState(false);
@@ -177,8 +182,6 @@ const ChatModal: React.FC<ChatModalProps> = ({
           boxShadow: 24,
           p: 2,
           borderRadius: 2,
-          maxHeight: "80vh",
-          overflowY: "auto",
         }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <Avatar src={otherUserPhotoURL || DEFAULT_AVATAR} />
@@ -193,45 +196,72 @@ const ChatModal: React.FC<ChatModalProps> = ({
             <CloseIcon />
           </IconButton>
         </Box>
-        <Box sx={{ mb: 2, maxHeight: "40vh", overflowY: "auto" }}>
-          {messages.map((msg) => (
-            <Box
-              key={msg.id}
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: msg.sender === userId ? "flex-end" : "flex-start",
-                mb: 1,
-              }}>
-              <Box
-                sx={{
-                  bgcolor: msg.sender === userId ? "#1976d2" : "#e0e0e0",
-                  color: msg.sender === userId ? "#fff" : "#000",
-                  borderRadius: 2,
-                  px: 2,
-                  py: 1,
-                  maxWidth: "70%",
-                  wordBreak: "break-word",
-                }}>
-                {msg.text}
-                {msg.imageUrl && (
-                  <img
-                    src={msg.imageUrl}
-                    alt="attachment"
-                    style={{ maxWidth: 200, marginTop: 8 }}
-                  />
-                )}
-              </Box>
-              <Typography variant="caption" sx={{ mt: 0.5 }}>
-                {msg.createdAt?.toDate
-                  ? msg.createdAt.toDate().toLocaleString()
-                  : ""}
-              </Typography>
-            </Box>
-          ))}
-          {/* This div is used as the scroll target */}
-          <div ref={messagesEndRef} />
-        </Box>
+        <PullToRefresh
+          onRefresh={async () => {
+            if (hasMoreMessages) {
+              await onPullToRefresh();
+            }
+          }}
+          pullingContent={
+            <div style={{ textAlign: "center" }}>
+              {hasMoreMessages
+                ? "↓ Pull to load more messages"
+                : "No more messages"}
+            </div>
+          }
+          refreshingContent={
+            <div style={{ textAlign: "center" }}>Loading…</div>
+          }>
+          <Box
+            sx={{
+              mb: 2,
+              maxHeight: "40vh",
+              overflowY: "auto",
+              background: "#fafafa",
+              p: 2,
+            }}>
+            {messages.map((msg, idx) => {
+              console.log("Rendering message", idx, msg.text);
+              return (
+                <Box
+                  key={msg.id}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems:
+                      msg.sender === userId ? "flex-end" : "flex-start",
+                    mb: 1,
+                  }}>
+                  <Box
+                    sx={{
+                      bgcolor: msg.sender === userId ? "#1976d2" : "#e0e0e0",
+                      color: msg.sender === userId ? "#fff" : "#000",
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1,
+                      maxWidth: "70%",
+                      wordBreak: "break-word",
+                    }}>
+                    {msg.text}
+                    {msg.imageUrl && (
+                      <img
+                        src={msg.imageUrl}
+                        alt="attachment"
+                        style={{ maxWidth: 200, marginTop: 8 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="caption" sx={{ mt: 0.5 }}>
+                    {msg.createdAt?.toDate
+                      ? msg.createdAt.toDate().toLocaleString()
+                      : ""}
+                  </Typography>
+                </Box>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </Box>
+        </PullToRefresh>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <IconButton component="label" disabled={uploadingImage}>
             <ImageIcon />

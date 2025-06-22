@@ -60,7 +60,6 @@ export const ChatListItem: React.FC<{
       }}>
       <ListItemButton
         onClick={() => {
-          console.log("ChatListItem: otherUserPhoto", otherUserPhoto);
           onClick(otherUserPhoto);
         }}>
         <ListItemAvatar>
