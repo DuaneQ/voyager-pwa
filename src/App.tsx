@@ -13,6 +13,11 @@ import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
 import { UserProfileProvider } from "./Context/UserProfileContext";
 import { NewConnectionProvider } from "./Context/NewConnectionContext";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { useEffect } from "react";
+import { doc, getFirestore, setDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { auth, messaging } from "./environments/firebaseConfig";
 
 function App() {
   const location = useLocation();
@@ -22,6 +27,36 @@ function App() {
     "/reset",
     "/ResendEmail",
   ].includes(location.pathname);
+
+  useEffect(() => {
+    const db = getFirestore();
+
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        getToken(messaging, {
+          vapidKey:
+            "BFXokQ9ogHw5nCPp6cLcB7vSJiuImIgHy2yadISEdZw6gxVqczqK_RxqmsaJBU0E780-4TV1ZmgfLK_TWNg_2cs",
+        }).then(async (currentToken) => {
+          if (currentToken && auth.currentUser) {
+            const userRef = doc(db, "users", auth.currentUser.uid);
+            await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
+          }
+        });
+      }
+    });
+
+    // Handle foreground notifications
+    onMessage(messaging, (payload) => {
+      // You can customize this (toast, alert, etc.)
+      alert(
+        (payload.notification?.title || "Notification") +
+          ": " +
+          (payload.notification?.body || "")
+      );
+      // Or use a custom UI/toast here
+      console.log("Foreground FCM message received:", payload);
+    });
+  }, []);
   return (
     <AlertProvider>
       <Header />
