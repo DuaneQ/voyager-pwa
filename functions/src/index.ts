@@ -57,3 +57,51 @@ export const notifyNewConnection = functions.firestore
     );
     return null;
   });
+
+export const sendNewMessageNotification = functions.firestore
+  .document("connections/{connectionId}/messages/{messageId}")
+  .onCreate(async (snap, context) => {
+    const message = snap.data();
+    const connectionId = context.params.connectionId;
+
+    // Get the connection document to find both users
+    const connectionRef = db.collection("connections").doc(connectionId);
+    const connectionSnap = await connectionRef.get();
+    const connection = connectionSnap.data();
+    if (!connection || !connection.users || !Array.isArray(connection.users)) {
+      console.log("No users found in connection doc:", connection);
+      return null;
+    }
+
+    // Find the recipient UID (the user who is NOT the sender)
+    const recipientUid = connection.users.find(
+      (uid: string) => uid !== message.sender
+    );
+    if (!recipientUid) {
+      console.log("No recipient found for message:", message);
+      return null;
+    }
+
+    // Get the recipient's FCM token from their user profile
+    const userDoc = await db.collection("users").doc(recipientUid).get();
+    const userData = userDoc.data();
+    const fcmToken = userData && userData.fcmToken;
+
+    if (fcmToken) {
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {
+          title: "New Message",
+          body: message.text ? message.text : "You have a new message!",
+        },
+        data: {
+          connectionId,
+        },
+      });
+      console.log(`Notification sent to user ${recipientUid}`);
+    } else {
+      console.log(`No FCM token found for user ${recipientUid}`);
+    }
+
+    return null;
+  });
