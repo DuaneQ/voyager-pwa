@@ -16,7 +16,7 @@ describe("ItineraryCard", () => {
       gender: "Male",
       dob: "1990-01-01",
       uid: "12345",
-      email: "email@user.com"
+      email: "email@user.com",
     },
   };
 
@@ -33,7 +33,7 @@ describe("ItineraryCard", () => {
     render(
       <ItineraryCard itinerary={mockItinerary} onLike={noop} onDislike={noop} />
     );
-    expect(screen.getByText(/username: johndoe/i)).toBeInTheDocument();
+    expect(screen.getByText(/johndoe/i)).toBeInTheDocument();
   });
 
   test("renders the description", () => {

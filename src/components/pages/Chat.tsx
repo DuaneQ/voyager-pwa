@@ -1,3 +1,11 @@
+/**
+ * Chat page component for user-to-user messaging.
+ * Handles fetching connections, messages, pagination, and sending messages.
+ *
+ * @component
+ * @returns {JSX.Element}
+ */
+
 import React, { useEffect, useState } from "react";
 import { Box, List } from "@mui/material";
 import {
@@ -10,6 +18,11 @@ import {
   Timestamp,
   doc,
   updateDoc,
+  QueryDocumentSnapshot,
+  DocumentData,
+  limit,
+  startAfter,
+  getDocs,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
@@ -22,12 +35,16 @@ import { ChatListItem } from "../../components/Chat/ChatListItem";
 
 const db = getFirestore(app);
 
-export const Chat: React.FC = () => {
+export const Chat = React.memo(() => {
   const userId = useGetUserId();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedConnection, setSelectedConnection] =
     useState<Connection | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [latestMessages, setLatestMessages] = useState<Message[]>([]);
+  const [olderMessages, setOlderMessages] = useState<Message[]>([]);
+  const [lastMessageDoc, setLastMessageDoc] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const { setHasNewConnection } = useNewConnection();
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [selectedPhotoURL, setSelectedPhotoURL] = useState<string>("");
@@ -71,27 +88,32 @@ export const Chat: React.FC = () => {
     setHasNewConnection(false);
   }, [setHasNewConnection]);
 
-  // Combined: Fetch messages for selected connection in real-time and mark as read
+  // Fetch latest 10 messages for selected connection
   useEffect(() => {
     if (!selectedConnection || !userId) return;
-    // Listen for messages in real-time
+
     const q = query(
       collection(db, "connections", selectedConnection.id, "messages"),
-      orderBy("createdAt")
+      orderBy("createdAt", "desc"),
+      limit(10)
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const msgs: Message[] = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          sender: data.sender,
-          text: data.text,
-          imageUrl: data.imageUrl,
-          createdAt: data.createdAt as Timestamp,
-          readBy: data.readBy || [],
-        };
-      });
-      setMessages(msgs);
+      const msgs: Message[] = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            sender: data.sender,
+            text: data.text,
+            imageUrl: data.imageUrl,
+            createdAt: data.createdAt as Timestamp,
+            readBy: data.readBy || [],
+          };
+        })
+        .reverse(); // oldest at top
+      setLatestMessages(msgs);
+      setLastMessageDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMoreMessages(snapshot.docs.length === 10);
     });
 
     // Reset unread count for this user on this connection
@@ -99,6 +121,9 @@ export const Chat: React.FC = () => {
     updateDoc(connectionRef, {
       [`unreadCounts.${userId}`]: 0,
     });
+
+    // Reset older messages when switching chats
+    setOlderMessages([]);
 
     return () => unsub();
   }, [selectedConnection, userId]);
@@ -109,6 +134,35 @@ export const Chat: React.FC = () => {
       setHasNewConnection(false);
     }
   }, [unreadMap, setHasNewConnection]);
+
+  const loadMoreMessages = async () => {
+    if (!selectedConnection || !lastMessageDoc || !userId) return;
+    const q = query(
+      collection(db, "connections", selectedConnection.id, "messages"),
+      orderBy("createdAt", "desc"),
+      startAfter(lastMessageDoc),
+      limit(10)
+    );
+    const snapshot = await getDocs(q);
+    const moreMsgs: Message[] = snapshot.docs
+      .map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          sender: data.sender,
+          text: data.text,
+          imageUrl: data.imageUrl,
+          createdAt: data.createdAt as Timestamp,
+          readBy: data.readBy || [],
+        };
+      })
+      .reverse();
+    setOlderMessages((prev) => [...moreMsgs, ...prev]);
+    setLastMessageDoc(
+      snapshot.docs[snapshot.docs.length - 1] || lastMessageDoc
+    );
+    setHasMoreMessages(snapshot.docs.length === 10);
+  };
 
   return (
     <div className="authFormContainer">
@@ -151,9 +205,8 @@ export const Chat: React.FC = () => {
                   conn={conn}
                   userId={userId}
                   onClick={(photoURL: string) => {
-                        console.log("Chat.tsx: Received photoURL from ChatListItem", photoURL);
-                    setSelectedConnection(conn)
-                    setSelectedPhotoURL(photoURL)
+                    setSelectedConnection(conn);
+                    setSelectedPhotoURL(photoURL);
                   }}
                   unread={!!unreadMap[conn.id]}
                 />
@@ -166,15 +219,17 @@ export const Chat: React.FC = () => {
             open={!!selectedConnection}
             onClose={() => setSelectedConnection(null)}
             connection={selectedConnection}
-            messages={messages}
+            messages={[...olderMessages, ...latestMessages]}
             userId={userId!}
             otherUserPhotoURL={selectedPhotoURL}
+            onPullToRefresh={loadMoreMessages}
+            hasMoreMessages={hasMoreMessages}
           />
         )}
       </Box>
       <BottomNav />
     </div>
   );
-};
+});
 
 export default Chat;

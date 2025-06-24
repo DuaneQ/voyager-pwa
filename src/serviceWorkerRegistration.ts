@@ -9,6 +9,11 @@
 
 // To learn more about the benefits of this model and instructions on how to
 // opt-in, read https://cra.link/PWA
+/**
+ * Registers the service worker for offline support and push notifications.
+ *
+ * @param {string} swUrl - The URL of the service worker file.
+ */
 
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||

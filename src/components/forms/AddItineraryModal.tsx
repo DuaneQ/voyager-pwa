@@ -116,7 +116,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       };
 
       await postItinerary(itineraryWithUserInfo);
-      onItineraryAdded(newItinerary.destination); // Pass the destination to the callback
+      onItineraryAdded(newItinerary.destination);
       resetItineraryForm();
       alert("Itinerary successfully created!");
       onClose();

@@ -5,6 +5,13 @@
  * import {onDocumentWritten} from "firebase-functions/v2/firestore";
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ * Cloud Function triggered when a new connection is created in Firestore.
+ * Sends an email notification to both users using SendGrid.
+ *
+ * @function
+ * @param {functions.firestore.DocumentSnapshot} snap - The snapshot of the created connection document.
+ * @param {functions.EventContext} context - The event context.
+ * @returns {Promise<void>}
  */
 
 import * as functions from "firebase-functions/v1";
@@ -33,12 +40,23 @@ export const notifyNewConnection = functions.firestore
     const mailPromises = uniqueEmails.map(async (email) => {
       const mailDoc = {
         to: email,
+        from: "no-reply@travalpass.com",
         message: {
           subject: "You have a new connection!",
-          text: `Hi, you have a new connection! Open the app to start chatting.`,
+          text: `Hi, you have a new connection! Open the app to start chatting with your new Traval Buddy about your upcoming trips.`,
           html: `<p>Hi,</p>
-                 <p>You have a new connection!<br>
-                 <a href="https://your-app-url.com/chat">Open the app to start chatting.</a></p>`,
+                <p>You have a new connection!<br>
+                <a href="https://travalpass.com/chat">Open the app to start chatting.</a></p>
+                <hr>
+                <h4>Safety Tips for Meeting Your Traval Buddy</h4>
+                <ul>
+                  <li>Always meet in a public place.</li>
+                  <li>Tell a friend or family member where you're going.</li>
+                  <li>Don't share sensitive personal information too soon.</li>
+                  <li>Trust your instincts—if something feels off, leave.</li>
+                  <li>Arrange your own transportation.</li>
+                </ul>
+                <p>Happy and safe travels!</p>`,
         },
       };
 
