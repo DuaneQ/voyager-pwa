@@ -9,6 +9,7 @@ jest.mock("firebase/firestore");
 jest.mock("../../hooks/useGetUserId");
 
 describe("usePostItineraryToFirestore", () => {
+  const originalError = console.error;
   const mockUserId = "testUserId";
   const mockItinerary = {
     destination: "Paris",
@@ -27,6 +28,11 @@ describe("usePostItineraryToFirestore", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
+    console.error = jest.fn();
+  });
+
+  afterAll(() => {
+    console.error = originalError;
   });
 
   test("should post an itinerary successfully", async () => {
