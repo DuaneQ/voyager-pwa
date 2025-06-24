@@ -6,6 +6,7 @@ import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 console.log("App Environment:", process.env.REACT_APP_ENV);
 
@@ -16,7 +17,9 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <UserAuthContextProvider>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </UserAuthContextProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -22,6 +22,7 @@ jobs:
         env:
           REACT_APP_ENV: production
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
+          REACT_APP_VAPID_KEY: ${{ secrets.REACT_APP_VAPID_KEY }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -20,11 +20,12 @@ import {
   updateDoc,
   serverTimestamp,
   doc,
-  Timestamp,
   increment,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../../environments/firebaseConfig";
+import PullToRefresh from "react-simple-pull-to-refresh";
+import { ViewProfileModal } from "./ViewProfileModal";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -59,12 +60,6 @@ function getOtherItinerary(connection: Connection, userId: string) {
   );
 }
 
-function getUserPhotoURL(user: any): string {
-  return typeof user === "object" && user && "photoURL" in user && user.photoURL
-    ? user.photoURL
-    : DEFAULT_AVATAR;
-}
-
 interface ChatModalProps {
   open: boolean;
   onClose: () => void;
@@ -72,6 +67,8 @@ interface ChatModalProps {
   messages: Message[];
   userId: string;
   otherUserPhotoURL: string;
+  onPullToRefresh: () => Promise<void>;
+  hasMoreMessages: boolean;
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({
@@ -80,7 +77,9 @@ const ChatModal: React.FC<ChatModalProps> = ({
   connection,
   messages,
   userId,
-  otherUserPhotoURL
+  otherUserPhotoURL,
+  onPullToRefresh,
+  hasMoreMessages,
 }) => {
   const [messageInput, setMessageInput] = useState<string>("");
   const [sending, setSending] = useState(false);
@@ -163,6 +162,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
   const otherUser = getOtherUser(connection, userId);
   const otherItinerary = getOtherItinerary(connection, userId);
+  const [viewProfileOpen, setViewProfileOpen] = useState(false);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -172,16 +172,18 @@ const ChatModal: React.FC<ChatModalProps> = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 400,
+          width: { xs: "98vw", sm: 400 },
           bgcolor: "background.paper",
           boxShadow: 24,
-          p: 2,
+          p: { xs: 1, sm: 2 },
           borderRadius: 2,
-          maxHeight: "80vh",
-          overflowY: "auto",
         }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Avatar src={otherUserPhotoURL || DEFAULT_AVATAR} />
+          <Avatar
+            src={otherUserPhotoURL || DEFAULT_AVATAR}
+            sx={{ cursor: "pointer" }}
+            onClick={() => setViewProfileOpen(true)}
+          />
           <Box ml={2}>
             <Typography variant="subtitle1">{otherUser.username}</Typography>
             <Typography variant="caption" color="textSecondary">
@@ -193,45 +195,71 @@ const ChatModal: React.FC<ChatModalProps> = ({
             <CloseIcon />
           </IconButton>
         </Box>
-        <Box sx={{ mb: 2, maxHeight: "40vh", overflowY: "auto" }}>
-          {messages.map((msg) => (
-            <Box
-              key={msg.id}
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: msg.sender === userId ? "flex-end" : "flex-start",
-                mb: 1,
-              }}>
-              <Box
-                sx={{
-                  bgcolor: msg.sender === userId ? "#1976d2" : "#e0e0e0",
-                  color: msg.sender === userId ? "#fff" : "#000",
-                  borderRadius: 2,
-                  px: 2,
-                  py: 1,
-                  maxWidth: "70%",
-                  wordBreak: "break-word",
-                }}>
-                {msg.text}
-                {msg.imageUrl && (
-                  <img
-                    src={msg.imageUrl}
-                    alt="attachment"
-                    style={{ maxWidth: 200, marginTop: 8 }}
-                  />
-                )}
-              </Box>
-              <Typography variant="caption" sx={{ mt: 0.5 }}>
-                {msg.createdAt?.toDate
-                  ? msg.createdAt.toDate().toLocaleString()
-                  : ""}
-              </Typography>
-            </Box>
-          ))}
-          {/* This div is used as the scroll target */}
-          <div ref={messagesEndRef} />
-        </Box>
+        <PullToRefresh
+          onRefresh={async () => {
+            if (hasMoreMessages) {
+              await onPullToRefresh();
+            }
+          }}
+          pullingContent={
+            <div style={{ textAlign: "center" }}>
+              {hasMoreMessages
+                ? "↓ Pull to load more messages"
+                : "No more messages"}
+            </div>
+          }
+          refreshingContent={
+            <div style={{ textAlign: "center" }}>Loading…</div>
+          }>
+          <Box
+            sx={{
+              mb: 2,
+              maxHeight: "40vh",
+              overflowY: "auto",
+              background: "#fafafa",
+              p: 2,
+            }}>
+            {messages.map((msg, idx) => {
+              return (
+                <Box
+                  key={msg.id}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems:
+                      msg.sender === userId ? "flex-end" : "flex-start",
+                    mb: 1,
+                  }}>
+                  <Box
+                    sx={{
+                      bgcolor: msg.sender === userId ? "#1976d2" : "#e0e0e0",
+                      color: msg.sender === userId ? "#fff" : "#000",
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1,
+                      maxWidth: "70%",
+                      wordBreak: "break-word",
+                    }}>
+                    {msg.text}
+                    {msg.imageUrl && (
+                      <img
+                        src={msg.imageUrl}
+                        alt="attachment"
+                        style={{ maxWidth: 200, marginTop: 8 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="caption" sx={{ mt: 0.5 }}>
+                    {msg.createdAt?.toDate
+                      ? msg.createdAt.toDate().toLocaleString()
+                      : ""}
+                  </Typography>
+                </Box>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </Box>
+        </PullToRefresh>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <IconButton component="label" disabled={uploadingImage}>
             <ImageIcon />
@@ -264,6 +292,11 @@ const ChatModal: React.FC<ChatModalProps> = ({
             {sending ? <CircularProgress size={20} /> : "Send"}
           </Button>
         </Box>
+        <ViewProfileModal
+          open={viewProfileOpen}
+          onClose={() => setViewProfileOpen(false)}
+          userId={otherUser.uid}
+        />
       </Box>
     </Modal>
   );

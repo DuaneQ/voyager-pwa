@@ -7,6 +7,11 @@
 // code you'd like.
 // You can also remove this file if you'd prefer not to use a
 // service worker, and the Workbox build step will be skipped.
+/**
+ * Custom service worker for handling Firebase Cloud Messaging and caching.
+ *
+ * Handles background push notifications and offline support.
+ */
 
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
