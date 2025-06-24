@@ -7,13 +7,14 @@ importScripts(
 
 // Initialize Firebase in the service worker by passing in only the messagingSenderId
 firebase.initializeApp({
-  apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
-  authDomain: "mundo1-dev.firebaseapp.com",
-  projectId: "mundo1-dev",
-  storageBucket: "mundo1-dev.firebasestorage.app",
-  messagingSenderId: "296095212837",
-  appId: "1:296095212837:web:6fd8f831e3d7f642f726cc",
-  measurementId: "G-ZNYVKS2SBF",
+  projectId: "mundo1-1",
+  appId: "1:533074391000:web:2ef7404546e97f4aa2ccad",
+  databaseURL: "https://mundo1-1.firebaseio.com",
+  storageBucket: "mundo1-1.appspot.com",
+  locationId: "us-central",
+  apiKey: "AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk",
+  authDomain: "mundo1-1.firebaseapp.com",
+  messagingSenderId: "533074391000",
 });
 
 // Retrieve an instance of Firebase Messaging
@@ -26,10 +27,10 @@ messaging.onBackgroundMessage(function (payload) {
     payload
   );
   // Customize notification here
-  const notificationTitle = payload.notification.title || "Voyager";
+  const notificationTitle = payload.notification.title || "TravalPass";
   const notificationOptions = {
     body: payload.notification.body,
-    icon: "/icon-192x192.png", // Make sure this icon exists in your public folder
+    icon: "/ic-like.png", 
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
