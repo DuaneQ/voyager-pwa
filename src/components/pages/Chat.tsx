@@ -32,7 +32,6 @@ export const Chat: React.FC = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedConnection, setSelectedConnection] =
     useState<Connection | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [latestMessages, setLatestMessages] = useState<Message[]>([]);
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [lastMessageDoc, setLastMessageDoc] =

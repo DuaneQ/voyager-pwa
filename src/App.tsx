@@ -36,7 +36,7 @@ function App() {
       if (permission === "granted") {
         getToken(messaging, {
           vapidKey:
-            "BFXokQ9ogHw5nCPp6cLcB7vSJiuImIgHy2yadISEdZw6gxVqczqK_RxqmsaJBU0E780-4TV1ZmgfLK_TWNg_2cs",
+            process.env.REACT_APP_VAPID_KEY,
         }).then(async (currentToken) => {
           if (currentToken && auth.currentUser) {
             const userRef = doc(db, "users", auth.currentUser.uid);
@@ -47,17 +47,21 @@ function App() {
     });
 
     // Handle foreground notifications
-    onMessage(messaging, (payload) => {
-      // You can customize this (toast, alert, etc.)
+    const unsubscribe = onMessage(messaging, (payload) => {
       alert(
         (payload.notification?.title || "Notification") +
           ": " +
           (payload.notification?.body || "")
       );
-      // Or use a custom UI/toast here
       console.log("Foreground FCM message received:", payload);
     });
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+    };
   }, []);
+  
   return (
     <AlertProvider>
       <Header />
