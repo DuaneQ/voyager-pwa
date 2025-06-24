@@ -16,8 +16,9 @@ import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { useEffect } from "react";
 import { doc, getFirestore, setDoc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { auth, messaging } from "./environments/firebaseConfig";
+import { auth } from "./environments/firebaseConfig";
+import { app } from "./environments/firebaseConfig";
+const messaging = getMessaging(app);
 
 function App() {
   const location = useLocation();
