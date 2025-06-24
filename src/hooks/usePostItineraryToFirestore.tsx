@@ -1,3 +1,17 @@
+/**
+ * Custom React hook to post a new itinerary to Firestore.
+ *
+ * @returns {{
+ *   postItinerary: (itinerary: Itinerary) => Promise<void>,
+ *   loading: boolean,
+ *   error: Error | null
+ * }}
+ *
+ * @example
+ * const { postItinerary, loading, error } = usePostItineraryToFirestore();
+ * await postItinerary(myItinerary);
+ */
+
 import { getFirestore, collection, addDoc } from "firebase/firestore";
 import { app } from "../environments/firebaseConfig";
 import useGetUserId from "./useGetUserId";
