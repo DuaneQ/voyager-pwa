@@ -98,6 +98,19 @@ npm install
 
 ---
 
+## 🔑 Environment Variables
+
+All sensitive credentials (API keys, secrets, etc.) must be stored in environment variables.  
+**Do not commit secrets to the repository.**
+
+- Copy `.env.example` to `.env` and fill in the required values.
+- For Firebase Functions, use `firebase functions:config:set key=value`.
+- For CI/CD, use GitHub Actions secrets.
+
+See `.env.example` for required variables.
+
+---
+
 ## 🏁 Working Process
 
 1. Ensure you have NPM (Node Package Manager) installed: [Node.js Download](https://nodejs.org/en/download/)
@@ -175,5 +188,18 @@ npm install
 
 ---
 
-email api key
-SG.Z3IXdCJFRMSh3eG-sig7iw.Q37trH5v1PTph8*HSmPSE4fIPfuLxa*-2mM2DtAwgj8
+## 🛡️ Security
+
+If you discover a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure guidelines.
+
+---
+
+## 🚀 Deployment
+
+To deploy the app to Firebase Hosting:
+
+```bash
+firebase deploy --only hosting
+```
+
+[![codecov](https://codecov.io/gh/DuaneQ/voyager-pwa/branch/main/graph/badge.svg)](https://codecov.io/gh/DuaneQ/voyager-pwa)
