@@ -1,3 +1,10 @@
+/**
+ * Form component for user login.
+ *
+ * @component
+ * @returns {JSX.Element}
+ */
+
 import * as React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

@@ -1,3 +1,11 @@
+/**
+ * Chat page component for user-to-user messaging.
+ * Handles fetching connections, messages, pagination, and sending messages.
+ *
+ * @component
+ * @returns {JSX.Element}
+ */
+
 import React, { useEffect, useState } from "react";
 import { Box, List } from "@mui/material";
 import {

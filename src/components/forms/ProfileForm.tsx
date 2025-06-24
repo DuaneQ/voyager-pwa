@@ -1,3 +1,10 @@
+/**
+ * Form component for editing or creating a user profile.
+ *
+ * @component
+ * @returns {JSX.Element}
+ */
+
 import { useContext, useState } from "react";
 import {
   Box,
