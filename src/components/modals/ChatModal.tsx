@@ -25,6 +25,7 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../../environments/firebaseConfig";
 import PullToRefresh from "react-simple-pull-to-refresh";
+import { ViewProfileModal } from "./ViewProfileModal";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -161,6 +162,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
   const otherUser = getOtherUser(connection, userId);
   const otherItinerary = getOtherItinerary(connection, userId);
+  const [viewProfileOpen, setViewProfileOpen] = useState(false);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -177,7 +179,11 @@ const ChatModal: React.FC<ChatModalProps> = ({
           borderRadius: 2,
         }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Avatar src={otherUserPhotoURL || DEFAULT_AVATAR} />
+          <Avatar
+            src={otherUserPhotoURL || DEFAULT_AVATAR}
+            sx={{ cursor: "pointer" }}
+            onClick={() => setViewProfileOpen(true)}
+          />
           <Box ml={2}>
             <Typography variant="subtitle1">{otherUser.username}</Typography>
             <Typography variant="caption" color="textSecondary">
@@ -286,6 +292,11 @@ const ChatModal: React.FC<ChatModalProps> = ({
             {sending ? <CircularProgress size={20} /> : "Send"}
           </Button>
         </Box>
+        <ViewProfileModal
+          open={viewProfileOpen}
+          onClose={() => setViewProfileOpen(false)}
+          userId={otherUser.uid}
+        />
       </Box>
     </Modal>
   );
