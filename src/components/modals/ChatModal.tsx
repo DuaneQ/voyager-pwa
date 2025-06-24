@@ -221,7 +221,6 @@ const ChatModal: React.FC<ChatModalProps> = ({
               p: 2,
             }}>
             {messages.map((msg, idx) => {
-              console.log("Rendering message", idx, msg.text);
               return (
                 <Box
                   key={msg.id}

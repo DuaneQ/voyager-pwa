@@ -1,3 +1,15 @@
+/**
+ * The root component for the Voyager PWA.
+ * Sets up routing, global providers, and Firebase Cloud Messaging for notifications.
+ *
+ * - Registers the user's FCM token in Firestore on permission grant.
+ * - Displays foreground notifications using notistack snackbars.
+ * - Provides context for alerts, user profiles, and new connections.
+ *
+ * @component
+ * @returns {JSX.Element} The main application layout and routes.
+ */
+import { SnackbarProvider, useSnackbar } from 'notistack';
 import "./App.css";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
@@ -21,6 +33,7 @@ import { app } from "./environments/firebaseConfig";
 const messaging = getMessaging(app);
 
 function App() {
+  const { enqueueSnackbar } = useSnackbar();
   const location = useLocation();
   const hideBottomNav = [
     "/Login",
@@ -48,7 +61,7 @@ function App() {
 
     // Handle foreground notifications
     const unsubscribe = onMessage(messaging, (payload) => {
-      alert(
+      enqueueSnackbar(
         (payload.notification?.title || "Notification") +
           ": " +
           (payload.notification?.body || "")
@@ -61,8 +74,9 @@ function App() {
       unsubscribe();
     };
   }, []);
-  
+
   return (
+    <SnackbarProvider maxSnack={2} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
     <AlertProvider>
       <Header />
       <NewConnectionProvider>
@@ -114,6 +128,7 @@ function App() {
         </div>
       </NewConnectionProvider>
     </AlertProvider>
+    </SnackbarProvider>
   );
 }
 

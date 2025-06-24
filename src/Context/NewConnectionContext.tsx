@@ -1,3 +1,14 @@
+/**
+ * React context provider for managing new connection state.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Child components.
+ * @returns {JSX.Element}
+ * Custom hook to access the NewConnection context.
+ *
+ * @returns {NewConnectionContextValue}
+ */
+
 import React, { createContext, useContext, useState } from "react";
 
 type NewConnectionContextType = {

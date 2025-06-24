@@ -1,3 +1,12 @@
+/**
+ * React context provider for user profile data and actions.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Child components.
+ * @returns {JSX.Element}
+ * @returns {UserProfileContextValue}
+ */
+
 import { createContext, useCallback, useState } from 'react';
 
 const UserProfileContext = createContext();
