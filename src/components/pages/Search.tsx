@@ -26,6 +26,7 @@ import {
 import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
 import { useNewConnection } from "../../Context/NewConnectionContext";
+import React from "react";
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
@@ -36,7 +37,7 @@ function saveViewedItinerary(itinerary: Itinerary) {
   localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(viewed));
 }
 
-export const Search = () => {
+export const Search = React.memo(() => {
   useGetUserProfile();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string>("");
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
@@ -153,11 +154,6 @@ export const Search = () => {
 
     setCurrentMatchIndex((prev) => prev + 1);
   };
-
-  // Get the selected itinerary for display
-  const selectedItinerary = itineraries.find(
-    (it) => it.id === selectedItineraryId
-  );
 
   // Sort itineraries by startDate ascending (oldest first)
   const sortedItineraries = [...itineraries].sort(
@@ -293,6 +289,6 @@ export const Search = () => {
       />
     </Box>
   );
-};
+});
 
 export default Search;
