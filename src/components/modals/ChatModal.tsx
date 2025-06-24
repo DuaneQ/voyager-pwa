@@ -20,7 +20,6 @@ import {
   updateDoc,
   serverTimestamp,
   doc,
-  Timestamp,
   increment,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -58,12 +57,6 @@ function getOtherItinerary(connection: Connection, userId: string) {
   return connection.itineraries.find(
     (it) => it.userInfo && it.userInfo.uid !== userId
   );
-}
-
-function getUserPhotoURL(user: any): string {
-  return typeof user === "object" && user && "photoURL" in user && user.photoURL
-    ? user.photoURL
-    : DEFAULT_AVATAR;
 }
 
 interface ChatModalProps {
@@ -177,10 +170,10 @@ const ChatModal: React.FC<ChatModalProps> = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 400,
+          width: { xs: "98vw", sm: 400 },
           bgcolor: "background.paper",
           boxShadow: 24,
-          p: 2,
+          p: { xs: 1, sm: 2 },
           borderRadius: 2,
         }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>

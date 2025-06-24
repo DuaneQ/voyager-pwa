@@ -35,7 +35,7 @@ import { ChatListItem } from "../../components/Chat/ChatListItem";
 
 const db = getFirestore(app);
 
-export const Chat: React.FC = () => {
+export const Chat = React.memo(() => {
   const userId = useGetUserId();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedConnection, setSelectedConnection] =
@@ -230,6 +230,6 @@ export const Chat: React.FC = () => {
       <BottomNav />
     </div>
   );
-};
+});
 
 export default Chat;
