@@ -33,12 +33,23 @@ export const notifyNewConnection = functions.firestore
     const mailPromises = uniqueEmails.map(async (email) => {
       const mailDoc = {
         to: email,
+        from: "no-reply@travalpass.com",
         message: {
           subject: "You have a new connection!",
-          text: `Hi, you have a new connection! Open the app to start chatting.`,
+          text: `Hi, you have a new connection! Open the app to start chatting with your new Traval Buddy about your upcoming trips.`,
           html: `<p>Hi,</p>
-                 <p>You have a new connection!<br>
-                 <a href="https://your-app-url.com/chat">Open the app to start chatting.</a></p>`,
+                <p>You have a new connection!<br>
+                <a href="https://travalpass.com/chat">Open the app to start chatting.</a></p>
+                <hr>
+                <h4>Safety Tips for Meeting Your Traval Buddy</h4>
+                <ul>
+                  <li>Always meet in a public place.</li>
+                  <li>Tell a friend or family member where you're going.</li>
+                  <li>Don't share sensitive personal information too soon.</li>
+                  <li>Trust your instincts—if something feels off, leave.</li>
+                  <li>Arrange your own transportation.</li>
+                </ul>
+                <p>Happy and safe travels!</p>`,
         },
       };
 
