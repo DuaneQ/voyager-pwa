@@ -9,7 +9,8 @@
  * @component
  * @returns {JSX.Element} The main application layout and routes.
  */
-import { SnackbarProvider, useSnackbar } from 'notistack';
+
+import { SnackbarProvider, useSnackbar } from "notistack";
 import "./App.css";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
@@ -26,7 +27,7 @@ import { ResendEmail } from "./components/auth/ResendEmail";
 import { UserProfileProvider } from "./Context/UserProfileContext";
 import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { auth } from "./environments/firebaseConfig";
 import { app } from "./environments/firebaseConfig";
@@ -48,8 +49,7 @@ function App() {
     Notification.requestPermission().then((permission) => {
       if (permission === "granted") {
         getToken(messaging, {
-          vapidKey:
-            process.env.REACT_APP_VAPID_KEY,
+          vapidKey: process.env.REACT_APP_VAPID_KEY,
         }).then(async (currentToken) => {
           if (currentToken && auth.currentUser) {
             const userRef = doc(db, "users", auth.currentUser.uid);
@@ -73,61 +73,65 @@ function App() {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [enqueueSnackbar]);
 
   return (
-    <SnackbarProvider maxSnack={2} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
-    <AlertProvider>
-      <Header />
-      <NewConnectionProvider>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            minHeight: "100vh",
-          }}>
-          <div style={{ flex: 1 }}>
-            <Routes>
-              <Route path="/Login" element={<Login />} />
-              <Route path="/Register" element={<Register />} />
-              <Route path="/ResendEmail" element={<ResendEmail />} />
-              <Route
-                path="/"
-                element={
-                  <Protected>
-                    <UserProfileProvider>
-                      <Profile />
-                    </UserProfileProvider>
-                  </Protected>
-                }
-              />
-              <Route
-                path="/Search"
-                element={
-                  <Protected>
-                    <UserProfileProvider>
-                      <Search />
-                    </UserProfileProvider>
-                  </Protected>
-                }
-              />
-              <Route
-                path="/Chat"
-                element={
-                  <Protected>
-                    <UserProfileProvider>
-                      <Chat />
-                    </UserProfileProvider>
-                  </Protected>
-                }
-              />
-              <Route path="/Reset" element={<Reset />} />
-            </Routes>
+    <SnackbarProvider
+      maxSnack={2}
+      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}>
+      <AlertProvider>
+        <Header />
+        <NewConnectionProvider>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100vh",
+            }}>
+            <div style={{ flex: 1 }}>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                  <Route path="/Login" element={<Login />} />
+                  <Route path="/Register" element={<Register />} />
+                  <Route path="/ResendEmail" element={<ResendEmail />} />
+                  <Route
+                    path="/"
+                    element={
+                      <Protected>
+                        <UserProfileProvider>
+                          <Profile />
+                        </UserProfileProvider>
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/Search"
+                    element={
+                      <Protected>
+                        <UserProfileProvider>
+                          <Search />
+                        </UserProfileProvider>
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/Chat"
+                    element={
+                      <Protected>
+                        <UserProfileProvider>
+                          <Chat />
+                        </UserProfileProvider>
+                      </Protected>
+                    }
+                  />
+                  <Route path="/Reset" element={<Reset />} />
+                </Routes>
+              </Suspense>
+            </div>
+            {!hideBottomNav && <BottomNav />}
           </div>
-          {!hideBottomNav && <BottomNav />}
-        </div>
-      </NewConnectionProvider>
-    </AlertProvider>
+        </NewConnectionProvider>
+      </AlertProvider>
     </SnackbarProvider>
   );
 }

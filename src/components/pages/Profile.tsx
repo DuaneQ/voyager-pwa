@@ -2,8 +2,9 @@ import { ProfileForm } from "../forms/ProfileForm";
 import Stack from "@mui/material/Stack";
 import { PhotoGrid } from "../forms/PhotoGrid";
 import Box from "@mui/material/Box";
+import React from "react";
 
-export const Profile = () => {
+export const Profile = React.memo(() => {
   return (
     <>
       <Stack className="authFormContainer">
@@ -19,4 +20,4 @@ export const Profile = () => {
       </Stack>
     </>
   );
-};
+});
