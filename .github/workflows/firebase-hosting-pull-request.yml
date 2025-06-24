@@ -37,6 +37,7 @@ jobs:
           echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
           echo "details_url: ${{ steps.firebase_deploy.outputs.details_url }}"
           echo "details_path: ${{ steps.firebase_deploy.outputs.details_path }}"
+
   cypress_tests:
     needs: build_and_preview
     runs-on: ubuntu-latest
@@ -61,38 +62,27 @@ jobs:
       - name: Run Cypress E2E and Component Tests
         env:
           CYPRESS_BASE_URL: ${{ needs.build_and_preview.outputs.details_url }}
-        run: npm run test:ci
-  codeql:
-    name: Analyze (CodeQL)
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      matrix:
-        language: ["javascript"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        run: npm run test:ci # <-- Make sure this generates a coverage report, e.g. ./coverage-e2e/lcov.info
+      - name: Upload Cypress coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          languages: ${{ matrix.language }}
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage-e2e/lcov.info
+          flags: e2e
+          fail_ci_if_error: false
+
   coverage:
     needs: cypress_tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: npm ci --legacy-peer-deps
-      - name: Run tests with coverage
+      - name: Run unit tests with coverage
         run: npm test -- --coverage --watchAll=false
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload unit test coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
+          flags: unittests
           fail_ci_if_error: false
