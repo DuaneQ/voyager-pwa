@@ -46,8 +46,14 @@ describe("ProfileForm", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock window.location.href assignment
-    window.location = { href: "" } as any;
+    // Mock window.location.assign to prevent jsdom navigation error
+    Object.defineProperty(window, "location", {
+      value: {
+        ...window.location,
+        assign: jest.fn(),
+      },
+      writable: true,
+    });
     (onAuthStateChanged as jest.Mock).mockImplementation((auth, callback) => {
       callback({ uid: "12345" });
       return jest.fn();
