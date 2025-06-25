@@ -101,11 +101,5 @@
   "main": "jest.fetch-polyfill.js",
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "jest": {
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.js",
-      "<rootDir>/jest.fetch-polyfill.js"
-    ]
-  }
+  "license": "ISC"
 }
