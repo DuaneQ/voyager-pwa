@@ -46,6 +46,7 @@ function App() {
   useEffect(() => {
     const db = getFirestore();
 
+  if (typeof Notification !== "undefined") {
     Notification.requestPermission().then((permission) => {
       if (permission === "granted") {
         getToken(messaging, {
@@ -58,6 +59,9 @@ function App() {
         });
       }
     });
+  } else {
+    enqueueSnackbar("Push notifications are not supported on this device/browser.", { variant: "info" });
+  }
 
     // Handle foreground notifications
     const unsubscribe = onMessage(messaging, (payload) => {
