@@ -60,7 +60,7 @@ function App() {
       }
     });
   } else {
-    enqueueSnackbar("Push notifications are not supported on this device/browser.", { variant: "info" });
+    enqueueSnackbar("Push notifications are not supported on this device/browser. To enable them, install this app to your home screen.", { variant: "info" });
   }
 
     // Handle foreground notifications
