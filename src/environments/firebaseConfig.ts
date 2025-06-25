@@ -22,12 +22,10 @@ const prodConfig = {
   messagingSenderId: "533074391000",
 };
 
-const firebaseConfig =
-  typeof process !== "undefined" &&
-  process.env &&
-  process.env.REACT_APP_ENV === "production"
-    ? prodConfig
-    : devConfig;
+// Use dev config only if running on localhost
+const isLocalhost =
+  typeof window !== "undefined" && window.location.hostname === "localhost";
+const firebaseConfig = isLocalhost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
