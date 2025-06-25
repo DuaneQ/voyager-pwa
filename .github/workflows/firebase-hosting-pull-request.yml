@@ -24,7 +24,7 @@ jobs:
       - run: npm install --save firebase --legacy-peer-deps
       - run: CI=false npm run build
         env:
-          REACT_APP_ENV: development
+          REACT_APP_ENV: production
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         id: firebase_deploy
