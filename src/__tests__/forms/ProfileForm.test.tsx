@@ -5,11 +5,12 @@ import { ProfileForm } from "../../components/forms/ProfileForm";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { AlertContext } from "../../Context/AlertContext";
 import { auth } from "../../environments/firebaseConfig";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged, getAuth } from "firebase/auth";
 
+// Mock firebase/auth
 jest.mock("firebase/auth", () => ({
   signOut: jest.fn(),
-  getAuth: jest.fn(() => ({})),
+  getAuth: jest.fn(),
   onAuthStateChanged: jest.fn(),
 }));
 
@@ -46,6 +47,7 @@ describe("ProfileForm", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
     // Mock window.location.assign to prevent jsdom navigation error
     Object.defineProperty(window, "location", {
       value: {
@@ -54,8 +56,21 @@ describe("ProfileForm", () => {
       },
       writable: true,
     });
+
+    // Mock localStorage for USER_CREDENTIALS
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === "USER_CREDENTIALS") {
+        return JSON.stringify({ user: { uid: "test-uid" } });
+      }
+      return null;
+    });
+
+    // Mock Firebase Auth currentUser
+    const mockAuth = { currentUser: { uid: "test-uid" } };
+    (getAuth as jest.Mock).mockReturnValue(mockAuth);
+
     (onAuthStateChanged as jest.Mock).mockImplementation((auth, callback) => {
-      callback({ uid: "12345" });
+      callback({ uid: "test-uid" });
       return jest.fn();
     });
   });
