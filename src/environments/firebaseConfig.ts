@@ -22,12 +22,23 @@ const prodConfig = {
   messagingSenderId: "533074391000",
 };
 
-const firebaseConfig =
-  typeof process !== "undefined" &&
-  process.env &&
-  process.env.REACT_APP_ENV === "production"
-    ? prodConfig
-    : devConfig;
+const devHosts = [
+  "localhost",
+  "127.0.0.1",
+  "mundo1-dev.web.app",
+  "mundo1-dev.firebaseapp.com",
+];
+
+// Detect Firebase preview channels (e.g., mundo1-dev--pr52-*.web.app)
+const isDevPreview =
+  typeof window !== "undefined" &&
+  window.location.hostname.includes("mundo1-dev-");
+
+const isDevHost =
+  typeof window !== "undefined" &&
+  (devHosts.includes(window.location.hostname) || isDevPreview);
+
+const firebaseConfig = isDevHost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
