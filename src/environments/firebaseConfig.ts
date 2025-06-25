@@ -22,11 +22,23 @@ const prodConfig = {
   messagingSenderId: "533074391000",
 };
 
-// Use dev config only if running on localhost
-const isLocalhost =
+const devHosts = [
+  "localhost",
+  "127.0.0.1",
+  "mundo1-dev.web.app",
+  "mundo1-dev.firebaseapp.com",
+];
+
+// Detect Firebase preview channels (e.g., mundo1-dev--pr52-*.web.app)
+const isDevPreview =
   typeof window !== "undefined" &&
-  ["localhost", "127.0.0.1"].includes(window.location.hostname);
-const firebaseConfig = isLocalhost ? devConfig : prodConfig;
+  window.location.hostname.includes("mundo1-dev-");
+
+const isDevHost =
+  typeof window !== "undefined" &&
+  (devHosts.includes(window.location.hostname) || isDevPreview);
+
+const firebaseConfig = isDevHost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
