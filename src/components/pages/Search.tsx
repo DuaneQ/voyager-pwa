@@ -136,7 +136,7 @@ export const Search = React.memo(() => {
 
       await addDoc(collection(db, "connections"), {
         users: [userId, otherUserUid],
-        emails: [myEmail, otherEmail], 
+        emails: [myEmail, otherEmail],
         unreadCounts: {
           [userId]: 0,
           [otherUserUid]: 0,
@@ -167,9 +167,11 @@ export const Search = React.memo(() => {
       className="authFormContainer"
       sx={{
         display: "flex",
-        justifyContent: "space-between",
         flexDirection: "column",
         alignItems: "center",
+        width: "100%",
+        height: "100%", // let it fill the parent, not force scrolling
+        overflow: "hidden", // prevent accidental scrollbars
       }}>
       <Box
         sx={{
@@ -180,21 +182,28 @@ export const Search = React.memo(() => {
           backgroundColor: "white",
           zIndex: 1,
           padding: "10px",
+          marginTop: { xs: "5px", sm: "10px" },
+          gap: { xs: 1, sm: 2 },
         }}>
-        <FormControl>
+        <FormControl
+          sx={{
+            minWidth: { xs: 120, sm: 200 },
+            maxWidth: { xs: 180, sm: 300 },
+            "& .MuiInputBase-root": {
+              fontSize: { xs: "0.95rem", sm: "1rem" },
+              height: { xs: 36, sm: 40 },
+              padding: { xs: "2px 8px", sm: "8px 14px" },
+            },
+            "& .MuiSelect-select": {
+              padding: { xs: "8px 8px", sm: "10px 14px" },
+              fontSize: { xs: "0.95rem", sm: "1rem" },
+            },
+          }}>
           <Select
             aria-label="Select Itinerary"
             value={selectedItineraryId}
             onChange={(e) => handleItinerarySelect(e.target.value)}
             displayEmpty
-            style={{
-              marginRight: "10px",
-              minWidth: "200px",
-              maxWidth: "300px",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
             MenuProps={{
               PaperProps: {
                 style: {
@@ -238,12 +247,13 @@ export const Search = React.memo(() => {
             textAlign: "left",
             backgroundColor: "#f9f9f9",
             borderRadius: "8px",
-            padding: "20px",
+            padding: { xs: "10px", sm: "20px" },
             flexDirection: "column",
             alignItems: "center",
-            maxWidth: "350px",
+            maxWidth: { xs: "95vw", sm: "350px" },
+            fontSize: { xs: "0.98rem", sm: "1.15rem" },
             margin: "0 auto",
-            marginBottom: "300px",
+            marginBottom: { xs: "20px", sm: "40px" },
           }}>
           Create an itinerary to find matches for your future trips. Once
           created, select one of your itineraries from the dropdown, and we'll
@@ -266,7 +276,7 @@ export const Search = React.memo(() => {
               flexDirection: "column",
               alignItems: "center",
               maxWidth: "350px",
-              marginBottom: "200px",
+              marginBottom: "40px", // reduce from 200px
             }}>
             <ItineraryCard
               itinerary={matchingItineraries[currentMatchIndex]}
