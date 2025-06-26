@@ -7,11 +7,18 @@ import { AlertContext } from "../../Context/AlertContext";
 import { auth } from "../../environments/firebaseConfig";
 import { signOut, onAuthStateChanged, getAuth } from "firebase/auth";
 
-// Mock firebase/auth
 jest.mock("firebase/auth", () => ({
-  signOut: jest.fn(),
   getAuth: jest.fn(),
+  signOut: jest.fn(),
   onAuthStateChanged: jest.fn(),
+}));
+
+jest.mock("firebase/firestore", () => ({
+  getFirestore: jest.fn(),
+  collection: jest.fn(),
+  getDocs: jest.fn().mockResolvedValue({ docs: [] }),
+  where: jest.fn(),
+  query: jest.fn(),
 }));
 
 describe("ProfileForm", () => {
