@@ -1,17 +1,27 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography } from '@mui/material';
+import React from "react";
+import { AppBar, Toolbar, Typography } from "@mui/material";
+
+const HEADER_HEIGHT = 56;
 
 const Header: React.FC = () => {
-    return (
-        <AppBar position="static">
-            <AppBar position="static"></AppBar>
-            <Toolbar style={{ borderBottom: '2px solid black', backgroundColor: 'white'}}>
-                <Typography variant="h6" style={{ color: 'black', flexGrow: 1 }}>
-                    Voyager
-                </Typography>
-            </Toolbar>
-        </AppBar>
-    );
+  return (
+    <AppBar
+      position="fixed"
+      elevation={0}
+      sx={{
+        borderBottom: "2px solid black",
+        backgroundColor: "white",
+        color: "black",
+        height: HEADER_HEIGHT,
+        justifyContent: "center",
+      }}>
+      <Toolbar sx={{ minHeight: HEADER_HEIGHT }}>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          Traval
+        </Typography>
+      </Toolbar>
+    </AppBar>
+  );
 };
 
 export default Header;
