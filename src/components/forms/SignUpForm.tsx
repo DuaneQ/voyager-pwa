@@ -1,10 +1,3 @@
-/**
- * Form component for user registration.
- *
- * @component
- * @returns {JSX.Element}
- */
-
 import * as React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -35,26 +28,20 @@ import { GoogleIcon } from "../custom-icons/GoogleIcon";
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  alignSelf: "center",
-  width: "100%",
-  padding: theme.spacing(4),
-  gap: theme.spacing(2),
-  margin: "auto",
+  width: "80%",
+  padding: theme.spacing(1),
+  gap: theme.spacing(1),
+  marginTop: theme.spacing(1), 
+
   [theme.breakpoints.up("sm")]: {
-    maxWidth: "450px",
+    maxWidth: "400px",
   },
-  boxShadow:
-    "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
-  ...theme.applyStyles("dark", {
-    boxShadow:
-      "hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px",
-  }),
 }));
 
 const SignInContainer = styled(Stack)(({ theme }) => ({
-  padding: theme.spacing(2),
+  padding: theme.spacing(0.1),
   [theme.breakpoints.up("sm")]: {
-    padding: theme.spacing(3),
+    padding: theme.spacing(1),
   },
   "&::before": {
     content: '""',
@@ -269,15 +256,18 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     <>
       <CssBaseline enableColorScheme />
       <SignInContainer
-        className="authFormContainer"
-        direction="column"
-        justifyContent="space-between">
-        <Card variant="outlined">
+        className="authFormContainer">
+        <Card
+          variant="outlined"
+          sx={{
+            fontSize: { xs: "0.65rem", sm: "1rem" },
+            // ...other styles
+          }}>
           <Typography
             component="h1"
-            variant="h4"
+            variant="h5" // Use h5 for a smaller heading
             align="left"
-            sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
+            sx={{ width: "100%", fontSize: { xs: "1.5rem", sm: "2rem" } }}>
             Sign up
           </Typography>
           <form
@@ -285,8 +275,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
             onSubmit={handleSubmit}
             noValidate>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="username">Username</FormLabel>
+              <FormLabel
+                htmlFor="username"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Username
+              </FormLabel>
               <TextField
+                size="small"
                 error={usernameError}
                 id="username"
                 type="text"
@@ -298,6 +293,11 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 onChange={handleNameChange}
                 color={usernameError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
               {usernameError ? (
                 <FormHelperText>
@@ -306,8 +306,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
               ) : null}
             </FormControl>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="email">Email</FormLabel>
+              <FormLabel
+                htmlFor="email"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Email
+              </FormLabel>
               <TextField
+                size="small"
                 error={emailError}
                 id="email"
                 type="email"
@@ -319,14 +324,24 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 onChange={handleEmailChange}
                 color={emailError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
               {emailError ? (
                 <FormHelperText>Please enter a valid email.</FormHelperText>
               ) : null}
             </FormControl>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="password">Password</FormLabel>
+              <FormLabel
+                htmlFor="password"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Password
+              </FormLabel>
               <TextField
+                size="small"
                 error={passwordError}
                 name="password"
                 placeholder="Enter your password"
@@ -338,6 +353,11 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 onChange={handlePasswordChange}
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
               {passwordError ? (
                 <FormHelperText>
@@ -346,18 +366,28 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
               ) : null}
             </FormControl>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="confirm">Confirm Password</FormLabel>
+              <FormLabel
+                htmlFor="confirm"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Confirm Password
+              </FormLabel>
               <TextField
+                size="small"
                 error={passwordConfError}
                 name="confirm"
                 placeholder="Confirm your password"
-                type="text"
+                type="password"
                 id="confirm"
                 value={inputs.confirm}
                 fullWidth
                 onChange={handlePasswordConfChange}
                 variant="outlined"
                 color={passwordConfError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
               {passwordConfError ? (
                 <FormHelperText>

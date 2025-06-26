@@ -172,12 +172,13 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 400,
+          width: { xs: "98vw", sm: 400 },
+          maxWidth: { xs: 300, sm: 400 },
           bgcolor: "background.paper",
           boxShadow: 24,
-          p: 4,
+          p: { xs: 1.5, sm: 4 },
           borderRadius: 2,
-          maxHeight: "80vh",
+          maxHeight: { xs: "95vh", sm: "80vh" },
           overflowY: "auto",
         }}>
         <h2>Add New Itinerary</h2>
