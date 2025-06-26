@@ -34,28 +34,23 @@ import { getFirestore, doc, getDoc } from "firebase/firestore";
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  alignSelf: "center",
-  width: "100%",
-  padding: theme.spacing(4),
-  gap: theme.spacing(2),
-  margin: "auto",
+  width: "80%",
+  padding: theme.spacing(1),
+  gap: theme.spacing(1),
+  marginTop: theme.spacing(1),
+  marginLeft: "auto",
+  marginRight: "auto",
   [theme.breakpoints.up("sm")]: {
-    maxWidth: "450px",
+    maxWidth: "400px",
+    padding: theme.spacing(1),
+    gap: theme.spacing(2),
   },
-  boxShadow:
-    "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
-  ...theme.applyStyles("dark", {
-    boxShadow:
-      "hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px",
-  }),
 }));
 
 const SignInContainer = styled(Stack)(({ theme }) => ({
-  height: "calc((1 - var(--template-frame-height, 0)) * 100dvh)",
-  minHeight: "100%",
-  padding: theme.spacing(2),
+  padding: theme.spacing(0.1),
   [theme.breakpoints.up("sm")]: {
-    padding: theme.spacing(4),
+    padding: theme.spacing(1),
   },
   "&::before": {
     content: '""',
@@ -76,7 +71,7 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   const [emailError, setEmailError] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // State to track submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
 
@@ -114,7 +109,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       }
     } catch (error) {
       if ((error as { code?: string }).code === "auth/popup-closed-by-user") {
-        // Handle the case where the user closes the popup
         showAlert("Info", "Google sign-in was canceled.");
       } else {
         const errorMessage =
@@ -122,7 +116,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
         showAlert("Error", errorMessage);
       }
     } finally {
-      setIsSubmitting(false); // Re-enable buttons
+      setIsSubmitting(false);
     }
   };
 
@@ -141,7 +135,7 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       return;
     }
 
-    setIsSubmitting(true); // Disable buttons
+    setIsSubmitting(true);
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -150,7 +144,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       );
       const user = userCredential.user;
 
-      // Refresh the user's authentication state
       await user.reload();
       if (!user.emailVerified) {
         showAlert(
@@ -178,25 +171,22 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred.";
-      showAlert("Error", errorMessage); // Pass the correct error message
+      showAlert("Error", errorMessage);
     } finally {
-      setIsSubmitting(false); // Re-enable buttons
+      setIsSubmitting(false);
     }
   };
 
   return (
     <>
       <CssBaseline enableColorScheme />
-      <SignInContainer
-        className="authFormContainer"
-        direction="column"
-        justifyContent="space-between">
+      <SignInContainer className="authFormContainer">
         <Card variant="outlined">
           <Typography
             component="h1"
-            variant="h4"
+            variant="h5"
             align="left"
-            sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
+            sx={{ width: "100%", fontSize: { xs: "1.5rem", sm: "2rem" } }}>
             Sign in
           </Typography>
           <Box
@@ -210,8 +200,13 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               gap: 2,
             }}>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="email">Email</FormLabel>
+              <FormLabel
+                htmlFor="email"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Email
+              </FormLabel>
               <TextField
+                size="small"
                 error={emailError}
                 onChange={handleEmailChange}
                 id="email"
@@ -223,11 +218,21 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 fullWidth
                 variant="outlined"
                 color={emailError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
             </FormControl>
             <FormControl required sx={{ textAlign: "left" }}>
-              <FormLabel htmlFor="password">Password</FormLabel>
+              <FormLabel
+                htmlFor="password"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                Password
+              </FormLabel>
               <TextField
+                size="small"
                 error={passwordError}
                 onChange={handlePasswordChange}
                 name="password"
@@ -238,6 +243,11 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 fullWidth
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
+                sx={{
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
+                  "& input::placeholder": { fontSize: "0.95rem" },
+                }}
               />
             </FormControl>
             <Button
@@ -245,22 +255,31 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               fullWidth
               variant="contained"
               data-testid="email-signin-button"
-              disabled={isSubmitting} // Disable button while submitting
-            >
+              disabled={isSubmitting}
+              sx={{
+                fontSize: { xs: "0.95rem", sm: "1rem" },
+                py: { xs: 1, sm: 1.5 },
+              }}>
               Sign in
             </Button>
             <Link
               component={RouterLink}
               to="/reset"
               variant="body2"
-              sx={{ alignSelf: "center" }}>
+              sx={{
+                alignSelf: "center",
+                fontSize: { xs: "0.85rem", sm: "1rem" },
+              }}>
               Forgot your password?
             </Link>
             <Link
               component={RouterLink}
               to="/ResendEmail"
               variant="body2"
-              sx={{ alignSelf: "center" }}>
+              sx={{
+                alignSelf: "center",
+                fontSize: { xs: "0.85rem", sm: "1rem" },
+              }}>
               Resend email verification
             </Link>
           </Box>
@@ -272,20 +291,30 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               onClick={handleGoogleSignIn}
               startIcon={<GoogleIcon />}
               data-testid="google-signin-button"
-              disabled={isSubmitting} // Disable button while submitting
-            >
+              disabled={isSubmitting}
+              sx={{
+                fontSize: { xs: "0.95rem", sm: "1rem" },
+                py: { xs: 1, sm: 1.5 },
+              }}>
               Sign in with Google
             </Button>
           </Box>
           <Divider>or</Divider>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography sx={{ textAlign: "center" }}>
+            <Typography
+              sx={{
+                textAlign: "center",
+                fontSize: { xs: "0.95rem", sm: "1rem" },
+              }}>
               Don&apos;t have an account?{" "}
               <Link
                 component={RouterLink}
                 to="/Register"
                 variant="body2"
-                sx={{ alignSelf: "center" }}>
+                sx={{
+                  alignSelf: "center",
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                }}>
                 Sign up
               </Link>
             </Typography>

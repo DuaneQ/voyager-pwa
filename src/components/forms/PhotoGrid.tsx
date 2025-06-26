@@ -6,6 +6,8 @@ import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
 
+const IMAGE_SIZE = 120; // px
+
 export const PhotoGrid = () => {
   const { uploadImage } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,28 +83,27 @@ export const PhotoGrid = () => {
 
   return (
     <>
-      <Grid container spacing={2}>
+      <Grid container spacing={2} px={1}>
         {Array.from({ length: 4 }).map((_, index) => (
-          <Grid item xs={6} key={index}>
+          <Grid item xs={6} key={index} display="flex" justifyContent="center">
             <img
               src={
                 userProfile?.photos &&
                 userProfile?.photos.length > index &&
-                userProfile?.photos[index] !== "" &&
-                userProfile?.photos[index] !== null &&
-                userProfile?.photos[index] !== undefined
+                userProfile?.photos[index]
                   ? userProfile?.photos[index]
                   : profilePlaceholder
               }
               alt={`Profile Placeholder ${index + 1}`}
               style={{
-                maxWidth: "100%",
-                height: "auto",
-                maxHeight: "150px",
-                width: "auto",
+                width: IMAGE_SIZE,
+                height: IMAGE_SIZE,
                 objectFit: "cover",
-                cursor: loading ? "not-allowed" : "pointer", // Disable pointer events while loading
-                opacity: loading ? 0.5 : 1, // Dim the image while loading
+                borderRadius: 8,
+                background: "#eee",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.5 : 1,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
               }}
               onClick={(event) => handlePhotoClick(event, index)}
             />

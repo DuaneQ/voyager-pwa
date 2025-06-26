@@ -92,7 +92,7 @@ function App() {
               flexDirection: "column",
               minHeight: "100vh",
             }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, paddingBottom: 56 }}>
               <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
                   <Route path="/Login" element={<Login />} />

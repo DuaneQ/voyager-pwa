@@ -49,6 +49,20 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const profilePhoto = validPhotos[0] || null;
   const otherPhotos = validPhotos.slice(1, 5);
 
+  // Utility function to calculate age from date string
+  function getAge(dobString?: string): string {
+    if (!dobString) return "";
+    const dob = new Date(dobString);
+    if (isNaN(dob.getTime())) return "";
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age.toString();
+  }
+
   return (
     <>
       <Modal open={open} onClose={onClose}>
@@ -59,11 +73,12 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: { xs: "98vw", sm: 400 },
-            maxHeight: { xs: "98vh", sm: "90vh" },
+            maxWidth: { xs: 340, sm: 400 },
+            maxHeight: { xs: "85vh", sm: "90vh" },
             bgcolor: "background.paper",
             boxShadow: 24,
             overflowY: "auto",
-            p: { xs: 2, sm: 3 },
+            p: { xs: 1, sm: 3 },
             borderRadius: 2,
             display: "flex",
             flexDirection: "column",
@@ -138,58 +153,189 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     flexDirection: "column",
                     gap: 2,
                     p: 2,
-                    // maxWidth: 350,
-                    // margin: "0 auto",
                   }}>
                   <FormControl>
                     <TextField
                       label="Bio"
                       value={profile.bio || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
                       multiline
                       rows={2}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
-                      label="Date of birth"
-                      value={profile.dob || ""}
-                      InputProps={{ readOnly: true }}
+                      label="Age"
+                      value={getAge(profile.dob)}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
                       label="Gender"
                       value={profile.gender || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
                       label="Sexual Orientation"
                       value={profile.sexo || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
                       label="Education"
                       value={profile.edu || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
                       label="Drinking"
                       value={profile.drinking || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
                     <TextField
                       label="Smoking"
                       value={profile.smoking || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
                     />
                   </FormControl>
                 </Card>
@@ -249,7 +395,11 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           }}>
           <img
             src={selectedPhoto || ""}
-            alt={profile?.username ? `${profile.username}'s profile` : "User profile"}
+            alt={
+              profile?.username
+                ? `${profile.username}'s profile`
+                : "User profile"
+            }
             style={{
               maxWidth: "80vw",
               maxHeight: "80vh",

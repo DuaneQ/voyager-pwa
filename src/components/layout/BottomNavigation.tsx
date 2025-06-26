@@ -25,7 +25,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
       "& .MuiSvgIcon-root": {
         fontSize: theme.typography.pxToRem(30),
       },
-      paddingBottom: theme.spacing(0),
+      paddingBottom: theme.spacing(),
     })
   );
 
@@ -41,7 +41,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
         setValue(newValue);
         navigate(newValue);
       }}
-      sx={{ width: "100%", position: "fixed", bottom: 0 }}>
+      sx={{ width: "100%", position: "fixed", bottom: 0, bgcolor: "background.paper", // <-- Add this line
+    zIndex: 1300, }}>
       <StyledBottomNavigationAction
         label="Chat"
         value="/Chat"
