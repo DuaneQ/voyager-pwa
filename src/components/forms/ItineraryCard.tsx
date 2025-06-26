@@ -40,11 +40,11 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
     <>
       <Card
         sx={{
-          margin: "30px auto",
-          maxWidth: 400,
+          margin: { xs: "16px auto", sm: "30px auto" },
+          maxWidth: { xs: 320, sm: 400 },
           boxShadow: 3,
           borderRadius: 2,
-          padding: 2,
+          padding: { xs: 1, sm: 2 },
           backgroundColor: "#f5f5f5",
           position: "relative",
         }}>
@@ -55,42 +55,70 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              mb: 2,
+              mb: { xs: 1, sm: 2 },
             }}>
             <IconButton
               onClick={() => setViewProfileOpen(true)}
-              sx={{ p: 0, mr: 2 }}
+              sx={{ p: 0, mr: { xs: 1, sm: 2 } }}
               aria-label="View profile">
               <Avatar
                 src={profilePhoto}
                 alt={itinerary.userInfo?.username || "Profile"}
-                sx={{ width: 56, height: 56, border: "2px solid #fff" }}
+                sx={{
+                  width: { xs: 40, sm: 56 },
+                  height: { xs: 40, sm: 56 },
+                  border: "2px solid #fff",
+                }}
               />
             </IconButton>
-            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "#333",
+                fontSize: { xs: "1.1rem", sm: "1.25rem" },
+              }}>
               {itinerary.userInfo?.username || "Anonymous"}
             </Typography>
           </Box>
           <Typography
             variant="h5"
             gutterBottom
-            sx={{ textAlign: "center", fontWeight: "bold", color: "#333" }}>
+            sx={{
+              textAlign: "center",
+              fontWeight: "bold",
+              color: "#333",
+              fontSize: { xs: "1.2rem", sm: "1.5rem" },
+            }}>
             {itinerary.destination || "Unknown Destination"}
           </Typography>
           <Typography
             variant="body1"
             color="textSecondary"
-            sx={{ textAlign: "center", marginBottom: "10px" }}>
+            sx={{
+              textAlign: "center",
+              marginBottom: { xs: "6px", sm: "10px" },
+              fontSize: { xs: "0.95rem", sm: "1rem" },
+            }}>
             Start Date: {startDate}
           </Typography>
           <Typography
             variant="body1"
             color="textSecondary"
-            sx={{ textAlign: "center", marginBottom: "10px" }}>
+            sx={{
+              textAlign: "center",
+              marginBottom: { xs: "6px", sm: "10px" },
+              fontSize: { xs: "0.95rem", sm: "1rem" },
+            }}>
             End Date: {endDate}
           </Typography>
           <Box mt={2} sx={{ textAlign: "center" }}>
-            <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontStyle: "italic",
+                fontSize: { xs: "0.95rem", sm: "1rem" },
+              }}>
               {itinerary.description || "No description provided."}
             </Typography>
           </Box>
@@ -99,10 +127,18 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               <Typography
                 variant="body2"
                 fontWeight="bold"
-                sx={{ marginBottom: "10px" }}>
+                sx={{
+                  marginBottom: { xs: "6px", sm: "10px" },
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                }}>
                 Activities:
               </Typography>
-              <ul style={{ listStyleType: "circle", paddingLeft: "20px" }}>
+              <ul
+                style={{
+                  listStyleType: "circle",
+                  paddingLeft: "20px",
+                  fontSize: "0.95rem",
+                }}>
                 {itinerary.activities.map((activity, index) => (
                   <li key={index}>{activity}</li>
                 ))}
@@ -128,7 +164,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             <img
               src={noLikeIcon}
               alt="No Like Icon"
-              style={{ width: "60px", height: "60px" }}
+              style={{ width: "40px", height: "40px" }} // smaller on mobile
             />
           </Button>
           <Button
@@ -142,7 +178,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             <img
               src={favicon}
               alt="Favicon Icon"
-              style={{ width: "60px", height: "60px" }}
+              style={{ width: "40px", height: "40px" }} // smaller on mobile
             />
           </Button>
         </CardActions>
