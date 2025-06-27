@@ -90,7 +90,6 @@ export const Search = React.memo(() => {
     saveViewedItinerary(itinerary);
 
     if (!userId) {
-      console.log("User not logged in.");
       alert("You must be logged in to like an itinerary.");
       setCurrentMatchIndex((prev) => prev + 1);
       return;
@@ -101,7 +100,6 @@ export const Search = React.memo(() => {
     await updateDoc(itineraryRef, {
       likes: arrayUnion(userId),
     });
-    console.log(`User ${userId} liked itinerary ${itinerary.id}`);
 
     // 2. Fetch the latest version of the current user's selected itinerary from Firestore
     const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
@@ -111,10 +109,6 @@ export const Search = React.memo(() => {
       setCurrentMatchIndex((prev) => prev + 1);
       return;
     }
-    console.log(
-      "Freshly fetched current user's selected itinerary:",
-      myItinerary
-    );
 
     // 3. Check if the other user's UID is in your itinerary's likes array
     const otherUserUid = itinerary.userInfo?.uid ?? "";
@@ -123,14 +117,9 @@ export const Search = React.memo(() => {
       setCurrentMatchIndex((prev) => prev + 1);
       return;
     }
-    console.log("Other user's UID:", otherUserUid);
-
-    console.log("myItinerary.likes:", myItinerary.likes);
-    console.log("Looking for:", otherUserUid);
 
     // 4. Create a new connection document with a unique ID
     if ((myItinerary.likes || []).includes(otherUserUid)) {
-      console.log("Mutual like detected! Creating connection...");
       const myEmail = myItinerary?.userInfo?.email ?? "";
       const otherEmail = itinerary?.userInfo?.email ?? "";
 
@@ -146,7 +135,6 @@ export const Search = React.memo(() => {
         createdAt: serverTimestamp(),
       });
       setHasNewConnection(true);
-      console.log("Connection created!");
       alert("It's a match! You can now chat with this user.");
     } else {
       console.log("No mutual like yet.");

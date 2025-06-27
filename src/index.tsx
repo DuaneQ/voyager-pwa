@@ -8,8 +8,6 @@ import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
-console.log("App Environment:", process.env.REACT_APP_ENV);
-
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
