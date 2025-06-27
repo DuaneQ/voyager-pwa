@@ -3,13 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { Protected } from "../../Context/Protected";
 import { Context } from "../../Context/UserAuthContext";
 
-// Mock react-router-dom more effectively
+// Fix: Simplify the mock to avoid referencing out-of-scope variables
 jest.mock("react-router-dom", () => ({
-  Navigate: (props) => {
-    // This logs the navigation that would happen and renders a marker
-    console.log(`Navigation to: ${props.to}`);
-    return <div data-testid="navigate-mock">Redirecting to {props.to}</div>;
-  }
+  Navigate: (props) => (
+    <div data-testid="navigate-mock">Redirecting to {props.to}</div>
+  )
 }));
 
 describe("Protected component", () => {
