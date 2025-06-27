@@ -1,3 +1,6 @@
+codecov:
+  require_ci_to_pass: false
+
 coverage:
   status:
     project:
@@ -6,6 +9,7 @@ coverage:
     patch:
       default:
         informational: true
+
 ignore:
   - "**/__tests__/**"        # Exclude all test files
   - "**/*.test.{js,jsx,ts,tsx}"  # Exclude test files
@@ -21,4 +25,7 @@ ignore:
   - "public/**"              # Exclude public assets
   - "**/*.d.ts"              # Exclude declaration files
   - "src/index.tsx"          # Main entry point (often just bootstraps the app)
-  - "src/firebase-config.ts" # Firebase configuration
+  - "src/environments/firebase-config.ts" # Firebase configuration
+  - "src/service-worker.ts"  # Service worker implementation
+  - "src/serviceWorkerRegistration.ts"  # Service worker registration
+  - "src/setup.js"           # Setup file
