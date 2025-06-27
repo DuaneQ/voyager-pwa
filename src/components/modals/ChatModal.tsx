@@ -226,11 +226,16 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   sx={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems:
-                      msg.sender === userId ? "flex-end" : "flex-start",
+                    alignItems: msg.sender === userId ? "flex-end" : "flex-start",
                     mb: 1,
                   }}>
                   <Box
+                    data-testid="message-bubble"
+                    className={
+                      msg.sender === userId
+                        ? "current-user-message"
+                        : "other-user-message"
+                    }
                     sx={{
                       bgcolor: msg.sender === userId ? "#1976d2" : "#e0e0e0",
                       color: msg.sender === userId ? "#fff" : "#000",
