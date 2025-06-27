@@ -6,3 +6,19 @@ coverage:
     patch:
       default:
         informational: true
+ignore:
+  - "**/__tests__/**"        # Exclude all test files
+  - "**/*.test.{js,jsx,ts,tsx}"  # Exclude test files
+  - "**/node_modules/**"     # Exclude node_modules
+  - "build/**"               # Exclude build output
+  - "dist/**"                # Exclude distribution files
+  - "coverage/**"            # Exclude coverage reports
+  - "src/serviceWorker.ts"   # Exclude service worker
+  - "src/reportWebVitals.ts" # Exclude web vitals reporting
+  - "src/setupTests.ts"      # Exclude test setup
+  - "**/*.stories.{js,jsx,ts,tsx}" # Exclude storybook files
+  - "src/mocks/**"           # Exclude mock files
+  - "public/**"              # Exclude public assets
+  - "**/*.d.ts"              # Exclude declaration files
+  - "src/index.tsx"          # Main entry point (often just bootstraps the app)
+  - "src/firebase-config.ts" # Firebase configuration

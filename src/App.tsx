@@ -26,10 +26,8 @@ import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
 import { UserProfileProvider } from "./Context/UserProfileContext";
 import { NewConnectionProvider } from "./Context/NewConnectionContext";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
-import { doc, getFirestore, setDoc } from "firebase/firestore";
-import { auth } from "./environments/firebaseConfig";
 import { app } from "./environments/firebaseConfig";
 const messaging = getMessaging(app);
 
@@ -44,26 +42,7 @@ function App() {
   ].includes(location.pathname);
 
   useEffect(() => {
-    const db = getFirestore();
-
-  if (typeof Notification !== "undefined") {
-    Notification.requestPermission().then((permission) => {
-      if (permission === "granted") {
-        getToken(messaging, {
-          vapidKey: process.env.REACT_APP_VAPID_KEY,
-        }).then(async (currentToken) => {
-          if (currentToken && auth.currentUser) {
-            const userRef = doc(db, "users", auth.currentUser.uid);
-            await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
-          }
-        });
-      }
-    });
-  } else {
-    enqueueSnackbar("Push notifications are not supported on this device/browser. To enable them, install this app to your home screen.", { variant: "info" });
-  }
-
-    // Handle foreground notifications
+    // Handle foreground notifications globally
     const unsubscribe = onMessage(messaging, (payload) => {
       enqueueSnackbar(
         (payload.notification?.title || "Notification") +
