@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import useGetUserId from "./useGetUserId";
 import { app } from "../environments/firebaseConfig";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
-import 'firebase/firestore';
+import "firebase/firestore";
 import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
@@ -21,7 +21,7 @@ const useGetUserProfile = () => {
 
   const userId: string | null = useGetUserId();
   const [isLoading, setIsLoading] = useState(true);
-  const {  updateUserProfile  } = useContext(UserProfileContext);
+  const { updateUserProfile } = useContext(UserProfileContext);
 
   useEffect(() => {
     const userProfile = async () => {
@@ -35,8 +35,10 @@ const useGetUserProfile = () => {
           const db = getFirestore(app);
           if (userId) {
             const userRef = await getDoc(doc(db, "users", userId));
+            console.log("ref", userRef);
             if (userRef.exists()) {
               const profile = userRef.data();
+              localStorage.setItem("PROFILE_INFO", JSON.stringify(profile));
               updateUserProfile(profile);
             }
           }
@@ -50,7 +52,7 @@ const useGetUserProfile = () => {
     userProfile();
   }, [updateUserProfile, userId]);
   return {
-    isLoading
+    isLoading,
   };
 };
 
