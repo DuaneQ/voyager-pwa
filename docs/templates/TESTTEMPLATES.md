@@ -95,3 +95,5 @@ Mock Firebase Firestore (getFirestore,
   serverTimestamp,
   doc,)
 Mock Firestore error scenarios
+
+__________________________________________________________________________________________

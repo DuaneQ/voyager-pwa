@@ -170,22 +170,32 @@ export const Chat = React.memo(() => {
         sx={{
           maxWidth: 500,
           mx: "auto",
-          mt: -20,
+          mt: 2, // Change from -20 to positive value
           background: "transparent",
           boxShadow: "none",
           border: "none",
           p: 0,
-          height: "100vh",
+          height: "calc(100vh - 56px)", // Account for bottom nav height
           display: "flex",
           flexDirection: "column",
         }}>
         {/* Page Header */}
-        <Box sx={{ mb: 10 }}></Box>
+        <Box 
+          sx={{ 
+            mb: 2,
+            pt: 2,
+            px: 2,
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+        </Box>
         <Box
           sx={{
             flex: 1,
             overflowY: "auto",
             minHeight: 0,
+            mt: 2, // Add top margin to create space after header
           }}>
           <List
             sx={{
