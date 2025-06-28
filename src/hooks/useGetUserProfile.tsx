@@ -6,19 +6,6 @@ import "firebase/firestore";
 import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
-  type profile = {
-    email: string;
-    username: string;
-    userBio: string;
-    dob: Date;
-    gender: string;
-    sexo: string;
-    education: string;
-    drinkingHabits: string;
-    smokingHabits: string;
-    photos?: string[];
-  };
-
   const userId: string | null = useGetUserId();
   const [isLoading, setIsLoading] = useState(true);
   const { updateUserProfile } = useContext(UserProfileContext);
@@ -27,23 +14,33 @@ const useGetUserProfile = () => {
     const userProfile = async () => {
       setIsLoading(true);
       try {
-        const userRef = localStorage.getItem("PROFILE_INFO");
-        if (userRef) {
-          const profile: profile = JSON.parse(userRef);
-          updateUserProfile(profile);
-        } else {
-          const db = getFirestore(app);
-          if (userId) {
-            const userRef = await getDoc(doc(db, "users", userId));
-            console.log("ref", userRef);
-            if (userRef.exists()) {
-              const profile = userRef.data();
-              localStorage.setItem("PROFILE_INFO", JSON.stringify(profile));
-              updateUserProfile(profile);
+        const db = getFirestore(app);
+
+        if (userId) {
+          // Important: Always get the freshest data from Firebase first
+          // This ensures any updates (like blocking) are reflected immediately
+          const userRef = await getDoc(doc(db, "users", userId));
+
+          if (userRef.exists()) {
+            const profile = userRef.data();
+            // Update localStorage with the fresh data
+            localStorage.setItem("PROFILE_INFO", JSON.stringify(profile));
+            // Update context
+            updateUserProfile(profile);
+          } else {
+            // Only fall back to localStorage if Firebase has no data
+            const cachedProfile = localStorage.getItem("PROFILE_INFO");
+            if (cachedProfile) {
+              updateUserProfile(JSON.parse(cachedProfile));
             }
           }
         }
       } catch (error) {
+        // On error, try localStorage as fallback
+        const cachedProfile = localStorage.getItem("PROFILE_INFO");
+        if (cachedProfile) {
+          updateUserProfile(JSON.parse(cachedProfile));
+        }
         console.log("error", error);
       } finally {
         setIsLoading(false);
@@ -51,9 +48,8 @@ const useGetUserProfile = () => {
     };
     userProfile();
   }, [updateUserProfile, userId]);
-  return {
-    isLoading,
-  };
+
+  return { isLoading };
 };
 
 export default useGetUserProfile;
