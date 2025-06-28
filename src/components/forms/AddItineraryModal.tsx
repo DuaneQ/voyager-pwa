@@ -103,12 +103,15 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     }
 
     try {
+      // Use the existing userProfile that now contains the synchronized blocked array
       const userInfo = {
         username: userProfile?.username || "Anonymous",
         gender: userProfile?.gender || "Not specified",
         dob: userProfile?.dob || "Unknown",
         uid: userId || "Unknown",
         email: userProfile?.email || "",
+        // Include blocked array from userProfile - this will now be up-to-date
+        blocked: userProfile?.blocked || [],
       };
       const itineraryWithUserInfo = {
         ...newItinerary,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Modal,
   Box,
@@ -9,10 +9,22 @@ import {
   TextField,
   IconButton,
   Grid,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import BlockIcon from "@mui/icons-material/Block";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
+import useGetUserId from "../../hooks/useGetUserId";
+import { UserProfileContext } from "../../Context/UserProfileContext";
+
 const db = getFirestore(app);
 
 interface ViewProfileModalProps {
@@ -26,9 +38,20 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   onClose,
   userId,
 }) => {
+  // Add default empty values when context is not available
+  const contextValue = useContext(UserProfileContext);
+  const userProfile = contextValue?.userProfile || {};
+  const updateUserProfile = contextValue?.updateUserProfile || (() => {});
+  
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [confirmBlockOpen, setConfirmBlockOpen] = useState(false);
+  const [blockingInProgress, setBlockingInProgress] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+  const currentUserId = useGetUserId();
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +71,69 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   // First photo is profile photo, rest are other photos
   const profilePhoto = validPhotos[0] || null;
   const otherPhotos = validPhotos.slice(1, 5);
+
+  // Handle block user confirmation
+  const handleOpenBlockConfirmation = () => {
+    setConfirmBlockOpen(true);
+  };
+
+  const handleCloseBlockConfirmation = () => {
+    setConfirmBlockOpen(false);
+  };
+
+  // Handle actual blocking action
+  const handleBlockUser = async () => {
+    if (!currentUserId || !userId) {
+      setSnackbarMessage("Unable to block user: You must be logged in");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setBlockingInProgress(true);
+    
+    try {
+      // 1. Update current user's document to block the other user
+      const currentUserRef = doc(db, "users", currentUserId);
+      await updateDoc(currentUserRef, {
+        blocked: arrayUnion(userId)
+      });
+
+      // 2. Update other user's document to block current user
+      const otherUserRef = doc(db, "users", userId);
+      await updateDoc(otherUserRef, {
+        blocked: arrayUnion(currentUserId)
+      });
+
+      // 3. Update local state (context AND localStorage)
+      // Get the fresh profile data with the updated blocked array
+      const updatedUserSnap = await getDoc(currentUserRef);
+      if (updatedUserSnap.exists()) {
+        const updatedUserData = updatedUserSnap.data();
+        
+        // Update context
+        updateUserProfile(updatedUserData);
+        
+        // Update localStorage
+        localStorage.setItem("PROFILE_INFO", JSON.stringify(updatedUserData));
+      }
+
+      setSnackbarMessage("User blocked successfully");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      
+      // Close dialogs
+      setConfirmBlockOpen(false);
+      onClose();
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      setSnackbarMessage("Failed to block user: An error occurred");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    } finally {
+      setBlockingInProgress(false);
+    }
+  };
 
   // Utility function to calculate age from date string
   function getAge(dobString?: string): string {
@@ -84,7 +170,37 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             flexDirection: "column",
             overflow: "hidden",
           }}>
-          {/* Top: Large profile photo, only if available */}
+          {/* Top: Block button and close button */}
+          <Box 
+            sx={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center",
+              mb: 1
+            }}
+          >
+            <IconButton 
+              color="error" 
+              onClick={handleOpenBlockConfirmation}
+              aria-label="Block user"
+              sx={{ 
+                borderRadius: 1,
+                '&:hover': {
+                  backgroundColor: 'rgba(211, 47, 47, 0.04)'
+                }
+              }}
+            >
+              <BlockIcon />
+              <Typography variant="caption" sx={{ ml: 0.5, fontSize: '0.7rem' }}>
+                Block
+              </Typography>
+            </IconButton>
+            <IconButton onClick={onClose}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Profile photo and info */}
           {profilePhoto && (
             <Box
               sx={{
@@ -110,33 +226,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               <Typography variant="h5" sx={{ mt: 2 }}>
                 {profile?.username || "User"}
               </Typography>
-              <IconButton
-                sx={{
-                  ml: "auto",
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                }}
-                onClick={onClose}>
-                <CloseIcon />
-              </IconButton>
             </Box>
           )}
+          
+          {/* Rest of component remains the same */}
+          {/* ... existing profile display code ... */}
           {!profilePhoto && (
             <Box sx={{ position: "relative", mb: 2 }}>
               <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
                 {profile?.username || "User"}
               </Typography>
-              <IconButton
-                sx={{
-                  ml: "auto",
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                }}
-                onClick={onClose}>
-                <CloseIcon />
-              </IconButton>
             </Box>
           )}
           <Box sx={{ flex: 1, overflowY: "auto" }}>
@@ -158,28 +257,9 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     <TextField
                       label="Bio"
                       value={profile.bio || ""}
-                      InputProps={{
-                        readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
-                      }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      InputProps={{ readOnly: true }}
                       multiline
                       rows={2}
-                      sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                        },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                        },
-                      }}
                     />
                   </FormControl>
                   <FormControl>
@@ -375,6 +455,8 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           </Box>
         </Box>
       </Modal>
+      
+      {/* Photo modal remains the same */}
       <Modal open={!!selectedPhoto} onClose={() => setSelectedPhoto(null)}>
         <Box
           sx={{
@@ -409,6 +491,61 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           />
         </Box>
       </Modal>
+      
+      {/* Block confirmation dialog */}
+      <Dialog
+        open={confirmBlockOpen}
+        onClose={handleCloseBlockConfirmation}
+        aria-labelledby="block-dialog-title"
+        aria-describedby="block-dialog-description"
+      >
+        <DialogTitle id="block-dialog-title">
+          Block this user?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="block-dialog-description">
+            When you block someone:
+          </DialogContentText>
+          <ul>
+            <li>They won't be able to see your profile or itineraries</li>
+            <li>You won't see their profile or itineraries</li>
+            <li>Any existing connections will be hidden</li>
+            <li>Neither of you will be matched in future searches</li>
+          </ul>
+          <DialogContentText>
+            This action cannot be easily undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBlockConfirmation} color="primary">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBlockUser} 
+            color="error"
+            disabled={blockingInProgress}
+            startIcon={blockingInProgress ? <CircularProgress size={20} /> : <BlockIcon />}
+          >
+            {blockingInProgress ? "Blocking..." : "Block User"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Feedback snackbar */}
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={6000} 
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
