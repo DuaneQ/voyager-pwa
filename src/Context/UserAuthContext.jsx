@@ -1,5 +1,5 @@
 import { RotatingLines } from "react-loader-spinner";
-import { createContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 export const Context = createContext();
