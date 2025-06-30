@@ -150,134 +150,147 @@ export const Search = React.memo(() => {
       new Date(b.startDate ?? "").getTime()
   );
 
+  // Complete simplified solution with fixed width select control
+
   return (
     <Box
       className="authFormContainer"
       sx={{
+        width: "100%",
+        height: "100vh",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        width: "100%",
-        height: "100%", // let it fill the parent, not force scrolling
-        overflow: "hidden", // prevent accidental scrollbars
+        backgroundColor: "#f5f5f7",
+        overflow: "hidden",
       }}>
+      {/* Header */}
+      <Box
+        sx={{
+          backgroundColor: "transparent",
+          padding: 2,
+          borderBottom: "1px solid rgba(0,0,0,0.1)",
+        }}>
+        <Typography variant="h6" textAlign="center" gutterBottom={false}  sx={{ color: 'transparent' }}>
+          Traval
+        </Typography>
+      </Box>
+
+      {/* Select and Button area - FIXED WIDTH */}
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          position: "sticky",
+          padding: "10px 16px",
           backgroundColor: "white",
-          zIndex: 1,
-          padding: "10px",
-          marginTop: { xs: "5px", sm: "10px" },
-          gap: { xs: 1, sm: 2 },
+          borderBottom: "1px solid rgba(0,0,0,0.05)",
+          gap: "16px", // Add this line to create space between items
         }}>
-        <FormControl
+        <Box
           sx={{
-            minWidth: { xs: 120, sm: 200 },
-            maxWidth: { xs: 180, sm: 300 },
-            "& .MuiInputBase-root": {
-              fontSize: { xs: "0.95rem", sm: "1rem" },
-              height: { xs: 36, sm: 40 },
-              padding: { xs: "2px 8px", sm: "8px 14px" },
-            },
-            "& .MuiSelect-select": {
-              padding: { xs: "8px 8px", sm: "10px 14px" },
-              fontSize: { xs: "0.95rem", sm: "1rem" },
-            },
+            width: { xs: 180, sm: 240 }, // FIXED WIDTH container for select
+            flexShrink: 0, // Prevent shrinking
           }}>
-          <Select
-            aria-label="Select Itinerary"
-            value={selectedItineraryId}
-            onChange={(e) => handleItinerarySelect(e.target.value)}
-            displayEmpty
-            MenuProps={{
-              PaperProps: {
-                style: {
-                  maxWidth: "300px",
-                  wordWrap: "break-word",
+          <FormControl fullWidth>
+            <Select
+              value={selectedItineraryId}
+              onChange={(e) => handleItinerarySelect(e.target.value)}
+              displayEmpty
+              size="small"
+              sx={{
+                ".MuiSelect-select": {
+                  // Style the content inside to ensure text truncation
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 },
-              },
-            }}>
-            <MenuItem value="" disabled>
-              Select an itinerary
-            </MenuItem>
-            {sortedItineraries.map((itinerary) => (
-              <MenuItem
-                key={itinerary.id}
-                value={itinerary.id}
-                style={{
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  maxWidth: "350px",
-                }}>
-                <span>
-                  {itinerary.destination}
-                  <span style={{ fontSize: "0.8em", color: "#666" }}>
-                    {" "}
-                    ({itinerary.startDate} - {itinerary.endDate})
-                  </span>
-                </span>
+              }}
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 300,
+                    maxWidth: 300,
+                  },
+                },
+              }}>
+              <MenuItem value="" disabled>
+                Select an itinerary
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button variant="contained" onClick={() => setShowModal(true)}>
+              {sortedItineraries.map((itinerary) => (
+                <MenuItem key={itinerary.id} value={itinerary.id}>
+                  <Box
+                    sx={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      width: "100%",
+                    }}>
+                    {itinerary.destination}{" "}
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: "0.8em",
+                        color: "#666",
+                      }}>
+                      ({itinerary.startDate} - {itinerary.endDate})
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Button
+          variant="contained"
+          onClick={() => setShowModal(true)}
+          size="small">
           Add Itinerary
         </Button>
       </Box>
-      {loading && (
-        <Typography
-          variant="h6"
-          sx={{
-            display: "flex",
-            textAlign: "left",
-            backgroundColor: "#f9f9f9",
-            borderRadius: "8px",
-            padding: { xs: "10px", sm: "20px" },
-            flexDirection: "column",
-            alignItems: "center",
-            maxWidth: { xs: "95vw", sm: "350px" },
-            fontSize: { xs: "0.98rem", sm: "1.15rem" },
-            margin: "0 auto",
-            marginBottom: { xs: "20px", sm: "40px" },
-          }}>
-          Create an itinerary to find matches for your future trips. Once
-          created, select one of your itineraries from the dropdown, and we'll
-          match you with others based on destination, dates, and preferences.
-          Once matched, you can chat and plan your adventures together.
-        </Typography>
-      )}
 
-      {matchingItineraries.length > 0 &&
-        currentMatchIndex < matchingItineraries.length && (
-          <Box
+      {/* Content area */}
+      <Box
+        sx={{
+          flex: 1,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}>
+        {loading && (
+          <Typography
+            variant="body1"
             sx={{
-              marginTop: "20px",
-              display: "flex",
-              textAlign: "center",
-              justifyContent: "center",
               backgroundColor: "#f9f9f9",
-              borderRadius: "8px",
-              padding: "20px",
-              flexDirection: "column",
-              alignItems: "center",
-              maxWidth: "350px",
-              marginBottom: "40px", // reduce from 200px
+              borderRadius: 2,
+              padding: 3,
+              maxWidth: 350,
+              textAlign: "left",
             }}>
+            Create an itinerary to find matches for your future trips. Once
+            created, select one of your itineraries from the dropdown, and we'll
+            match you with others based on destination, dates, and preferences.
+            Once matched, you can chat and plan your adventures together.
+          </Typography>
+        )}
+
+        {matchingItineraries.length > 0 &&
+          currentMatchIndex < matchingItineraries.length && (
             <ItineraryCard
               itinerary={matchingItineraries[currentMatchIndex]}
               onLike={handleLike}
               onDislike={handleDislike}
             />
-          </Box>
-        )}
+          )}
 
-      {matchingItineraries.length > 0 &&
-        currentMatchIndex >= matchingItineraries.length && (
-          <Typography>No more itineraries to view.</Typography>
-        )}
+        {matchingItineraries.length > 0 &&
+          currentMatchIndex >= matchingItineraries.length && (
+            <Typography sx={{ padding: 2 }}>
+              No more itineraries to view.
+            </Typography>
+          )}
+      </Box>
 
       <AddItineraryModal
         open={showModal}
