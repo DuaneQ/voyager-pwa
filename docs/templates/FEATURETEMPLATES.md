@@ -114,37 +114,22 @@ Ensure sufficient color contrast
 
 ## 1. Feature Requirements
 
-**Feature Name:** Trip Journal
+**Feature Name:** User rating
 
 **User Problem Solved:** 
-- Users want to document their travel experiences to share with companions
-- Preserves travel memories in a structured format within the app
+- Users want to provide a rating for users they have traveled with that will be displayed on their viewprofilemodal for other users to see.
 
 **User Story:**
-AS A traveler I WANT TO be able to block users so they can't search any of my itineraries nor me them.  
+AS A traveler I WANT TO be able to rate users from 1 star to 5 stars.
 
 **Acceptance Criteria:**
-- [ ] There is an element at the top of the ViewProfileModal with a click event
-- [ ] When the user clicks the element neither of the users will be able to view each other profile, messages or itineraries.
-- [ ] A record is added in firebase for each user in their user's collection.
-- [] Neither user has access to any previous connections
-- [] When a new itinerary is created we will include the blocked array to the userInfo property of the itinerary.
+- [ ] There is an element under the main profile pic that displays a star rating from 1 star to five
+- [ ] Users are able to click the element and provide their own star rating.
+- [ ] A record is added in a users collection in a ratings property that updates the user profile with the rating.
+
 
 ## 2. Data Model Updates
 
-**New Types/Interfaces:**
-```typescript
-export interface JournalEntry {
-  id: string;
-  connectionId: string;  // Links to the travel connection
-  userId: string;        // Creator of the entry
-  title: string;
-  content: string;
-  photos: string[];      // Array of image URLs
-  location: GeoPoint;    // Firebase GeoPoint
-  timestamp: Timestamp;
-  isPrivate: boolean;    // Whether entry is shared with companions
-}
 ```
 Firebase Collection Structure:
 
@@ -168,11 +153,9 @@ NO New Components Needed:
 
 ```
 4. Implementation Plan
-Step 1: Create the clickable element on the top of the ViewProfileModal
+Step 1: Create the clickable element under the main profile photo the ViewProfileModal
 
 Step 2: Implement Core Functionality
-
-Implement logic to update, the current and other user's profile
 
 Step 3: Add UI Elements
 

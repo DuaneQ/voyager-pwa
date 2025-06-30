@@ -123,3 +123,111 @@ export const sendNewMessageNotification = functions.firestore
 
     return null;
   });
+
+export const notifyViolationReport = functions.firestore
+  .document("violations/{violationId}")
+  .onCreate(async (snap, context) => {
+    const violation = snap.data();
+    const violationId = context.params.violationId;
+
+    if (!violation) {
+      console.log("No violation data found:", violation);
+      return null;
+    }
+
+    try {
+      // Get reported user details
+      const reportedUserDoc = await db
+        .collection("users")
+        .doc(violation.reportedUserId)
+        .get();
+      const reportedUserData = reportedUserDoc.data() || {};
+
+      // Get reporting user details
+      const reportingUserDoc = await db
+        .collection("users")
+        .doc(violation.reportedByUserId)
+        .get();
+      const reportingUserData = reportingUserDoc.data() || {};
+
+      // Format reason to be more readable
+      const formattedReason = violation.reason
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char: string) => char.toUpperCase());
+
+      // Prepare email content
+      const mailDoc = {
+        to: "support@travalpass.com",
+        from: "duaneqhodges@travalpass.com",
+        message: {
+          subject: `[VIOLATION REPORT] ${formattedReason}`,
+          text: `
+            A new user violation has been reported.
+            
+            Report ID: ${violationId}
+            Reason: ${formattedReason}
+            Description: ${violation.description || "No description provided"}
+            
+            Reported User:
+            - User ID: ${violation.reportedUserId}
+            - Username: ${reportedUserData.username || "N/A"}
+            - Email: ${reportedUserData.email || "N/A"}
+            
+            Reported By:
+            - User ID: ${violation.reportedByUserId}
+            - Username: ${reportingUserData.username || "N/A"}
+            - Email: ${reportingUserData.email || "N/A"}
+            
+            Timestamp: ${new Date(
+              violation.timestamp?._seconds * 1000
+            ).toISOString() || new Date().toISOString()}
+          `,
+          html: `
+            <h1>User Violation Report</h1>
+            <p><strong>Report ID:</strong> ${violationId}</p>
+            <p><strong>Reason:</strong> ${formattedReason}</p>
+            <p><strong>Description:</strong> ${
+              violation.description || "<em>No description provided</em>"
+            }</p>
+            
+            <h2>Reported User</h2>
+            <ul>
+              <li><strong>User ID:</strong> ${violation.reportedUserId}</li>
+              <li><strong>Username:</strong> ${reportedUserData.username || "N/A"}</li>
+              <li><strong>Email:</strong> ${reportedUserData.email || "N/A"}</li>
+            </ul>
+            
+            <h2>Reported By</h2>
+            <ul>
+              <li><strong>User ID:</strong> ${violation.reportedByUserId}</li>
+              <li><strong>Username:</strong> ${reportingUserData.username || "N/A"}</li>
+              <li><strong>Email:</strong> ${reportingUserData.email || "N/A"}</li>
+            </ul>
+            
+            <p><strong>Timestamp:</strong> ${new Date(
+              violation.timestamp?._seconds * 1000
+            ).toLocaleString() || new Date().toLocaleString()}</p>
+            
+            <hr>
+            <p><em>This is an automated message from the Travalpass system. Please investigate this violation report at your earliest convenience.</em></p>
+            <p><a href="https://console.firebase.google.com/project/YOUR_PROJECT_ID/firestore/data/violations/${violationId}">View in Firebase Console</a></p>
+          `,
+        },
+      };
+
+      // Send the email using the "mail" collection (for SendGrid or similar)
+      const mailRef = await db.collection("mail").add(mailDoc);
+      console.log(`Violation report email sent, mail/${mailRef.id}`);
+
+      // Update the violation document to mark the email as sent
+      await db.collection("violations").doc(violationId).update({
+        emailSent: true,
+        emailSentTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return null;
+    } catch (err) {
+      console.error("Error sending violation report email:", err);
+      return null;
+    }
+  });
