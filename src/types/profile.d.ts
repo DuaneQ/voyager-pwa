@@ -8,4 +8,15 @@ export type Profile = {
     education: string;
     drinkingHabits: string;
     smokingHabits: string;
+    blocked: string[];
+    ratings?: {
+      average: number;
+      count: number;
+      ratedBy: {
+        [userId: string]: {
+          rating: number;
+          timestamp: number;
+        }
+      }
+    };
   };
