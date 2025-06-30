@@ -17,10 +17,29 @@ import {
   DialogTitle,
   Snackbar,
   Alert,
+  MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import BlockIcon from "@mui/icons-material/Block";
-import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import FlagIcon from "@mui/icons-material/Flag";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+import StarHalfIcon from "@mui/icons-material/StarHalf";
+import Rating from "@mui/material/Rating";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
 import { UserProfileContext } from "../../Context/UserProfileContext";
@@ -40,9 +59,8 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 }) => {
   // Add default empty values when context is not available
   const contextValue = useContext(UserProfileContext);
-  const userProfile = contextValue?.userProfile || {};
   const updateUserProfile = contextValue?.updateUserProfile || (() => {});
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
@@ -50,18 +68,48 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [blockingInProgress, setBlockingInProgress] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success"
+  );
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportingInProgress, setReportingInProgress] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [newRating, setNewRating] = useState<number | null>(null);
   const currentUserId = useGetUserId();
 
   useEffect(() => {
     if (!open) return;
+
+    let isMounted = true;
     setLoading(true);
+
     getDoc(doc(db, "users", userId))
       .then((snap) => {
-        setProfile(snap.exists() ? snap.data() : null);
+        if (isMounted) {
+          setProfile(snap.exists() ? snap.data() : null);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, userId]);
+
+  useEffect(() => {
+    if (profile?.ratings?.ratedBy && currentUserId) {
+      const existingRating =
+        profile.ratings.ratedBy[currentUserId]?.rating || null;
+      setUserRating(existingRating);
+      setNewRating(existingRating);
+    }
+  }, [profile, currentUserId]);
 
   // Filter out null/empty photos
   const validPhotos: string[] = Array.isArray(profile?.photos)
@@ -91,29 +139,55 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     }
 
     setBlockingInProgress(true);
-    
+
     try {
-      // 1. Update current user's document to block the other user
+      // 1. Find the specific connection between these two users
+      const connectionsRef = collection(db, "connections");
+      const connectionsQuery = query(
+        connectionsRef,
+        where("users", "array-contains", currentUserId)
+      );
+
+      const connectionsSnapshot = await getDocs(connectionsQuery);
+      const deletePromises: Promise<void>[] = [];
+
+      connectionsSnapshot.forEach((connDoc) => {
+        const connData = connDoc.data();
+        // Only delete connections that contain BOTH users
+        if (
+          connData.users &&
+          connData.users.includes(currentUserId) &&
+          connData.users.includes(userId)
+        ) {
+          console.log(`Deleting connection: ${connDoc.id}`);
+          deletePromises.push(deleteDoc(doc(db, "connections", connDoc.id)));
+        }
+      });
+
+      // Wait for all connection deletions to complete
+      await Promise.all(deletePromises);
+
+      // 2. Update current user's document to block the other user
       const currentUserRef = doc(db, "users", currentUserId);
       await updateDoc(currentUserRef, {
-        blocked: arrayUnion(userId)
+        blocked: arrayUnion(userId),
       });
 
-      // 2. Update other user's document to block current user
+      // 3. Update other user's document to block current user
       const otherUserRef = doc(db, "users", userId);
       await updateDoc(otherUserRef, {
-        blocked: arrayUnion(currentUserId)
+        blocked: arrayUnion(currentUserId),
       });
 
-      // 3. Update local state (context AND localStorage)
+      // 4. Update local state (context AND localStorage)
       // Get the fresh profile data with the updated blocked array
       const updatedUserSnap = await getDoc(currentUserRef);
       if (updatedUserSnap.exists()) {
         const updatedUserData = updatedUserSnap.data();
-        
+
         // Update context
         updateUserProfile(updatedUserData);
-        
+
         // Update localStorage
         localStorage.setItem("PROFILE_INFO", JSON.stringify(updatedUserData));
       }
@@ -121,7 +195,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setSnackbarMessage("User blocked successfully");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
-      
+
       // Close dialogs
       setConfirmBlockOpen(false);
       onClose();
@@ -132,6 +206,166 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setSnackbarOpen(true);
     } finally {
       setBlockingInProgress(false);
+    }
+  };
+
+  // Handle report user dialog open
+  const handleOpenReportDialog = () => {
+    setReportReason("");
+    setReportDescription("");
+    setReportDialogOpen(true);
+  };
+
+  // Handle report user dialog close
+  const handleCloseReportDialog = () => {
+    setReportDialogOpen(false);
+  };
+
+  // Handle actual reporting action
+  const handleSubmitReport = async () => {
+    if (!currentUserId || !userId) {
+      setSnackbarMessage("Unable to report user: You must be logged in");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (!reportReason) {
+      setSnackbarMessage("Please select a reason for your report");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setReportingInProgress(true);
+
+    try {
+      // 1. Create violation record in Firestore
+      const violationsRef = collection(db, "violations");
+      const violationData = {
+        reportedUserId: userId,
+        reportedByUserId: currentUserId,
+        reason: reportReason,
+        description: reportDescription,
+        timestamp: serverTimestamp(),
+        status: "pending",
+        userDetails: {
+          reportedUser: profile || {},
+          // We'll add reporting user details in a Cloud Function to ensure accuracy
+        },
+      };
+
+      await addDoc(violationsRef, violationData);
+
+      // 2. In a real implementation, sending email would typically be handled by a Cloud Function
+      // triggered when a new violation document is created
+      // For this example, we'll just log that an email would be sent
+      console.log(
+        `Email would be sent to support@travalpass.com about user ${userId}`
+      );
+
+      setSnackbarMessage("Report submitted successfully");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+
+      // Close dialog
+      setReportDialogOpen(false);
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      setSnackbarMessage("Failed to submit report: An error occurred");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    } finally {
+      setReportingInProgress(false);
+    }
+  };
+
+  // Handle rating dialog open
+  const handleOpenRatingDialog = () => {
+    setRatingDialogOpen(true);
+  };
+
+  // Handle rating dialog close
+  const handleCloseRatingDialog = () => {
+    setRatingDialogOpen(false);
+    // Reset to the current user's rating
+    setNewRating(userRating);
+  };
+
+  // Handle actual rating submission
+  const handleSubmitRating = async () => {
+    if (!currentUserId || !userId || newRating === null) {
+      setSnackbarMessage("Unable to submit rating: Please try again");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setSubmittingRating(true);
+
+    try {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        throw new Error("User not found");
+      }
+
+      const userData = userSnap.data();
+      const currentRatings = userData.ratings || {
+        average: 0,
+        count: 0,
+        ratedBy: {},
+      };
+      const oldRating = currentRatings.ratedBy[currentUserId]?.rating || 0;
+
+      // Calculate new average rating
+      let newAverage = currentRatings.average;
+      let newCount = currentRatings.count;
+
+      if (oldRating === 0) {
+        // First time rating this user
+        newCount += 1;
+        newAverage = ((currentRatings.average * (newCount - 1)) + newRating) / newCount;
+      } else {
+        // Updating previous rating
+        newAverage = ((currentRatings.average * newCount) - oldRating + newRating) / newCount;
+      }
+
+      // Update the ratings object
+      const updatedRatings = {
+        average: parseFloat(newAverage.toFixed(2)),
+        count: newCount,
+        ratedBy: {
+          ...currentRatings.ratedBy,
+          [currentUserId]: {
+            rating: newRating,
+            timestamp: Date.now(),
+          },
+        },
+      };
+
+      // Update Firestore
+      await updateDoc(userRef, {
+        ratings: updatedRatings,
+      });
+
+      // Update local state
+      setUserRating(newRating);
+
+      setSnackbarMessage("Rating submitted successfully");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+
+      // Close dialog
+      setRatingDialogOpen(false);
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      setSnackbarMessage("Failed to submit rating: An error occurred");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -148,6 +382,11 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     }
     return age.toString();
   }
+
+  // Function to format rating display
+  const formatRating = (rating: number) => {
+    return rating.toFixed(1);
+  };
 
   return (
     <>
@@ -171,30 +410,49 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             overflow: "hidden",
           }}>
           {/* Top: Block button and close button */}
-          <Box 
-            sx={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
               alignItems: "center",
-              mb: 1
-            }}
-          >
-            <IconButton 
-              color="error" 
-              onClick={handleOpenBlockConfirmation}
-              aria-label="Block user"
-              sx={{ 
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(211, 47, 47, 0.04)'
-                }
-              }}
-            >
-              <BlockIcon />
-              <Typography variant="caption" sx={{ ml: 0.5, fontSize: '0.7rem' }}>
-                Block
-              </Typography>
-            </IconButton>
+              mb: 1,
+            }}>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <IconButton
+                color="error"
+                onClick={handleOpenBlockConfirmation}
+                aria-label="Block user"
+                sx={{
+                  borderRadius: 1,
+                  "&:hover": {
+                    backgroundColor: "rgba(211, 47, 47, 0.04)",
+                  },
+                }}>
+                <BlockIcon />
+                <Typography
+                  variant="caption"
+                  sx={{ ml: 0.5, fontSize: "0.7rem" }}>
+                  Block
+                </Typography>
+              </IconButton>
+              <IconButton
+                color="warning"
+                onClick={handleOpenReportDialog}
+                aria-label="Report user"
+                sx={{
+                  borderRadius: 1,
+                  "&:hover": {
+                    backgroundColor: "rgba(237, 108, 2, 0.04)",
+                  },
+                }}>
+                <FlagIcon />
+                <Typography
+                  variant="caption"
+                  sx={{ ml: 0.5, fontSize: "0.7rem" }}>
+                  Report
+                </Typography>
+              </IconButton>
+            </Box>
             <IconButton onClick={onClose}>
               <CloseIcon />
             </IconButton>
@@ -226,9 +484,37 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               <Typography variant="h5" sx={{ mt: 2 }}>
                 {profile?.username || "User"}
               </Typography>
+
+              {/* Add Rating Display */}
+              <Box
+                onClick={handleOpenRatingDialog}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  mt: 1,
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  borderRadius: 1,
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                  },
+                }}>
+                <Rating
+                  name="user-rating-display"
+                  value={profile?.ratings?.average || 0}
+                  precision={0.5}
+                  readOnly
+                  sx={{ color: "primary.main", mr: 1 }}
+                />
+                <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                  {profile?.ratings?.average
+                    ? `${formatRating(profile.ratings.average)} (${profile.ratings.count})`
+                    : "No ratings yet"}
+                </Typography>
+              </Box>
             </Box>
           )}
-          
+
           {/* Rest of component remains the same */}
           {/* ... existing profile display code ... */}
           {!profilePhoto && (
@@ -418,6 +704,32 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       }}
                     />
                   </FormControl>
+                  {/* User Rating Section */}
+                  <FormControl>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ mb: 1, fontWeight: "medium" }}>
+                      User Rating
+                    </Typography>
+                    <Rating
+                      value={userRating}
+                      onChange={(event, newValue) => {
+                        setNewRating(newValue);
+                      }}
+                      precision={0.5}
+                      size="large"
+                      emptyIcon={<StarBorderIcon fontSize="inherit" />}
+                      icon={<StarIcon fontSize="inherit" />}
+                      sx={{
+                        "& .MuiRating-iconFilled": {
+                          color: "warning.main",
+                        },
+                        "& .MuiRating-iconHover": {
+                          color: "warning.main",
+                        },
+                      }}
+                    />
+                  </FormControl>
                 </Card>
                 {/* Bottom: Other photos */}
                 {otherPhotos.length > 0 && (
@@ -455,7 +767,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           </Box>
         </Box>
       </Modal>
-      
+
       {/* Photo modal remains the same */}
       <Modal open={!!selectedPhoto} onClose={() => setSelectedPhoto(null)}>
         <Box
@@ -491,17 +803,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           />
         </Box>
       </Modal>
-      
+
       {/* Block confirmation dialog */}
       <Dialog
         open={confirmBlockOpen}
         onClose={handleCloseBlockConfirmation}
         aria-labelledby="block-dialog-title"
-        aria-describedby="block-dialog-description"
-      >
-        <DialogTitle id="block-dialog-title">
-          Block this user?
-        </DialogTitle>
+        aria-describedby="block-dialog-description">
+        <DialogTitle id="block-dialog-title">Block this user?</DialogTitle>
         <DialogContent>
           <DialogContentText id="block-dialog-description">
             When you block someone:
@@ -520,29 +829,196 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           <Button onClick={handleCloseBlockConfirmation} color="primary">
             Cancel
           </Button>
-          <Button 
-            onClick={handleBlockUser} 
+          <Button
+            onClick={handleBlockUser}
             color="error"
             disabled={blockingInProgress}
-            startIcon={blockingInProgress ? <CircularProgress size={20} /> : <BlockIcon />}
-          >
+            startIcon={
+              blockingInProgress ? (
+                <CircularProgress size={20} />
+              ) : (
+                <BlockIcon />
+              )
+            }>
             {blockingInProgress ? "Blocking..." : "Block User"}
           </Button>
         </DialogActions>
       </Dialog>
-      
+
+      {/* Report user dialog */}
+      <Dialog
+        open={reportDialogOpen}
+        onClose={handleCloseReportDialog}
+        aria-labelledby="report-dialog-title"
+        aria-describedby="report-dialog-description"
+        PaperProps={{
+          sx: {
+            width: { xs: "90%", sm: 500 },
+            maxWidth: "90vw",
+            p: 1,
+          },
+        }}>
+        <DialogTitle id="report-dialog-title">Report User</DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
+          <DialogContentText id="report-dialog-description" sx={{ mb: 3 }}>
+            Please tell us why you are reporting this user. Your report will be
+            reviewed by our team.
+          </DialogContentText>
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <TextField
+              select
+              label="Reason for Report"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              required
+              SelectProps={{
+                native: false,
+                MenuProps: {
+                  PaperProps: {
+                    sx: {
+                      maxHeight: 300,
+                      "& .MuiMenuItem-root": {
+                        py: 1.5,
+                        px: 2,
+                        whiteSpace: "normal", // Allow text wrapping
+                        wordBreak: "break-word",
+                      },
+                    },
+                  },
+                },
+              }}>
+              <MenuItem value="">Select a reason</MenuItem>
+              <MenuItem value="inappropriate_behavior">
+                Inappropriate Behavior
+              </MenuItem>
+              <MenuItem value="harassment">Harassment</MenuItem>
+              <MenuItem value="fake_profile">Fake Profile</MenuItem>
+              <MenuItem value="scam">Scam/Fraud</MenuItem>
+              <MenuItem value="offensive_content">Offensive Content</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </TextField>
+          </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <TextField
+              label="Additional Details"
+              multiline
+              rows={4}
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              placeholder="Please provide any additional information about the issue"
+              sx={{
+                "& .MuiInputBase-root": {
+                  padding: 1,
+                },
+              }}
+            />
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={handleCloseReportDialog} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitReport}
+            color="warning"
+            variant="contained"
+            disabled={reportingInProgress || !reportReason}
+            startIcon={
+              reportingInProgress ? (
+                <CircularProgress size={20} />
+              ) : (
+                <FlagIcon />
+              )
+            }>
+            {reportingInProgress ? "Submitting..." : "Submit Report"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rating dialog */}
+      <Dialog
+        open={ratingDialogOpen}
+        onClose={handleCloseRatingDialog}
+        aria-labelledby="rating-dialog-title"
+        aria-describedby="rating-dialog-description">
+        <DialogTitle id="rating-dialog-title">
+          Rate {profile?.username || "User"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="rating-dialog-description" sx={{ mb: 2 }}>
+            Please select a rating from 1 to 5 stars based on your travel experience with this user.
+          </DialogContentText>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              my: 2,
+            }}>
+            <Rating
+              name="user-rating-input"
+              value={newRating}
+              onChange={(_, value) => setNewRating(value)}
+              precision={1}
+              size="large"
+              data-testid="rating-input"
+              sx={{ fontSize: "2.5rem", mb: 2 }}
+            />
+            {newRating && (
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Typography variant="body1" sx={{ fontWeight: "medium", mr: 1 }}>
+                  Your rating:
+                </Typography>
+                <Typography variant="body1">
+                  {newRating === 1
+                    ? "Poor"
+                    : newRating === 2
+                    ? "Fair"
+                    : newRating === 3
+                    ? "Good"
+                    : newRating === 4
+                    ? "Very Good"
+                    : "Excellent"}
+                </Typography>
+              </Box>
+            )}
+            
+            {userRating && userRating !== newRating && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                You previously rated this user {userRating} stars
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRatingDialog}>Cancel</Button>
+          <Button
+            onClick={handleSubmitRating}
+            color="primary"
+            variant="contained"
+            disabled={submittingRating || newRating === null}
+            startIcon={
+              submittingRating ? (
+                <CircularProgress size={20} />
+              ) : (
+                <StarIcon />
+              )
+            }>
+            {submittingRating ? "Submitting..." : "Submit Rating"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Feedback snackbar */}
-      <Snackbar 
-        open={snackbarOpen} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
         onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setSnackbarOpen(false)} 
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
           severity={snackbarSeverity}
-          sx={{ width: '100%' }}
-        >
+          sx={{ width: "100%" }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
