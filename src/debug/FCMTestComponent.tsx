@@ -1,9 +1,9 @@
 // FCM Test Component - Add this temporarily to any page for debugging
 import React, { useState } from 'react';
 import { Button, Box, Typography, Alert, Paper } from '@mui/material';
-import { debugFCMOnDevice } from '../../utils/debugFCM';
-import { refreshFCMToken } from '../../utils/fcmUtils';
-import useGetUserId from '../../hooks/useGetUserId';
+import { debugFCMOnDevice } from '../utils/debugFCM';
+import { refreshFCMToken } from '../utils/fcmUtils';
+import useGetUserId from '../hooks/useGetUserId';
 
 interface FCMTestResult {
   success: boolean;
