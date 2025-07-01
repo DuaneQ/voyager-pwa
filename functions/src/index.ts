@@ -78,9 +78,14 @@ export const notifyNewConnection = functions.firestore
 
 export const sendNewMessageNotification = functions.firestore
   .document("connections/{connectionId}/messages/{messageId}")
-  .onCreate(async (snap, context) => {
+  .onCreate(async (snap: functions.firestore.DocumentSnapshot, context: functions.EventContext) => {
     const message = snap.data();
     const connectionId = context.params.connectionId;
+
+    if (!message) {
+      console.log("No message data found:", message);
+      return null;
+    }
 
     // Get the connection document to find both users
     const connectionRef = db.collection("connections").doc(connectionId);
@@ -103,30 +108,220 @@ export const sendNewMessageNotification = functions.firestore
     // Get the recipient's FCM token from their user profile
     const userDoc = await db.collection("users").doc(recipientUid).get();
     const userData = userDoc.data();
+    
+    console.log(`FCM Debug for user ${recipientUid}:`, {
+      userExists: userDoc.exists,
+      hasData: !!userData,
+      hasFCMToken: !!(userData && userData.fcmToken),
+      lastTokenUpdate: userData?.lastTokenUpdate,
+      deviceInfo: userData?.deviceInfo?.platform,
+      tokenValidated: userData?.tokenValidated
+    });
+    
     const fcmToken = userData && userData.fcmToken;
 
     if (fcmToken) {
-      await admin.messaging().send({
-        token: fcmToken,
-        notification: {
-          title: "New Message",
-          body: message.text ? message.text : "You have a new message!",
-        },
-        data: {
-          connectionId,
-        },
-      });
-      console.log(`Notification sent to user ${recipientUid}`);
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: {
+            title: "New Message",
+            body: message.text || "You have a new message!",
+          },
+          data: {
+            connectionId,
+          },
+        });
+        console.log(`Notification sent successfully to user ${recipientUid}`);
+      } catch (error: any) {
+        console.error(`Failed to send notification to user ${recipientUid}:`, error);
+        
+        // If the token is invalid, remove it from the user document
+        if (error.code === 'messaging/invalid-registration-token' || 
+            error.code === 'messaging/registration-token-not-registered') {
+          console.log(`Removing invalid FCM token for user ${recipientUid}`);
+          await db.collection("users").doc(recipientUid).update({
+            fcmToken: admin.firestore.FieldValue.delete(),
+            invalidTokenRemovedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastTokenError: error.message
+          });
+        }
+      }
     } else {
-      console.log(`No FCM token found for user ${recipientUid}`);
+      console.log(`No FCM token found for user ${recipientUid}. User document exists: ${userDoc.exists}. Check if user has logged in recently and granted notification permissions.`);
     }
 
     return null;
   });
 
+export const notifyFeedbackSubmission = functions.firestore
+  .document("feedback/{feedbackId}")
+  .onCreate(async (snap: functions.firestore.DocumentSnapshot, context: functions.EventContext) => {
+    const feedback = snap.data();
+    const feedbackId = context.params.feedbackId;
+
+    if (!feedback) {
+      console.log("No feedback data found:", feedback);
+      return null;
+    }
+
+    try {
+      // Get user details if available
+      let userData = null;
+      if (feedback.userId && feedback.userId !== 'anonymous') {
+        const userDoc = await db.collection("users").doc(feedback.userId).get();
+        userData = userDoc.data() || {};
+      }
+
+      // Format feedback type and severity
+      const typeEmoji: { [key: string]: string } = {
+        bug: "🐛",
+        feature: "💡", 
+        improvement: "⚡",
+        general: "💭"
+      };
+
+      const severityColor: { [key: string]: string } = {
+        critical: "#FF0000",
+        high: "#FF6600", 
+        medium: "#FFCC00",
+        low: "#00CC00"
+      };
+
+      const priorityText = feedback.severity ? 
+        `<span style="color: ${severityColor[feedback.severity as string]};">●</span> ${feedback.severity.toUpperCase()}` : 
+        "Normal Priority";
+
+      // Prepare email content
+      const mailDoc = {
+        to: "feedback@travalpass.com",
+        from: "no-reply@travalpass.com",
+        message: {
+          subject: `[BETA FEEDBACK] ${typeEmoji[feedback.type as string] || "📝"} ${feedback.title}`,
+          text: `
+            New Beta Feedback Received!
+            
+            Feedback ID: ${feedbackId}
+            Type: ${feedback.type}
+            ${feedback.severity ? `Severity: ${feedback.severity}` : ''}
+            ${feedback.rating ? `Rating: ${feedback.rating}/5 stars` : ''}
+            
+            Title: ${feedback.title}
+            Description: ${feedback.description}
+            
+            ${feedback.stepsToReproduce ? `Steps to Reproduce:\n${feedback.stepsToReproduce}\n` : ''}
+            ${feedback.expectedBehavior ? `Expected Behavior:\n${feedback.expectedBehavior}\n` : ''}
+            ${feedback.actualBehavior ? `Actual Behavior:\n${feedback.actualBehavior}\n` : ''}
+            
+            User Information:
+            - User ID: ${feedback.userId || 'Anonymous'}
+            - Username: ${userData?.username || 'N/A'}
+            - Contact Email: ${feedback.userEmail || 'Not provided'}
+            
+            Technical Information:
+            - Device: ${feedback.deviceInfo?.platform || 'Unknown'}
+            - Browser: ${feedback.deviceInfo?.userAgent || 'Unknown'}
+            - Screen: ${feedback.deviceInfo?.screenResolution || 'N/A'}
+            - Page: ${feedback.deviceInfo?.url || 'N/A'}
+            - App Version: ${feedback.version || 'Unknown'}
+            - Online: ${feedback.deviceInfo?.online ? 'Yes' : 'No'}
+            
+            Submitted: ${new Date(feedback.createdAt?.toDate ? feedback.createdAt.toDate() : feedback.createdAt).toLocaleString()}
+          `,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; font-size: 24px;">${typeEmoji[feedback.type as string] || "📝"} New Beta Feedback</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.9;">${priorityText}</p>
+              </div>
+              
+              <div style="background: white; padding: 20px; border: 1px solid #e0e0e0; border-radius: 0 0 8px 8px;">
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                  <h2 style="margin: 0 0 10px 0; color: #333;">${feedback.title}</h2>
+                  <p style="margin: 0; color: #666; white-space: pre-wrap;">${feedback.description}</p>
+                  ${feedback.rating ? `<div style="margin-top: 10px;">Rating: ${'⭐'.repeat(feedback.rating)} (${feedback.rating}/5)</div>` : ''}
+                </div>
+
+                ${feedback.stepsToReproduce ? `
+                  <div style="margin-bottom: 15px;">
+                    <h3 style="color: #d32f2f; margin: 0 0 5px 0;">Steps to Reproduce:</h3>
+                    <pre style="background: #ffebee; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 12px;">${feedback.stepsToReproduce}</pre>
+                  </div>
+                ` : ''}
+
+                ${feedback.expectedBehavior ? `
+                  <div style="margin-bottom: 15px;">
+                    <h3 style="color: #2e7d32; margin: 0 0 5px 0;">Expected Behavior:</h3>
+                    <p style="background: #e8f5e8; padding: 10px; border-radius: 4px; margin: 0;">${feedback.expectedBehavior}</p>
+                  </div>
+                ` : ''}
+
+                ${feedback.actualBehavior ? `
+                  <div style="margin-bottom: 15px;">
+                    <h3 style="color: #f57c00; margin: 0 0 5px 0;">Actual Behavior:</h3>
+                    <p style="background: #fff3e0; padding: 10px; border-radius: 4px; margin: 0;">${feedback.actualBehavior}</p>
+                  </div>
+                ` : ''}
+
+                <div style="display: flex; gap: 20px; margin-top: 20px;">
+                  <div style="flex: 1;">
+                    <h3 style="margin: 0 0 10px 0; color: #333;">User Info</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #666;">
+                      <li>ID: ${feedback.userId || 'Anonymous'}</li>
+                      <li>Username: ${userData?.username || 'N/A'}</li>
+                      <li>Email: ${feedback.userEmail || 'Not provided'}</li>
+                    </ul>
+                  </div>
+                  
+                  <div style="flex: 1;">
+                    <h3 style="margin: 0 0 10px 0; color: #333;">Technical Info</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 12px;">
+                      <li>Device: ${feedback.deviceInfo?.platform || 'Unknown'}</li>
+                      <li>Screen: ${feedback.deviceInfo?.screenResolution || 'N/A'}</li>
+                      <li>Version: ${feedback.version || 'Unknown'}</li>
+                      <li>Online: ${feedback.deviceInfo?.online ? 'Yes' : 'No'}</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999;">
+                  <p><strong>Page:</strong> ${feedback.deviceInfo?.url || 'N/A'}</p>
+                  <p><strong>User Agent:</strong> ${feedback.deviceInfo?.userAgent || 'Unknown'}</p>
+                  <p><strong>Submitted:</strong> ${new Date(feedback.createdAt?.toDate ? feedback.createdAt.toDate() : feedback.createdAt).toLocaleString()}</p>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                  <a href="https://console.firebase.google.com/project/mundo1-dev/firestore/data/feedback/${feedbackId}" 
+                     style="display: inline-block; background: #1976d2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                    View in Firebase Console
+                  </a>
+                </div>
+              </div>
+            </div>
+          `,
+        },
+      };
+
+      // Send the email using the "mail" collection
+      const mailRef = await db.collection("mail").add(mailDoc);
+      console.log(`Feedback notification email sent, mail/${mailRef.id}`);
+
+      // Update the feedback document to mark the email as sent
+      await db.collection("feedback").doc(feedbackId).update({
+        emailSent: true,
+        emailSentTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return null;
+    } catch (err) {
+      console.error("Error sending feedback notification email:", err);
+      return null;
+    }
+  });
+
 export const notifyViolationReport = functions.firestore
   .document("violations/{violationId}")
-  .onCreate(async (snap, context) => {
+  .onCreate(async (snap: functions.firestore.DocumentSnapshot, context: functions.EventContext) => {
     const violation = snap.data();
     const violationId = context.params.violationId;
 
