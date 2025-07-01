@@ -200,6 +200,53 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 destination: value.label,
               })),
             placeholder: "Search for a city...",
+            styles: {
+              control: (provided: any) => ({
+                ...provided,
+                marginBottom: '16px',
+                borderColor: '#ccc',
+                '&:hover': {
+                  borderColor: '#1976d2',
+                },
+              }),
+              menu: (provided: any) => ({
+                ...provided,
+                backgroundColor: '#ffffff',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                zIndex: 9999,
+                position: 'absolute',
+              }),
+              menuList: (provided: any) => ({
+                ...provided,
+                backgroundColor: '#ffffff',
+                maxHeight: '200px',
+                overflowY: 'auto',
+              }),
+              option: (provided: any, state: any) => ({
+                ...provided,
+                backgroundColor: state.isSelected 
+                  ? '#1976d2' 
+                  : state.isFocused 
+                  ? '#f5f5f5' 
+                  : '#ffffff',
+                color: state.isSelected ? '#ffffff' : '#000000',
+                padding: '12px 16px',
+                cursor: 'pointer',
+                '&:hover': {
+                  backgroundColor: state.isSelected ? '#1976d2' : '#f5f5f5',
+                },
+              }),
+              singleValue: (provided: any) => ({
+                ...provided,
+                color: '#000000',
+              }),
+              placeholder: (provided: any) => ({
+                ...provided,
+                color: '#999999',
+              }),
+            },
           }}
           autocompletionRequest={{
             types: ["(cities)"],

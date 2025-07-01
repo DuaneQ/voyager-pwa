@@ -29,6 +29,8 @@ import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
 import { app } from "./environments/firebaseConfig";
+import { BetaBanner } from "./components/utilities/BetaBanner";
+import { FeedbackButton } from "./components/utilities/FeedbackButton";
 const messaging = getMessaging(app);
 
 function App() {
@@ -71,7 +73,10 @@ function App() {
               flexDirection: "column",
               minHeight: "100vh",
             }}>
-            <div style={{ flex: 1, paddingBottom: 56 }}>
+            <div style={{ flex: 1, paddingBottom: hideBottomNav ? 0 : 56, paddingTop: 56 }}>
+              {/* Beta Banner - moved inside content area */}
+              {!hideBottomNav && <BetaBanner version="1.0.0-beta" />}
+              
               <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
                   <Route path="/Login" element={<Login />} />
@@ -114,6 +119,9 @@ function App() {
             {!hideBottomNav && <BottomNav />}
           </div>
         </NewConnectionProvider>
+        
+        {/* Floating Feedback Button - shows on all pages except login/register */}
+        {!hideBottomNav && <FeedbackButton position="bottom-right" />}
       </AlertProvider>
     </SnackbarProvider>
   );
