@@ -9,6 +9,7 @@ export type Profile = {
     drinkingHabits: string;
     smokingHabits: string;
     blocked: string[];
+    status: string; // New field: 'single', 'couple', or 'group'
     ratings?: {
       average: number;
       count: number;

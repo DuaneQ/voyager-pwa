@@ -17,5 +17,7 @@ export interface Itinerary {
     dob: string;
     uid: string;
     email: string;
+    status: string; // Add this field
+    blocked?: string[];
   };
 }

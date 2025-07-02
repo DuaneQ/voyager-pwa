@@ -54,6 +54,7 @@ describe("ViewProfileModal Component", () => {
             bio: "Other bio",
             photos: ["https://example.com/other-photo.jpg"],
             blocked: [],
+            status: "couple", // Add status field
             ratings: {
               average: 4.2,
               count: 5,
@@ -495,5 +496,27 @@ describe("ViewProfileModal Component", () => {
         screen.getByText("Rating submitted successfully")
       ).toBeInTheDocument();
     });
+  });
+
+  // Update the status test:
+  it("displays user status correctly", async () => {
+    render(
+      <UserProfileContext.Provider
+        value={{ userProfile: {}, updateUserProfile: mockUpdateUserProfile }}>
+        <ViewProfileModal
+          open={true}
+          onClose={() => {}}
+          userId={mockOtherUserId}
+        />
+      </UserProfileContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("TestUser")).toBeInTheDocument();
+    });
+
+    // Look for the Status TextField and its value
+    expect(screen.getByLabelText("Status")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("couple")).toBeInTheDocument();
   });
 });

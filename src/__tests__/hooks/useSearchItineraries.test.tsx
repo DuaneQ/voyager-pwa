@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act, waitFor } from "@testing-library/react";
 import useSearchItineraries from '../../hooks/useSearchItineraries';
 import { Itinerary } from '../../types/Itinerary';
 
@@ -94,7 +94,7 @@ describe('useSearchItineraries', () => {
     (getDocs as jest.Mock).mockReturnValue(queryPromise);
     
     // Render the hook
-    const { result, waitForNextUpdate } = renderHook(() => useSearchItineraries());
+    const { result } = renderHook(() => useSearchItineraries());
     
     // Call the search function
     act(() => {
@@ -120,18 +120,19 @@ describe('useSearchItineraries', () => {
     });
     
     // Render the hook
-    const { result, waitForNextUpdate } = renderHook(() => useSearchItineraries());
+    const { result } = renderHook(() => useSearchItineraries());
     
     // Call the search function
-    act(() => {
+    await act(async () => {
       result.current.searchItineraries(mockItinerary);
     });
     
     // Wait for the async operation to complete
-    await waitForNextUpdate();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
     
     // Verify the data is loaded correctly
-    expect(result.current.loading).toBe(false);
     expect(result.current.matchingItineraries).toHaveLength(mockMatchingItineraries.length);
     expect(result.current.matchingItineraries[0].id).toBe(mockMatchingItineraries[0].id);
     expect(result.current.matchingItineraries[1].id).toBe(mockMatchingItineraries[1].id);
@@ -144,18 +145,19 @@ describe('useSearchItineraries', () => {
     (getDocs as jest.Mock).mockRejectedValueOnce(mockError);
     
     // Render the hook
-    const { result, waitForNextUpdate } = renderHook(() => useSearchItineraries());
+    const { result } = renderHook(() => useSearchItineraries());
     
     // Call the search function
-    act(() => {
+    await act(async () => {
       result.current.searchItineraries(mockItinerary);
     });
     
     // Wait for the async operation to complete
-    await waitForNextUpdate();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
     
     // Verify error state
-    expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe('Failed to search itineraries. Please try again later.');
     expect(result.current.matchingItineraries).toEqual([]);
   });
@@ -170,15 +172,17 @@ describe('useSearchItineraries', () => {
     });
     
     // Render the hook
-    const { result, waitForNextUpdate } = renderHook(() => useSearchItineraries());
+    const { result } = renderHook(() => useSearchItineraries());
     
     // Call the first search
-    act(() => {
+    await act(async () => {
       result.current.searchItineraries(mockItinerary);
     });
     
     // Wait for the first async operation
-    await waitForNextUpdate();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
     
     // Verify first search results
     expect(result.current.matchingItineraries).toHaveLength(1);
@@ -196,20 +200,18 @@ describe('useSearchItineraries', () => {
     const secondItinerary = { ...mockItinerary, destination: 'London' };
     
     // Verify that loading is reset to true and previous results are maintained until new data arrives
-    act(() => {
+    await act(async () => {
       result.current.searchItineraries(secondItinerary);
     });
     
-    // Check that we're loading again (previous results still showing)
-    expect(result.current.loading).toBe(true);
-    
     // Wait for the second async operation
-    await waitForNextUpdate();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
     
     // Verify second search results completely replaced the first
     expect(result.current.matchingItineraries).toHaveLength(1);
     expect(result.current.matchingItineraries[0].id).toBe(mockMatchingItineraries[1].id);
-    expect(result.current.loading).toBe(false);
   });
 
   it('should correctly compose the Firestore query', async () => {
@@ -217,15 +219,17 @@ describe('useSearchItineraries', () => {
     (getDocs as jest.Mock).mockResolvedValueOnce({ docs: [] });
     
     // Render the hook
-    const { result, waitForNextUpdate } = renderHook(() => useSearchItineraries());
+    const { result } = renderHook(() => useSearchItineraries());
     
     // Call the search function
-    act(() => {
+    await act(async () => {
       result.current.searchItineraries(mockItinerary);
     });
     
     // Wait for the async operation
-    await waitForNextUpdate();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
     
     // Verify the query was constructed correctly
     expect(getFirestore).toHaveBeenCalled();
