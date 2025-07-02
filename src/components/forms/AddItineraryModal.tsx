@@ -15,7 +15,7 @@ import { Itinerary } from "../../types/Itinerary"; // Adjust the path as needed
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
-import { GENDER_OPTIONS } from "../shared-strings/constants";
+import { GENDER_OPTIONS, STATUS_OPTIONS } from "../shared-strings/constants";
 import ItineraryCard from "../forms/ItineraryCard";
 
 interface AddItineraryModalProps {
@@ -42,6 +42,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     description: "",
     activities: [] as string[],
     gender: "",
+    status: "", // Add status field
     startDay: 0,
     endDay: 0,
     lowerRange: 18,
@@ -69,6 +70,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!newItinerary.gender) {
       return "Please select a gender preference.";
     }
+    if (!newItinerary.status) {
+      return "Please select a status preference.";
+    }
     if (startDateError || endDateError) {
       return "Please fix the date errors before saving.";
     }
@@ -84,6 +88,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       description: "",
       activities: [],
       gender: "",
+      status: "", // Add status field
       startDay: 0,
       endDay: 0,
       lowerRange: 18,
@@ -110,7 +115,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         dob: userProfile?.dob || "Unknown",
         uid: userId || "Unknown",
         email: userProfile?.email || "",
-        // Include blocked array from userProfile - this will now be up-to-date
+        status: userProfile?.status || "single", // Add status field
         blocked: userProfile?.blocked || [],
       };
       const itineraryWithUserInfo = {
@@ -327,6 +332,28 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             }>
             {GENDER_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
+        </FormControl>
+        <FormControl fullWidth margin="normal">
+          <TextField
+            id="status"
+            value={newItinerary.status}
+            select
+            required
+            fullWidth
+            name="status"
+            label="I am looking for"
+            onChange={(e) =>
+              setNewItinerary((prev) => ({
+                ...prev,
+                status: e.target.value,
+              }))
+            }>
+            {STATUS_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option.toLowerCase()}>
                 {option}
               </MenuItem>
             ))}

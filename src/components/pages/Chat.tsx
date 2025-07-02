@@ -38,16 +38,25 @@ const db = getFirestore(app);
 export const Chat = React.memo(() => {
   const userId = useGetUserId();
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [selectedConnection, setSelectedConnection] =
-    useState<Connection | null>(null);
+  const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const [latestMessages, setLatestMessages] = useState<Message[]>([]);
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
-  const [lastMessageDoc, setLastMessageDoc] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [lastMessageDoc, setLastMessageDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const { setHasNewConnection } = useNewConnection();
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [selectedPhotoURL, setSelectedPhotoURL] = useState<string>("");
+
+  // Prevent body scrolling when component mounts (same as auth pages)
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
 
   // Fetch connections and unread status
   useEffect(() => {
@@ -168,17 +177,23 @@ export const Chat = React.memo(() => {
     <div className="authFormContainer">
       <Box
         sx={{
+          position: 'fixed',        // Change to fixed positioning
+          top: 0,                   // Add positioning
+          left: 0,                  // Add positioning
+          right: 0,                 // Add positioning
+          bottom: 0,                // Add positioning
           maxWidth: 500,
           mx: "auto",
-          mt: 2, // Change from -20 to positive value
+          mt: 0,                    // Remove margin top
           background: "transparent",
           boxShadow: "none",
           border: "none",
           p: 0,
-          height: "calc(100vh - 56px)", // Account for bottom nav height
+          height: "100vh",          // Use full viewport height
           display: "flex",
           flexDirection: "column",
         }}>
+        
         {/* Page Header */}
         <Box 
           sx={{ 
@@ -187,15 +202,18 @@ export const Chat = React.memo(() => {
             px: 2,
             display: 'flex',
             justifyContent: 'center',
+            flexShrink: 0,           // Prevent header from shrinking
           }}
         >
         </Box>
+        
         <Box
           sx={{
             flex: 1,
             overflowY: "auto",
             minHeight: 0,
-            mt: 2, // Add top margin to create space after header
+            mt: 2,
+            pb: 7,                   // Add padding bottom for BottomNav
           }}>
           <List
             sx={{
@@ -224,6 +242,7 @@ export const Chat = React.memo(() => {
             })}
           </List>
         </Box>
+        
         {selectedConnection && (
           <ChatModal
             open={!!selectedConnection}
