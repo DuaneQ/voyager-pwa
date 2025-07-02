@@ -31,6 +31,7 @@ describe("ProfileForm", () => {
     edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
+    status: "single", // Add status field
   };
 
   const mockUpdateUserProfile = jest.fn();
@@ -92,6 +93,7 @@ describe("ProfileForm", () => {
     expect(screen.getByDisplayValue("GED")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Occasionally")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Never")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("single")).toBeInTheDocument(); // Add status test
   });
 
   test("should open the EditProfileModal when 'Edit Profile' button is clicked", () => {
