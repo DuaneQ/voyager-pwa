@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import useGetUserId from "../../hooks/useGetUserId";
 import { getFirestore, collection, addDoc } from "firebase/firestore";

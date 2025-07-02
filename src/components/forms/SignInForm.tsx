@@ -16,10 +16,9 @@ import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
-import MuiCard from "@mui/material/Card";
-import { styled } from "@mui/material/styles";
+import Card from "@mui/material/Card";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
   signInWithEmailAndPassword,
@@ -31,49 +30,23 @@ import { auth } from "../../environments/firebaseConfig";
 import { GoogleIcon } from "../custom-icons/GoogleIcon";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 
-const Card = styled(MuiCard)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  width: "80%",
-  padding: theme.spacing(1),
-  gap: theme.spacing(1),
-  marginTop: theme.spacing(1),
-  marginLeft: "auto",
-  marginRight: "auto",
-  [theme.breakpoints.up("sm")]: {
-    maxWidth: "400px",
-    padding: theme.spacing(1),
-    gap: theme.spacing(2),
-  },
-}));
-
-const SignInContainer = styled(Stack)(({ theme }) => ({
-  padding: theme.spacing(0.1),
-  [theme.breakpoints.up("sm")]: {
-    padding: theme.spacing(1),
-  },
-  "&::before": {
-    content: '""',
-    display: "block",
-    position: "absolute",
-    zIndex: -1,
-    inset: 0,
-    backgroundImage:
-      "radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
-    backgroundRepeat: "no-repeat",
-    ...theme.applyStyles("dark", {
-      backgroundImage:
-        "radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-    }),
-  },
-}));
-
 export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   const [emailError, setEmailError] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { showAlert } = useContext(AlertContext);
+
+  // Prevent body scrolling when component mounts
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,7 +65,6 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
       const user = result.user;
 
       const db = getFirestore();
-
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -180,13 +152,47 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
   return (
     <>
       <CssBaseline enableColorScheme />
-      <SignInContainer className="authFormContainer">
-        <Card variant="outlined">
+      <Stack 
+        className="authFormContainer"
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1000,
+          minHeight: '100vh',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'auto',
+          padding: { xs: 1, sm: 4 },
+        }}
+      >
+        <Card 
+          variant="outlined"
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            width: { xs: "95%", sm: "90%" },
+            maxWidth: "500px",
+            padding: { xs: 1.5, sm: 3 },
+            gap: { xs: 1.5, sm: 2 },
+            marginLeft: "auto",
+            marginRight: "auto",
+            boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px"
+          }}
+        >
           <Typography
             component="h1"
             variant="h5"
             align="left"
-            sx={{ width: "100%", fontSize: { xs: "1.5rem", sm: "2rem" } }}>
+            sx={{ 
+              width: "100%", 
+              fontSize: { xs: "1.25rem", sm: "2rem" },
+              mb: { xs: 0.5, sm: 1 }
+            }}>
             Sign in
           </Typography>
           <Box
@@ -197,12 +203,12 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               display: "flex",
               flexDirection: "column",
               width: "100%",
-              gap: 2,
+              gap: { xs: 1.5, sm: 2 },
             }}>
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="email"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Email
               </FormLabel>
               <TextField
@@ -219,16 +225,18 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 color={emailError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
             </FormControl>
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="password"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Password
               </FormLabel>
               <TextField
@@ -244,9 +252,11 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
             </FormControl>
@@ -257,70 +267,68 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
               data-testid="email-signin-button"
               disabled={isSubmitting}
               sx={{
-                fontSize: { xs: "0.95rem", sm: "1rem" },
-                py: { xs: 1, sm: 1.5 },
+                fontSize: { xs: "0.9rem", sm: "1.1rem" },
+                py: { xs: 1.2, sm: 2 },
+                mt: { xs: 0.5, sm: 1 }
               }}>
-              Sign in
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
             </Button>
-            <Link
-              component={RouterLink}
-              to="/reset"
-              variant="body2"
-              sx={{
-                alignSelf: "center",
-                fontSize: { xs: "0.85rem", sm: "1rem" },
-              }}>
-              Forgot your password?
-            </Link>
-            <Link
-              component={RouterLink}
-              to="/ResendEmail"
-              variant="body2"
-              sx={{
-                alignSelf: "center",
-                fontSize: { xs: "0.85rem", sm: "1rem" },
-              }}>
-              Resend email verification
-            </Link>
-          </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleGoogleSignIn}
-              startIcon={<GoogleIcon />}
-              data-testid="google-signin-button"
-              disabled={isSubmitting}
-              sx={{
-                fontSize: { xs: "0.95rem", sm: "1rem" },
-                py: { xs: 1, sm: 1.5 },
-              }}>
-              Sign in with Google
-            </Button>
-          </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography
-              sx={{
-                textAlign: "center",
-                fontSize: { xs: "0.95rem", sm: "1rem" },
-              }}>
-              Don&apos;t have an account?{" "}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap', 
+              gap: { xs: 0.5, sm: 1 }
+            }}>
               <Link
                 component={RouterLink}
-                to="/Register"
+                to="/reset"
                 variant="body2"
-                sx={{
-                  alignSelf: "center",
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                }}>
-                Sign up
+                sx={{ fontSize: { xs: "0.75rem", sm: "1rem" } }}>
+                Forgot your password?
               </Link>
-            </Typography>
+              <Link
+                component={RouterLink}
+                to="/ResendEmail"
+                variant="body2"
+                sx={{ fontSize: { xs: "0.75rem", sm: "1rem" } }}>
+                Resend email verification
+              </Link>
+            </Box>
           </Box>
+          <Divider sx={{ my: { xs: 1.5, sm: 2 } }}>or</Divider>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={handleGoogleSignIn}
+            startIcon={<GoogleIcon />}
+            data-testid="google-signin-button"
+            disabled={isSubmitting}
+            sx={{
+              fontSize: { xs: "0.9rem", sm: "1.1rem" },
+              py: { xs: 1.2, sm: 2 },
+            }}>
+            Sign in with Google
+          </Button>
+          <Divider sx={{ my: { xs: 1.5, sm: 2 } }}>or</Divider>
+          <Typography
+            sx={{
+              textAlign: "center",
+              fontSize: { xs: "0.9rem", sm: "1.1rem" },
+            }}>
+            Don&apos;t have an account?{" "}
+            <Link
+              component={RouterLink}
+              to="/Register"
+              variant="body2"
+              sx={{
+                fontSize: { xs: "0.9rem", sm: "1.1rem" },
+                fontWeight: 600
+              }}>
+              Sign up
+            </Link>
+          </Typography>
         </Card>
-      </SignInContainer>
+      </Stack>
     </>
   );
 }

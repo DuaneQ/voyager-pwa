@@ -31,6 +31,7 @@ import { Suspense, useEffect } from "react";
 import { app } from "./environments/firebaseConfig";
 import { BetaBanner } from "./components/utilities/BetaBanner";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
+import { TermsGuard } from "./components/auth/TermsGuard";
 const messaging = getMessaging(app);
 
 function App() {
@@ -86,9 +87,11 @@ function App() {
                     path="/"
                     element={
                       <Protected>
-                        <UserProfileProvider>
-                          <Profile />
-                        </UserProfileProvider>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <Profile />
+                          </UserProfileProvider>
+                        </TermsGuard>
                       </Protected>
                     }
                   />
@@ -96,9 +99,11 @@ function App() {
                     path="/Search"
                     element={
                       <Protected>
-                        <UserProfileProvider>
-                          <Search />
-                        </UserProfileProvider>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <Search />
+                          </UserProfileProvider>
+                        </TermsGuard>
                       </Protected>
                     }
                   />
@@ -106,9 +111,11 @@ function App() {
                     path="/Chat"
                     element={
                       <Protected>
-                        <UserProfileProvider>
-                          <Chat />
-                        </UserProfileProvider>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <Chat />
+                          </UserProfileProvider>
+                        </TermsGuard>
                       </Protected>
                     }
                   />

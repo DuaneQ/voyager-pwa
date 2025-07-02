@@ -27,6 +27,7 @@ import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
 import { useNewConnection } from "../../Context/NewConnectionContext";
 import React from "react";
+import { BetaBanner } from '../utilities/BetaBanner';
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
@@ -50,6 +51,25 @@ export const Search = React.memo(() => {
   const { setHasNewConnection } = useNewConnection();
   const userId = useGetUserId();
   const db = getFirestore(app);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  // Prevent body scrolling when component mounts (same as auth pages)
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+
+  // Check if banner is dismissed
+  useEffect(() => {
+    const version = "1.0.0-beta"; // Should match your app version
+    const dismissed = localStorage.getItem(`beta-banner-dismissed-${version}`);
+    setBannerDismissed(!!dismissed);
+  }, []);
 
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
@@ -156,6 +176,11 @@ export const Search = React.memo(() => {
     <Box
       className="authFormContainer"
       sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         width: "100%",
         height: "100vh",
         display: "flex",
@@ -163,14 +188,17 @@ export const Search = React.memo(() => {
         backgroundColor: "#f5f5f7",
         overflow: "hidden",
       }}>
+
       {/* Header */}
       <Box
         sx={{
           backgroundColor: "transparent",
           padding: 2,
           borderBottom: "1px solid rgba(0,0,0,0.1)",
+          flexShrink: 0,
+          marginTop: bannerDismissed ? 0 : "220px", // Add margin when banner is visible
         }}>
-        <Typography variant="h6" textAlign="center" gutterBottom={false}  sx={{ color: 'transparent' }}>
+        <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
           Traval
         </Typography>
       </Box>
@@ -184,12 +212,13 @@ export const Search = React.memo(() => {
           padding: "10px 16px",
           backgroundColor: "white",
           borderBottom: "1px solid rgba(0,0,0,0.05)",
-          gap: "16px", // Add this line to create space between items
+          gap: "16px",
+          flexShrink: 0,
         }}>
         <Box
           sx={{
-            width: { xs: 180, sm: 240 }, // FIXED WIDTH container for select
-            flexShrink: 0, // Prevent shrinking
+            width: { xs: 180, sm: 240 },
+            flexShrink: 0,
           }}>
           <FormControl fullWidth>
             <Select
@@ -199,7 +228,6 @@ export const Search = React.memo(() => {
               size="small"
               sx={{
                 ".MuiSelect-select": {
-                  // Style the content inside to ensure text truncation
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -210,6 +238,7 @@ export const Search = React.memo(() => {
                   style: {
                     maxHeight: 300,
                     maxWidth: 300,
+                    zIndex: 1001, // Ensure dropdown appears above banner
                   },
                 },
               }}>
@@ -257,6 +286,7 @@ export const Search = React.memo(() => {
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
+          minHeight: 0,
         }}>
         {loading && (
           <Typography

@@ -251,24 +251,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         status: "pending",
         userDetails: {
           reportedUser: profile || {},
-          // We'll add reporting user details in a Cloud Function to ensure accuracy
         },
       };
 
       await addDoc(violationsRef, violationData);
 
-      // 2. In a real implementation, sending email would typically be handled by a Cloud Function
-      // triggered when a new violation document is created
-      // For this example, we'll just log that an email would be sent
-      console.log(
-        `Email would be sent to support@travalpass.com about user ${userId}`
-      );
-
       setSnackbarMessage("Report submitted successfully");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
-
-      // Close dialog
       setReportDialogOpen(false);
     } catch (error) {
       console.error("Error reporting user:", error);
@@ -704,28 +694,28 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       }}
                     />
                   </FormControl>
-                  {/* User Rating Section */}
-                  <FormControl>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ mb: 1, fontWeight: "medium" }}>
-                      User Rating
-                    </Typography>
-                    <Rating
-                      value={userRating}
-                      onChange={(event, newValue) => {
-                        setNewRating(newValue);
-                      }}
-                      precision={0.5}
-                      size="large"
-                      emptyIcon={<StarBorderIcon fontSize="inherit" />}
-                      icon={<StarIcon fontSize="inherit" />}
-                      sx={{
-                        "& .MuiRating-iconFilled": {
-                          color: "warning.main",
+                 <FormControl>
+                    <TextField
+                      label="Status"
+                      value={profile?.status || ""}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
                         },
-                        "& .MuiRating-iconHover": {
-                          color: "warning.main",
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
                         },
                       }}
                     />

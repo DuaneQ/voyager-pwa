@@ -45,3 +45,9 @@ export const SEXUAL_ORIENTATION_OPTIONS = [
 ];
 
 export const FREQUENCY = ["Never", "Occasionally", "Frequently"]
+
+export const STATUS_OPTIONS = [
+  "Single",
+  "Couple", 
+  "Group"
+];
