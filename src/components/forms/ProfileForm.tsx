@@ -167,6 +167,18 @@ export const ProfileForm = () => {
                 readOnly: true,
               }}></TextField>
           </FormControl>
+          <FormControl>
+            <TextField
+              id="status"
+              value={userProfile?.status || ""}
+              required
+              fullWidth
+              name="status"
+              label="Status"
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
+          </FormControl>
         </Card>
       </form>
       <EditProfileModal show={showLogin} close={() => setShowLogin(false)} />

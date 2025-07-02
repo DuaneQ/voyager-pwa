@@ -352,8 +352,8 @@ export const notifyViolationReport = functions.firestore
 
       // Prepare email content
       const mailDoc = {
-        to: "support@travalpass.com",
-        from: "duaneqhodges@travalpass.com",
+        to: "violations@travalpass.com",
+        from: "no-reply@travalpass.com",
         message: {
           subject: `[VIOLATION REPORT] ${formattedReason}`,
           text: `

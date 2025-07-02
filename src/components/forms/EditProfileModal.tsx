@@ -13,6 +13,7 @@ import {
   FREQUENCY,
   GENDER_OPTIONS,
   SEXUAL_ORIENTATION_OPTIONS,
+  STATUS_OPTIONS,
 } from "../shared-strings/constants";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
@@ -41,6 +42,23 @@ export const EditProfileModal = (props: any) => {
     boxShadow: 24,
     p: { xs: 1, sm: 2 },
     overflowY: "auto",
+  };
+
+  const [formData, setFormData] = useState({
+    bio: userProfile?.bio || "",
+    dob: userProfile?.dob || "",
+    gender: userProfile?.gender || "",
+    sexo: userProfile?.sexo || "",
+    edu: userProfile?.edu || "",
+    drinking: userProfile?.drinking || "",
+    smoking: userProfile?.smoking || "",
+    status: userProfile?.status || "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    updateUserProfile({ ...userProfile, [name]: value });
   };
 
   const handleSubmit = async (e: any) => {
@@ -88,14 +106,9 @@ export const EditProfileModal = (props: any) => {
                 multiline
                 autoFocus
                 rows={4}
-                value={userProfile?.bio || ""}
+                value={formData.bio}
                 name="bio"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    bio: e.target.value,
-                  })
-                }
+                onChange={handleChange}
                 placeholder="Tell us about yourself"
               />
             </FormControl>
@@ -105,35 +118,24 @@ export const EditProfileModal = (props: any) => {
                 type="date"
                 id="dob"
                 name="dob"
-                value={userProfile?.dob || ""}
+                value={formData.dob}
                 placeholder="YYYY-MM-DD"
                 InputLabelProps={{
                   shrink: true,
                 }}
-                onChange={(e) => {
-                  const newDob = e.target.value;
-                  updateUserProfile({
-                    ...userProfile,
-                    dob: newDob,
-                  });
-                }}
+                onChange={handleChange}
               />
             </FormControl>
             <FormControl>
               <TextField
                 id="gender"
-                value={userProfile?.gender || ""}
+                value={formData.gender}
                 select
                 required
                 fullWidth
                 name="gender"
                 label="Gender"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    gender: e.target.value,
-                  })
-                }>
+                onChange={handleChange}>
                 {GENDER_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -144,18 +146,13 @@ export const EditProfileModal = (props: any) => {
             <FormControl>
               <TextField
                 id="sexo"
-                value={userProfile?.sexo}
+                value={formData.sexo}
                 required
                 select
                 fullWidth
                 name="sexo"
                 label="Sexual Orientation"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    sexo: e.target.value,
-                  })
-                }>
+                onChange={handleChange}>
                 {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -166,17 +163,12 @@ export const EditProfileModal = (props: any) => {
             <FormControl>
               <TextField
                 id="edu"
-                value={userProfile?.edu}
+                value={formData.edu}
                 select
                 required
                 label="Education"
                 name="edu"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    edu: e.target.value,
-                  })
-                }>
+                onChange={handleChange}>
                 {EDUCATION_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -189,15 +181,10 @@ export const EditProfileModal = (props: any) => {
                 id="drinking"
                 select
                 required
-                value={userProfile?.drinking}
+                value={formData.drinking}
                 label="Drinking"
                 name="drinking"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    drinking: e.target.value,
-                  })
-                }>
+                onChange={handleChange}>
                 {FREQUENCY.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -210,17 +197,29 @@ export const EditProfileModal = (props: any) => {
                 id="smoking"
                 select
                 required
-                value={userProfile?.smoking}
+                value={formData.smoking}
                 label="Smoking"
                 name="smoking"
-                onChange={(e) =>
-                  updateUserProfile({
-                    ...userProfile,
-                    smoking: e.target.value,
-                  })
-                }>
+                onChange={handleChange}>
                 {FREQUENCY.map((option, index) => (
                   <MenuItem key={index} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </FormControl>
+            <FormControl>
+              <TextField
+                id="status"
+                value={formData.status}
+                select
+                required
+                fullWidth
+                name="status"
+                label="Status"
+                onChange={handleChange}>
+                {STATUS_OPTIONS.map((option, index) => (
+                  <MenuItem key={index} value={option.toLowerCase()}>
                     {option}
                   </MenuItem>
                 ))}

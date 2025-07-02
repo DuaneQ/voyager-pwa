@@ -9,10 +9,9 @@ import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
-import MuiCard from "@mui/material/Card";
-import { styled } from "@mui/material/styles";
+import Card from "@mui/material/Card";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AlertContext } from "../../Context/AlertContext";
 import {
   createUserWithEmailAndPassword,
@@ -24,40 +23,6 @@ import { app, auth } from "../../environments/firebaseConfig";
 import { FormHelperText } from "@mui/material";
 import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { GoogleIcon } from "../custom-icons/GoogleIcon";
-
-const Card = styled(MuiCard)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  width: "80%",
-  padding: theme.spacing(1),
-  gap: theme.spacing(1),
-  marginTop: theme.spacing(1), 
-
-  [theme.breakpoints.up("sm")]: {
-    maxWidth: "400px",
-  },
-}));
-
-const SignInContainer = styled(Stack)(({ theme }) => ({
-  padding: theme.spacing(0.1),
-  [theme.breakpoints.up("sm")]: {
-    padding: theme.spacing(1),
-  },
-  "&::before": {
-    content: '""',
-    display: "block",
-
-    zIndex: -1,
-    inset: 0,
-    backgroundImage:
-      "radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
-    backgroundRepeat: "no-repeat",
-    ...theme.applyStyles("dark", {
-      backgroundImage:
-        "radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-    }),
-  },
-}));
 
 export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
   const [emailError, setEmailError] = React.useState(false);
@@ -82,6 +47,17 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     dob: "",
     photos: ["", "", "", "", ""],
   });
+
+  // Prevent body scrolling when component mounts
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
 
   const handleNameChange = (e: any) => {
     setInputs((prevState) => ({
@@ -134,12 +110,11 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
 
   const handleGoogleSignUp = async () => {
     const provider = new GoogleAuthProvider();
-    setIsSubmitting(true); // Disable the button
+    setIsSubmitting(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Extract user data
       const userData = {
         username: user.displayName || "",
         email: user.email || "",
@@ -153,7 +128,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         photos: ["", "", "", "", ""],
       };
 
-      // Format USER_CREDENTIALS to match email/password sign-up
       const userCredentials = {
         user: {
           uid: user.uid,
@@ -164,16 +138,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         },
       };
 
-      // Save user data to Firestore
       const db = getFirestore(app);
       const docRef = doc(db, "users", user.uid);
       await setDoc(docRef, userData);
 
-      // Save user credentials and profile info to localStorage
       localStorage.setItem("USER_CREDENTIALS", JSON.stringify(userCredentials));
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
 
-      // Show success alert and navigate to the next page
       showAlert("Success", "You have successfully signed up with Google!");
       navigate("/");
     } catch (error) {
@@ -181,7 +152,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         error instanceof Error &&
         (error as any).code === "auth/popup-closed-by-user"
       ) {
-        // Handle the case where the user closes the popup
         showAlert("Info", "Google sign-up was canceled.");
       } else {
         const errorMessage =
@@ -189,13 +159,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         showAlert("Error", errorMessage);
       }
     } finally {
-      setIsSubmitting(false); // Re-enable the button
+      setIsSubmitting(false);
     }
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    setIsSubmitting(true); // Disable the button
+    setIsSubmitting(true);
     try {
       if (inputs.password !== inputs.confirm) {
         showAlert(
@@ -213,7 +183,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           await sendEmailVerification(userCredential.user);
           const { password, confirm, ...userData } = inputs;
 
-          // Format USER_CREDENTIALS
           const userCredentials = {
             user: {
               uid: userCredential.user.uid,
@@ -224,7 +193,6 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
             },
           };
 
-          // Save user credentials and profile info to localStorage
           localStorage.setItem(
             "USER_CREDENTIALS",
             JSON.stringify(userCredentials)
@@ -248,36 +216,69 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           showAlert("Error", errorMessage);
         });
     } finally {
-      setIsSubmitting(false); // Re-enable the button
+      setIsSubmitting(false);
     }
   };
 
   return (
     <>
       <CssBaseline enableColorScheme />
-      <SignInContainer
-        className="authFormContainer">
-        <Card
+      <Stack 
+        className="authFormContainer"
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1000,
+          minHeight: '100vh',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'auto',
+          padding: { xs: 1, sm: 4 },
+        }}
+      >
+        <Card 
           variant="outlined"
           sx={{
-            fontSize: { xs: "0.65rem", sm: "1rem" },
-            // ...other styles
-          }}>
+            display: "flex",
+            flexDirection: "column",
+            width: { xs: "95%", sm: "90%" },
+            maxWidth: "500px",
+            padding: { xs: 1.5, sm: 3 },
+            gap: { xs: 1, sm: 2 },
+            marginLeft: "auto",
+            marginRight: "auto",
+            boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px"
+          }}
+        >
           <Typography
             component="h1"
-            variant="h5" // Use h5 for a smaller heading
+            variant="h5"
             align="left"
-            sx={{ width: "100%", fontSize: { xs: "1.5rem", sm: "2rem" } }}>
+            sx={{ 
+              width: "100%", 
+              fontSize: { xs: "1.25rem", sm: "2rem" },
+              mb: { xs: 0.5, sm: 1 }
+            }}>
             Sign up
           </Typography>
-          <form
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          <Box
+            component="form"
             onSubmit={handleSubmit}
-            noValidate>
+            noValidate
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: { xs: 1, sm: 2 },
+            }}>
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="username"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Username
               </FormLabel>
               <TextField
@@ -294,21 +295,24 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 onChange={handleNameChange}
                 color={usernameError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
-              {usernameError ? (
-                <FormHelperText>
+              {usernameError && (
+                <FormHelperText error sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}>
                   Username must be greater than 2 characters.
                 </FormHelperText>
-              ) : null}
+              )}
             </FormControl>
+            
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="email"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Email
               </FormLabel>
               <TextField
@@ -325,19 +329,24 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 onChange={handleEmailChange}
                 color={emailError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
-              {emailError ? (
-                <FormHelperText>Please enter a valid email.</FormHelperText>
-              ) : null}
+              {emailError && (
+                <FormHelperText error sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}>
+                  Please enter a valid email.
+                </FormHelperText>
+              )}
             </FormControl>
+            
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="password"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Password
               </FormLabel>
               <TextField
@@ -354,21 +363,24 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 color={passwordError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
-              {passwordError ? (
-                <FormHelperText>
+              {passwordError && (
+                <FormHelperText error sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}>
                   Please enter a password of 10 characters or more.
                 </FormHelperText>
-              ) : null}
+              )}
             </FormControl>
+            
             <FormControl required sx={{ textAlign: "left" }}>
               <FormLabel
                 htmlFor="confirm"
-                sx={{ fontSize: { xs: "0.75rem", sm: "1.1rem" } }}>
+                sx={{ fontSize: { xs: "0.8rem", sm: "1.1rem" } }}>
                 Confirm Password
               </FormLabel>
               <TextField
@@ -384,53 +396,68 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 color={passwordConfError ? "error" : "primary"}
                 sx={{
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  "& input": { fontSize: { xs: "0.95rem", sm: "1rem" }, py: 1 },
-                  "& input::placeholder": { fontSize: "0.95rem" },
+                  "& input": { 
+                    fontSize: { xs: "0.9rem", sm: "1.1rem" }, 
+                    py: { xs: 1, sm: 1.5 }
+                  },
+                  "& input::placeholder": { fontSize: { xs: "0.9rem", sm: "1rem" } },
                 }}
               />
-              {passwordConfError ? (
-                <FormHelperText>
+              {passwordConfError && (
+                <FormHelperText error sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}>
                   Please enter a password of 10 characters or more.
                 </FormHelperText>
-              ) : null}
+              )}
             </FormControl>
+            
             <Button
               type="submit"
               fullWidth
               disabled={isSubmitting}
               variant="contained"
-              data-testid="email-signup-button">
-              Sign up
-            </Button>
-          </form>
-          <Divider>or</Divider>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleGoogleSignUp}
-              startIcon={<GoogleIcon />}
-              disabled={isSubmitting}
-              data-testid="google-signup-button">
-              Sign up with Google
+              data-testid="email-signup-button"
+              sx={{
+                fontSize: { xs: "0.9rem", sm: "1.1rem" },
+                py: { xs: 1.2, sm: 2 },
+                mt: { xs: 0.5, sm: 1 }
+              }}>
+              {isSubmitting ? 'Creating Account...' : 'Sign up'}
             </Button>
           </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography sx={{ textAlign: "center" }}>
-              Already have an account?{" "}
-              <Link
-                component={RouterLink}
-                to="/Login"
-                variant="body2"
-                sx={{ alignSelf: "center" }}>
-                Sign in
-              </Link>
-            </Typography>
-          </Box>
+          
+          <Divider sx={{ my: { xs: 1.5, sm: 2 } }}>or</Divider>
+          
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={handleGoogleSignUp}
+            startIcon={<GoogleIcon />}
+            disabled={isSubmitting}
+            data-testid="google-signup-button"
+            sx={{
+              fontSize: { xs: "0.9rem", sm: "1.1rem" },
+              py: { xs: 1.2, sm: 2 },
+            }}>
+            Sign up with Google
+          </Button>
+          
+          <Divider sx={{ my: { xs: 1.5, sm: 2 } }}>or</Divider>
+          
+          <Typography sx={{ textAlign: "center" }}>
+            Already have an account?{" "}
+            <Link
+              component={RouterLink}
+              to="/Login"
+              variant="body2"
+              sx={{ 
+                fontSize: { xs: "0.9rem", sm: "1.1rem" },
+                fontWeight: 600
+              }}>
+              Sign in
+            </Link>
+          </Typography>
         </Card>
-      </SignInContainer>
+      </Stack>
     </>
   );
 }
