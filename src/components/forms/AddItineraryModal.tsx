@@ -11,18 +11,18 @@ import {
   Typography,
 } from "@mui/material";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
-import { Itinerary } from "../../types/Itinerary"; // Adjust the path as needed
+import { Itinerary } from "../../types/Itinerary";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import useGetUserId from "../../hooks/useGetUserId";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
-import { GENDER_OPTIONS, STATUS_OPTIONS } from "../shared-strings/constants";
+import { GENDER_OPTIONS, STATUS_OPTIONS, SEXUAL_ORIENTATION_OPTIONS } from "../shared-strings/constants";
 import ItineraryCard from "../forms/ItineraryCard";
 
 interface AddItineraryModalProps {
   open: boolean;
   onClose: () => void;
-  onItineraryAdded: (destination: string) => void; // Trigger the re-fetch in Search.tsx
-  itineraries: Itinerary[]; // Pass itineraries as a prop
+  onItineraryAdded: (destination: string) => void;
+  itineraries: Itinerary[];
 }
 
 const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
@@ -42,7 +42,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     description: "",
     activities: [] as string[],
     gender: "",
-    status: "", // Add status field
+    status: "",
+    sexualOrientation: "", // Add this field
     startDay: 0,
     endDay: 0,
     lowerRange: 18,
@@ -73,6 +74,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!newItinerary.status) {
       return "Please select a status preference.";
     }
+    if (!newItinerary.sexualOrientation) {
+      return "Please select a sexual orientation preference.";
+    }
     if (startDateError || endDateError) {
       return "Please fix the date errors before saving.";
     }
@@ -88,7 +92,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       description: "",
       activities: [],
       gender: "",
-      status: "", // Add status field
+      status: "",
+      sexualOrientation: "", // Add this field
       startDay: 0,
       endDay: 0,
       lowerRange: 18,
@@ -108,14 +113,14 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     }
 
     try {
-      // Use the existing userProfile that now contains the synchronized blocked array
       const userInfo = {
         username: userProfile?.username || "Anonymous",
         gender: userProfile?.gender || "Not specified",
         dob: userProfile?.dob || "Unknown",
         uid: userId || "Unknown",
         email: userProfile?.email || "",
-        status: userProfile?.status || "single", // Add status field
+        status: userProfile?.status || "single",
+        sexualOrientation: userProfile?.sexualOrientation || "not specified",
         blocked: userProfile?.blocked || [],
       };
       const itineraryWithUserInfo = {
@@ -186,7 +191,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           boxShadow: 24,
           p: { xs: 1.5, sm: 4 },
           borderRadius: 2,
-          maxHeight: { xs: "95vh", sm: "80vh" },
+          maxHeight: { xs: "75vh", sm: "80vh" },
           overflowY: "auto",
         }}>
         <h2>Add New Itinerary</h2>
@@ -353,6 +358,28 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               }))
             }>
             {STATUS_OPTIONS.map((option, index) => (
+              <MenuItem key={index} value={option.toLowerCase()}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
+        </FormControl>
+        <FormControl fullWidth margin="normal">
+          <TextField
+            id="sexualOrientation"
+            value={newItinerary.sexualOrientation}
+            select
+            required
+            fullWidth
+            name="sexualOrientation"
+            label="Sexual orientation preference"
+            onChange={(e) =>
+              setNewItinerary((prev) => ({
+                ...prev,
+                sexualOrientation: e.target.value,
+              }))
+            }>
+            {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option.toLowerCase()}>
                 {option}
               </MenuItem>

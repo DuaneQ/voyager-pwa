@@ -9,33 +9,47 @@
  * @returns {NewConnectionContextValue}
  */
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type NewConnectionContextType = {
+// Define the context type
+interface NewConnectionContextType {
   hasNewConnection: boolean;
-  setHasNewConnection: (val: boolean) => void;
-};
+  setHasNewConnection: (value: boolean) => void;
+}
 
-const NewConnectionContext = createContext<
+// Create the context
+export const NewConnectionContext = createContext<
   NewConnectionContextType | undefined
 >(undefined);
 
-export const useNewConnection = () => {
-  const ctx = useContext(NewConnectionContext);
-  if (!ctx)
+// Custom hook to use the context
+export const useNewConnection = (): NewConnectionContextType => {
+  const context = useContext(NewConnectionContext);
+  if (context === undefined) {
     throw new Error(
-      "useNewConnection must be used within NewConnectionProvider"
+      "useNewConnection must be used within a NewConnectionProvider"
     );
-  return ctx;
+  }
+  return context;
 };
 
-export const NewConnectionProvider: React.FC<{ children: React.ReactNode }> = ({
+// Provider component
+interface NewConnectionProviderProps {
+  children: ReactNode;
+}
+
+export const NewConnectionProvider: React.FC<NewConnectionProviderProps> = ({
   children,
 }) => {
-  const [hasNewConnection, setHasNewConnection] = useState(false);
+  const [hasNewConnection, setHasNewConnection] = useState<boolean>(false);
+
+  const value: NewConnectionContextType = {
+    hasNewConnection,
+    setHasNewConnection,
+  };
+
   return (
-    <NewConnectionContext.Provider
-      value={{ hasNewConnection, setHasNewConnection }}>
+    <NewConnectionContext.Provider value={value}>
       {children}
     </NewConnectionContext.Provider>
   );
