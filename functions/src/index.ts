@@ -160,8 +160,12 @@ export const notifyFeedbackSubmission = functions.firestore
     const feedback = snap.data();
     const feedbackId = context.params.feedbackId;
 
+    console.log("=== FEEDBACK SUBMISSION DEBUG ===");
+    console.log("Feedback ID:", feedbackId);
+    console.log("Feedback data:", JSON.stringify(feedback, null, 2));
+
     if (!feedback) {
-      console.log("No feedback data found:", feedback);
+      console.log("❌ No feedback data found:", feedback);
       return null;
     }
 
@@ -169,8 +173,10 @@ export const notifyFeedbackSubmission = functions.firestore
       // Get user details if available
       let userData = null;
       if (feedback.userId && feedback.userId !== 'anonymous') {
+        console.log("🔍 Fetching user data for:", feedback.userId);
         const userDoc = await db.collection("users").doc(feedback.userId).get();
         userData = userDoc.data() || {};
+        console.log("👤 User data found:", !!userData, userData?.username);
       }
 
       // Format feedback type and severity
@@ -195,7 +201,8 @@ export const notifyFeedbackSubmission = functions.firestore
       // Prepare email content
       const mailDoc = {
         to: "feedback@travalpass.com",
-        from: "no-reply@travalpass.com",
+        from: "DuaneQHodges@gmail.com",
+        replyTo: "no-reply@travalpass.com",
         message: {
           subject: `[BETA FEEDBACK] ${typeEmoji[feedback.type as string] || "📝"} ${feedback.title}`,
           text: `
@@ -302,19 +309,44 @@ export const notifyFeedbackSubmission = functions.firestore
         },
       };
 
+      console.log("📧 Preparing to send email to:", mailDoc.to);
+      console.log("📧 Email subject:", mailDoc.message.subject);
+      console.log("📧 Email from:", mailDoc.from);
+
       // Send the email using the "mail" collection
       const mailRef = await db.collection("mail").add(mailDoc);
-      console.log(`Feedback notification email sent, mail/${mailRef.id}`);
+      console.log(`✅ Mail document created successfully: mail/${mailRef.id}`);
+
+      // Check if the mail document was actually created
+      const createdMailDoc = await mailRef.get();
+      console.log("📄 Mail document exists:", createdMailDoc.exists);
+      console.log("📄 Mail document data:", JSON.stringify(createdMailDoc.data(), null, 2));
 
       // Update the feedback document to mark the email as sent
       await db.collection("feedback").doc(feedbackId).update({
         emailSent: true,
         emailSentTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+        mailDocumentId: mailRef.id, // Add this for debugging
       });
+
+      console.log("✅ Feedback document updated successfully");
+      console.log("=== END FEEDBACK SUBMISSION DEBUG ===");
 
       return null;
     } catch (err) {
-      console.error("Error sending feedback notification email:", err);
+      console.error("❌ Error sending feedback notification email:", err);
+      console.error("❌ Error details:", JSON.stringify(err, null, 2));
+      
+      // Type guard for error handling
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      
+      // Update feedback document with error info
+      await db.collection("feedback").doc(feedbackId).update({
+        emailSent: false,
+        emailError: errorMessage,
+        emailErrorTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
       return null;
     }
   });
