@@ -32,7 +32,9 @@ describe("AddItineraryModal Component", () => {
     username: "Test User",
     gender: "Other",
     dob: "1990-01-01",
-    status: "single", // Add status field
+    status: "single",
+    sexualOrientation: "heterosexual", // Add this field
+    blocked: [],
   };
   const mockPostItinerary = jest.fn();
   const mockOnClose = jest.fn();
@@ -49,7 +51,8 @@ describe("AddItineraryModal Component", () => {
       description: "A trip to Paris",
       activities: ["Sightseeing", "Dining"],
       gender: "Female",
-      status: "single", // Add status field
+      status: "single",
+      sexualOrientation: "heterosexual", // Add this field
       startDay: 0,
       endDay: 0,
       lowerRange: 18,
@@ -62,6 +65,8 @@ describe("AddItineraryModal Component", () => {
         uid: "testUserId",
         email: "email@user.com",
         status: "single",
+        sexualOrientation: "heterosexual", // Add this field
+        blocked: [],
       },
     },
   ];
@@ -91,7 +96,12 @@ describe("AddItineraryModal Component", () => {
 
   const renderWithContext = (ui: React.ReactElement) => {
     return render(
-      <UserProfileContext.Provider value={{ userProfile: mockUserProfile }}>
+      <UserProfileContext.Provider
+        value={{
+          userProfile: mockUserProfile,
+          updateUserProfile: mockUpdateUserProfile,
+        }}
+      >
         {ui}
       </UserProfileContext.Provider>
     );
@@ -128,6 +138,14 @@ describe("AddItineraryModal Component", () => {
     const statusOption = await screen.findByRole("option", { name: "Single" });
     fireEvent.click(statusOption);
 
+    // Add sexual orientation selection
+    const orientationDropdown = screen.getByRole("combobox", {
+      name: /Sexual orientation preference/i,
+    });
+    fireEvent.mouseDown(orientationDropdown);
+    const orientationOption = await screen.findByRole("option", { name: "Heterosexual" });
+    fireEvent.click(orientationOption);
+
     const destinationInput = screen.getByTestId("google-places-autocomplete");
     fireEvent.change(destinationInput, { target: { value: "Paris" } });
 
@@ -156,13 +174,15 @@ describe("AddItineraryModal Component", () => {
         endDate: tomorrow,
         description: "A trip to Paris",
         gender: "Female",
-        status: "single", // Add status field to assertion
+        status: "single",
+        sexualOrientation: "heterosexual", // Add this field
         userInfo: expect.objectContaining({
           username: "Test User",
           gender: "Other",
           dob: "1990-01-01",
           uid: "testUserId",
           status: "single",
+          sexualOrientation: "heterosexual", // Add this field
         }),
       })
     );
@@ -177,7 +197,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
-        itineraries={mockItineraries} // Pass mock itineraries
+        itineraries={mockItineraries}
       />
     );
 
@@ -214,7 +234,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
-        itineraries={mockItineraries} // Pass mock itineraries
+        itineraries={mockItineraries}
       />
     );
 
@@ -251,7 +271,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
-        itineraries={mockItineraries} // Pass mock itineraries
+        itineraries={mockItineraries}
       />
     );
 
@@ -265,7 +285,12 @@ describe("AddItineraryModal Component", () => {
 
   test("should not allow saving an itinerary if gender or dob is missing", async () => {
     // Arrange
-    const incompleteProfile = { ...mockUserProfile, gender: "", dob: "" };
+    const incompleteProfile = {
+      ...mockUserProfile,
+      gender: "",
+      dob: "",
+      sexualOrientation: "heterosexual", // Keep this field
+    };
 
     render(
       <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
@@ -278,7 +303,7 @@ describe("AddItineraryModal Component", () => {
             open={true}
             onClose={mockOnClose}
             onItineraryAdded={mockOnItineraryAdded}
-            itineraries={mockItineraries} // Pass mock itineraries
+            itineraries={mockItineraries}
           />
         </UserProfileContext.Provider>
       </AlertContext.Provider>
@@ -290,6 +315,9 @@ describe("AddItineraryModal Component", () => {
     fireEvent.click(saveButton);
 
     // Assert
+    expect(window.alert).toHaveBeenCalledWith(
+      "Please complete your profile by setting your date of birth and gender before creating an itinerary."
+    );
     expect(mockPostItinerary).not.toHaveBeenCalled();
     expect(mockOnItineraryAdded).not.toHaveBeenCalled();
   });
@@ -301,7 +329,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
-        itineraries={mockItineraries} // Pass mock itineraries
+        itineraries={mockItineraries}
       />
     );
 
@@ -312,7 +340,6 @@ describe("AddItineraryModal Component", () => {
     });
   });
 
-  // Add a new test for status validation:
   test("displays error if status is not selected", async () => {
     // Arrange
     renderWithContext(
@@ -351,6 +378,54 @@ describe("AddItineraryModal Component", () => {
 
     // Assert
     expect(window.alert).toHaveBeenCalledWith("Please select a status preference.");
+    expect(mockPostItinerary).not.toHaveBeenCalled();
+  });
+
+  test("displays error if sexual orientation is not selected", async () => {
+    // Arrange
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        itineraries={mockItineraries}
+      />
+    );
+
+    const today = new Date().toISOString().split("T")[0];
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    // Act - Fill out form but skip sexual orientation
+    const genderDropdown = screen.getByRole("combobox", {
+      name: /I am looking for a/i,
+    });
+    fireEvent.mouseDown(genderDropdown);
+    const genderOption = await screen.findByRole("option", { name: "Female" });
+    fireEvent.click(genderOption);
+
+    const statusDropdown = screen.getByRole("combobox", {
+      name: /I am looking for$/i,
+    });
+    fireEvent.mouseDown(statusDropdown);
+    const statusOption = await screen.findByRole("option", { name: "Single" });
+    fireEvent.click(statusOption);
+
+    const destinationInput = screen.getByTestId("google-places-autocomplete");
+    fireEvent.change(destinationInput, { target: { value: "Paris" } });
+
+    const startDateInput = screen.getByLabelText(/start date/i);
+    fireEvent.change(startDateInput, { target: { value: today } });
+
+    const endDateInput = screen.getByLabelText(/end date/i);
+    fireEvent.change(endDateInput, { target: { value: tomorrow } });
+
+    const saveButton = screen.getByRole("button", { name: /save itinerary/i });
+    fireEvent.click(saveButton);
+
+    // Assert
+    expect(window.alert).toHaveBeenCalledWith("Please select a sexual orientation preference.");
     expect(mockPostItinerary).not.toHaveBeenCalled();
   });
 });

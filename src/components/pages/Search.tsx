@@ -31,11 +31,24 @@ import { BetaBanner } from '../utilities/BetaBanner';
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
-// Store viewed itineraries in localStorage
+// Store viewed itineraries in localStorage - FIXED to store only IDs
 function saveViewedItinerary(itinerary: Itinerary) {
-  const viewed = JSON.parse(localStorage.getItem(VIEWED_STORAGE_KEY) || "[]");
-  viewed.push(itinerary);
-  localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(viewed));
+  try {
+    const viewed = JSON.parse(localStorage.getItem(VIEWED_STORAGE_KEY) || "[]");
+    
+    // Ensure we're working with an array of IDs
+    const viewedIds = viewed.map((item: any) => 
+      typeof item === 'string' ? item : item.id
+    ).filter(Boolean);
+    
+    // Add the new ID if it's not already present
+    if (!viewedIds.includes(itinerary.id)) {
+      viewedIds.push(itinerary.id);
+      localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(viewedIds));
+    }
+  } catch (error) {
+    console.error("Error saving viewed itinerary:", error);
+  }
 }
 
 export const Search = React.memo(() => {
@@ -45,7 +58,13 @@ export const Search = React.memo(() => {
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
-  const { matchingItineraries, searchItineraries } = useSearchItineraries();
+  const { 
+    matchingItineraries, 
+    searchItineraries, 
+    checkForMoreMatches,
+    loading: searchLoading,
+    hasMore 
+  } = useSearchItineraries();
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const { setHasNewConnection } = useNewConnection();
@@ -89,13 +108,19 @@ export const Search = React.memo(() => {
     loadItineraries();
   }, [refreshKey]);
 
+  // Auto-load more matches when user is near the end
+  useEffect(() => {
+    checkForMoreMatches(currentMatchIndex);
+  }, [currentMatchIndex, checkForMoreMatches]);
+
   // Handle itinerary selection from dropdown
   const handleItinerarySelect = (id: string) => {
     setSelectedItineraryId(id);
     const selected = itineraries.find((itinerary) => itinerary.id === id);
-    if (selected) {
-      searchItineraries(selected);
+    if (selected && userId) {
+      // Reset current match index for new search
       setCurrentMatchIndex(0);
+      searchItineraries(selected, userId);
     }
   };
 
@@ -170,7 +195,9 @@ export const Search = React.memo(() => {
       new Date(b.startDate ?? "").getTime()
   );
 
-  // Complete simplified solution with fixed width select control
+  // Get current match or show appropriate message
+  const currentMatch = matchingItineraries[currentMatchIndex];
+  const isAtEnd = currentMatchIndex >= matchingItineraries.length;
 
   return (
     <Box
@@ -196,7 +223,7 @@ export const Search = React.memo(() => {
           padding: 2,
           borderBottom: "1px solid rgba(0,0,0,0.1)",
           flexShrink: 0,
-          marginTop: bannerDismissed ? 0 : "220px", // Add margin when banner is visible
+          marginTop: bannerDismissed ? 0 : "220px",
         }}>
         <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
           Traval
@@ -238,7 +265,7 @@ export const Search = React.memo(() => {
                   style: {
                     maxHeight: 300,
                     maxWidth: 300,
-                    zIndex: 1001, // Ensure dropdown appears above banner
+                    zIndex: 1001,
                   },
                 },
               }}>
@@ -305,21 +332,38 @@ export const Search = React.memo(() => {
           </Typography>
         )}
 
-        {matchingItineraries.length > 0 &&
-          currentMatchIndex < matchingItineraries.length && (
-            <ItineraryCard
-              itinerary={matchingItineraries[currentMatchIndex]}
-              onLike={handleLike}
-              onDislike={handleDislike}
-            />
-          )}
+        {/* Show current match */}
+        {currentMatch && (
+          <ItineraryCard
+            itinerary={currentMatch}
+            onLike={handleLike}
+            onDislike={handleDislike}
+          />
+        )}
 
-        {matchingItineraries.length > 0 &&
-          currentMatchIndex >= matchingItineraries.length && (
-            <Typography sx={{ padding: 2 }}>
-              No more itineraries to view.
+        {/* Show loading when searching or loading more */}
+        {searchLoading && !currentMatch && (
+          <Typography sx={{ padding: 2 }}>
+            Searching for matches...
+          </Typography>
+        )}
+
+        {/* Show end message with loading state */}
+        {isAtEnd && !searchLoading && (
+          <Box sx={{ textAlign: 'center', padding: 2 }}>
+            <Typography>
+              {hasMore 
+                ? "Loading more matches..." 
+                : "No more itineraries to view."
+              }
             </Typography>
-          )}
+            {hasMore && (
+              <Typography variant="caption" color="text.secondary">
+                Found {matchingItineraries.length} matches so far
+              </Typography>
+            )}
+          </Box>
+        )}
       </Box>
 
       <AddItineraryModal

@@ -23,8 +23,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import BlockIcon from "@mui/icons-material/Block";
 import FlagIcon from "@mui/icons-material/Flag";
 import StarIcon from "@mui/icons-material/Star";
-import StarBorderIcon from "@mui/icons-material/StarBorder";
-import StarHalfIcon from "@mui/icons-material/StarHalf";
 import Rating from "@mui/material/Rating";
 import {
   getFirestore,
@@ -59,7 +57,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 }) => {
   // Add default empty values when context is not available
   const contextValue = useContext(UserProfileContext);
-  const updateUserProfile = contextValue?.updateUserProfile || (() => {});
+  const updateUserProfile = contextValue?.updateUserProfile || (() => { });
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -566,6 +564,32 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                   </FormControl>
                   <FormControl>
                     <TextField
+                      label="Status"
+                      value={profile?.status || ""}
+                      InputProps={{
+                        readOnly: true,
+                        sx: {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                          "&::placeholder": {
+                            fontSize: { xs: "0.92rem", sm: "1rem" },
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
+                      }}
+                      sx={{
+                        "& .MuiInputBase-input": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        },
+                      }}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <TextField
                       label="Gender"
                       value={profile.gender || ""}
                       InputProps={{
@@ -672,32 +696,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     <TextField
                       label="Smoking"
                       value={profile.smoking || ""}
-                      InputProps={{
-                        readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
-                      }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
-                      sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                        },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                        },
-                      }}
-                    />
-                  </FormControl>
-                 <FormControl>
-                    <TextField
-                      label="Status"
-                      value={profile?.status || ""}
                       InputProps={{
                         readOnly: true,
                         sx: {
@@ -963,16 +961,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                   {newRating === 1
                     ? "Poor"
                     : newRating === 2
-                    ? "Fair"
-                    : newRating === 3
-                    ? "Good"
-                    : newRating === 4
-                    ? "Very Good"
-                    : "Excellent"}
+                      ? "Fair"
+                      : newRating === 3
+                        ? "Good"
+                        : newRating === 4
+                          ? "Very Good"
+                          : "Excellent"}
                 </Typography>
               </Box>
             )}
-            
+
             {userRating && userRating !== newRating && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 You previously rated this user {userRating} stars

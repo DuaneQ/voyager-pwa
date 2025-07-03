@@ -101,14 +101,26 @@ export const ProfileForm = () => {
               value={
                 userProfile?.dob
                   ? new Date(userProfile?.dob)
-                      .toISOString()
-                      .split("T")[0]
+                    .toISOString()
+                    .split("T")[0]
                   : new Date().toISOString().split("T")[0]
               }
               InputProps={{
                 readOnly: true,
               }}
             />
+          </FormControl>
+          <FormControl>
+            <TextField
+              id="status"
+              value={userProfile?.status || ""}
+              required
+              fullWidth
+              name="status"
+              label="Status"
+              InputProps={{
+                readOnly: true,
+              }}></TextField>
           </FormControl>
           <FormControl>
             <TextField
@@ -163,18 +175,6 @@ export const ProfileForm = () => {
               value={userProfile?.smoking || ""}
               label="Smoking"
               name="smoking"
-              InputProps={{
-                readOnly: true,
-              }}></TextField>
-          </FormControl>
-          <FormControl>
-            <TextField
-              id="status"
-              value={userProfile?.status || ""}
-              required
-              fullWidth
-              name="status"
-              label="Status"
               InputProps={{
                 readOnly: true,
               }}></TextField>
