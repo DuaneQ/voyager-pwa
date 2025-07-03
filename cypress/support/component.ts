@@ -16,40 +16,31 @@
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
-import { mount } from "cypress/react";
+// Mock process.env for component tests - this fixes the "process is not defined" error
+beforeEach(() => {
+  cy.window().then((win) => {
+    // Mock process.env in the browser environment
+    (win as any).process = {
+      env: {
+        NODE_ENV: "test",
+        REACT_APP_FIREBASE_API_KEY: Cypress.env("REACT_APP_FIREBASE_API_KEY") || "test-api-key",
+        REACT_APP_FIREBASE_AUTH_DOMAIN: Cypress.env("REACT_APP_FIREBASE_AUTH_DOMAIN") || "test-project.firebaseapp.com",
+        REACT_APP_FIREBASE_PROJECT_ID: Cypress.env("REACT_APP_FIREBASE_PROJECT_ID") || "test-project",
+        REACT_APP_FIREBASE_STORAGE_BUCKET: Cypress.env("REACT_APP_FIREBASE_STORAGE_BUCKET") || "test-project.appspot.com",
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: Cypress.env("REACT_APP_FIREBASE_MESSAGING_SENDER_ID") || "123456789",
+        REACT_APP_FIREBASE_APP_ID: Cypress.env("REACT_APP_FIREBASE_APP_ID") || "1:123456789:web:test-app-id",
+        REACT_APP_FIREBASE_MEASUREMENT_ID: Cypress.env("REACT_APP_FIREBASE_MEASUREMENT_ID") || "G-TEST123",
+        REACT_APP_GOOGLE_PLACES_API_KEY: Cypress.env("REACT_APP_GOOGLE_PLACES_API_KEY") || "test-places-key",
+        REACT_APP_VAPID_KEY: Cypress.env("REACT_APP_VAPID_KEY") || "test-vapid-key",
+      },
+    };
+  });
+});
 
-// Augment the Cypress namespace to include type definitions for
-// your custom command.
-// Alternatively, can be defined in cypress/support/component.d.ts
-// with a <reference path="./component" /> at the top of your spec.
-declare global {
-  namespace Cypress {
-    interface Chainable {
-      mount: typeof mount;
-    }
-  }
-}
-
-Cypress.Commands.add("mount", mount);
-
-// Example use:
-// cy.mount(<MyComponent />)
-
-before(() => {
-  const style = document.createElement("style");
-  style.innerHTML = `
-    body, #root, #__cy_root {
-      min-height: 100vh !important;
-      height: auto !important;
-      overflow: visible !important;
-    }
-    .MuiModal-root, .MuiModal-backdrop {
-      position: static !important;
-      inset: 0 !important;
-      display: block !important;
-      opacity: 1 !important;
-      pointer-events: all !important;
-    }
-  `;
-  document.head.appendChild(style);
+// Mock Firebase modules to prevent real Firebase calls during tests
+beforeEach(() => {
+  cy.intercept("POST", "**/firebase.googleapis.com/**", { statusCode: 200, body: {} });
+  cy.intercept("GET", "**/firebase.googleapis.com/**", { statusCode: 200, body: {} });
+  cy.intercept("POST", "**/firestore.googleapis.com/**", { statusCode: 200, body: {} });
+  cy.intercept("GET", "**/firestore.googleapis.com/**", { statusCode: 200, body: {} });
 });

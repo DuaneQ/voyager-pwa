@@ -14,4 +14,32 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
-import './commands'
+import './commands';
+
+// Mock process.env for e2e tests
+beforeEach(() => {
+  cy.window().then((win) => {
+    (win as any).process = {
+      env: {
+        NODE_ENV: 'test',
+        REACT_APP_FIREBASE_API_KEY: Cypress.env('REACT_APP_FIREBASE_API_KEY') || 'test-api-key',
+        REACT_APP_FIREBASE_AUTH_DOMAIN: Cypress.env('REACT_APP_FIREBASE_AUTH_DOMAIN') || 'test-project.firebaseapp.com',
+        REACT_APP_FIREBASE_PROJECT_ID: Cypress.env('REACT_APP_FIREBASE_PROJECT_ID') || 'test-project',
+        REACT_APP_FIREBASE_STORAGE_BUCKET: Cypress.env('REACT_APP_FIREBASE_STORAGE_BUCKET') || 'test-project.appspot.com',
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: Cypress.env('REACT_APP_FIREBASE_MESSAGING_SENDER_ID') || '123456789',
+        REACT_APP_FIREBASE_APP_ID: Cypress.env('REACT_APP_FIREBASE_APP_ID') || '1:123456789:web:test-app-id',
+        REACT_APP_FIREBASE_MEASUREMENT_ID: Cypress.env('REACT_APP_FIREBASE_MEASUREMENT_ID') || 'G-TEST123',
+        REACT_APP_GOOGLE_PLACES_API_KEY: Cypress.env('REACT_APP_GOOGLE_PLACES_API_KEY') || 'test-places-key',
+        REACT_APP_VAPID_KEY: Cypress.env('REACT_APP_VAPID_KEY') || 'test-vapid-key',
+      }
+    };
+  });
+});
+
+// Mock Firebase API calls for e2e tests
+beforeEach(() => {
+  cy.intercept('POST', '**/firebase.googleapis.com/**', { statusCode: 200, body: {} });
+  cy.intercept('GET', '**/firebase.googleapis.com/**', { statusCode: 200, body: {} });
+  cy.intercept('POST', '**/firestore.googleapis.com/**', { statusCode: 200, body: {} });
+  cy.intercept('GET', '**/firestore.googleapis.com/**', { statusCode: 200, body: {} });
+});
