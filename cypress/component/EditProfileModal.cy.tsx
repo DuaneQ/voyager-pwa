@@ -143,7 +143,7 @@ describe("<EditProfileModal />", () => {
     
     // Status
     cy.get('input[name="status"]').parent().click();
-    cy.get('[role="option"]').contains("ouple").click();
+    cy.get('[role="option"]').contains("Couple").click();
     cy.get('input[name="status"]').should("have.value", "couple");
 
     // Gender
