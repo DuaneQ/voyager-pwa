@@ -104,20 +104,45 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 
 ### Run Tests
 ```bash
-# Run all tests
+# Run Jest unit tests
 npm test
 
-# Run tests with coverage
+# Run Jest tests with coverage
 npm run test:coverage
 
-# Run tests in CI mode
+# Run Jest tests in CI mode
 npm run test:ci
+
+# Run Cypress E2E tests
+npm run cypress:run:e2e
+
+# Run Cypress component tests
+npm run cypress:run:component
+
+# Open Cypress interactive test runner
+npm run cypress:open
 ```
 
 ### Test Structure
-- **Unit Tests**: Individual component and hook testing
-- **Integration Tests**: Real-time database interaction testing
-- **Mock Services**: Firebase services mocked for testing
+- **Unit Tests**: Individual component and hook testing with Jest
+- **Integration Tests**: Real-time database interaction testing with Jest
+- **E2E Tests**: End-to-end testing with Cypress
+- **Component Tests**: Isolated component testing with Cypress
+- **Mock Services**: Firebase services mocked for testing environments
+
+### Cypress Testing
+```bash
+# Run Cypress tests interactively
+npx cypress open
+
+# Run Cypress tests in CI mode
+npx cypress run
+
+# Run specific test file
+npx cypress run --spec "cypress/e2e/profile_login.cy.ts"
+```
+
+**Note**: Cypress tests use mocked Firebase services and environment variables to avoid external dependencies during testing.
 
 ## 📊 Performance & Costs
 
