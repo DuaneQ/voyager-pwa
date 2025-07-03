@@ -11,14 +11,15 @@ const devConfig = {
   measurementId: "G-ZNYVKS2SBF",
 };
 
+// Safely access process.env only if process exists
 const prodConfig = {
-  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  databaseURL: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_DATABASE_URL : '',
+  apiKey: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_API_KEY : '',
+  authDomain: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_AUTH_DOMAIN : '',
+  projectId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_PROJECT_ID : '',
+  storageBucket: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_STORAGE_BUCKET : '',
+  messagingSenderId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_MESSAGING_SENDER_ID : '',
+  appId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_APP_ID : '',
   locationId: "us-central",
 };
 
@@ -38,13 +39,17 @@ const isDevHost =
   typeof window !== "undefined" &&
   (devHosts.includes(window.location.hostname) || isDevPreview);
 
-const firebaseConfig = isDevHost ? devConfig : prodConfig;
+// Check if we're in Cypress
+const isCypress = typeof window !== "undefined" && (window as any).Cypress;
+
+// Always use dev config for Cypress, otherwise use environment detection
+const firebaseConfig = isCypress || isDevHost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 export const getMessagingInstance = () => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && !isCypress) {
     const { getMessaging } = require("firebase/messaging");
     return getMessaging(app);
   }
