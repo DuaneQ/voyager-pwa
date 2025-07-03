@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -45,35 +45,69 @@ export const EditProfileModal = (props: any) => {
   };
 
   const [formData, setFormData] = useState({
-    bio: userProfile?.bio || "",
-    dob: userProfile?.dob || "",
-    gender: userProfile?.gender || "",
-    sexo: userProfile?.sexo || "",
-    edu: userProfile?.edu || "",
-    drinking: userProfile?.drinking || "",
-    smoking: userProfile?.smoking || "",
-    status: userProfile?.status || "",
+    bio: "",
+    dob: "",
+    gender: "",
+    sexualOrientation: "",
+    edu: "",
+    drinking: "",
+    smoking: "",
+    status: "",
   });
+
+  // Sync form data when userProfile changes or modal opens
+  useEffect(() => {
+    if (userProfile && props.show) {
+      setFormData({
+        bio: userProfile.bio || "",
+        dob: userProfile.dob || "",
+        gender: userProfile.gender || "",
+        sexualOrientation: userProfile.sexualOrientation || userProfile.sexo || "",
+        edu: userProfile.edu || "",
+        drinking: userProfile.drinking || "",
+        smoking: userProfile.smoking || "",
+        status: userProfile.status || "",
+      });
+    }
+  }, [userProfile, props.show]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    updateUserProfile({ ...userProfile, [name]: value });
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsSubmitting(true);
-    if (!isUserOver18(userProfile?.dob)) {
+    
+    // Convert date string to Date object for validation
+    const dobDate = new Date(formData.dob);
+    if (!isUserOver18(dobDate)) {
       showAlert("error", "You must be over 18 years old or older.");
       setIsSubmitting(false);
       return;
     }
+    
     try {
-      setUserStorageData(userProfile);
-      setUserDbData(userProfile);
-      updateUserProfile(userProfile);
+      // Ensure we're using the correct field names when saving
+      const updatedProfile = {
+        ...userProfile,
+        bio: formData.bio,
+        dob: formData.dob,
+        gender: formData.gender,
+        sexualOrientation: formData.sexualOrientation,
+        edu: formData.edu,
+        drinking: formData.drinking,
+        smoking: formData.smoking,
+        status: formData.status,
+      };
+      
+      setUserStorageData(updatedProfile);
+      setUserDbData(updatedProfile);
+      updateUserProfile(updatedProfile);
       props.close();
+    } catch (error) {
+      showAlert("error", "Failed to update profile. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,6 +162,23 @@ export const EditProfileModal = (props: any) => {
             </FormControl>
             <FormControl>
               <TextField
+                id="status"
+                value={formData.status}
+                select
+                required
+                fullWidth
+                name="status"
+                label="Status"
+                onChange={handleChange}>
+                {STATUS_OPTIONS.map((option, index) => (
+                  <MenuItem key={index} value={option.toLowerCase()}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </FormControl>
+            <FormControl>
+              <TextField
                 id="gender"
                 value={formData.gender}
                 select
@@ -145,16 +196,16 @@ export const EditProfileModal = (props: any) => {
             </FormControl>
             <FormControl>
               <TextField
-                id="sexo"
-                value={formData.sexo}
+                id="sexualOrientation"
+                value={formData.sexualOrientation}
                 required
                 select
                 fullWidth
-                name="sexo"
+                name="sexualOrientation"
                 label="Sexual Orientation"
                 onChange={handleChange}>
                 {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
-                  <MenuItem key={index} value={option}>
+                  <MenuItem key={index} value={option.toLowerCase()}>
                     {option}
                   </MenuItem>
                 ))}
@@ -203,23 +254,6 @@ export const EditProfileModal = (props: any) => {
                 onChange={handleChange}>
                 {FREQUENCY.map((option, index) => (
                   <MenuItem key={index} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </FormControl>
-            <FormControl>
-              <TextField
-                id="status"
-                value={formData.status}
-                select
-                required
-                fullWidth
-                name="status"
-                label="Status"
-                onChange={handleChange}>
-                {STATUS_OPTIONS.map((option, index) => (
-                  <MenuItem key={index} value={option.toLowerCase()}>
                     {option}
                   </MenuItem>
                 ))}
