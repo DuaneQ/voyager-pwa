@@ -50,23 +50,6 @@ jest.mock("../../components/forms/PhotoGrid", () => {
   };
 });
 
-// Mock the FCM debug component
-jest.mock("../../debug/FCMTestComponent", () => {
-  return {
-    FCMTestComponent: function MockFCMTestComponent() {
-      return (
-        <div data-testid="fcm-test-component">
-          <h6>FCM Testing Tools</h6>
-          <p>Use these tools to debug FCM issues on real devices</p>
-          <button>Run FCM Debug Test</button>
-          <button>Request Notification Permission</button>
-          <button>Refresh FCM Token</button>
-        </div>
-      );
-    },
-  };
-});
-
 // Add mock for Notification API
 Object.defineProperty(window, 'Notification', {
   value: {
@@ -132,7 +115,6 @@ describe("Profile Component", () => {
 
     expect(screen.getByTestId("profile-form")).toBeInTheDocument();
     expect(screen.getByTestId("photo-grid")).toBeInTheDocument();
-    expect(screen.getByTestId("fcm-test-component")).toBeInTheDocument();
   });
 
   test("renders child components in correct order", () => {
@@ -142,30 +124,17 @@ describe("Profile Component", () => {
     const container = document.querySelector(".authFormContainer");
     const children = container?.children;
 
-    // Update to expect 4 children now (FCMTestComponent + 3 existing)
-    expect(children).toHaveLength(4); 
-    
-    // FCMTestComponent is now first (index 0)
-    expect(children?.[0]).toHaveTextContent('FCM Testing Tools');
-    
-    // ProfileForm is now second (index 1)
-    expect(children?.[1]).toContainElement(screen.getByTestId("profile-form"));
-    
-    // PhotoGrid is now third (index 2)
-    expect(children?.[2]).toContainElement(screen.getByTestId("photo-grid"));
-    
-    // Empty Box is fourth (index 3)
-    expect(children?.[3]).toBeEmptyDOMElement();
-  });
+    // Updated to expect 3 children (2 components + 1 empty Box)
+    expect(children).toHaveLength(3);
 
-  it("renders FCM testing component", () => {
-    renderWithContext();
+    // ProfileForm is first (index 0)
+    expect(children?.[0]).toContainElement(screen.getByTestId("profile-form"));
     
-    expect(screen.getByText('FCM Testing Tools')).toBeInTheDocument();
-    expect(screen.getByText('Use these tools to debug FCM issues on real devices')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /run fcm debug test/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request notification permission/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /refresh fcm token/i })).toBeInTheDocument();
+    // PhotoGrid is second (index 1)
+    expect(children?.[1]).toContainElement(screen.getByTestId("photo-grid"));
+    
+    // Empty Box is third (index 2)
+    expect(children?.[2]).toBeEmptyDOMElement();
   });
 
   it("handles environment without Notification API", () => {
@@ -179,7 +148,6 @@ describe("Profile Component", () => {
       // Should render without crashing
       expect(screen.getByTestId("profile-form")).toBeInTheDocument();
       expect(screen.getByTestId("photo-grid")).toBeInTheDocument();
-      expect(screen.getByTestId("fcm-test-component")).toBeInTheDocument();
       
     } finally {
       // Restore Notification API
