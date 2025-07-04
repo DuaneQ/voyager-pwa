@@ -11,4 +11,9 @@ export interface UserProfile {
   drinking?: string;
   smoking?: string;
   blocked?: string[];
+  subscriptionType?: 'free' | 'premium';
+  dailyUsage?: {
+    date: string; // YYYY-MM-DD format
+    viewCount: number;
+  };
 }

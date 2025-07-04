@@ -20,7 +20,7 @@ export class ProfilePage {
   }
 
   getSexo() {
-    return cy.get('input[name="sexo"]');
+    return cy.get('input[name="sexualOrientation"]');
   }
 
   getEdu() {

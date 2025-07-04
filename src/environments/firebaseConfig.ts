@@ -48,6 +48,17 @@ const firebaseConfig = isCypress || isDevHost ? devConfig : prodConfig;
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+console.log("=== FIREBASE CONFIG DEBUG ===");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("REACT_APP_FIREBASE_API_KEY:", process.env.REACT_APP_FIREBASE_API_KEY);
+console.log("REACT_APP_FIREBASE_AUTH_DOMAIN:", process.env.REACT_APP_FIREBASE_AUTH_DOMAIN);
+console.log("REACT_APP_FIREBASE_PROJECT_ID:", process.env.REACT_APP_FIREBASE_PROJECT_ID);
+console.log("REACT_APP_FIREBASE_STORAGE_BUCKET:", process.env.REACT_APP_FIREBASE_STORAGE_BUCKET);
+console.log("REACT_APP_FIREBASE_MESSAGING_SENDER_ID:", process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID);
+console.log("REACT_APP_FIREBASE_APP_ID:", process.env.REACT_APP_FIREBASE_APP_ID);
+console.log("REACT_APP_FIREBASE_MEASUREMENT_ID:", process.env.REACT_APP_FIREBASE_MEASUREMENT_ID);
+console.log("firebaseConfig:", firebaseConfig);
+
 export const getMessagingInstance = () => {
   if (typeof window !== "undefined" && !isCypress) {
     const { getMessaging } = require("firebase/messaging");

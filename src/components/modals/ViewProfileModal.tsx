@@ -617,7 +617,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                   <FormControl>
                     <TextField
                       label="Sexual Orientation"
-                      value={profile.sexo || ""}
+                      value={profile.sexualOrientation || ""}
                       InputProps={{
                         readOnly: true,
                         sx: {
