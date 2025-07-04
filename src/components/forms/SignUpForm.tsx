@@ -40,7 +40,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     confirm: "",
     bio: "",
     gender: "",
-    sexo: "",
+    sexualOrientation: "",
     edu: "",
     drinking: "",
     smoking: "",
@@ -114,18 +114,23 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
+      
       const userData = {
         username: user.displayName || "",
         email: user.email || "",
         bio: "",
         gender: "",
-        sexo: "",
+        sexualOrientation: "",
         edu: "",
         drinking: "",
         smoking: "",
         dob: "",
         photos: ["", "", "", "", ""],
+        subscriptionType: 'free', // Default to free
+        dailyUsage: {
+          date: new Date().toISOString().split('T')[0], // Today's date
+          viewCount: 0
+        }
       };
 
       const userCredentials = {
@@ -183,6 +188,17 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           await sendEmailVerification(userCredential.user);
           const { password, confirm, ...userData } = inputs;
 
+          // Add subscription fields to userData
+          const userDataWithSubscription = {
+            ...userData,
+            subscriptionType: 'free', // Default to free
+            dailyUsage: {
+              date: new Date().toISOString().split('T')[0], // Today's date
+              viewCount: 0
+            }
+          };
+
+
           const userCredentials = {
             user: {
               uid: userCredential.user.uid,
@@ -197,7 +213,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
             "USER_CREDENTIALS",
             JSON.stringify(userCredentials)
           );
-          localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
+          localStorage.setItem("PROFILE_INFO", JSON.stringify(userDataWithSubscription));
 
           showAlert(
             "Info",
@@ -206,7 +222,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
 
           const db = getFirestore(app);
           const docRef = doc(db, "users", userCredential.user.uid);
-          await setDoc(docRef, userData);
+          await setDoc(docRef, userDataWithSubscription);
         })
         .then(() => {
           navigate("/Login");
