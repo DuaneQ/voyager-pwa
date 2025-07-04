@@ -463,7 +463,7 @@ export const notifyViolationReport = functions.firestore
     }
   });
 
-const stripe = new Stripe("REMOVED51RWOyNG6dAx1lfRxKO0ZzDnPt3dwzOAtWcEn10Lj1quE92OMvcf7cJTIgW7UeZeUP4yUQgQN04G7HlYzyxZ2Z0lP00ngHxvKS4", { apiVersion: "2025-06-30.basil" });
+const stripe = new Stripe("secret", { apiVersion: "2025-06-30.basil" });
 
 const app = express();
 
