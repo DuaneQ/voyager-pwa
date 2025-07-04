@@ -33,18 +33,14 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
-// Store viewed itineraries in localStorage - FIXED to store only IDs
+// Store viewed itineraries in localStorage - store only IDs
 function saveViewedItinerary(itinerary: Itinerary) {
   try {
     const viewed = JSON.parse(localStorage.getItem(VIEWED_STORAGE_KEY) || "[]");
-
-    // Ensure we're working with an array of IDs
     const viewedIds = viewed.map((item: any) =>
       typeof item === 'string' ? item : item.id
     ).filter(Boolean);
 
-
-    // Add the new ID if it's not already present
     if (!viewedIds.includes(itinerary.id)) {
       viewedIds.push(itinerary.id);
       localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(viewedIds));
@@ -62,14 +58,14 @@ export const Search = React.memo(() => {
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
 
-const {
-  matchingItineraries,
-  searchItineraries,
-  checkForMoreMatches,
-  loading: searchLoading,
-  hasMore
-
+  const {
+    matchingItineraries,
+    searchItineraries,
+    checkForMoreMatches,
+    loading: searchLoading,
+    hasMore
   } = useSearchItineraries();
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const { setHasNewConnection } = useNewConnection();
@@ -83,12 +79,10 @@ const {
     isLoading: usageLoading
   } = useUsageTracking();
 
-
   // Prevent body scrolling when component mounts (same as auth pages)
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
-
     return () => {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
@@ -123,7 +117,7 @@ const {
       }
     };
     loadItineraries();
-  }, [refreshKey]);
+  }, [fetchItineraries, refreshKey]);
 
   // Auto-load more matches when user is near the end
   useEffect(() => {
@@ -135,123 +129,37 @@ const {
     setSelectedItineraryId(id);
     const selected = itineraries.find((itinerary) => itinerary.id === id);
     if (selected && userId) {
-      // Reset current match index for new search
       setCurrentMatchIndex(0);
       searchItineraries(selected, userId);
     }
   };
 
-  // Updated handleDislike with usage tracking
+  // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
-    // Check if user has reached limit
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
-
-    // Track the view
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
       return;
     }
-
-    // Proceed with original dislike logic
     saveViewedItinerary(itinerary);
     setCurrentMatchIndex((prev) => prev + 1);
   };
 
-  // Updated handleLike with usage tracking
+  // Like handler with usage tracking and mutual like logic
   const handleLike = async (itinerary: Itinerary) => {
-    // Check if user has reached limit
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
-
-    // Track the view
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
       return;
     }
-
-    // Proceed with original like logic
-    saveViewedItinerary(itinerary);
-
-    if (!userId) {
-      alert("You must be logged in to like an itinerary.");
-      setCurrentMatchIndex((prev) => prev + 1);
-      return;
-    }
-
-    // 1. Add current user's UID to the liked itinerary's likes array in Firestore
-    const itineraryRef = doc(db, "itineraries", itinerary.id);
-    await updateDoc(itineraryRef, {
-      likes: arrayUnion(userId),
-    });
-
-    // 2. Fetch the latest version of the current user's selected itinerary from Firestore
-    const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
-    const myItinerarySnap = await getDoc(myItineraryRef);
-    const myItinerary = myItinerarySnap.data();
-    if (!myItinerary) {
-      setCurrentMatchIndex((prev) => prev + 1);
-      return;
-
-
-  // Handle itinerary selection from dropdown
-  const handleItinerarySelect = (id: string) => {
-    setSelectedItineraryId(id);
-    const selected = itineraries.find((itinerary) => itinerary.id === id);
-    if (selected && userId) {
-      // Reset current match index for new search
-      setCurrentMatchIndex(0);
-      searchItineraries(selected, userId);
-    }
-
-    // 3. Check if the other user's UID is in your itinerary's likes array
-    const otherUserUid = itinerary.userInfo?.uid ?? "";
-    if (!otherUserUid) {
-      console.log("Other user's UID not found on itinerary.");
-      setCurrentMatchIndex((prev) => prev + 1);
-      return;
-    }
-
-    // 4. Create a new connection document with a unique ID
-    if ((myItinerary.likes || []).includes(otherUserUid)) {
-      const myEmail = myItinerary?.userInfo?.email ?? "";
-      const otherEmail = itinerary?.userInfo?.email ?? "";
-
-      await addDoc(collection(db, "connections"), {
-        users: [userId, otherUserUid],
-        emails: [myEmail, otherEmail],
-        unreadCounts: {
-          [userId]: 0,
-          [otherUserUid]: 0,
-        },
-        itineraryIds: [myItineraryRef.id, itinerary.id],
-        itineraries: [myItinerary, itinerary],
-        createdAt: serverTimestamp(),
-      });
-      setHasNewConnection(true);
-      alert("It's a match! You can now chat with this user.");
-    } else {
-      console.log("No mutual like yet.");
-    }
-
-    setCurrentMatchIndex((prev) => prev + 1);
-  };
-
-
-  // Remove itinerary from view and store as viewed
-  const handleDislike = (itinerary: Itinerary) => {
-    saveViewedItinerary(itinerary);
-    setCurrentMatchIndex((prev) => prev + 1);
-  };
-
-  // Like logic with mutual like check and console logs
-  const handleLike = async (itinerary: Itinerary) => {
     saveViewedItinerary(itinerary);
 
     if (!userId) {
@@ -283,7 +191,7 @@ const {
       return;
     }
 
-    // 4. Create a new connection document with a unique ID
+    // 4. Create a new connection document with a unique ID if mutual like
     if ((myItinerary.likes || []).includes(otherUserUid)) {
       const myEmail = myItinerary?.userInfo?.email ?? "";
       const otherEmail = itinerary?.userInfo?.email ?? "";
@@ -342,7 +250,6 @@ const {
             padding: 2,
             borderBottom: "1px solid rgba(0,0,0,0.1)",
             flexShrink: 0,
-
           }}>
           <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
             Traval
