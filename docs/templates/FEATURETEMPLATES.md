@@ -143,7 +143,7 @@ Firebase Collection Structure:
     - `fcmToken`: string
     - `gender`: string
     - `photos`: string[]
-    - `sexo`: string
+    - `sexualOrientation`: string
     - `smoking`: string
     - `blocked`: string[]
     - `username`: string

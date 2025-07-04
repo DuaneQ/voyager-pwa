@@ -174,17 +174,4 @@ describe("<EditProfileModal />", () => {
     // Save
     cy.contains("button", "Save").click();
   });
-
-  it("handles backward compatibility with sexo field", () => {
-    // Test that component handles old 'sexo' field properly
-    const profileWithSexo = {
-      ...mockUserProfile,
-      sexo: "Bisexual",
-      sexualOrientation: undefined,
-    };
-    mountModal(profileWithSexo);
-    
-    // Should display the sexo value in sexual orientation field
-    cy.get('input[name="sexualOrientation"]').should("have.value", "Bisexual");
-  });
 });

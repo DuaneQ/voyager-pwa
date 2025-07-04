@@ -4,7 +4,7 @@ export type Profile = {
     userBio: string;
     dob: Date;
     gender: string;
-    sexo: string;
+    sexualOrientation: string;
     education: string;
     drinkingHabits: string;
     smokingHabits: string;

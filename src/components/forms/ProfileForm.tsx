@@ -137,7 +137,7 @@ export const ProfileForm = () => {
           <FormControl>
             <TextField
               id="sexo"
-              value={userProfile?.sexo || ""}
+              value={userProfile?.sexualOrientation || ""}
               required
               fullWidth
               name="sexo"

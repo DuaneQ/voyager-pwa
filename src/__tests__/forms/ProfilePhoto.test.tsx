@@ -35,7 +35,7 @@ describe("ProfilePhoto Component", () => {
     bio: "This is a test bio",
     dob: "1990-01-01",
     gender: "Male",
-    sexo: "Heterosexual",
+    sexualOrientation: "Heterosexual",
     edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",

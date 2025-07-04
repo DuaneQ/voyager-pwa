@@ -16,6 +16,10 @@
 
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
+import Stripe from "stripe";
+import express from "express";
+import bodyParser from "body-parser";
+
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -458,3 +462,52 @@ export const notifyViolationReport = functions.firestore
       return null;
     }
   });
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: "2025-06-30.basil" });
+
+const app = express();
+
+// Stripe requires the raw body to validate the signature
+app.use(bodyParser.raw({ type: "application/json" }));
+
+app.post("/", async (req: any, res: any) => {
+  const sig = req.headers["stripe-signature"];
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig as string,
+      process.env.STRIPE_WEBHOOK_SECRET as string
+    );
+  } catch (err: any) {
+    console.error("Webhook signature verification failed.", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const email = session.customer_email;
+
+    if (email) {
+      // Find user by email and set subscriptionType = 'premium'
+      const usersRef = db.collection("users");
+      const snapshot = await usersRef.where("email", "==", email).get();
+      snapshot.forEach(doc => {
+        doc.ref.update({ subscriptionType: "premium" });
+      });
+    }
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    // You may need to look up the user by customer ID or email
+    // Example: const customerId = event.data.object.customer;
+    // ...find user and set subscriptionType: 'free'
+  }
+
+  res.json({ received: true });
+});
+
+// Export the function
+export const stripeWebhook = functions.https.onRequest(app);

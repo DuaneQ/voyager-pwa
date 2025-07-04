@@ -62,7 +62,8 @@ export const EditProfileModal = (props: any) => {
         bio: userProfile.bio || "",
         dob: userProfile.dob || "",
         gender: userProfile.gender || "",
-        sexualOrientation: userProfile.sexualOrientation || userProfile.sexo || "",
+        sexualOrientation: userProfile.sexualOrientation || userProfile.sexualOrientation || "",
+
         edu: userProfile.edu || "",
         drinking: userProfile.drinking || "",
         smoking: userProfile.smoking || "",

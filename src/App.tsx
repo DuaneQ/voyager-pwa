@@ -75,9 +75,6 @@ function App() {
               minHeight: "100vh",
             }}>
             <div style={{ flex: 1, paddingBottom: hideBottomNav ? 0 : 56, paddingTop: 56 }}>
-              {/* Beta Banner - moved inside content area */}
-              {!hideBottomNav && <BetaBanner version="1.0.0-beta" />}
-              
               <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
                   <Route path="/Login" element={<Login />} />
