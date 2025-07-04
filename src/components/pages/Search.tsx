@@ -62,11 +62,12 @@ export const Search = React.memo(() => {
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
 
-    matchingItineraries,
-    searchItineraries,
-    checkForMoreMatches,
-    loading: searchLoading,
-    hasMore
+const {
+  matchingItineraries,
+  searchItineraries,
+  checkForMoreMatches,
+  loading: searchLoading,
+  hasMore
 
   } = useSearchItineraries();
   const [refreshKey, setRefreshKey] = useState(0);
