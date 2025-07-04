@@ -365,7 +365,8 @@ const {
       <Box
         sx={{
           mt: bannerDismissed ? 0 : -5,
-
+          }}
+        />
       {/* Header */}
       <Box
         sx={{
