@@ -114,8 +114,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-      // Add subscription fields to Google user data
+      
       const userData = {
         username: user.displayName || "",
         email: user.email || "",
@@ -198,6 +197,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
               viewCount: 0
             }
           };
+
 
           const userCredentials = {
             user: {

@@ -9,6 +9,7 @@ import {
   IconButton,
   Chip,
   Typography
+
 } from '@mui/material';
 import { 
   Close as CloseIcon, 
@@ -21,6 +22,7 @@ interface BetaBannerProps {
   dismissible?: boolean;
   version?: string;
   onDismiss?: () => void; // Add this prop
+
 }
 
 export const BetaBanner: React.FC<BetaBannerProps> = ({ 
@@ -96,6 +98,7 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
           </AlertTitle>
           
           <Box sx={{ mb: 1, fontSize: '.75rem' }}>
+
             You're using the beta version of TravalPass. Help us improve by sharing your feedback!
           </Box>
           
@@ -122,6 +125,7 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
               sx={{ 
                 minHeight: 20,
                 fontSize: '0.5rem',
+
                 px: 2
               }}
             >

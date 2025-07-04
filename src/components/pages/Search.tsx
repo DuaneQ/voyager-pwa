@@ -30,6 +30,7 @@ import React from "react";
 import { BetaBanner } from '../utilities/BetaBanner';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 
+
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
 // Store viewed itineraries in localStorage - FIXED to store only IDs
@@ -41,6 +42,7 @@ function saveViewedItinerary(itinerary: Itinerary) {
     const viewedIds = viewed.map((item: any) =>
       typeof item === 'string' ? item : item.id
     ).filter(Boolean);
+
 
     // Add the new ID if it's not already present
     if (!viewedIds.includes(itinerary.id)) {
@@ -59,12 +61,13 @@ export const Search = React.memo(() => {
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
-  const {
+
     matchingItineraries,
     searchItineraries,
     checkForMoreMatches,
     loading: searchLoading,
     hasMore
+
   } = useSearchItineraries();
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -78,6 +81,7 @@ export const Search = React.memo(() => {
     trackView,
     isLoading: usageLoading
   } = useUsageTracking();
+
 
   // Prevent body scrolling when component mounts (same as auth pages)
   useEffect(() => {
@@ -193,6 +197,81 @@ export const Search = React.memo(() => {
     if (!myItinerary) {
       setCurrentMatchIndex((prev) => prev + 1);
       return;
+
+
+  // Handle itinerary selection from dropdown
+  const handleItinerarySelect = (id: string) => {
+    setSelectedItineraryId(id);
+    const selected = itineraries.find((itinerary) => itinerary.id === id);
+    if (selected && userId) {
+      // Reset current match index for new search
+      setCurrentMatchIndex(0);
+      searchItineraries(selected, userId);
+    }
+
+    // 3. Check if the other user's UID is in your itinerary's likes array
+    const otherUserUid = itinerary.userInfo?.uid ?? "";
+    if (!otherUserUid) {
+      console.log("Other user's UID not found on itinerary.");
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
+
+    // 4. Create a new connection document with a unique ID
+    if ((myItinerary.likes || []).includes(otherUserUid)) {
+      const myEmail = myItinerary?.userInfo?.email ?? "";
+      const otherEmail = itinerary?.userInfo?.email ?? "";
+
+      await addDoc(collection(db, "connections"), {
+        users: [userId, otherUserUid],
+        emails: [myEmail, otherEmail],
+        unreadCounts: {
+          [userId]: 0,
+          [otherUserUid]: 0,
+        },
+        itineraryIds: [myItineraryRef.id, itinerary.id],
+        itineraries: [myItinerary, itinerary],
+        createdAt: serverTimestamp(),
+      });
+      setHasNewConnection(true);
+      alert("It's a match! You can now chat with this user.");
+    } else {
+      console.log("No mutual like yet.");
+    }
+
+    setCurrentMatchIndex((prev) => prev + 1);
+  };
+
+
+  // Remove itinerary from view and store as viewed
+  const handleDislike = (itinerary: Itinerary) => {
+    saveViewedItinerary(itinerary);
+    setCurrentMatchIndex((prev) => prev + 1);
+  };
+
+  // Like logic with mutual like check and console logs
+  const handleLike = async (itinerary: Itinerary) => {
+    saveViewedItinerary(itinerary);
+
+    if (!userId) {
+      alert("You must be logged in to like an itinerary.");
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
+
+    // 1. Add current user's UID to the liked itinerary's likes array in Firestore
+    const itineraryRef = doc(db, "itineraries", itinerary.id);
+    await updateDoc(itineraryRef, {
+      likes: arrayUnion(userId),
+    });
+
+    // 2. Fetch the latest version of the current user's selected itinerary from Firestore
+    const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
+    const myItinerarySnap = await getDoc(myItineraryRef);
+    const myItinerary = myItinerarySnap.data();
+    if (!myItinerary) {
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
     }
 
     // 3. Check if the other user's UID is in your itinerary's likes array
@@ -285,11 +364,15 @@ export const Search = React.memo(() => {
       <Box
         sx={{
           mt: bannerDismissed ? 0 : -5,
+
+      {/* Header */}
+      <Box
+        sx={{
           backgroundColor: "transparent",
           padding: 2,
           borderBottom: "1px solid rgba(0,0,0,0.1)",
           flexShrink: 0,
-
+          marginTop: bannerDismissed ? 0 : "220px",
         }}>
         <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
           Traval
@@ -420,6 +503,7 @@ export const Search = React.memo(() => {
             <Typography>
               {hasMore
                 ? "Loading more matches..."
+
                 : "No more itineraries to view."
               }
             </Typography>
