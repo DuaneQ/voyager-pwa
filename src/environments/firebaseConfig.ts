@@ -13,14 +13,13 @@ const devConfig = {
 
 // Safely access process.env only if process exists
 const prodConfig = {
-  databaseURL: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_DATABASE_URL : '',
-  apiKey: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_API_KEY : '',
-  authDomain: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_AUTH_DOMAIN : '',
-  projectId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_PROJECT_ID : '',
-  storageBucket: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_STORAGE_BUCKET : '',
-  messagingSenderId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_MESSAGING_SENDER_ID : '',
-  appId: typeof process !== 'undefined' ? process.env?.REACT_APP_FIREBASE_APP_ID : '',
-  locationId: "us-central",
+  apiKey: "AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk",
+  authDomain: "mundo1-1.firebaseapp.com",
+  databaseURL: "https://mundo1-1.firebaseio.com",
+  projectId: "mundo1-1",
+  storageBucket: "mundo1-1.appspot.com",
+  messagingSenderId: "533074391000",
+  appId: "1:533074391000:web:2ef7404546e97f4aa2ccad"
 };
 
 const devHosts = [
@@ -47,17 +46,6 @@ const firebaseConfig = isCypress || isDevHost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-
-console.log("=== FIREBASE CONFIG DEBUG ===");
-console.log("NODE_ENV:", process.env.NODE_ENV);
-console.log("REACT_APP_FIREBASE_API_KEY:", process.env.REACT_APP_FIREBASE_API_KEY);
-console.log("REACT_APP_FIREBASE_AUTH_DOMAIN:", process.env.REACT_APP_FIREBASE_AUTH_DOMAIN);
-console.log("REACT_APP_FIREBASE_PROJECT_ID:", process.env.REACT_APP_FIREBASE_PROJECT_ID);
-console.log("REACT_APP_FIREBASE_STORAGE_BUCKET:", process.env.REACT_APP_FIREBASE_STORAGE_BUCKET);
-console.log("REACT_APP_FIREBASE_MESSAGING_SENDER_ID:", process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID);
-console.log("REACT_APP_FIREBASE_APP_ID:", process.env.REACT_APP_FIREBASE_APP_ID);
-console.log("REACT_APP_FIREBASE_MEASUREMENT_ID:", process.env.REACT_APP_FIREBASE_MEASUREMENT_ID);
-console.log("firebaseConfig:", firebaseConfig);
 
 export const getMessagingInstance = () => {
   if (typeof window !== "undefined" && !isCypress) {
