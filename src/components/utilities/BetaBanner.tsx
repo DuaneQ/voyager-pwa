@@ -7,7 +7,8 @@ import {
   Collapse, 
   Box,
   IconButton,
-  Chip
+  Chip,
+  Typography
 } from '@mui/material';
 import { 
   Close as CloseIcon, 
@@ -19,11 +20,13 @@ import { FeedbackModal } from '../modals/FeedbackModal';
 interface BetaBannerProps {
   dismissible?: boolean;
   version?: string;
+  onDismiss?: () => void; // Add this prop
 }
 
 export const BetaBanner: React.FC<BetaBannerProps> = ({ 
   dismissible = true,
-  version = "1.0.0-beta"
+  version = "1.0.0-beta",
+  onDismiss
 }) => {
   const [isVisible, setIsVisible] = useState(() => {
     // Check if user has dismissed this version's banner
@@ -37,6 +40,11 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
   const handleDismiss = () => {
     setIsVisible(false);
     localStorage.setItem(`beta-banner-dismissed-${version}`, 'true');
+    
+    // Call the parent's onDismiss callback
+    if (onDismiss) {
+      onDismiss();
+    }
   };
 
   const openFeedback = (type: typeof feedbackType) => {
@@ -61,7 +69,7 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
               width: '100%'
             },
             '& .MuiAlert-icon': {
-              fontSize: '1.2rem'
+              fontSize: '.3rem'
             }
           }}
           action={
@@ -87,7 +95,7 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
             />
           </AlertTitle>
           
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 1, fontSize: '.75rem' }}>
             You're using the beta version of TravalPass. Help us improve by sharing your feedback!
           </Box>
           
@@ -98,8 +106,8 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
               startIcon={<BugIcon />}
               onClick={() => openFeedback('bug')}
               sx={{ 
-                minHeight: 32,
-                fontSize: '0.75rem',
+                minHeight: 20,
+                fontSize: '0.5rem',
                 px: 2
               }}
             >
@@ -112,8 +120,8 @@ export const BetaBanner: React.FC<BetaBannerProps> = ({
               startIcon={<IdeaIcon />}
               onClick={() => openFeedback('feature')}
               sx={{ 
-                minHeight: 32,
-                fontSize: '0.75rem',
+                minHeight: 20,
+                fontSize: '0.5rem',
                 px: 2
               }}
             >

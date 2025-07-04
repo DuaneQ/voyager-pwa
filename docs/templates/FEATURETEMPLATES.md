@@ -2,20 +2,23 @@
 
 ## 1. Feature Requirements
 
-**Feature Name:** [Name of the new feature]
+**Feature Name:** A stripe payment option for premium subscriptions.
 
 **User Problem Solved:** 
-- What user need does this feature address?
-- How does it improve the travel companion experience?
+- The user is limited to 10 itinerary views per day.  If the user wants unlimited views they need a premium subscription.
+- The premium subscription is $9 per month
+- We need to integrate Stripe to provide the payment options
+- Then we need to update the user's userProfile to indicate the user is now premium with unlimited swipes.
+- There is already a useUsageTracking hook that tracks the user's clicks on itineraries.
 
 **User Story:**
-AS A [type of user] I WANT TO [action/functionality] SO THAT [benefit/outcome]
+AS A Free Tier User, I want the option to purchase the premium subscription.
 
 **Acceptance Criteria:**
-- [ ] Users can create journal entries with text, photos, and location
-- [ ] Entries can be marked as private or shared with travel companions
-- [ ] Entries are organized by trip/itinerary
-- [ ] Users can view a timeline of their entries
+- [ ] Users have a small banner on the Search page that allows them to click a link to purchase a premium subscription.
+- [ ] After users purchase the premium option on Stripe their subscriptionType = premium
+- [ ] Users have no limit on searching itineraries
+- [ ] If the user lets the subscription expire their subscriptionType = free
 
 ## 2. Data Model Updates
 
@@ -143,7 +146,7 @@ Firebase Collection Structure:
     - `fcmToken`: string
     - `gender`: string
     - `photos`: string[]
-    - `sexo`: string
+    - `sexualOrientation`: string
     - `smoking`: string
     - `blocked`: string[]
     - `username`: string

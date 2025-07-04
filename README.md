@@ -278,5 +278,13 @@ For questions or support:
 - **Documentation**: [Project Wiki](https://github.com/yourusername/voyager-pwa/wiki)
 
 ---
+# Voyager PWA - Travel Matching Platform
+
+[![codecov](https://codecov.io/gh/DuaneQ/voyager-pwa/branch/main/graph/badge.svg)](https://codecov.io/gh/DuaneQ/voyager-pwa)
+[![Build Status](https://github.com/DuaneQ/voyager-pwa/workflows/CI/badge.svg)](https://github.com/DuaneQ/voyager-pwa/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-039BE5?style=flat&logo=Firebase&logoColor=white)](https://firebase.google.com/)
 
 **Built with ❤️ for travelers by travelers**

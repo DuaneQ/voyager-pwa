@@ -28,6 +28,7 @@ import useGetUserId from "../../hooks/useGetUserId";
 import { useNewConnection } from "../../Context/NewConnectionContext";
 import React from "react";
 import { BetaBanner } from '../utilities/BetaBanner';
+import { useUsageTracking } from '../../hooks/useUsageTracking';
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
@@ -35,12 +36,12 @@ const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 function saveViewedItinerary(itinerary: Itinerary) {
   try {
     const viewed = JSON.parse(localStorage.getItem(VIEWED_STORAGE_KEY) || "[]");
-    
+
     // Ensure we're working with an array of IDs
-    const viewedIds = viewed.map((item: any) => 
+    const viewedIds = viewed.map((item: any) =>
       typeof item === 'string' ? item : item.id
     ).filter(Boolean);
-    
+
     // Add the new ID if it's not already present
     if (!viewedIds.includes(itinerary.id)) {
       viewedIds.push(itinerary.id);
@@ -58,12 +59,12 @@ export const Search = React.memo(() => {
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
   const [loading, setLoading] = useState(false);
-  const { 
-    matchingItineraries, 
-    searchItineraries, 
+  const {
+    matchingItineraries,
+    searchItineraries,
     checkForMoreMatches,
     loading: searchLoading,
-    hasMore 
+    hasMore
   } = useSearchItineraries();
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -71,17 +72,28 @@ export const Search = React.memo(() => {
   const userId = useGetUserId();
   const db = getFirestore(app);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const {
+    hasReachedLimit,
+    getRemainingViews,
+    trackView,
+    isLoading: usageLoading
+  } = useUsageTracking();
 
   // Prevent body scrolling when component mounts (same as auth pages)
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
-    
+
     return () => {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
     };
   }, []);
+
+  // Update the banner dismissed handler
+  const handleBannerDismiss = () => {
+    setBannerDismissed(true);
+  };
 
   // Check if banner is dismissed
   useEffect(() => {
@@ -124,14 +136,42 @@ export const Search = React.memo(() => {
     }
   };
 
-  // Remove itinerary from view and store as viewed
-  const handleDislike = (itinerary: Itinerary) => {
+  // Updated handleDislike with usage tracking
+  const handleDislike = async (itinerary: Itinerary) => {
+    // Check if user has reached limit
+    if (hasReachedLimit()) {
+      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      return;
+    }
+
+    // Track the view
+    const success = await trackView();
+    if (!success) {
+      alert('Unable to track usage. Please try again.');
+      return;
+    }
+
+    // Proceed with original dislike logic
     saveViewedItinerary(itinerary);
     setCurrentMatchIndex((prev) => prev + 1);
   };
 
-  // Like logic with mutual like check and console logs
+  // Updated handleLike with usage tracking
   const handleLike = async (itinerary: Itinerary) => {
+    // Check if user has reached limit
+    if (hasReachedLimit()) {
+      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      return;
+    }
+
+    // Track the view
+    const success = await trackView();
+    if (!success) {
+      alert('Unable to track usage. Please try again.');
+      return;
+    }
+
+    // Proceed with original like logic
     saveViewedItinerary(itinerary);
 
     if (!userId) {
@@ -215,15 +255,41 @@ export const Search = React.memo(() => {
         backgroundColor: "#f5f5f7",
         overflow: "hidden",
       }}>
+      {!bannerDismissed && (
+        <Box
+          sx={{
+            backgroundColor: "transparent",
+            padding: 2,
+            borderBottom: "1px solid rgba(0,0,0,0.1)",
+            flexShrink: 0,
 
-      {/* Header */}
+          }}>
+          <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
+            Traval
+          </Typography>
+        </Box>
+      )}
+
+
+      {/* Beta Banner - Position it at the very top */}
+      {!bannerDismissed && (
+        <Box sx={{ position: 'relative', zIndex: 1000 }}>
+          <BetaBanner
+            version="1.0.0-beta"
+            onDismiss={handleBannerDismiss}
+          />
+        </Box>
+      )}
+
+      {/* Header - adjust marginTop to be smaller */}
       <Box
         sx={{
+          mt: bannerDismissed ? 0 : -5,
           backgroundColor: "transparent",
           padding: 2,
           borderBottom: "1px solid rgba(0,0,0,0.1)",
           flexShrink: 0,
-          marginTop: bannerDismissed ? 0 : "220px",
+
         }}>
         <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
           Traval
@@ -352,8 +418,8 @@ export const Search = React.memo(() => {
         {isAtEnd && !searchLoading && (
           <Box sx={{ textAlign: 'center', padding: 2 }}>
             <Typography>
-              {hasMore 
-                ? "Loading more matches..." 
+              {hasMore
+                ? "Loading more matches..."
                 : "No more itineraries to view."
               }
             </Typography>
