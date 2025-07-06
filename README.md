@@ -10,6 +10,9 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Real-time Chat**: In-app messaging system for matched travelers
 - **User Profiles**: Detailed profiles with travel preferences and history
 - **Itinerary Creation**: Create and share detailed travel plans
+- **Premium Subscriptions**: Stripe-powered payments and usage tracking
+- **Usage Tracking**: Daily interaction limits and premium unlocks
+- **Bottom Navigation**: Mobile-friendly persistent navigation bar
 
 ### Performance Features
 - **Intelligent Caching**: 5-minute search cache reduces Firebase costs by 70-80%
@@ -18,15 +21,18 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Real-time Updates**: Live notifications for new matches and messages
 
 ### Upcoming Features
-- **Premium Subscriptions**: Unlimited daily interactions for premium users
 - **Advanced Filters**: Enhanced search capabilities for premium users
 - **Push Notifications**: Real-time alerts for matches and messages
+- **Travel Groups**: Multi-traveler itinerary matching
+- **Itinerary Sharing**: Social features for travel planning
+- **Review System**: Post-trip reviews and ratings
 
 ## 🛠 Tech Stack
 
 ### Frontend
 - **React 18** with TypeScript
 - **Firebase** (Firestore, Auth, Cloud Messaging)
+- **Stripe** (Billing portal, premium subscriptions)
 - **PWA** capabilities with service workers
 - **Responsive Design** for mobile and desktop
 
@@ -35,10 +41,12 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Firebase Authentication**: Google OAuth integration
 - **Firebase Cloud Messaging**: Push notifications
 - **Firebase Hosting**: Static site hosting
+- **Cloud Functions**: Email, notification, and Stripe integration
 
 ### Development Tools
 - **Jest**: Unit testing framework
 - **React Testing Library**: Component testing
+- **Cypress**: E2E and component testing
 - **GitHub Actions**: CI/CD pipeline
 - **ESLint/Prettier**: Code quality and formatting
 
@@ -100,6 +108,43 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
    npm start
    ```
 
+## 🔧 Architecture
+
+### Key Components
+```
+src/
+├── components/           # React components
+│   ├── pages/           # Page components
+│   ├── forms/           # Form components (SignInForm, SignUpForm, etc.)
+│   ├── layout/          # Layout components (BottomNavigation, etc.)
+│   ├── modals/          # Modal components
+│   └── auth/            # Auth-related components (Reset, ResendEmail, TermsGuard)
+├── hooks/               # Custom React hooks
+│   ├── useUsageTracking.ts   # Usage tracking and premium logic
+│   ├── useStripePortal.ts    # Stripe billing portal integration
+│   └── ...
+├── utils/               # Utility functions
+│   └── searchCache.ts   # Intelligent search caching
+├── types/               # TypeScript type definitions
+├── environments/        # Firebase configuration
+└── __tests__/           # Jest and Cypress test files
+```
+
+### Data Flow
+1. **User Search** → Check cache → Firebase (if cache miss) → Update cache
+2. **User Interaction** → Track usage (with `useUsageTracking`) → Update user profile
+3. **Premium Subscription** → Stripe payment → Unlock unlimited usage
+4. **Matching Logic** → Real-time updates → Push notifications
+5. **Navigation** → BottomNavigation component for mobile UX
+
+### Cloud Functions
+- **notifyNewConnection**: Email notification on new connection
+- **sendNewMessageNotification**: FCM push on new message
+- **notifyFeedbackSubmission**: Email on feedback
+- **notifyViolationReport**: Admin alert on violation
+- **createStripePortalSession**: Stripe billing portal for premium users
+- **stripeWebhook**: Stripe event handling (subscription, payment)
+
 ## 🧪 Testing
 
 ### Run Tests
@@ -124,11 +169,11 @@ npm run cypress:open
 ```
 
 ### Test Structure
-- **Unit Tests**: Individual component and hook testing with Jest
-- **Integration Tests**: Real-time database interaction testing with Jest
+- **Unit Tests**: Individual component and hook testing with Jest (see `src/__tests__`)
+- **Integration Tests**: Real-time database and Stripe interaction testing
 - **E2E Tests**: End-to-end testing with Cypress
 - **Component Tests**: Isolated component testing with Cypress
-- **Mock Services**: Firebase services mocked for testing environments
+- **Mock Services**: Firebase and Stripe services mocked for testing environments
 
 ### Cypress Testing
 ```bash
@@ -158,44 +203,6 @@ npx cypress run --spec "cypress/e2e/profile_login.cy.ts"
 | 1K    | $1.71        | $1.33      | $0.38   |
 | 10K   | $17.30       | $13.52     | $3.78   |
 | 100K  | $176.00      | $138.20    | $37.80  |
-
-## 🔧 Architecture
-
-### Key Components
-```
-src/
-├── components/           # React components
-│   ├── pages/           # Page components
-│   ├── forms/           # Form components
-│   └── modals/          # Modal components
-├── hooks/               # Custom React hooks
-├── utils/               # Utility functions
-│   └── searchCache.ts   # Intelligent search caching
-├── types/               # TypeScript type definitions
-└── environments/        # Firebase configuration
-```
-
-### Data Flow
-1. **User Search** → Check cache → Firebase (if cache miss) → Update cache
-2. **User Interaction** → Track usage → Update user profile
-3. **Matching Logic** → Real-time updates → Push notifications
-
-## 🚀 Deployment
-
-### Firebase Hosting
-```bash
-# Build for production
-npm run build
-
-# Deploy to Firebase
-firebase deploy
-```
-
-### GitHub Actions
-The project includes automated deployment via GitHub Actions:
-- **On Push**: Runs tests and deploys to Firebase
-- **Environment Variables**: Managed via GitHub Secrets
-- **Build Optimization**: Includes caching and optimization steps
 
 ## 🔐 Security
 
@@ -273,9 +280,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For questions or support:
-- **Email**: support@travalgpass.com
+- **Email**: support@travalpass.com
 - **GitHub Issues**: [Project Issues](https://github.com/yourusername/voyager-pwa/issues)
-- **Documentation**: [Project Wiki](https://github.com/yourusername/voyager-pwa/wiki)
+
 
 ---
 # Voyager PWA - Travel Matching Platform

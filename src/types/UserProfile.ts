@@ -12,8 +12,12 @@ export interface UserProfile {
   smoking?: string;
   blocked?: string[];
   subscriptionType?: 'free' | 'premium';
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string; 
+  subscriptionCancelled?: boolean;
+  stripeCustomerId?: string;
   dailyUsage?: {
-    date: string; // YYYY-MM-DD format
+    date: string; 
     viewCount: number;
   };
 }

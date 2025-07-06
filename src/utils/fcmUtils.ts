@@ -35,8 +35,7 @@ export const isFCMSupported = (): boolean => {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
-    "Notification" in window &&
-    "messaging" in window
+    typeof window.Notification !== "undefined"
   );
 };
 
@@ -47,10 +46,9 @@ export const requestNotificationPermission = async (): Promise<{
   granted: boolean;
   permission: NotificationPermission;
 }> => {
-  if (!("Notification" in window)) {
+  if (typeof window.Notification === "undefined") {
     return { granted: false, permission: "denied" };
   }
-
   const permission = await Notification.requestPermission();
   return {
     granted: permission === "granted",
@@ -241,8 +239,13 @@ export const validateFCMSetup = (): {
   const serviceWorkerSupported = "serviceWorker" in navigator;
   if (!serviceWorkerSupported) issues.push("Service workers not supported");
   
-  const permission = Notification.permission;
-  if (permission !== "granted") issues.push(`Notification permission: ${permission}`);
+  let permission: NotificationPermission = 'default';
+  if (typeof Notification !== 'undefined') {
+    permission = Notification.permission;
+    if (permission !== 'granted') issues.push(`Notification permission: ${permission}`);
+  } else {
+    issues.push('Notification API not available');
+  }
   
   const vapidConfigured = !!process.env.REACT_APP_VAPID_KEY;
   if (!vapidConfigured) issues.push("VAPID key not configured");

@@ -446,16 +446,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             </IconButton>
           </Box>
 
-          {/* Profile photo and info */}
-          {profilePhoto && (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                mb: 2,
-                position: "relative",
-              }}>
+          {/* Profile photo, username, and rating (always show rating) */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 2,
+              position: "relative",
+            }}>
+            {profilePhoto ? (
               <img
                 src={profilePhoto}
                 alt="Profile"
@@ -469,49 +469,38 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 }}
                 onClick={() => setSelectedPhoto(profilePhoto)}
               />
-              <Typography variant="h5" sx={{ mt: 2 }}>
-                {profile?.username || "User"}
-              </Typography>
-
-              {/* Add Rating Display */}
-              <Box
-                onClick={handleOpenRatingDialog}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  mt: 1,
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                  borderRadius: 1,
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  },
-                }}>
-                <Rating
-                  name="user-rating-display"
-                  value={profile?.ratings?.average || 0}
-                  precision={0.5}
-                  readOnly
-                  sx={{ color: "primary.main", mr: 1 }}
-                />
-                <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                  {profile?.ratings?.average
-                    ? `${formatRating(profile.ratings.average)} (${profile.ratings.count})`
-                    : "No ratings yet"}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-
-          {/* Rest of component remains the same */}
-          {/* ... existing profile display code ... */}
-          {!profilePhoto && (
-            <Box sx={{ position: "relative", mb: 2 }}>
-              <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
-                {profile?.username || "User"}
+            ) : null}
+            <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
+              {profile?.username || "User"}
+            </Typography>
+            {/* Rating Display (always visible) */}
+            <Box
+              onClick={handleOpenRatingDialog}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                mt: 1,
+                cursor: "pointer",
+                padding: "4px 8px",
+                borderRadius: 1,
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                },
+              }}>
+              <Rating
+                name="user-rating-display"
+                value={profile?.ratings?.average || 0}
+                precision={0.5}
+                readOnly
+                sx={{ color: "primary.main", mr: 1 }}
+              />
+              <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                {profile?.ratings?.average
+                  ? `${formatRating(profile.ratings.average)} (${profile.ratings.count})`
+                  : "No ratings yet"}
               </Typography>
             </Box>
-          )}
+          </Box>
           <Box sx={{ flex: 1, overflowY: "auto" }}>
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
