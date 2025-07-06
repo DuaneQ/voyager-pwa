@@ -126,9 +126,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         smoking: "",
         dob: "",
         photos: ["", "", "", "", ""],
-        subscriptionType: 'free', // Default to free
+        subscriptionType: 'free',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        stripeCustomerId: null,
         dailyUsage: {
-          date: new Date().toISOString().split('T')[0], // Today's date
+          date: new Date().toISOString().split('T')[0],
           viewCount: 0
         }
       };
@@ -191,9 +195,13 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           // Add subscription fields to userData
           const userDataWithSubscription = {
             ...userData,
-            subscriptionType: 'free', // Default to free
+            subscriptionType: 'free',
+            subscriptionStartDate: null,
+            subscriptionEndDate: null,
+            subscriptionCancelled: false,
+            stripeCustomerId: null,
             dailyUsage: {
-              date: new Date().toISOString().split('T')[0], // Today's date
+              date: new Date().toISOString().split('T')[0],
               viewCount: 0
             }
           };
@@ -239,7 +247,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
   return (
     <>
       <CssBaseline enableColorScheme />
-      <Stack 
+      <Stack
         className="authFormContainer"
         sx={{
           position: 'fixed',
@@ -254,21 +262,22 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'auto',
-          padding: { xs: 1, sm: 4 },
+          padding: { xs: 0.5, sm: 3 },
         }}
       >
-        <Card 
+        <Card
           variant="outlined"
           sx={{
             display: "flex",
             flexDirection: "column",
-            width: { xs: "95%", sm: "90%" },
-            maxWidth: "500px",
-            padding: { xs: 1.5, sm: 3 },
-            gap: { xs: 1, sm: 2 },
+            width: { xs: "99%", sm: "90%" },
+            maxWidth: { xs: 340, sm: 420 },
+            padding: { xs: 1, sm: 2.5 },
+            gap: { xs: 0.7, sm: 2 },
             marginLeft: "auto",
             marginRight: "auto",
-            boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px"
+            boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
+            borderRadius: { xs: 2, sm: 3 },
           }}
         >
           <Typography

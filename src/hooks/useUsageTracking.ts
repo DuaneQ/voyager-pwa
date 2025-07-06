@@ -4,7 +4,7 @@ import { app } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
 import useGetUserId from './useGetUserId';
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_DAILY_LIMIT = 20;
 
 export const useUsageTracking = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,11 +18,20 @@ export const useUsageTracking = () => {
   };
 
   // Check if user has reached daily limit
+  const hasPremium = () => {
+    if (!userProfile) return false;
+    if (userProfile.subscriptionType !== 'premium') return false;
+    if (!userProfile.subscriptionEndDate) return false;
+    const now = new Date();
+    const end = new Date(userProfile.subscriptionEndDate);
+    return now <= end && !userProfile.subscriptionCancelled;
+  };
+
   const hasReachedLimit = useCallback(() => {
     if (!userProfile) return false;
     
-    // Premium users have unlimited views
-    if (userProfile.subscriptionType === 'premium') {
+    // Premium users with valid subscription have unlimited views
+    if (hasPremium()) {
       return false;
     }
 
@@ -41,8 +50,8 @@ export const useUsageTracking = () => {
   const getRemainingViews = useCallback(() => {
     if (!userProfile) return 0;
     
-    // Premium users have unlimited views
-    if (userProfile.subscriptionType === 'premium') {
+    // Premium users with valid subscription have unlimited views
+    if (hasPremium()) {
       return 999; // Represent unlimited
     }
 
@@ -147,6 +156,7 @@ export const useUsageTracking = () => {
     trackView,
     resetDailyUsage,
     isLoading,
-    dailyLimit: FREE_DAILY_LIMIT
+    dailyLimit: FREE_DAILY_LIMIT,
+    hasPremium
   };
 };

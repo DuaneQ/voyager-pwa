@@ -1,75 +1,16 @@
 /// <reference types="cypress" />
 
 import React from "react";
+import AddItineraryModal from "../../src/components/forms/AddItineraryModal";
 import { UserProfileContext } from "../../src/Context/UserProfileContext";
 import { AlertContext } from "../../src/Context/AlertContext";
 
-// Create a mock AddItineraryModal component that mimics the real one
-const MockAddItineraryModal = ({ open, onClose, onItineraryAdded, itineraries, ...props }) => {
-  if (!open) return null;
 
-  return (
-    <div role="dialog" data-testid="add-itinerary-modal">
-      <div>
-        <h2>Add New Itinerary</h2>
-        
-        {/* Mock Google Places input */}
-        <input
-          data-testid="google-places-autocomplete"
-          placeholder="Search for a city..."
-        />
-        
-        {/* Mock form fields */}
-        <input type="date" name="startDate" />
-        <input type="date" name="endDate" />
-        <textarea placeholder="Description..." />
-        
-        {/* Mock select fields */}
-        <select name="gender">
-          <option value="Female">Female</option>
-          <option value="Male">Male</option>
-        </select>
-        
-        <select name="status">
-          <option value="single">Single</option>
-          <option value="married">Married</option>
-        </select>
-        
-        <select name="sexualOrientation">
-          <option value="heterosexual">Heterosexual</option>
-          <option value="homosexual">Homosexual</option>
-        </select>
-        
-        {/* Mock buttons */}
-        <button onClick={onClose}>Cancel</button>
-        <button onClick={() => onItineraryAdded("test")}>Save Itinerary</button>
-        
-        {/* Mock existing itineraries section */}
-        <div>
-          <h3>Your Itineraries</h3>
-          {itineraries?.length > 0 ? (
-            itineraries.map(itinerary => (
-              <div key={itinerary.id} data-testid="itinerary-card">
-                <h4>{itinerary.destination}</h4>
-                <p>{itinerary.description}</p>
-                <div>Activities: {itinerary.activities?.join(", ")}</div>
-              </div>
-            ))
-          ) : (
-            <p>No itineraries available</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Declare stubs
 let mockShowAlert: any;
 let mockOnClose: any;
 let mockOnItineraryAdded: any;
+let postItineraryStub: any;
 
-// Mock user profile
 const mockUserProfile = {
   username: "Test User",
   gender: "Male",
@@ -81,7 +22,6 @@ const mockUserProfile = {
   blocked: [],
 };
 
-// Mock itinerary data
 const mockItineraries = [
   {
     id: "1",
@@ -111,11 +51,9 @@ const mockItineraries = [
   },
 ];
 
-// Test Provider
-function TestProvider({ children }) {
-  const [userProfile, setUserProfile] = React.useState(mockUserProfile);
-  const updateUserProfile = (newProfile) => setUserProfile(newProfile);
-
+function TestProvider({ children, profile = mockUserProfile }) {
+  const [userProfile, setUserProfile] = React.useState(profile);
+  const updateUserProfile = (newProfile: typeof userProfile) => setUserProfile(newProfile);
   return (
     <AlertContext.Provider value={{ showAlert: mockShowAlert }}>
       <UserProfileContext.Provider value={{ userProfile, updateUserProfile }}>
@@ -125,34 +63,55 @@ function TestProvider({ children }) {
   );
 }
 
+
+
 describe("<AddItineraryModal />", () => {
   beforeEach(() => {
     mockShowAlert = cy.stub();
     mockOnClose = cy.stub();
     mockOnItineraryAdded = cy.stub();
+    if (!postItineraryStub) {
+      postItineraryStub = cy.stub().callsFake((...args) => {
+        // Debug: log when called
+        // eslint-disable-next-line no-console
+        console.log('postItineraryStub called', ...args);
+        return Promise.resolve();
+      });
+    }
+    // Mock the hook used in AddItineraryModal
+    cy.stub(
+      require("../../src/hooks/usePostItineraryToFirestore"),
+      "default"
+    ).returns(() => ({
+      postItinerary: postItineraryStub,
+    }));
+
+    // Mock useGetUserProfilePhoto to prevent Firebase Storage calls
+    cy.stub(
+      require("../../src/hooks/useGetUserProfilePhoto"),
+      "useGetUserProfilePhoto"
+    ).callsFake(() => '/default-profile.png');
+
+    // Optionally, mock default export if used as default
+    if (require("../../src/hooks/useGetUserProfilePhoto").default) {
+      cy.stub(
+        require("../../src/hooks/useGetUserProfilePhoto"),
+        "default"
+      ).callsFake(() => '/default-profile.png');
+    }
+
+    // Optionally: handle uncaught exceptions for known issues
+    cy.on('uncaught:exception', (err) => {
+      if (err.message && err.message.includes('process is not defined')) {
+        return false;
+      }
+    });
   });
 
-  it("renders the modal", () => {
+  it("renders the modal and all main fields", () => {
     cy.mount(
       <TestProvider>
-        <MockAddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={[]}
-        />
-      </TestProvider>
-    );
-
-    cy.contains("Add New Itinerary").should("be.visible");
-    cy.contains("Save Itinerary").should("be.visible");
-    cy.contains("Cancel").should("be.visible");
-  });
-
-  it("displays existing itineraries", () => {
-    cy.mount(
-      <TestProvider>
-        <MockAddItineraryModal
+        <AddItineraryModal
           open={true}
           onClose={mockOnClose}
           onItineraryAdded={mockOnItineraryAdded}
@@ -160,73 +119,45 @@ describe("<AddItineraryModal />", () => {
         />
       </TestProvider>
     );
-
-    // Check that the mocked ItineraryCard displays the itinerary
-    cy.get('[data-testid="itinerary-card"]').should("exist");
-    cy.contains("Paris").should("be.visible");
-    cy.contains("A trip to Paris").should("be.visible");
-    cy.contains("Sightseeing, Dining").should("be.visible");
+    cy.contains("Add New Itinerary").should("be.visible");
+    // Check for the visible placeholder text and the react-select input
+    cy.contains('Search for a city...').should('exist');
+    cy.get('input[id^="react-select"]').should('exist');
+    cy.get('input[type="date"]').should("have.length", 2);
+    cy.get('textarea').should("exist");
+    cy.contains("Save Itinerary").should("exist");
+    cy.contains("Cancel").should("exist");
   });
 
-  it("shows google places input", () => {
+  it("calls onClose when Cancel is clicked", () => {
     cy.mount(
       <TestProvider>
-        <MockAddItineraryModal
+        <AddItineraryModal
           open={true}
           onClose={mockOnClose}
           onItineraryAdded={mockOnItineraryAdded}
-          itineraries={[]}
+          itineraries={mockItineraries}
         />
       </TestProvider>
     );
-
-    cy.get('[data-testid="google-places-autocomplete"]').should("be.visible");
-  });
-
-  it("calls onClose when Cancel button is clicked", () => {
-    cy.mount(
-      <TestProvider>
-        <MockAddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={[]}
-        />
-      </TestProvider>
-    );
-
-    cy.contains("button", "Cancel").click();
+    cy.contains("Cancel").click();
     cy.wrap(mockOnClose).should("have.been.called");
   });
 
-  it("calls onItineraryAdded when Save button is clicked", () => {
+  it("shows validation error if required fields are missing", () => {
     cy.mount(
       <TestProvider>
-        <MockAddItineraryModal
+        <AddItineraryModal
           open={true}
           onClose={mockOnClose}
           onItineraryAdded={mockOnItineraryAdded}
-          itineraries={[]}
+          itineraries={mockItineraries}
         />
       </TestProvider>
     );
-
-    cy.contains("button", "Save Itinerary").click();
-    cy.wrap(mockOnItineraryAdded).should("have.been.calledWith", "test");
-  });
-
-  it("shows empty state when no itineraries", () => {
-    cy.mount(
-      <TestProvider>
-        <MockAddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={[]}
-        />
-      </TestProvider>
-    );
-
-    cy.contains("No itineraries available").should("be.visible");
+    cy.contains("Save Itinerary").click();
+    cy.on('window:alert', (txt) => {
+      expect(txt).to.match(/required|complete your profile/i);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Select,
   MenuItem,
@@ -7,6 +7,7 @@ import {
   Typography,
   FormControl,
 } from "@mui/material";
+import SubscriptionCard from '../common/SubscriptionCard';
 import AddItineraryModal from "../forms/AddItineraryModal";
 import useGetItinerariesFromFirestore from "../../hooks/useGetItinerariesFromFirestore";
 import { Itinerary } from "../../types/Itinerary";
@@ -117,12 +118,15 @@ export const Search = React.memo(() => {
       }
     };
     loadItineraries();
-  }, [fetchItineraries, refreshKey]);
+  }, [refreshKey]);
 
   // Auto-load more matches when user is near the end
   useEffect(() => {
     checkForMoreMatches(currentMatchIndex);
   }, [currentMatchIndex, checkForMoreMatches]);
+
+  // SubscriptionCard visibility state
+  const [showSubscription, setShowSubscription] = useState(true);
 
   // Handle itinerary selection from dropdown
   const handleItinerarySelect = (id: string) => {
@@ -131,8 +135,16 @@ export const Search = React.memo(() => {
     if (selected && userId) {
       setCurrentMatchIndex(0);
       searchItineraries(selected, userId);
+      if (itineraries.length > 0) setShowSubscription(false);
     }
   };
+
+  // Show SubscriptionCard again if search results are empty
+  useEffect(() => {
+    if (matchingItineraries.length === 0) {
+      setShowSubscription(true);
+    }
+  }, [matchingItineraries.length]);
 
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
@@ -243,24 +255,14 @@ export const Search = React.memo(() => {
         backgroundColor: "#f5f5f7",
         overflow: "hidden",
       }}>
-      {!bannerDismissed && (
-        <Box
-          sx={{
-            backgroundColor: "transparent",
-            padding: 2,
-            borderBottom: "1px solid rgba(0,0,0,0.1)",
-            flexShrink: 0,
-          }}>
-          <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
-            Traval
-          </Typography>
-        </Box>
+
+      {/* Subscription Card - compact, bottom left, only when not searching */}
+      {showSubscription && (
+        <SubscriptionCard compact />
       )}
-
-
       {/* Beta Banner - Position it at the very top */}
       {!bannerDismissed && (
-        <Box sx={{ position: 'relative', zIndex: 1000 }}>
+        <Box sx={{ position: 'relative', zIndex: 1000, mt: 8, mb: 3 }}>
           <BetaBanner
             version="1.0.0-beta"
             onDismiss={handleBannerDismiss}
@@ -268,27 +270,8 @@ export const Search = React.memo(() => {
         </Box>
       )}
 
-      {/* Header - adjust marginTop to be smaller */}
-      <Box
-        sx={{
-          mt: bannerDismissed ? 0 : -5,
-          }}
-        />
-      {/* Header */}
-      <Box
-        sx={{
-          backgroundColor: "transparent",
-          padding: 2,
-          borderBottom: "1px solid rgba(0,0,0,0.1)",
-          flexShrink: 0,
-          marginTop: bannerDismissed ? 0 : "220px",
-        }}>
-        <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
-          Traval
-        </Typography>
-      </Box>
 
-      {/* Select and Button area - FIXED WIDTH */}
+      {/* Select and Button area - simplified, removed unnecessary Box wrappers */}
       <Box
         sx={{
           display: "flex",
@@ -299,61 +282,56 @@ export const Search = React.memo(() => {
           borderBottom: "1px solid rgba(0,0,0,0.05)",
           gap: "16px",
           flexShrink: 0,
+          mt: bannerDismissed ? 10 : 0,
         }}>
-        <Box
-          sx={{
-            width: { xs: 180, sm: 240 },
-            flexShrink: 0,
-          }}>
-          <FormControl fullWidth>
-            <Select
-              value={selectedItineraryId}
-              onChange={(e) => handleItinerarySelect(e.target.value)}
-              displayEmpty
-              size="small"
-              sx={{
-                ".MuiSelect-select": {
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+        <FormControl fullWidth sx={{ maxWidth: { xs: 180, sm: 240 } }}>
+          <Select
+            value={selectedItineraryId}
+            onChange={(e) => handleItinerarySelect(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{
+              ".MuiSelect-select": {
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              },
+            }}
+            MenuProps={{
+              PaperProps: {
+                style: {
+                  maxHeight: 300,
+                  maxWidth: 300,
+                  zIndex: 1001,
                 },
-              }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 300,
-                    maxWidth: 300,
-                    zIndex: 1001,
-                  },
-                },
-              }}>
-              <MenuItem value="" disabled>
-                Select an itinerary
-              </MenuItem>
-              {sortedItineraries.map((itinerary) => (
-                <MenuItem key={itinerary.id} value={itinerary.id}>
-                  <Box
+              },
+            }}>
+            <MenuItem value="" disabled>
+              Select an itinerary
+            </MenuItem>
+            {sortedItineraries.map((itinerary) => (
+              <MenuItem key={itinerary.id} value={itinerary.id}>
+                <Box
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    width: "100%",
+                  }}>
+                  {itinerary.destination}{" "}
+                  <Typography
+                    component="span"
                     sx={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      width: "100%",
+                      fontSize: "0.8em",
+                      color: "#666",
                     }}>
-                    {itinerary.destination}{" "}
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: "0.8em",
-                        color: "#666",
-                      }}>
-                      ({itinerary.startDate} - {itinerary.endDate})
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+                    ({itinerary.startDate} - {itinerary.endDate})
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Button
           variant="contained"
           onClick={() => setShowModal(true)}
