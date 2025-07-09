@@ -29,8 +29,11 @@ jest.mock("../../hooks/usePostUserProfileToStorage", () => ({
   }),
 }));
 
+
+import { UserProfile } from "../../types/UserProfile";
+
 describe("PhotoGrid Component", () => {
-  const mockUserProfile = {
+  const mockUserProfile: UserProfile = {
     uid: "12345",
     username: "TestUser",
     bio: "This is a test bio",
@@ -40,7 +43,12 @@ describe("PhotoGrid Component", () => {
     edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
-    photos: ["", "", "", "", ""], // Ensure the photos array has at least 4 elements
+    photos: {
+      slot1: "",
+      slot2: "",
+      slot3: "",
+      slot4: "",
+    },
   };
 
   const renderComponent = () =>
@@ -102,18 +110,27 @@ describe("PhotoGrid Component", () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockUploadImage).toHaveBeenCalledWith(file, 0);
+      expect(mockUploadImage).toHaveBeenCalledWith(file, "slot1");
       expect(mockUpdateUserProfile).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["uploaded-image-url", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "uploaded-image-url",
+        },
       });
       expect(mockSetUserDbData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["uploaded-image-url", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "uploaded-image-url",
+        },
       });
       expect(mockSetUserStorageData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["uploaded-image-url", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "uploaded-image-url",
+        },
       });
     });
   });
@@ -132,15 +149,24 @@ describe("PhotoGrid Component", () => {
     await waitFor(() => {
       expect(mockUpdateUserProfile).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "",
+        },
       });
       expect(mockSetUserDbData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "",
+        },
       });
       expect(mockSetUserStorageData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", ""],
+        photos: {
+          ...mockUserProfile.photos,
+          slot1: "",
+        },
       });
     });
   });

@@ -59,13 +59,19 @@ Object.defineProperty(window, 'Notification', {
   writable: true,
 });
 
+
+import { UserProfile } from "../../types/UserProfile";
+
 describe("Profile Component", () => {
-  const mockUserProfile = {
+  const mockUserProfile: UserProfile = {
     uid: "user-123",
     username: "TestUser",
     email: "test@example.com",
     bio: "Test bio",
-    photos: ["photo1.jpg", "photo2.jpg"],
+    photos: {
+      profile: "photo1.jpg",
+      slot1: "photo2.jpg",
+    },
     dob: "1990-01-01",
     gender: "Male",
   };

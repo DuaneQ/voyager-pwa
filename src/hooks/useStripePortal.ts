@@ -12,7 +12,8 @@ export function useStripePortal() {
     try {
       const functions = getFunctions();
       const createPortal = httpsCallable(functions, "createStripePortalSession");
-      const result: any = await createPortal({});
+      const origin = window.location.origin;
+      const result: any = await createPortal({ origin });
       if (result?.data?.url) {
         window.location.assign(result.data.url);
       } else {

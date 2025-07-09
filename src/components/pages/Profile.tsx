@@ -10,7 +10,7 @@ export const Profile = React.memo(() => {
   useFCMToken();
 
   return (
-    <>
+    <div className="profile-scroll-area">
       <Stack className="authFormContainer">
         <Box mb={10}>
           <ProfileForm />
@@ -22,6 +22,6 @@ export const Profile = React.memo(() => {
           {/* <Chips /> */}
         </Box>
       </Stack>
-    </>
+    </div>
   );
 });

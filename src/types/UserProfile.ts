@@ -20,4 +20,16 @@ export interface UserProfile {
     date: string; 
     viewCount: number;
   };
+  /**
+   * User photos, organized by slot. 'profile' is the main photo, 'slot1'-'slot4' are additional slots.
+   * Each value is a URL string or undefined if not set.
+   */
+  photos?: {
+    profile?: string;
+    slot1?: string;
+    slot2?: string;
+    slot3?: string;
+    slot4?: string;
+    [key: string]: string | undefined;
+  };
 }

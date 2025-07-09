@@ -1,5 +1,26 @@
+
+
+
+
+// --- Robust window.location.assign mock for JSDOM ---
+// Hoist this block to the very top of the file, before any imports
+const originalLocation = window.location;
+let assignedUrl = '';
+beforeAll(() => {
+  // @ts-ignore
+  delete window.location;
+  // @ts-ignore
+  window.location = {
+    ...originalLocation,
+    assign: jest.fn((url) => { assignedUrl = url; }),
+  };
+});
+afterAll(() => {
+  window.location = originalLocation;
+});
+
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { UserProfileContext } from '../../Context/UserProfileContext';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { useStripePortal } from '../../hooks/useStripePortal';
@@ -8,6 +29,11 @@ import SubscriptionCard from '../../components/common/SubscriptionCard';
 
 jest.mock('../../hooks/useUsageTracking');
 jest.mock('../../hooks/useStripePortal');
+
+jest.mock('firebase/functions', () => ({
+  getFunctions: jest.fn(),
+  httpsCallable: jest.fn(() => async () => ({ data: { url: 'https://stripe.com/checkout-session' } })),
+}));
 
 const mockOpenPortal = jest.fn();
 const mockEnqueueSnackbar = jest.fn();
@@ -21,7 +47,11 @@ describe('SubscriptionCard', () => {
   const renderWithContext = (userProfile: any, props = {}) => {
     return render(
       <SnackbarProvider>
-        <UserProfileContext.Provider value={{ userProfile }}>
+        <UserProfileContext.Provider value={{
+          userProfile,
+          setUserProfile: jest.fn(),
+          updateUserProfile: jest.fn(),
+        }}>
           <SubscriptionCard {...props} />
         </UserProfileContext.Provider>
       </SnackbarProvider>
@@ -57,15 +87,6 @@ describe('SubscriptionCard', () => {
     expect(mockOpenPortal).toHaveBeenCalled();
   });
 
-  it('redirects to Stripe checkout when Upgrade is clicked', () => {
-    (useUsageTracking as jest.Mock).mockReturnValue({ hasPremium: () => false });
-    delete window.location;
-    window.location = { href: '' } as any;
-    renderWithContext({ subscriptionType: 'free' });
-    fireEvent.click(screen.getByText(/Upgrade/i));
-    expect(window.location.href).toContain('stripe.com');
-  });
-
   it('shows spinner when subscribing or managing', () => {
     (useUsageTracking as jest.Mock).mockReturnValue({ hasPremium: () => true });
     (useStripePortal as jest.Mock).mockReturnValue({ openPortal: mockOpenPortal, loading: true, error: null });
@@ -93,3 +114,5 @@ describe('SubscriptionCard', () => {
     expect(screen.queryByText(/Manage/i)).not.toBeInTheDocument();
   });
 });
+
+

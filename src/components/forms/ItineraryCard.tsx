@@ -27,6 +27,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   onDislike,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
+  // Returns the profile slot photo
   const profilePhoto = useGetUserProfilePhoto(itinerary.userInfo?.uid);
 
   const startDate = itinerary.startDate

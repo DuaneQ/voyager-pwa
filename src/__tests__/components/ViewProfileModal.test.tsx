@@ -7,6 +7,7 @@ import {
   act,
 } from "@testing-library/react";
 import { ViewProfileModal } from "../../components/modals/ViewProfileModal";
+import { UserProfile } from "../../types/UserProfile";
 import { within } from '@testing-library/react';
 import {
   doc,
@@ -36,6 +37,25 @@ describe("ViewProfileModal Component", () => {
   const mockOtherUserId = "other-user-456";
   const mockUpdateUserProfile = jest.fn();
 
+  // Profile with ratings for rating display test
+  const ratedOtherUserProfile: UserProfile = {
+    username: "TestUser",
+    bio: "Other bio",
+    photos: {
+      profile: "https://example.com/other-photo.jpg",
+    },
+    blocked: [],
+    status: "couple",
+    ratings: {
+      average: 4.2,
+      count: 5,
+      ratedBy: {
+        "user-1": { rating: 5, comment: "Great!" },
+        "user-2": { rating: 4, comment: "Nice" },
+      },
+    },
+  };
+
   // Mock localStorage
   let localStorageMock = {};
 
@@ -47,36 +67,24 @@ describe("ViewProfileModal Component", () => {
     (getDoc as jest.Mock).mockImplementation((ref) => {
       // Different response based on which user we're fetching
       if (ref === "mock-doc-ref-other") {
+        // Return a profile with ratings for the rating display test
         return Promise.resolve({
           exists: () => true,
-          data: () => ({
-            username: "TestUser",
-            bio: "Other bio",
-            photos: ["https://example.com/other-photo.jpg"],
-            blocked: [],
-            status: "couple", // Add status field
-            ratings: {
-              average: 4.2,
-              count: 5,
-              ratedBy: {
-                "current-user-123": {
-                  rating: 4,
-                  timestamp: 1625097600000,
-                },
-              },
-            },
-          }),
+          data: () => ratedOtherUserProfile,
         });
       } else {
         // Return current user data with updated blocked array after blocking
+        const currentUserProfile: UserProfile = {
+          username: "CurrentUser",
+          bio: "Current bio",
+          photos: {
+            profile: "https://example.com/photo.jpg",
+          },
+          blocked: [mockOtherUserId],
+        };
         return Promise.resolve({
           exists: () => true,
-          data: () => ({
-            username: "CurrentUser",
-            bio: "Current bio",
-            photos: ["https://example.com/photo.jpg"],
-            blocked: [mockOtherUserId],
-          }),
+          data: () => currentUserProfile,
         });
       }
     });
@@ -429,8 +437,11 @@ describe("ViewProfileModal Component", () => {
       expect(screen.getByText("TestUser")).toBeInTheDocument();
     });
 
-    // Check if rating is displayed
-    expect(screen.getByText("4.2 (5)")).toBeInTheDocument();
+    // Check if rating is displayed (split elements, use test id)
+    const average = screen.getByTestId("rating-average");
+    const count = screen.getByTestId("rating-count");
+    expect(average.textContent?.replace(/\s+/g, "")).toBe("4.2");
+    expect(count.textContent?.replace(/\s+/g, "")).toBe("(5)");
   });
 
   it("allows users to submit a new rating", async () => {
@@ -452,8 +463,8 @@ describe("ViewProfileModal Component", () => {
 
     // Open rating dialog by clicking on rating display
     await act(async () => {
-      const ratingDisplay = screen.getByText("4.2 (5)").parentElement;
-      fireEvent.click(ratingDisplay!);
+      const ratingDisplay = screen.getByTestId("rating-display");
+      fireEvent.click(ratingDisplay);
     });
 
     // Check if dialog appears
@@ -491,10 +502,11 @@ describe("ViewProfileModal Component", () => {
         })
       );
 
-      // Verify success message
-      expect(
-        screen.getByText("Rating submitted successfully")
-      ).toBeInTheDocument();
+      // Verify success message (handle multiple alerts/snackbars)
+      const successAlerts = screen.queryAllByText((content, node) =>
+        node?.textContent?.includes("Rating and comment submitted successfully")
+      );
+      expect(successAlerts.length).toBeGreaterThan(0);
     });
   });
 
