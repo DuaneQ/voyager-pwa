@@ -127,8 +127,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         dob: "",
         photos: ["", "", "", "", ""],
         subscriptionType: 'free',
-        subscriptionStartDate: null,
-        subscriptionEndDate: null,
+        subscriptionStartDate: "",
+        subscriptionEndDate: "",
         subscriptionCancelled: false,
         stripeCustomerId: null,
         dailyUsage: {
