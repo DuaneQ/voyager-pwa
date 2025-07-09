@@ -8,6 +8,33 @@ import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { AlertContext } from "../../Context/AlertContext";
 import { Itinerary } from "../../types/Itinerary";
 
+// Mock Firestore modular SDK for pipeline (CI) compatibility
+jest.mock("firebase/firestore", () => ({
+  doc: jest.fn(() => ({})),
+  getDoc: jest.fn(() => Promise.resolve({ exists: () => false, data: () => ({}) })),
+  setDoc: jest.fn(() => Promise.resolve()),
+  getFirestore: jest.fn(() => ({})),
+}));
+
+// Polyfill setImmediate for CI (Node 18+ doesn't have it by default)
+if (typeof global.setImmediate === "undefined") {
+  // @ts-ignore
+  global.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);
+}
+
+// Polyfill localStorage for CI if not present
+if (typeof window !== "undefined" && typeof window.localStorage === "undefined") {
+  Object.defineProperty(window, "localStorage", {
+    value: {
+      getItem: jest.fn(),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
+    },
+    writable: true,
+  });
+}
+
 // Mock dependencies
 jest.mock("../../hooks/useGetUserId");
 jest.mock("../../hooks/usePostItineraryToFirestore");

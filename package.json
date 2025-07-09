@@ -1,5 +1,5 @@
 {
-  "name": "voyager-pwa",
+  "name": "traval",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -103,7 +103,7 @@
     "webpack": "^5.99.9",
     "webpack-dev-server": "^5.2.1"
   },
-  "description": "Voyager PWA is a modern, production-grade Progressive Web Application for travel itinerary management.   It demonstrates advanced software engineering, quality engineering, and DevOps practices using a robust, scalable, and maintainable architecture.",
+  "description": "Traval PWA is a modern, production-grade Progressive Web Application for travel itinerary management.   It demonstrates advanced software engineering, quality engineering, and DevOps practices using a robust, scalable, and maintainable architecture.",
   "main": "jest.fetch-polyfill.js",
   "keywords": [],
   "author": "",
