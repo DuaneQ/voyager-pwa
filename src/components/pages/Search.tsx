@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Select,
   MenuItem,
@@ -7,6 +8,7 @@ import {
   Typography,
   FormControl,
 } from "@mui/material";
+import SubscriptionCard from '../common/SubscriptionCard';
 import AddItineraryModal from "../forms/AddItineraryModal";
 import useGetItinerariesFromFirestore from "../../hooks/useGetItinerariesFromFirestore";
 import { Itinerary } from "../../types/Itinerary";
@@ -51,12 +53,27 @@ function saveViewedItinerary(itinerary: Itinerary) {
 }
 
 export const Search = React.memo(() => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [checkoutStatus, setCheckoutStatus] = useState<null | 'success' | 'cancel'>(null);
+  // Detect Stripe checkout result from query param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const checkout = params.get('checkout');
+    if (checkout === 'success' || checkout === 'cancel') {
+      setCheckoutStatus(checkout);
+      // Remove the query param from the URL after showing the message
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('checkout');
+      navigate({ search: newParams.toString() }, { replace: true });
+    }
+  }, [location.search, navigate]);
   useGetUserProfile();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string>("");
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
-  const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
 
   const {
     matchingItineraries,
@@ -104,27 +121,25 @@ export const Search = React.memo(() => {
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
     const loadItineraries = async () => {
+      setIsFetching(true);
       try {
         const fetchedItineraries = await fetchItineraries();
-        if (!fetchedItineraries || fetchedItineraries.length === 0) {
-          setLoading(true);
-        } else {
-          setLoading(false);
-          setItineraries(fetchedItineraries);
-        }
+        setItineraries(fetchedItineraries || []);
       } catch (error) {
         console.error("Error loading itineraries:", error);
+      } finally {
+        setIsFetching(false);
       }
     };
     loadItineraries();
-  }, [fetchItineraries, refreshKey]);
+  }, [refreshKey]);
 
   // Auto-load more matches when user is near the end
   useEffect(() => {
     checkForMoreMatches(currentMatchIndex);
   }, [currentMatchIndex, checkForMoreMatches]);
 
-  // Handle itinerary selection from dropdown
+  // SubscriptionCard is always visible (floating/compact)
   const handleItinerarySelect = (id: string) => {
     setSelectedItineraryId(id);
     const selected = itineraries.find((itinerary) => itinerary.id === id);
@@ -243,24 +258,28 @@ export const Search = React.memo(() => {
         backgroundColor: "#f5f5f7",
         overflow: "hidden",
       }}>
-      {!bannerDismissed && (
-        <Box
-          sx={{
-            backgroundColor: "transparent",
-            padding: 2,
-            borderBottom: "1px solid rgba(0,0,0,0.1)",
-            flexShrink: 0,
-          }}>
-          <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
-            Traval
+
+      {/* Stripe Checkout status message */}
+      {checkoutStatus === 'success' && (
+        <Box sx={{ position: 'fixed', top: 16, left: 0, right: 0, zIndex: 2000, display: 'flex', justifyContent: 'center' }}>
+          <Typography sx={{ background: '#e0ffe0', color: '#1b5e20', px: 3, py: 1, borderRadius: 2, boxShadow: 2, fontWeight: 600 }}>
+            Payment successful! Your subscription is now active.
+          </Typography>
+        </Box>
+      )}
+      {checkoutStatus === 'cancel' && (
+        <Box sx={{ position: 'fixed', top: 16, left: 0, right: 0, zIndex: 2000, display: 'flex', justifyContent: 'center' }}>
+          <Typography sx={{ background: '#fff3e0', color: '#bf360c', px: 3, py: 1, borderRadius: 2, boxShadow: 2, fontWeight: 600 }}>
+            Payment canceled. No changes were made to your subscription.
           </Typography>
         </Box>
       )}
 
-
+      {/* Subscription Card - always visible, floating bottom left */}
+      <SubscriptionCard compact />
       {/* Beta Banner - Position it at the very top */}
       {!bannerDismissed && (
-        <Box sx={{ position: 'relative', zIndex: 1000 }}>
+        <Box sx={{ position: 'relative', zIndex: 1000, mt: 8, mb: 3 }}>
           <BetaBanner
             version="1.0.0-beta"
             onDismiss={handleBannerDismiss}
@@ -268,27 +287,8 @@ export const Search = React.memo(() => {
         </Box>
       )}
 
-      {/* Header - adjust marginTop to be smaller */}
-      <Box
-        sx={{
-          mt: bannerDismissed ? 0 : -5,
-          }}
-        />
-      {/* Header */}
-      <Box
-        sx={{
-          backgroundColor: "transparent",
-          padding: 2,
-          borderBottom: "1px solid rgba(0,0,0,0.1)",
-          flexShrink: 0,
-          marginTop: bannerDismissed ? 0 : "220px",
-        }}>
-        <Typography variant="h6" textAlign="center" gutterBottom={false} sx={{ color: 'transparent' }}>
-          Traval
-        </Typography>
-      </Box>
 
-      {/* Select and Button area - FIXED WIDTH */}
+      {/* Select and Button area - simplified, removed unnecessary Box wrappers */}
       <Box
         sx={{
           display: "flex",
@@ -299,61 +299,56 @@ export const Search = React.memo(() => {
           borderBottom: "1px solid rgba(0,0,0,0.05)",
           gap: "16px",
           flexShrink: 0,
+          mt: bannerDismissed ? 10 : 0,
         }}>
-        <Box
-          sx={{
-            width: { xs: 180, sm: 240 },
-            flexShrink: 0,
-          }}>
-          <FormControl fullWidth>
-            <Select
-              value={selectedItineraryId}
-              onChange={(e) => handleItinerarySelect(e.target.value)}
-              displayEmpty
-              size="small"
-              sx={{
-                ".MuiSelect-select": {
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+        <FormControl fullWidth sx={{ maxWidth: { xs: 180, sm: 240 } }}>
+          <Select
+            value={selectedItineraryId}
+            onChange={(e) => handleItinerarySelect(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{
+              ".MuiSelect-select": {
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              },
+            }}
+            MenuProps={{
+              PaperProps: {
+                style: {
+                  maxHeight: 300,
+                  maxWidth: 300,
+                  zIndex: 1001,
                 },
-              }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 300,
-                    maxWidth: 300,
-                    zIndex: 1001,
-                  },
-                },
-              }}>
-              <MenuItem value="" disabled>
-                Select an itinerary
-              </MenuItem>
-              {sortedItineraries.map((itinerary) => (
-                <MenuItem key={itinerary.id} value={itinerary.id}>
-                  <Box
+              },
+            }}>
+            <MenuItem value="" disabled>
+              Select an itinerary
+            </MenuItem>
+            {sortedItineraries.map((itinerary) => (
+              <MenuItem key={itinerary.id} value={itinerary.id}>
+                <Box
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    width: "100%",
+                  }}>
+                  {itinerary.destination}{" "}
+                  <Typography
+                    component="span"
                     sx={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      width: "100%",
+                      fontSize: "0.8em",
+                      color: "#666",
                     }}>
-                    {itinerary.destination}{" "}
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: "0.8em",
-                        color: "#666",
-                      }}>
-                      ({itinerary.startDate} - {itinerary.endDate})
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+                    ({itinerary.startDate} - {itinerary.endDate})
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Button
           variant="contained"
           onClick={() => setShowModal(true)}
@@ -373,7 +368,8 @@ export const Search = React.memo(() => {
           overflow: "hidden",
           minHeight: 0,
         }}>
-        {loading && (
+        {/* Show onboarding message if user has never created an itinerary */}
+        {!isFetching && itineraries.length === 0 && (
           <Typography
             variant="body1"
             sx={{
@@ -387,6 +383,8 @@ export const Search = React.memo(() => {
             created, select one of your itineraries from the dropdown, and we'll
             match you with others based on destination, dates, and preferences.
             Once matched, you can chat and plan your adventures together.
+            Free tier offers 20 daily views of itineraries. 
+            Upgrade to Premium for unlimited views $4 per month.
           </Typography>
         )}
 
@@ -399,20 +397,19 @@ export const Search = React.memo(() => {
           />
         )}
 
-        {/* Show loading when searching or loading more */}
-        {searchLoading && !currentMatch && (
+        {/* Show loading when searching or loading more, but only if user has itineraries */}
+        {searchLoading && !currentMatch && itineraries.length > 0 && (
           <Typography sx={{ padding: 2 }}>
             Searching for matches...
           </Typography>
         )}
 
-        {/* Show end message with loading state */}
-        {isAtEnd && !searchLoading && (
+        {/* Show end message with loading state, only if user has itineraries */}
+        {isAtEnd && !searchLoading && itineraries.length > 0 && (
           <Box sx={{ textAlign: 'center', padding: 2 }}>
             <Typography>
               {hasMore
                 ? "Loading more matches..."
-
                 : "No more itineraries to view."
               }
             </Typography>

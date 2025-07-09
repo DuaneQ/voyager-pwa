@@ -13,6 +13,15 @@
 // https://on.cypress.io/configuration
 // ***********************************************************
 
+// Patch process.env for Cypress component test browser context (for AddItineraryModal etc)
+if (typeof window !== 'undefined' && !window.process) {
+  // @ts-ignore
+  window.process = { env: {} };
+}
+if (typeof window !== 'undefined' && window.process && !window.process.env.REACT_APP_GOOGLE_PLACES_API_KEY) {
+  window.process.env.REACT_APP_GOOGLE_PLACES_API_KEY = "test-google-places-api-key";
+}
+
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
@@ -32,5 +41,3 @@ Cypress.Commands.add("mount", mount);
 
 // Example use:
 // cy.mount(<MyComponent />)
-
-// Remove all the environment mocking - let it use your dev environment naturally

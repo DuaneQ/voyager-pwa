@@ -28,8 +28,11 @@ jest.mock("../../hooks/usePostUserProfileToStorage", () => ({
   }),
 }));
 
+
+import { UserProfile } from "../../types/UserProfile";
+
 describe("ProfilePhoto Component", () => {
-  const mockUserProfile = {
+  const mockUserProfile: UserProfile = {
     uid: "12345",
     username: "TestUser",
     bio: "This is a test bio",
@@ -39,7 +42,13 @@ describe("ProfilePhoto Component", () => {
     edu: "GED",
     drinking: "Occasionally",
     smoking: "Never",
-    photos: ["", "", "", "", ""],
+    photos: {
+      profile: "",
+      slot1: "",
+      slot2: "",
+      slot3: "",
+      slot4: "",
+    },
   };
 
   const renderComponent = () =>
@@ -94,15 +103,33 @@ describe("ProfilePhoto Component", () => {
     // Assert
     expect(mockUpdateUserProfile).toHaveBeenCalledWith({
       ...mockUserProfile,
-      photos: ["", "", "", "", ""],
+      photos: {
+        profile: "",
+        slot1: "",
+        slot2: "",
+        slot3: "",
+        slot4: "",
+      },
     });
     expect(mockSetUserDbData).toHaveBeenCalledWith({
       ...mockUserProfile,
-      photos: ["", "", "", "", ""],
+      photos: {
+        profile: "",
+        slot1: "",
+        slot2: "",
+        slot3: "",
+        slot4: "",
+      },
     });
     expect(mockSetUserStorageData).toHaveBeenCalledWith({
       ...mockUserProfile,
-      photos: ["", "", "", "", ""],
+      photos: {
+        profile: "",
+        slot1: "",
+        slot2: "",
+        slot3: "",
+        slot4: "",
+      },
     });
   });
 
@@ -124,18 +151,27 @@ describe("ProfilePhoto Component", () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockUploadImage).toHaveBeenCalledWith(file, 4);
+      expect(mockUploadImage).toHaveBeenCalledWith(file, "profile");
       expect(mockUpdateUserProfile).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: {
+          ...mockUserProfile.photos,
+          profile: "uploaded-image-url",
+        },
       });
       expect(mockSetUserDbData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: {
+          ...mockUserProfile.photos,
+          profile: "uploaded-image-url",
+        },
       });
       expect(mockSetUserStorageData).toHaveBeenCalledWith({
         ...mockUserProfile,
-        photos: ["", "", "", "", "uploaded-image-url"],
+        photos: {
+          ...mockUserProfile.photos,
+          profile: "uploaded-image-url",
+        },
       });
     });
   });

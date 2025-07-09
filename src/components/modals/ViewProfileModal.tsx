@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useContext } from "react";
 import {
   Modal,
@@ -41,6 +42,7 @@ import {
 import { app } from "../../environments/firebaseConfig";
 import useGetUserId from "../../hooks/useGetUserId";
 import { UserProfileContext } from "../../Context/UserProfileContext";
+import RatingsCommentsList from "../common/RatingsCommentsList";
 
 const db = getFirestore(app);
 
@@ -77,7 +79,42 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [newRating, setNewRating] = useState<number | null>(null);
+  const [newComment, setNewComment] = useState<string>("");
+  const [canRate, setCanRate] = useState<boolean>(false);
+  const [checkingConnection, setCheckingConnection] = useState<boolean>(false);
+
   const currentUserId = useGetUserId();
+  // Check if the current user has a connection with the viewed user
+  useEffect(() => {
+    if (!open || !currentUserId || !userId) {
+      setCanRate(false);
+      return;
+    }
+    setCheckingConnection(true);
+    const checkConnection = async () => {
+      try {
+        const connectionsRef = collection(db, "connections");
+        const q = query(
+          connectionsRef,
+          where("users", "array-contains", currentUserId)
+        );
+        const snapshot = await getDocs(q);
+        let found = false;
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (Array.isArray(data.users) && data.users.includes(userId)) {
+            found = true;
+          }
+        });
+        setCanRate(found);
+      } catch (e) {
+        setCanRate(false);
+      } finally {
+        setCheckingConnection(false);
+      }
+    };
+    checkConnection();
+  }, [open, currentUserId, userId]);
 
   useEffect(() => {
     if (!open) return;
@@ -102,21 +139,19 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 
   useEffect(() => {
     if (profile?.ratings?.ratedBy && currentUserId) {
-      const existingRating =
-        profile.ratings.ratedBy[currentUserId]?.rating || null;
+      const existingRating = profile.ratings.ratedBy[currentUserId]?.rating || null;
+      const existingComment = profile.ratings.ratedBy[currentUserId]?.comment || "";
       setUserRating(existingRating);
       setNewRating(existingRating);
+      setNewComment(existingComment);
     }
   }, [profile, currentUserId]);
 
   // Filter out null/empty photos
-  const validPhotos: string[] = Array.isArray(profile?.photos)
-    ? profile.photos.filter((url: string | null | undefined) => !!url)
-    : [];
-
-  // First photo is profile photo, rest are other photos
-  const profilePhoto = validPhotos[0] || null;
-  const otherPhotos = validPhotos.slice(1, 5);
+  // Use new slot-based photo object
+  const photos = profile?.photos || {};
+  const profilePhoto = photos.profile || null;
+  const otherPhotos = [photos.slot1, photos.slot2, photos.slot3, photos.slot4].filter(Boolean);
 
   // Handle block user confirmation
   const handleOpenBlockConfirmation = () => {
@@ -270,14 +305,21 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 
   // Handle rating dialog open
   const handleOpenRatingDialog = () => {
-    setRatingDialogOpen(true);
+    if (canRate) {
+      setRatingDialogOpen(true);
+    }
   };
 
   // Handle rating dialog close
   const handleCloseRatingDialog = () => {
     setRatingDialogOpen(false);
-    // Reset to the current user's rating
+    // Reset to the current user's rating and comment
     setNewRating(userRating);
+    setNewComment(
+      currentUserId && profile?.ratings?.ratedBy && profile.ratings.ratedBy[currentUserId]
+        ? profile.ratings.ratedBy[currentUserId].comment || ""
+        : ""
+    );
   };
 
   // Handle actual rating submission
@@ -328,6 +370,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           ...currentRatings.ratedBy,
           [currentUserId]: {
             rating: newRating,
+            comment: newComment,
             timestamp: Date.now(),
           },
         },
@@ -341,7 +384,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       // Update local state
       setUserRating(newRating);
 
-      setSnackbarMessage("Rating submitted successfully");
+      setSnackbarMessage("Rating and comment submitted successfully");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
 
@@ -446,16 +489,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             </IconButton>
           </Box>
 
-          {/* Profile photo and info */}
-          {profilePhoto && (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                mb: 2,
-                position: "relative",
-              }}>
+          {/* Profile photo, username, and rating (always show rating) */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 2,
+              position: "relative",
+            }}>
+            {profilePhoto ? (
               <img
                 src={profilePhoto}
                 alt="Profile"
@@ -469,49 +512,64 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 }}
                 onClick={() => setSelectedPhoto(profilePhoto)}
               />
-              <Typography variant="h5" sx={{ mt: 2 }}>
-                {profile?.username || "User"}
-              </Typography>
-
-              {/* Add Rating Display */}
-              <Box
-                onClick={handleOpenRatingDialog}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  mt: 1,
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                  borderRadius: 1,
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  },
-                }}>
-                <Rating
-                  name="user-rating-display"
-                  value={profile?.ratings?.average || 0}
-                  precision={0.5}
-                  readOnly
-                  sx={{ color: "primary.main", mr: 1 }}
-                />
+            ) : null}
+            <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
+              {profile?.username || "User"}
+            </Typography>
+            {/* Rating Display (always visible) */}
+            <Box
+              onClick={handleOpenRatingDialog}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                mt: 1,
+                cursor: canRate ? "pointer" : "not-allowed",
+                padding: "4px 8px",
+                borderRadius: 1,
+                "&:hover": canRate ? {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                } : {},
+                opacity: checkingConnection ? 0.5 : 1,
+              }}
+              title={canRate ? "Rate this user" : "You can only rate users you have connected with."}
+              data-testid="rating-display"
+            >
+              <Rating
+                name="user-rating-display"
+                value={profile?.ratings?.average || 0}
+                precision={0.5}
+                readOnly
+                sx={{ color: "primary.main", mr: 1 }}
+              />
+              {profile?.ratings?.average ? (
+                <>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: "medium" }}
+                    data-testid="rating-average"
+                  >
+                    {formatRating(profile.ratings.average)}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: "medium", ml: 0.5 }}
+                    data-testid="rating-count"
+                  >
+                    ({profile.ratings.count})
+                  </Typography>
+                </>
+              ) : (
                 <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                  {profile?.ratings?.average
-                    ? `${formatRating(profile.ratings.average)} (${profile.ratings.count})`
-                    : "No ratings yet"}
+                  No ratings yet
                 </Typography>
-              </Box>
+              )}
+              {!canRate && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  (Connect to rate)
+                </Typography>
+              )}
             </Box>
-          )}
-
-          {/* Rest of component remains the same */}
-          {/* ... existing profile display code ... */}
-          {!profilePhoto && (
-            <Box sx={{ position: "relative", mb: 2 }}>
-              <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
-                {profile?.username || "User"}
-              </Typography>
-            </Box>
-          )}
+          </Box>
           <Box sx={{ flex: 1, overflowY: "auto" }}>
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
@@ -754,6 +812,8 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               <Typography>No profile found.</Typography>
             )}
           </Box>
+          {/* Ratings and Comments List */}
+          <RatingsCommentsList profile={profile} currentUserId={currentUserId || ""} />
         </Box>
       </Modal>
 
@@ -924,7 +984,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Rating dialog */}
+      {/* Rating dialog (with comment) */}
       <Dialog
         open={ratingDialogOpen}
         onClose={handleCloseRatingDialog}
@@ -935,7 +995,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="rating-dialog-description" sx={{ mb: 2 }}>
-            Please select a rating from 1 to 5 stars based on your travel experience with this user.
+            Please select a rating from 1 to 5 stars based on your travel experience with this user. You can also leave a comment (visible to others).
           </DialogContentText>
           <Box
             sx={{
@@ -952,6 +1012,18 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               size="large"
               data-testid="rating-input"
               sx={{ fontSize: "2.5rem", mb: 2 }}
+            />
+            <TextField
+              label="Comment (optional)"
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              multiline
+              minRows={2}
+              maxRows={4}
+              fullWidth
+              sx={{ mb: 2, mt: 1 }}
+              inputProps={{ maxLength: 300 }}
+              placeholder="Share your experience..."
             />
             {newRating && (
               <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -971,7 +1043,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 </Typography>
               </Box>
             )}
-
             {userRating && userRating !== newRating && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 You previously rated this user {userRating} stars
