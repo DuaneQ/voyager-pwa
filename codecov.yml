@@ -29,3 +29,5 @@ ignore:
   - "src/service-worker.ts"  # Service worker implementation
   - "src/serviceWorkerRegistration.ts"  # Service worker registration
   - "src/setup.js"           # Setup file
+  - "src/utils/firebase.mocks.ts"
+  - "src/utils/debugFCM.ts"

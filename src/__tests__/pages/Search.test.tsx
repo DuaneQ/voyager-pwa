@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 // Mock ALL modules FIRST, before any imports
 jest.mock("../../environments/firebaseConfig", () => ({
@@ -180,26 +181,34 @@ const mockMatchingItinerary = {
   userInfo: { uid: "other-user", email: "other@example.com" },
 };
 
+
+import { UserProfile } from "../../types/UserProfile";
+
 describe("Search Component", () => {
-  const mockUserProfile = {
+  const mockUserProfile: UserProfile = {
     username: "testuser",
     email: "test@example.com",
     uid: "current-user-id",
+    photos: {
+      profile: "",
+    },
   };
 
   const mockSetHasNewConnection = jest.fn();
 
   const renderWithContext = (userProfile = mockUserProfile) => {
     return render(
-      <UserProfileContext.Provider
-        value={{
-          userProfile,
-          updateUserProfile: jest.fn(),
-          showAlert: jest.fn(),
-        }}
-      >
-        <Search />
-      </UserProfileContext.Provider>
+      <MemoryRouter>
+        <UserProfileContext.Provider
+          value={{
+            userProfile,
+            updateUserProfile: jest.fn(),
+            showAlert: jest.fn(),
+          }}
+        >
+          <Search />
+        </UserProfileContext.Provider>
+      </MemoryRouter>
     );
   };
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   getFirestore,
   collection,
@@ -14,7 +14,7 @@ const useGetItinerariesFromFirestore = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchItineraries = async () => {
+  const fetchItineraries = useCallback(async () => {
     setLoading(true);
     setError(null);
     const userCredentials = localStorage.getItem("USER_CREDENTIALS");
@@ -26,8 +26,10 @@ const useGetItinerariesFromFirestore = () => {
         userUid = userUid.uid;
       } else {
         console.log("No authenticated user found.");
+        setError("User not authenticated. Please log in.");
+        setLoading(false);
+        return [];
       }
-      setError("User not authenticated. Please log in.");
     }
     try {
       const db = getFirestore(app);
@@ -50,7 +52,7 @@ const useGetItinerariesFromFirestore = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return { fetchItineraries, loading, error };
 };

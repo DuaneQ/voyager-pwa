@@ -1,12 +1,12 @@
+
 import profilePlaceholder from "../../assets/images/imagePH.png";
-import { Menu, MenuItem, CircularProgress } from "@mui/material";
+import { Menu, MenuItem, CircularProgress, Input } from "@mui/material";
 import { useContext, useRef, useState } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
-import React from "react";
-import { Input } from "@mui/material";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
+
 
 export const ProfilePhoto = () => {
   const { uploadImage } = useUploadImage();
@@ -15,74 +15,62 @@ export const ProfilePhoto = () => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
-  const [loading, setLoading] = useState(false); // Track loading state
+  const [loading, setLoading] = useState(false);
 
-  function handleUploadPic(): void {
+  // Upload profile photo (slot: 'profile')
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    if (event.target.files && userProfile) {
+      setLoading(true);
+      try {
+        const file = event.target.files[0];
+        const url = await uploadImage(file, 'profile');
+        const updatedPhotos = { ...(userProfile.photos || {}), profile: url };
+        const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
+        updateUserProfile(updatedUserProfile);
+        setUserStorageData(updatedUserProfile);
+        setUserDbData(updatedUserProfile);
+      } catch (error) {
+        console.error("Error uploading profile photo:", error);
+      } finally {
+        setLoading(false);
+        setMenuAnchor(null);
+      }
+    }
+  }
+
+  // Delete profile photo (slot: 'profile')
+  async function handleDeletePic() {
+    if (userProfile) {
+      setLoading(true);
+      try {
+        const updatedPhotos = { ...(userProfile.photos || {}), profile: "" };
+        const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
+        updateUserProfile(updatedUserProfile);
+        setUserStorageData(updatedUserProfile);
+        setUserDbData(updatedUserProfile);
+      } catch (error) {
+        console.error("Error deleting profile photo:", error);
+      } finally {
+        setLoading(false);
+        setMenuAnchor(null);
+        if (fileRef.current) fileRef.current.value = "";
+      }
+    }
+  }
+
+  function handleUploadPic() {
     fileRef.current?.click();
     setMenuAnchor(null);
   }
 
-  async function handleDeletePic(): Promise<void> {
-    if (userProfile) {
-      setLoading(true); // Set loading to true
-      try {
-        const updatedPhotos = [...userProfile.photos];
-        updatedPhotos[4] = ""; // Remove the photo at index 4
-        const updatedUserProfile = { ...userProfile, photos: updatedPhotos }; // Create a new userProfile object
-        updateUserProfile(updatedUserProfile); // Update the context
-        setUserStorageData(updatedUserProfile); // Update storage
-        setUserDbData(updatedUserProfile); // Update database
-      } catch (error) {
-        console.error("Error deleting photo:", error);
-      } finally {
-        setLoading(false); // Set loading to false
-        setMenuAnchor(null);
-        if (fileRef.current) {
-          fileRef.current.value = ""; // Reset the file input
-        }
-      }
-    }
-  }
-
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (event.target.files) {
-      setLoading(true); // Set loading to true
-      try {
-        const file = event.target.files[0];
-        const url = await uploadImage(file, 4); // Upload the file and get the URL
-        const updatedPhotos = [...userProfile.photos];
-        updatedPhotos[4] = url; // Add the new photo URL at index 4
-        const updatedUserProfile = { ...userProfile, photos: updatedPhotos }; // Create a new userProfile object
-        updateUserProfile(updatedUserProfile); // Update the context
-        setUserStorageData(updatedUserProfile); // Update storage
-        setUserDbData(updatedUserProfile); // Update database
-      } catch (error) {
-        console.error("Error uploading photo:", error);
-      } finally {
-        setLoading(false); // Set loading to false
-        setMenuAnchor(null);
-      }
-    }
-  };
-
-  function handleCancel(): void {
+  function handleCancel() {
     setMenuAnchor(null);
   }
 
   return (
     <>
       <img
-        src={
-          userProfile?.photos &&
-          userProfile?.photos.length > 0 &&
-          userProfile?.photos[4] !== "" &&
-          userProfile?.photos[4] !== null &&
-          userProfile?.photos[4] !== undefined
-            ? userProfile.photos[4]
-            : profilePlaceholder
-        }
+        src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
         alt="Profile Placeholder"
         style={{
           maxWidth: "30%",
@@ -103,7 +91,7 @@ export const ProfilePhoto = () => {
         inputRef={fileRef}
         onChange={handleFileChange}
         inputProps={{
-          accept: "image/*", // Restrict to image files
+          accept: "image/*",
           "data-testid": "file-input",
         }}
         style={{ display: "none" }}
@@ -111,33 +99,20 @@ export const ProfilePhoto = () => {
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => !loading && setMenuAnchor(null)} // Prevent closing while loading
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        autoFocus={false}>
+        onClose={() => !loading && setMenuAnchor(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+        autoFocus={false}
+      >
         {loading ? (
           <MenuItem disabled>
             <CircularProgress size={24} />
           </MenuItem>
-        ) : (
-          [
-            <MenuItem key="upload" onClick={handleUploadPic}>
-              Upload Pic
-            </MenuItem>,
-            <MenuItem key="delete" onClick={handleDeletePic}>
-              Delete Pic
-            </MenuItem>,
-            <MenuItem key="cancel" onClick={handleCancel}>
-              Cancel
-            </MenuItem>,
-          ]
-        )}
+        ) : [
+          <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
+          <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
+          <MenuItem key="cancel" onClick={handleCancel}>Cancel</MenuItem>,
+        ]}
       </Menu>
     </>
   );

@@ -250,7 +250,7 @@ export const Chat = React.memo(() => {
             connection={selectedConnection}
             messages={[...olderMessages, ...latestMessages]}
             userId={userId!}
-            otherUserPhotoURL={selectedPhotoURL}
+            // otherUserPhotoURL={selectedPhotoURL} // No longer needed, handled by ChatModal hook
             onPullToRefresh={loadMoreMessages}
             hasMoreMessages={hasMoreMessages}
           />

@@ -19,6 +19,8 @@ import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import express from "express";
 import bodyParser from "body-parser";
+import { createStripePortalSession } from './createStripePortalSession';
+import { createStripeCheckoutSession } from './createStripeCheckoutSession';
 
 admin.initializeApp();
 
@@ -463,51 +465,250 @@ export const notifyViolationReport = functions.firestore
     }
   });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: "2025-06-30.basil" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
 
 const app = express();
 
 // Stripe requires the raw body to validate the signature
-app.use(bodyParser.raw({ type: "application/json" }));
-
-app.post("/", async (req: any, res: any) => {
+app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res: any) => {
   const sig = req.headers["stripe-signature"];
   let event: Stripe.Event;
 
+  // Log the incoming webhook for troubleshooting
+  console.log("[STRIPE WEBHOOK] Incoming request", {
+    headers: req.headers,
+    body: req.body ? req.body.toString('utf8').slice(0, 500) : undefined // avoid logging secrets
+  });
+
   try {
+    // Use req.rawBody for Firebase Functions compatibility
     event = stripe.webhooks.constructEvent(
-      req.body,
+      req.rawBody,
       sig as string,
-      process.env.STRIPE_WEBHOOK_SECRET as string
+      process.env.STRIPE_WEBHOOK_SECRET 
     );
+    console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
-    console.error("Webhook signature verification failed.", err.message);
+    console.error("[STRIPE WEBHOOK] Signature verification failed.", err.message, {
+      headers: req.headers,
+      // Log both body and rawBody for troubleshooting
+      body: req.body ? req.body.toString('utf8').slice(0, 500) : undefined,
+      rawBody: req.rawBody ? req.rawBody.toString('utf8').slice(0, 500) : undefined
+    });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   // Handle the event
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const email = session.customer_email;
+  try {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const uid = session.metadata?.uid;
+      const customerId = session.customer as string;
+      const now = new Date();
+      const startDate = now.toISOString();
+      let endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      if (session.subscription) {
+        try {
+          const subscriptionResp = await stripe.subscriptions.retrieve(session.subscription as string);
+          // Stripe types: if using auto-pagination or expand, may be wrapped in Response<T>
+          const subscription = (subscriptionResp as any)?.current_period_end !== undefined
+            ? subscriptionResp as any
+            : (subscriptionResp as any)?.data || subscriptionResp;
+          if (subscription.current_period_end) {
+            endDate = new Date(subscription.current_period_end * 1000).toISOString();
+          }
+        } catch (err) {
+          console.error("[STRIPE WEBHOOK] Failed to fetch subscription for end date:", err, {
+            sessionId: session.id,
+            subscriptionId: session.subscription
+          });
+        }
+      }
 
-    if (email) {
-      // Find user by email and set subscriptionType = 'premium'
+      if (uid) {
+        const userRef = db.collection("users").doc(uid);
+        try {
+          await userRef.set({
+            stripeCustomerId: customerId,
+            subscriptionType: "premium",
+            subscriptionStartDate: startDate,
+            subscriptionEndDate: endDate,
+            subscriptionCancelled: false
+          }, { merge: true });
+          console.log(`[STRIPE WEBHOOK] User ${uid} updated after checkout.session.completed`, {
+            stripeCustomerId: customerId,
+            startDate,
+            endDate
+          });
+        } catch (err) {
+          console.error(`[STRIPE WEBHOOK] Failed to update user ${uid} after checkout.session.completed:`, err, {
+            stripeCustomerId: customerId,
+            sessionId: session.id
+          });
+        }
+      } else if (session.customer_email) {
+        const usersRef = db.collection("users");
+        try {
+          const snapshot = await usersRef.where("email", "==", session.customer_email).get();
+          if (snapshot.empty) {
+            console.warn(`[STRIPE WEBHOOK] No user found with email ${session.customer_email} for checkout.session.completed`, {
+              sessionId: session.id
+            });
+          }
+          snapshot.forEach(doc => {
+            doc.ref.update({
+              subscriptionType: "premium",
+              subscriptionStartDate: startDate,
+              subscriptionEndDate: endDate,
+              subscriptionCancelled: false,
+              stripeCustomerId: customerId
+            });
+            console.log(`[STRIPE WEBHOOK] User ${doc.id} updated by email after checkout.session.completed`, {
+              email: session.customer_email,
+              stripeCustomerId: customerId
+            });
+          });
+        } catch (err) {
+          console.error(`[STRIPE WEBHOOK] Failed to update user by email ${session.customer_email} after checkout.session.completed:`, err, {
+            sessionId: session.id
+          });
+        }
+      } else {
+        console.warn(`[STRIPE WEBHOOK] No UID or customer_email found in session for checkout.session.completed`, {
+          sessionId: session.id
+        });
+      }
+    } else if (event.type === "customer.subscription.updated") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer;
+      let endDate: string | undefined = undefined;
+      let startDate: string | undefined = undefined;
+      const sub: any = subscription as any;
+      if (sub.current_period_end) {
+        endDate = new Date(sub.current_period_end * 1000).toISOString();
+      }
+      if (sub.current_period_start) {
+        startDate = new Date(sub.current_period_start * 1000).toISOString();
+      }
+
       const usersRef = db.collection("users");
-      const snapshot = await usersRef.where("email", "==", email).get();
-      snapshot.forEach(doc => {
-        doc.ref.update({ subscriptionType: "premium" });
-      });
+      try {
+        const snapshot = await usersRef.where("stripeCustomerId", "==", customerId).get();
+        if (!snapshot.empty) {
+          snapshot.forEach(doc => {
+            const update: any = {
+              subscriptionType: "premium",
+              subscriptionCancelled: false
+            };
+            if (endDate) update.subscriptionEndDate = endDate;
+            if (startDate) update.subscriptionStartDate = startDate;
+            doc.ref.update(update);
+            console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription renewed/updated after customer.subscription.updated`, {
+              stripeCustomerId: customerId,
+              startDate,
+              endDate
+            });
+          });
+        } else {
+          // Fallback: try to find by email if present in metadata
+          const email = subscription.metadata?.email;
+          if (email) {
+            const emailSnap = await usersRef.where("email", "==", email).get();
+            if (emailSnap.empty) {
+              console.warn(`[STRIPE WEBHOOK] No user found with email ${email} for customer.subscription.updated`, {
+                subscriptionId: subscription.id
+              });
+            }
+            emailSnap.forEach(doc => {
+              const update: any = {
+                subscriptionType: "premium",
+                subscriptionCancelled: false
+              };
+              if (endDate) update.subscriptionEndDate = endDate;
+              if (startDate) update.subscriptionStartDate = startDate;
+              doc.ref.update(update);
+              console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription renewed/updated by email after customer.subscription.updated`, {
+                email,
+                startDate,
+                endDate
+              });
+            });
+          } else {
+            console.warn(`[STRIPE WEBHOOK] No user found for customer.subscription.updated: no customerId or email`, {
+              subscriptionId: subscription.id
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`[STRIPE WEBHOOK] Failed to update user after customer.subscription.updated:`, err, {
+          stripeCustomerId: customerId,
+          subscriptionId: subscription.id
+        });
+      }
+    } else if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer;
+      let endDate: string | undefined = undefined;
+      const sub: any = subscription as any;
+      if (sub.current_period_end) {
+        endDate = new Date(sub.current_period_end * 1000).toISOString();
+      }
+
+      const usersRef = db.collection("users");
+      try {
+        const snapshot = await usersRef.where("stripeCustomerId", "==", customerId).get();
+        if (!snapshot.empty) {
+          snapshot.forEach(doc => {
+            const update: any = { subscriptionCancelled: true };
+            if (endDate) update.subscriptionEndDate = endDate;
+            doc.ref.update(update);
+            console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription cancelled after customer.subscription.deleted`, {
+              stripeCustomerId: customerId,
+              endDate
+            });
+          });
+        } else {
+          const email = subscription.metadata?.email;
+          if (email) {
+            const emailSnap = await usersRef.where("email", "==", email).get();
+            if (emailSnap.empty) {
+              console.warn(`[STRIPE WEBHOOK] No user found with email ${email} for customer.subscription.deleted`, {
+                subscriptionId: subscription.id
+              });
+            }
+            emailSnap.forEach(doc => {
+              const update: any = { subscriptionCancelled: true };
+              if (endDate) update.subscriptionEndDate = endDate;
+              doc.ref.update(update);
+              console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription cancelled by email after customer.subscription.deleted`, {
+                email,
+                endDate
+              });
+            });
+          } else {
+            console.warn(`[STRIPE WEBHOOK] No user found for customer.subscription.deleted: no customerId or email`, {
+              subscriptionId: subscription.id
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`[STRIPE WEBHOOK] Failed to update user after customer.subscription.deleted:`, err, {
+          stripeCustomerId: customerId,
+          subscriptionId: subscription.id
+        });
+      }
     }
-  }
 
-  if (event.type === "customer.subscription.deleted") {
-    // You may need to look up the user by customer ID or email
-    // Example: const customerId = event.data.object.customer;
-    // ...find user and set subscriptionType: 'free'
+    res.json({ received: true });
+  } catch (err) {
+    console.error("[STRIPE WEBHOOK] Error handling Stripe webhook:", err, {
+      eventType: event?.type,
+      eventId: event?.id
+    });
+    res.status(500).send("Internal webhook error");
   }
-
-  res.json({ received: true });
 });
 
 // Export the function
 export const stripeWebhook = functions.https.onRequest(app);
+export { createStripePortalSession, createStripeCheckoutSession };
