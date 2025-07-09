@@ -32,6 +32,13 @@ describe("useGetItinerariesFromFirestore", () => {
     (collection as jest.Mock).mockReturnValue({});
     (getDocs as jest.Mock).mockImplementation(mockGetDocs);
 
+    // Mock localStorage to return a valid user
+    const userCredentials = { user: { uid: mockUserId } };
+    jest.spyOn(window.localStorage.__proto__, 'getItem').mockImplementation((key) => {
+      if (key === "USER_CREDENTIALS") return JSON.stringify(userCredentials);
+      return null;
+    });
+
     const { result } = renderHook(() => useGetItinerariesFromFirestore());
 
     // Act
@@ -42,5 +49,8 @@ describe("useGetItinerariesFromFirestore", () => {
     expect(collection).toHaveBeenCalledWith({}, `itineraries`);
     expect(getDocs).toHaveBeenCalled();
     expect(itineraries).toEqual(mockItineraries);
+
+    // Restore localStorage mock
+    (window.localStorage.getItem as jest.Mock).mockRestore?.();
   });
 });

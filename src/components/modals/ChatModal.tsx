@@ -1,3 +1,4 @@
+import { useGetUserProfilePhoto } from "../../hooks/useGetUserProfilePhoto";
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -36,7 +37,6 @@ function getOtherUser(connection: Connection, userId: string) {
   if (!Array.isArray(connection.itineraries)) {
     return {
       username: "Unknown",
-      photoURL: DEFAULT_AVATAR,
       uid: "",
     };
   }
@@ -46,7 +46,6 @@ function getOtherUser(connection: Connection, userId: string) {
   return (
     otherItinerary?.userInfo || {
       username: "Unknown",
-      photoURL: DEFAULT_AVATAR,
       uid: "",
     }
   );
@@ -63,10 +62,9 @@ function getOtherItinerary(connection: Connection, userId: string) {
 interface ChatModalProps {
   open: boolean;
   onClose: () => void;
-  connection: Connection;
-  messages: Message[];
+  connection: import("../../types/Connection").Connection;
+  messages: import("../../types/Message").Message[];
   userId: string;
-  otherUserPhotoURL: string;
   onPullToRefresh: () => Promise<void>;
   hasMoreMessages: boolean;
 }
@@ -77,7 +75,6 @@ const ChatModal: React.FC<ChatModalProps> = ({
   connection,
   messages,
   userId,
-  otherUserPhotoURL,
   onPullToRefresh,
   hasMoreMessages,
 }) => {
@@ -151,7 +148,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
     // 2. Update the recipient's unread message count
     const connectionRef = doc(db, "connections", connection.id);
-    const recipientId = connection.users.find((uid) => uid !== userId);
+    const recipientId = connection.users.find((uid: string) => uid !== userId);
     await updateDoc(connectionRef, {
       [`unreadCounts.${recipientId}`]: increment(1),
     });
@@ -162,6 +159,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
   const otherUser = getOtherUser(connection, userId);
   const otherItinerary = getOtherItinerary(connection, userId);
+  const otherUserPhotoURL = useGetUserProfilePhoto(otherUser.uid);
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
 
   return (
@@ -219,7 +217,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
               background: "#fafafa",
               p: 2,
             }}>
-            {messages.map((msg, idx) => {
+            {messages.map((msg: Message, idx: number) => {
               return (
                 <Box
                   key={msg.id}

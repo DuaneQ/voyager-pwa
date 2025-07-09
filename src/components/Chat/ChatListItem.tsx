@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   ListItem,
@@ -6,9 +7,13 @@ import {
   Avatar,
   ListItemButton,
   Badge,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import { Connection } from "../../types/Connection";
 import { useGetUserProfilePhoto } from "../../hooks/useGetUserProfilePhoto";
+import { useRemoveConnection } from "../../hooks/useRemoveConnection";
 
 const DEFAULT_AVATAR = "/default-profile.png";
 
@@ -39,6 +44,7 @@ function getOtherItinerary(connection: Connection, userId: string) {
   );
 }
 
+
 export const ChatListItem: React.FC<{
   conn: Connection;
   userId: string;
@@ -47,7 +53,16 @@ export const ChatListItem: React.FC<{
 }> = ({ conn, userId, onClick, unread }) => {
   const otherUser = getOtherUser(conn, userId);
   const otherItinerary = getOtherItinerary(conn, userId);
+  // Returns the profile slot photo
   const otherUserPhoto = useGetUserProfilePhoto(otherUser.uid);
+  const removeConnection = useRemoveConnection();
+
+  const handleUnconnect = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to remove this connection?")) {
+      await removeConnection(conn.id);
+    }
+  };
 
   return (
     <ListItem
@@ -102,6 +117,11 @@ export const ChatListItem: React.FC<{
           }
         />
       </ListItemButton>
+      <Tooltip title="Remove Connection">
+        <IconButton onClick={handleUnconnect} edge="end" aria-label="unconnect">
+          <RemoveCircleOutlineIcon />
+        </IconButton>
+      </Tooltip>
     </ListItem>
   );
 };

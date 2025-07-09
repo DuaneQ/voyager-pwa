@@ -8,6 +8,7 @@ import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage
 
 const IMAGE_SIZE = 120; // px
 
+
 export const PhotoGrid = () => {
   const { uploadImage } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -15,22 +16,22 @@ export const PhotoGrid = () => {
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(
-    null
-  );
-  const [loading, setLoading] = useState(false); // Track loading state
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleUploadPic(): void {
+  // Define slots for additional photos
+  const slots = ["slot1", "slot2", "slot3", "slot4"];
+
+  function handleUploadPic() {
     fileRef.current?.click();
     setMenuAnchor(null);
   }
 
-  async function handleDeletePic(): Promise<void> {
-    if (userProfile && selectedPhotoIndex !== null) {
-      setLoading(true); // Set loading to true
+  async function handleDeletePic() {
+    if (userProfile && selectedSlot) {
+      setLoading(true);
       try {
-        const updatedPhotos = [...userProfile.photos];
-        updatedPhotos[selectedPhotoIndex] = ""; // Remove the selected photo
+        const updatedPhotos = { ...(userProfile.photos || {}), [selectedSlot]: "" };
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
         updateUserProfile(updatedUserProfile);
         setUserStorageData(updatedUserProfile);
@@ -38,22 +39,19 @@ export const PhotoGrid = () => {
       } catch (error) {
         console.error("Error deleting photo:", error);
       } finally {
-        setLoading(false); // Set loading to false
+        setLoading(false);
         setMenuAnchor(null);
       }
     }
   }
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (event.target.files && selectedPhotoIndex !== null) {
-      setLoading(true); // Set loading to true
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && selectedSlot && userProfile) {
+      setLoading(true);
       try {
         const file = event.target.files[0];
-        const url = await uploadImage(file, selectedPhotoIndex);
-        const updatedPhotos = [...userProfile.photos];
-        updatedPhotos[selectedPhotoIndex] = url;
+        const url = await uploadImage(file, selectedSlot);
+        const updatedPhotos = { ...(userProfile.photos || {}), [selectedSlot]: url };
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
         updateUserProfile(updatedUserProfile);
         setUserStorageData(updatedUserProfile);
@@ -61,22 +59,16 @@ export const PhotoGrid = () => {
       } catch (error) {
         console.error("Error uploading photo:", error);
       } finally {
-        setLoading(false); // Set loading to false
+        setLoading(false);
         setMenuAnchor(null);
-        if (fileRef.current) {
-          fileRef.current.value = ""; // Reset the file input
-        }
+        if (fileRef.current) fileRef.current.value = "";
       }
     }
   };
 
-  const handlePhotoClick = (
-    event: React.MouseEvent<HTMLElement>,
-    index: number
-  ) => {
+  const handlePhotoClick = (event: React.MouseEvent<HTMLElement>, slot: string) => {
     if (!loading) {
-      // Prevent menu interaction while loading
-      setSelectedPhotoIndex(index);
+      setSelectedSlot(slot);
       setMenuAnchor(event.currentTarget);
     }
   };
@@ -84,16 +76,10 @@ export const PhotoGrid = () => {
   return (
     <>
       <Grid container spacing={2} px={1}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Grid item xs={6} key={index} display="flex" justifyContent="center">
+        {slots.map((slot, index) => (
+          <Grid item xs={6} key={slot} display="flex" justifyContent="center">
             <img
-              src={
-                userProfile?.photos &&
-                userProfile?.photos.length > index &&
-                userProfile?.photos[index]
-                  ? userProfile?.photos[index]
-                  : profilePlaceholder
-              }
+              src={userProfile?.photos?.[slot] ? userProfile.photos[slot] : profilePlaceholder}
               alt={`Profile Placeholder ${index + 1}`}
               style={{
                 width: IMAGE_SIZE,
@@ -105,7 +91,7 @@ export const PhotoGrid = () => {
                 opacity: loading ? 0.5 : 1,
                 boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
               }}
-              onClick={(event) => handlePhotoClick(event, index)}
+              onClick={(event) => handlePhotoClick(event, slot)}
             />
           </Grid>
         ))}
@@ -115,7 +101,7 @@ export const PhotoGrid = () => {
         inputRef={fileRef}
         onChange={handleFileChange}
         inputProps={{
-          accept: "image/*", // Restrict to image files
+          accept: "image/*",
           "data-testid": "file-input",
         }}
         style={{ display: "none" }}
@@ -123,33 +109,20 @@ export const PhotoGrid = () => {
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => !loading && setMenuAnchor(null)} // Prevent closing while loading
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        autoFocus={false}>
+        onClose={() => !loading && setMenuAnchor(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+        autoFocus={false}
+      >
         {loading ? (
           <MenuItem disabled>
             <CircularProgress size={24} />
           </MenuItem>
-        ) : (
-          [
-            <MenuItem key="upload" onClick={handleUploadPic}>
-              Upload Pic
-            </MenuItem>,
-            <MenuItem key="delete" onClick={handleDeletePic}>
-              Delete Pic
-            </MenuItem>,
-            <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>
-              Cancel
-            </MenuItem>,
-          ]
-        )}
+        ) : [
+          <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
+          <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
+          <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
+        ]}
       </Menu>
     </>
   );

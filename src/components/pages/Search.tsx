@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Select,
   MenuItem,
@@ -52,12 +53,27 @@ function saveViewedItinerary(itinerary: Itinerary) {
 }
 
 export const Search = React.memo(() => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [checkoutStatus, setCheckoutStatus] = useState<null | 'success' | 'cancel'>(null);
+  // Detect Stripe checkout result from query param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const checkout = params.get('checkout');
+    if (checkout === 'success' || checkout === 'cancel') {
+      setCheckoutStatus(checkout);
+      // Remove the query param from the URL after showing the message
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('checkout');
+      navigate({ search: newParams.toString() }, { replace: true });
+    }
+  }, [location.search, navigate]);
   useGetUserProfile();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string>("");
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
-  const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
 
   const {
     matchingItineraries,
@@ -105,16 +121,14 @@ export const Search = React.memo(() => {
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
     const loadItineraries = async () => {
+      setIsFetching(true);
       try {
         const fetchedItineraries = await fetchItineraries();
-        if (!fetchedItineraries || fetchedItineraries.length === 0) {
-          setLoading(true);
-        } else {
-          setLoading(false);
-          setItineraries(fetchedItineraries);
-        }
+        setItineraries(fetchedItineraries || []);
       } catch (error) {
         console.error("Error loading itineraries:", error);
+      } finally {
+        setIsFetching(false);
       }
     };
     loadItineraries();
@@ -125,26 +139,15 @@ export const Search = React.memo(() => {
     checkForMoreMatches(currentMatchIndex);
   }, [currentMatchIndex, checkForMoreMatches]);
 
-  // SubscriptionCard visibility state
-  const [showSubscription, setShowSubscription] = useState(true);
-
-  // Handle itinerary selection from dropdown
+  // SubscriptionCard is always visible (floating/compact)
   const handleItinerarySelect = (id: string) => {
     setSelectedItineraryId(id);
     const selected = itineraries.find((itinerary) => itinerary.id === id);
     if (selected && userId) {
       setCurrentMatchIndex(0);
       searchItineraries(selected, userId);
-      if (itineraries.length > 0) setShowSubscription(false);
     }
   };
-
-  // Show SubscriptionCard again if search results are empty
-  useEffect(() => {
-    if (matchingItineraries.length === 0) {
-      setShowSubscription(true);
-    }
-  }, [matchingItineraries.length]);
 
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
@@ -256,10 +259,24 @@ export const Search = React.memo(() => {
         overflow: "hidden",
       }}>
 
-      {/* Subscription Card - compact, bottom left, only when not searching */}
-      {showSubscription && (
-        <SubscriptionCard compact />
+      {/* Stripe Checkout status message */}
+      {checkoutStatus === 'success' && (
+        <Box sx={{ position: 'fixed', top: 16, left: 0, right: 0, zIndex: 2000, display: 'flex', justifyContent: 'center' }}>
+          <Typography sx={{ background: '#e0ffe0', color: '#1b5e20', px: 3, py: 1, borderRadius: 2, boxShadow: 2, fontWeight: 600 }}>
+            Payment successful! Your subscription is now active.
+          </Typography>
+        </Box>
       )}
+      {checkoutStatus === 'cancel' && (
+        <Box sx={{ position: 'fixed', top: 16, left: 0, right: 0, zIndex: 2000, display: 'flex', justifyContent: 'center' }}>
+          <Typography sx={{ background: '#fff3e0', color: '#bf360c', px: 3, py: 1, borderRadius: 2, boxShadow: 2, fontWeight: 600 }}>
+            Payment canceled. No changes were made to your subscription.
+          </Typography>
+        </Box>
+      )}
+
+      {/* Subscription Card - always visible, floating bottom left */}
+      <SubscriptionCard compact />
       {/* Beta Banner - Position it at the very top */}
       {!bannerDismissed && (
         <Box sx={{ position: 'relative', zIndex: 1000, mt: 8, mb: 3 }}>
@@ -351,7 +368,8 @@ export const Search = React.memo(() => {
           overflow: "hidden",
           minHeight: 0,
         }}>
-        {loading && (
+        {/* Show onboarding message if user has never created an itinerary */}
+        {!isFetching && itineraries.length === 0 && (
           <Typography
             variant="body1"
             sx={{
@@ -365,6 +383,8 @@ export const Search = React.memo(() => {
             created, select one of your itineraries from the dropdown, and we'll
             match you with others based on destination, dates, and preferences.
             Once matched, you can chat and plan your adventures together.
+            Free tier offers 20 daily views of itineraries. 
+            Upgrade to Premium for unlimited views $4 per month.
           </Typography>
         )}
 
@@ -377,20 +397,19 @@ export const Search = React.memo(() => {
           />
         )}
 
-        {/* Show loading when searching or loading more */}
-        {searchLoading && !currentMatch && (
+        {/* Show loading when searching or loading more, but only if user has itineraries */}
+        {searchLoading && !currentMatch && itineraries.length > 0 && (
           <Typography sx={{ padding: 2 }}>
             Searching for matches...
           </Typography>
         )}
 
-        {/* Show end message with loading state */}
-        {isAtEnd && !searchLoading && (
+        {/* Show end message with loading state, only if user has itineraries */}
+        {isAtEnd && !searchLoading && itineraries.length > 0 && (
           <Box sx={{ textAlign: 'center', padding: 2 }}>
             <Typography>
               {hasMore
                 ? "Loading more matches..."
-
                 : "No more itineraries to view."
               }
             </Typography>

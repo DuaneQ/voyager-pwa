@@ -78,4 +78,105 @@ describe('useUsageTracking', () => {
     });
     expect(result.current.getRemainingViews()).toBe(15);
   });
+
+  it('should track a view for free user and update profile/localStorage', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    updateDoc.mockResolvedValueOnce();
+    const userProfile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 5 },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(userProfile),
+    });
+    // Mock localStorage
+    const setItemSpy = jest.spyOn(window.localStorage.__proto__, 'setItem');
+    setItemSpy.mockImplementation(() => {});
+    const success = await result.current.trackView();
+    expect(success).toBe(true);
+    expect(updateDoc).toHaveBeenCalled();
+    expect(mockUpdateUserProfile).toHaveBeenCalled();
+    expect(setItemSpy).toHaveBeenCalled();
+    setItemSpy.mockRestore();
+  });
+
+  it('should not track a view if user is premium', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    updateDoc.mockClear();
+    const premiumProfile = {
+      subscriptionType: 'premium',
+      subscriptionEndDate: '2099-12-31',
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 5 },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(premiumProfile),
+    });
+    const success = await result.current.trackView();
+    expect(success).toBe(true); // Premium users always succeed
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('should treat cancelled premium as premium until end date', () => {
+    const cancelledProfile = {
+      subscriptionType: 'premium',
+      subscriptionEndDate: '2099-12-31',
+      subscriptionCancelled: true,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 5 },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(cancelledProfile),
+    });
+    expect(result.current.hasPremium()).toBe(true);
+  });
+
+  it('should reset daily usage and update profile/localStorage', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    const getDoc = require('firebase/firestore').getDoc;
+    updateDoc.mockResolvedValueOnce();
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({
+        subscriptionType: 'free',
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 0 },
+      }),
+    });
+    const userProfile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 5 },
+    };
+    const setItemSpy = jest.spyOn(window.localStorage.__proto__, 'setItem');
+    setItemSpy.mockImplementation(() => {});
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(userProfile),
+    });
+    await result.current.resetDailyUsage();
+    expect(updateDoc).toHaveBeenCalled();
+    expect(getDoc).toHaveBeenCalled();
+    expect(mockUpdateUserProfile).toHaveBeenCalled();
+    expect(setItemSpy).toHaveBeenCalled();
+    setItemSpy.mockRestore();
+  });
+
+  it('should handle error in trackView gracefully', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    updateDoc.mockRejectedValueOnce(new Error('Firestore error'));
+    const userProfile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 5 },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(userProfile),
+    });
+    const success = await result.current.trackView();
+    expect(success).toBe(false);
+  });
 });

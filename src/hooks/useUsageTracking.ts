@@ -24,7 +24,7 @@ export const useUsageTracking = () => {
     if (!userProfile.subscriptionEndDate) return false;
     const now = new Date();
     const end = new Date(userProfile.subscriptionEndDate);
-    return now <= end && !userProfile.subscriptionCancelled;
+    return now <= end;
   };
 
   const hasReachedLimit = useCallback(() => {
@@ -73,6 +73,11 @@ export const useUsageTracking = () => {
       return false;
     }
 
+    // Premium users: unlimited, do not update usage or Firestore
+    if (hasPremium()) {
+      return true;
+    }
+
     // Check if user has reached limit
     if (hasReachedLimit()) {
       console.log('User has reached daily limit');
@@ -84,46 +89,36 @@ export const useUsageTracking = () => {
     try {
       const today = getTodayString();
       const currentUsage = userProfile.dailyUsage;
-      
       let newViewCount = 1;
-      
-      // If usage exists and is for today, increment count
       if (currentUsage && currentUsage.date === today) {
         newViewCount = currentUsage.viewCount + 1;
       }
-
       const updatedUsage = {
         date: today,
         viewCount: newViewCount
       };
-
       // Update Firestore
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
         dailyUsage: updatedUsage
       });
-
       // Update local context
       const updatedProfile = {
         ...userProfile,
         dailyUsage: updatedUsage
       };
-      
       updateUserProfile(updatedProfile);
-      
       // Update localStorage
       localStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
-
       console.log(`View tracked. Count: ${newViewCount}/${FREE_DAILY_LIMIT}`);
       return true;
-
     } catch (error) {
       console.error('Error tracking view:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [userId, userProfile, hasReachedLimit, updateUserProfile, db]);
+  }, [userId, userProfile, hasReachedLimit, hasPremium, updateUserProfile, db]);
 
   // Reset daily usage (for testing or admin purposes)
   const resetDailyUsage = useCallback(async () => {
