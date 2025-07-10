@@ -68,4 +68,50 @@ This document explains how the logic for adding and removing users from a group 
 
 ---
 
+
+---
+
+## Database Structure & Diagram
+
+### Firestore `connections` Collection
+
+Each group chat is represented by a document in the `connections` collection. The relevant fields for member management are:
+
+```
+connections (collection)
+  └─ {connectionId} (document)
+      ├─ users: [uid, ...]                // Array of user UIDs in the chat
+      ├─ addedUsers: [                    // Array of objects tracking who added whom
+      │     {
+      │       userId: string,             // UID of the user who was added
+      │       addedBy: string             // UID of the user who added them
+      │     },
+      │     ...
+      │   ]
+      ├─ itineraries: [ ... ]             // (Other chat metadata, not shown)
+      └─ ... (other fields)
+```
+
+### Diagram
+
+```mermaid
+erDiagram
+  CONNECTION {
+    string id
+    string[] users
+    AddedUser[] addedUsers
+    ...
+  }
+  AddedUser {
+    string userId
+    string addedBy
+  }
+  CONNECTION ||--o{ AddedUser : has
+```
+
+**Explanation:**
+- `users` is a flat array of all user UIDs in the chat.
+- `addedUsers` is an array of objects, each recording which user (`userId`) was added and by whom (`addedBy`).
+- This structure allows the app to enforce that only the adder can remove a user, and to display the correct UI.
+
 For further details, see the code and tests in the referenced files.

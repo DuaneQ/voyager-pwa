@@ -92,6 +92,12 @@ export const ChatModal: React.FC<ChatModalProps> = ({
   // Ref for the messages container
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Debug: Log the full connection object and addedUsers on every render
+  // eslint-disable-next-line no-console
+  console.log('[ChatModal] connection object:', connection);
+  // eslint-disable-next-line no-console
+  console.log('[ChatModal] connection.addedUsers:', connection.addedUsers);
+
   // UserId -> Username map (includes added users)
   const [userIdToUsername, setUserIdToUsername] = useState<Record<string, string>>({});
   // UserId -> Avatar URL map (fixes hook-in-loop bug)
@@ -241,6 +247,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
 
   // For user avatars in header
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
+  const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
 
   return (
     <>
@@ -263,28 +270,24 @@ export const ChatModal: React.FC<ChatModalProps> = ({
             <IconButton sx={{ ml: 0.5 }} onClick={() => setManageMembersOpen(true)} aria-label="Manage Members">
               <span style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>⋯</span>
             </IconButton>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                flex: 1,
-                fontWeight: 600,
-                textAlign: 'center',
-                ml: 0,
-                mr: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {(() => {
-                // Show destination from the first itinerary, fallback to 'Group Chat'
-                if (connection && Array.isArray(connection.itineraries) && connection.itineraries.length > 0) {
-                  const dest = connection.itineraries[0]?.destination;
-                  return dest || 'Group Chat';
-                }
-                return 'Group Chat';
-              })()}
-            </Typography>
+            {/* Avatars for all users in the chat */}
+            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center', gap: 1 }}>
+              {connection.users.map((uid) => (
+                <Avatar
+                  key={uid}
+                  src={userIdToAvatar[uid] || DEFAULT_AVATAR}
+                  alt={userIdToUsername[uid] || uid}
+                  sx={{ width: 32, height: 32, cursor: 'pointer', border: uid === userId ? '2px solid #1976d2' : '2px solid #fff' }}
+                  onClick={() => {
+                    setViewProfileUserId(uid);
+                    setViewProfileOpen(true);
+                  }}
+                  title={userIdToUsername[uid] || uid}
+                >
+                  {(userIdToUsername[uid] || uid)[0]}
+                </Avatar>
+              ))}
+            </Box>
             <IconButton sx={{ ml: 1 }} onClick={onClose} aria-label="Close">
               <CloseIcon />
             </IconButton>
@@ -425,11 +428,11 @@ export const ChatModal: React.FC<ChatModalProps> = ({
               {sending ? <CircularProgress size={20} /> : "Send"}
             </Button>
           </Box>
-          {/* Show profile modal for current user (or could be extended for others) */}
+          {/* Show profile modal for any user */}
           <ViewProfileModal
             open={viewProfileOpen}
             onClose={() => setViewProfileOpen(false)}
-            userId={userId}
+            userId={viewProfileUserId || userId}
           />
         </Box>
       </Modal>
@@ -438,22 +441,28 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         open={manageMembersOpen}
         onClose={() => setManageMembersOpen(false)}
         users={connection.users.map((uid) => {
-          // Find who added this user (if anyone)
           let addedBy = undefined;
           if (Array.isArray(connection.addedUsers)) {
-            const entry = connection.addedUsers.find((au) => au.userId === uid);
+            // eslint-disable-next-line no-console
+            console.log('[ChatModal] Looking for addedBy for uid:', uid, 'in addedUsers:', connection.addedUsers);
+            const entry = connection.addedUsers.find((au) => String(au.userId).trim() === String(uid).trim());
             if (entry) addedBy = entry.addedBy;
           }
-          return {
+          const userObj = {
             uid,
             username: userIdToUsername[uid] || uid,
             avatarUrl: userIdToAvatar[uid] || DEFAULT_AVATAR,
             addedBy,
           };
+          // eslint-disable-next-line no-console
+          console.log('[ChatModal] User for ManageChatMembersModal:', userObj);
+          return userObj;
         })}
         currentUserId={userId}
         removeUserLoading={removeUserLoading}
         onRemove={async (uid) => {
+          // eslint-disable-next-line no-console
+          console.log('[ChatModal] Remove user requested:', { uid, remover: userId, connectionId: connection.id });
           if (!window.confirm(`Remove ${userIdToUsername[uid] || uid} from chat?`)) return;
           setRemoveUserLoading(uid);
           try {
@@ -465,8 +474,14 @@ export const ChatModal: React.FC<ChatModalProps> = ({
           }
         }}
         onAddClick={() => {
+          // eslint-disable-next-line no-console
+          console.log('[ChatModal] Add user modal opened');
           setManageMembersOpen(false);
           setAddUserModalOpen(true);
+        }}
+        onViewProfile={(uid: string) => {
+          setViewProfileUserId(uid);
+          setViewProfileOpen(true);
         }}
       />
       {/* Add User Modal (opened from manage members modal) */}
@@ -476,6 +491,8 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         currentUserId={userId}
         currentChatUserIds={connection.users}
         onAdd={async (userIds) => {
+          // eslint-disable-next-line no-console
+          console.log('[ChatModal] Adding users to chat:', { userIds, adder: userId, connectionId: connection.id });
           setAddUserLoading(true);
           try {
             for (const uid of userIds) {

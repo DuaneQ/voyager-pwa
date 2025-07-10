@@ -75,6 +75,7 @@ export const Chat = React.memo(() => {
           itineraries: data.itineraries,
           createdAt: data.createdAt as Timestamp,
           unreadCounts: data.unreadCounts || {},
+          addedUsers: data.addedUsers || [], 
         };
       });
       setConnections(conns);
