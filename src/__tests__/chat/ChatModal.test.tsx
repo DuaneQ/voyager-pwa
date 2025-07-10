@@ -121,6 +121,11 @@ describe("ChatModal Component", () => {
       },
     ],
     createdAt: { seconds: 1672531200, nanoseconds: 0 } as any,
+    // Always include addedUsers for robust group chat logic
+    addedUsers: [
+      { userId: mockOtherUserId, addedBy: mockUserId },
+      { userId: mockUserId, addedBy: mockUserId },
+    ],
   };
 
   // Use the imported Timestamp which is now correctly mocked
@@ -160,19 +165,19 @@ describe("ChatModal Component", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with messages", () => {
+  it("renders correctly with messages", async () => {
     render(<ChatModal {...defaultProps} />);
 
-    // Check destination is displayed in the header
-    expect(screen.getByText("Paris")).toBeInTheDocument();
+    // Wait for avatars to appear (async effect)
+    expect(await screen.findByTitle("Current User")).toBeInTheDocument();
+    expect(await screen.findByTitle("Other User")).toBeInTheDocument();
 
     // Check messages are displayed in the right order (oldest to newest)
     const messages = screen.getAllByText(/Hello there!|Hi! How are you\?/);
     expect(messages[0].textContent).toBe("Hello there!");
     expect(messages[1].textContent).toBe("Hi! How are you?");
 
-    // FIX 1: Use data-testid instead of style checking
-    // Add data-testid attributes to the component first
+    // Use data-testid for message bubbles
     const currentUserMessage = screen
       .getByText("Hello there!")
       .closest('[data-testid="message-bubble"]');
@@ -180,19 +185,16 @@ describe("ChatModal Component", () => {
       .getByText("Hi! How are you?")
       .closest('[data-testid="message-bubble"]');
 
-    // Check class names or other attributes instead of direct styles
     expect(currentUserMessage).toHaveClass("current-user-message");
     expect(otherUserMessage).toHaveClass("other-user-message");
-
-    // Alternative: Check for a partial style match
-    // expect(currentUserMessage).toHaveStyle({ backgroundColor: expect.stringContaining('rgb(25, 118, 210)') });
   });
 
-  it("renders correctly with no messages", () => {
+  it("renders correctly with no messages", async () => {
     render(<ChatModal {...defaultProps} messages={mockEmptyMessages} />);
 
-    // Still shows the chat interface but no messages
-    expect(screen.getByText("Paris")).toBeInTheDocument();
+    // Wait for avatars to appear (async effect)
+    expect(await screen.findByTitle("Current User")).toBeInTheDocument();
+    expect(await screen.findByTitle("Other User")).toBeInTheDocument();
     expect(screen.queryByText("Hello there!")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Type a message")).toBeInTheDocument();
   });

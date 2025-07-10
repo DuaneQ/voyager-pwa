@@ -172,4 +172,35 @@ describe("ManageChatMembersModal", () => {
     expect(screen.getByLabelText("Remove Bob")).toBeDisabled();
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
+
+  it("calls onViewProfile when avatar is clicked or activated with keyboard", () => {
+    const onViewProfile = jest.fn();
+    render(
+      <ManageChatMembersModal
+        open={true}
+        onClose={() => {}}
+        users={users}
+        currentUserId={currentUserId}
+        onRemove={onRemove}
+        onAddClick={onAddClick}
+        removeUserLoading={null}
+        onViewProfile={onViewProfile}
+      />
+    );
+    // Find the profile button for Bob
+    const profileBtn = screen.getByLabelText("View profile of Bob");
+    fireEvent.click(profileBtn);
+    expect(onViewProfile).toHaveBeenCalledWith("2");
+    // Keyboard: Space
+    onViewProfile.mockClear();
+    fireEvent.keyDown(profileBtn, { key: " ", code: "Space" });
+    expect(onViewProfile).toHaveBeenCalledWith("2");
+    // Keyboard: Enter
+    onViewProfile.mockClear();
+    fireEvent.keyDown(profileBtn, { key: "Enter", code: "Enter" });
+    expect(onViewProfile).toHaveBeenCalledWith("2");
+    // Accessibility: has correct tabIndex and title
+    expect(profileBtn).toHaveAttribute("tabIndex", "0");
+    expect(profileBtn).toHaveAttribute("title", expect.stringContaining("View profile of Bob"));
+  });
 });

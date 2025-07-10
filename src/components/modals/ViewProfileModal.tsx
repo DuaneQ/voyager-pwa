@@ -90,6 +90,11 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setCanRate(false);
       return;
     }
+    // Prevent rating self
+    if (currentUserId === userId) {
+      setCanRate(false);
+      return;
+    }
     setCheckingConnection(true);
     const checkConnection = async () => {
       try {
@@ -589,9 +594,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     <TextField
                       label="Bio"
                       value={profile.bio || ""}
-                      InputProps={{ readOnly: true }}
+                      InputProps={{
+                        readOnly: true,
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
+                      }}
                       multiline
                       rows={2}
+                      variant="outlined"
+                      sx={{
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                      }}
                     />
                   </FormControl>
                   <FormControl>
@@ -600,22 +618,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={getAge(profile.dob)}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -626,22 +644,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile?.status || ""}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -652,22 +670,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.gender || ""}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -676,25 +694,24 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     <TextField
                       label="Sexual Orientation"
                       value={profile.sexualOrientation || ""}
-
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -705,22 +722,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.edu || ""}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -731,22 +748,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.drinking || ""}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />
@@ -757,22 +774,22 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.smoking || ""}
                       InputProps={{
                         readOnly: true,
-                        sx: {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
-                          "&::placeholder": {
-                            fontSize: { xs: "0.92rem", sm: "1rem" },
-                          },
-                        },
+                        disableUnderline: true,
+                        style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
-                      InputLabelProps={{
-                        sx: { fontSize: { xs: "0.92rem", sm: "1rem" } },
-                      }}
+                      variant="outlined"
                       sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiInputBase-input.Mui-disabled': {
+                          WebkitTextFillColor: '#222',
                         },
-                        "& .MuiInputLabel-root": {
-                          fontSize: { xs: "0.92rem", sm: "1rem" },
+                        '& .MuiOutlinedInput-root': {
+                          background: '#f5f5f5',
+                        },
+                        '& .MuiInputBase-input': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.92rem', sm: '1rem' },
                         },
                       }}
                     />

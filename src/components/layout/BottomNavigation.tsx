@@ -44,6 +44,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
       sx={{ width: "100%", position: "fixed", bottom: 0, bgcolor: "background.paper", // <-- Add this line
     zIndex: 1300, }}>
       <StyledBottomNavigationAction
+        label="Trips"
+        value="/Search"
+        icon={<SearchIcon />}
+      />
+      <StyledBottomNavigationAction
         label="Chat"
         value="/Chat"
         icon={
@@ -60,11 +65,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
         label="Profile"
         value="/"
         icon={<AccountCircleIcon />}
-      />
-      <StyledBottomNavigationAction
-        label="Search"
-        value="/Search"
-        icon={<SearchIcon />}
       />
     </BottomNavigation>
   );

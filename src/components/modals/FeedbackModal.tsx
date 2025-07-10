@@ -14,7 +14,6 @@ import {
   Box,
   Typography,
   Alert,
-  Chip,
   Rating,
   FormControlLabel,
   Checkbox,
@@ -118,26 +117,27 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     setSubmitError(null);
 
     try {
+      // --- PRODUCTION DEBUG ---
+      if (process.env.NODE_ENV === 'production') {
+        // eslint-disable-next-line no-console
+        console.log('[FeedbackModal] Production: app object:', app);
+        // eslint-disable-next-line no-console
+        console.log('[FeedbackModal] Production: userId:', userId);
+      }
       const db = getFirestore(app);
-      const feedbackDoc = {
-        // User info
+      // Build feedbackDoc with no undefined values
+      const feedbackDoc: Record<string, any> = {
         userId: userId || 'anonymous',
         userEmail: formData.includeContactInfo ? formData.contactEmail : null,
-        
-        // Feedback details
         type: formData.type,
         severity: formData.severity || null,
-        rating: formData.rating || null,
+        rating: typeof formData.rating === 'number' && formData.rating > 0 ? formData.rating : null,
         title: formData.title,
         description: formData.description,
         stepsToReproduce: formData.stepsToReproduce || null,
         expectedBehavior: formData.expectedBehavior || null,
         actualBehavior: formData.actualBehavior || null,
-        
-        // Technical info
         deviceInfo: getDeviceInfo(),
-        
-        // Metadata
         status: 'new',
         priority: formData.severity === 'critical' ? 'urgent' : 
                  formData.severity === 'high' ? 'high' : 'normal',
@@ -145,15 +145,18 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
         source: 'beta-app',
         version: process.env.REACT_APP_VERSION || '1.0.0-beta',
       };
-
+      // Remove any undefined fields (shouldn't be any, but for safety)
+      Object.keys(feedbackDoc).forEach(
+        (k) => feedbackDoc[k] === undefined && delete feedbackDoc[k]
+      );
+      // --- END PATCH ---
       await addDoc(collection(db, 'feedback'), feedbackDoc);
-      
       setSubmitSuccess(true);
       setTimeout(() => {
         handleClose();
       }, 2000);
-      
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error submitting feedback:', error);
       setSubmitError('Failed to submit feedback. Please try again.');
     } finally {

@@ -15,14 +15,23 @@ import { removeUserFromConnection } from "../../utils/connectionUtils";
 
 const DEFAULT_AVATAR = "/default-profile.png";
 
+
+type ChatMember = {
+  uid: string;
+  username: string;
+  avatarUrl: string;
+  addedBy?: string;
+};
+
 interface ManageChatMembersModalProps {
   open: boolean;
   onClose: () => void;
-  users: { uid: string; username: string; avatarUrl: string; addedBy?: string }[];
+  users: ChatMember[];
   currentUserId: string;
   onRemove: (uid: string) => Promise<void>;
   onAddClick: () => void;
   removeUserLoading: string | null;
+  onViewProfile: (uid: string) => void;
 }
 
 export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
@@ -33,7 +42,11 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
   onRemove,
   onAddClick,
   removeUserLoading,
+  onViewProfile,
 }) => {
+  // Debug: log all users and currentUserId on every render
+  // eslint-disable-next-line no-console
+  console.log('[ManageChatMembersModal] users:', users, 'currentUserId:', currentUserId);
   return (
     <Modal
       open={open}
@@ -57,7 +70,7 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
       >
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <Typography id="manage-chat-members-title" variant="h6" sx={{ flex: 1 }}>
-            Travel Buddies
+            Traval Buddies
           </Typography>
           <IconButton onClick={onClose} aria-label="Close dialog" tabIndex={0}>
             <CloseIcon />
@@ -69,7 +82,7 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
               No members in this chat yet.
             </Typography>
           ) : (
-            users.map((user) => (
+            users.map((user: ChatMember) => (
               <Box
                 key={user.uid}
                 sx={{
@@ -90,18 +103,46 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
                 onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px #1976d2'}
                 onBlur={e => e.currentTarget.style.boxShadow = user.uid === currentUserId ? '0' : '0 1px 2px rgba(0,0,0,0.03)'}
               >
-                <Avatar
-                  src={user.avatarUrl || DEFAULT_AVATAR}
-                  alt={user.username}
-                  sx={{ mr: 2, width: 36, height: 36 }}
+                <Box
+                  component="button"
+                  onClick={() => onViewProfile(user.uid)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onViewProfile(user.uid);
+                    }
+                  }}
+                  tabIndex={0}
+                  aria-label={`View profile of ${user.username}${user.uid === currentUserId ? ' (You)' : ''}`}
+                  sx={{
+                    border: 'none',
+                    background: 'none',
+                    p: 0,
+                    m: 0,
+                    mr: 2,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    borderRadius: '50%',
+                    boxShadow: 'none',
+                    '&:focus-visible': {
+                      boxShadow: '0 0 0 2px #1976d2',
+                    },
+                  }}
+                  title={`View profile of ${user.username}${user.uid === currentUserId ? ' (You)' : ''}`}
                 >
-                  {user.username[0]}
-                </Avatar>
+                  <Avatar
+                    src={user.avatarUrl || DEFAULT_AVATAR}
+                    alt={user.username}
+                    sx={{ width: 36, height: 36 }}
+                  >
+                    {user.username[0]}
+                  </Avatar>
+                </Box>
                 <Typography
                   variant="body2"
                   sx={{ flex: 1, fontWeight: user.uid === currentUserId ? 600 : 400, ml: 1 }}
                 >
-                  {user.username}
+                  <span tabIndex={-1}>{user.username}</span>
                   {user.uid === currentUserId && (
                     <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(You)</span>
                   )}
@@ -113,7 +154,11 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
                     aria-label={`Remove ${user.username}`}
                     aria-disabled={removeUserLoading === user.uid}
                     disabled={removeUserLoading === user.uid}
-                    onClick={() => onRemove(user.uid)}
+                    onClick={() => {
+                      // eslint-disable-next-line no-console
+                      console.log('[ManageChatMembersModal] Remove clicked:', user.uid, user.username, user.addedBy);
+                      onRemove(user.uid);
+                    }}
                     tabIndex={0}
                     sx={{ ml: 1 }}
                     title={`Remove ${user.username} (You added them)`}
