@@ -1,10 +1,11 @@
 import React, { useRef, useState, useContext } from "react";
-import { Menu, MenuItem, Grid, Input, CircularProgress } from "@mui/material";
+import { Menu, MenuItem, Grid, Input, CircularProgress, Alert } from "@mui/material";
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
+import { validateImageFile } from "../../utils/validateImageFile";
 
 const IMAGE_SIZE = 120; // px
 
@@ -18,6 +19,7 @@ export const PhotoGrid = () => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Define slots for additional photos
   const slots = ["slot1", "slot2", "slot3", "slot4"];
@@ -28,6 +30,7 @@ export const PhotoGrid = () => {
   }
 
   async function handleDeletePic() {
+    setError(null);
     if (userProfile && selectedSlot) {
       setLoading(true);
       try {
@@ -37,6 +40,7 @@ export const PhotoGrid = () => {
         setUserStorageData(updatedUserProfile);
         setUserDbData(updatedUserProfile);
       } catch (error) {
+        setError("Error deleting photo.");
         console.error("Error deleting photo:", error);
       } finally {
         setLoading(false);
@@ -46,10 +50,17 @@ export const PhotoGrid = () => {
   }
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     if (event.target.files && selectedSlot && userProfile) {
+      const file = event.target.files[0];
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setError(validationError);
+        if (fileRef.current) fileRef.current.value = "";
+        return;
+      }
       setLoading(true);
       try {
-        const file = event.target.files[0];
         const url = await uploadImage(file, selectedSlot);
         const updatedPhotos = { ...(userProfile.photos || {}), [selectedSlot]: url };
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
@@ -57,6 +68,7 @@ export const PhotoGrid = () => {
         setUserStorageData(updatedUserProfile);
         setUserDbData(updatedUserProfile);
       } catch (error) {
+        setError("Error uploading photo.");
         console.error("Error uploading photo:", error);
       } finally {
         setLoading(false);
@@ -96,6 +108,7 @@ export const PhotoGrid = () => {
           </Grid>
         ))}
       </Grid>
+      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>}
       <Input
         type="file"
         inputRef={fileRef}

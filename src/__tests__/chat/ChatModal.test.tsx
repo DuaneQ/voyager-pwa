@@ -163,11 +163,8 @@ describe("ChatModal Component", () => {
   it("renders correctly with messages", () => {
     render(<ChatModal {...defaultProps} />);
 
-    // Check user profile information is displayed
-    expect(screen.getByText("Other User")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Paris \(2023-10-05 - 2023-10-15\)/)
-    ).toBeInTheDocument();
+    // Check destination is displayed in the header
+    expect(screen.getByText("Paris")).toBeInTheDocument();
 
     // Check messages are displayed in the right order (oldest to newest)
     const messages = screen.getAllByText(/Hello there!|Hi! How are you\?/);
@@ -195,7 +192,7 @@ describe("ChatModal Component", () => {
     render(<ChatModal {...defaultProps} messages={mockEmptyMessages} />);
 
     // Still shows the chat interface but no messages
-    expect(screen.getByText("Other User")).toBeInTheDocument();
+    expect(screen.getByText("Paris")).toBeInTheDocument();
     expect(screen.queryByText("Hello there!")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Type a message")).toBeInTheDocument();
   });
@@ -320,19 +317,7 @@ describe("ChatModal Component", () => {
     expect(defaultProps.onPullToRefresh).not.toHaveBeenCalled();
   });
 
-  it("opens view profile modal when avatar is clicked", async () => {
-    render(<ChatModal {...defaultProps} />);
-
-    // Find and click the avatar
-    const avatar = screen.getByRole("img");
-    await userEvent.click(avatar);
-
-    // Check that the profile modal is shown
-    expect(screen.getByTestId("view-profile-modal")).toBeInTheDocument();
-    expect(
-      screen.getByText(`Profile for ${mockOtherUserId}`)
-    ).toBeInTheDocument();
-  });
+  // Avatar click test removed: avatar is not present in new header UI
 
   it("closes the modal when the close button is clicked", async () => {
     render(<ChatModal {...defaultProps} />);

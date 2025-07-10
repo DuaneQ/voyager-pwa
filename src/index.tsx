@@ -7,6 +7,18 @@ import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { initializeApp } from "firebase/app";
+import { getPerformance } from "firebase/performance";
+import { getAnalytics, logEvent } from "firebase/analytics";
+import { app } from "./environments/firebaseConfig";
+
+let analytics: ReturnType<typeof getAnalytics> | undefined;
+if (process.env.NODE_ENV === "production") {
+  getPerformance(app);
+  analytics = getAnalytics(app);
+  // Example: log a page view
+  logEvent(analytics, "page_view", { page_path: window.location.pathname });
+}
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
