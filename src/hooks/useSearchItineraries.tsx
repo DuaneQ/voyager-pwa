@@ -126,12 +126,18 @@ const useSearchItineraries = () => {
     const { currentUserItinerary } = params;
     const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
 
-    // Build query constraints with proper typing
+    // Build query constraints with proper typing, skip filters if 'No Preference' or empty
     const constraints: QueryConstraint[] = [
       where("destination", "==", currentUserItinerary.destination),
-      where("userInfo.gender", "==", currentUserItinerary.gender),
-      where("userInfo.status", "==", currentUserItinerary.userInfo?.status),
-      where("userInfo.sexualOrientation", "==", currentUserItinerary.sexualOrientation),
+      ...(currentUserItinerary.gender && currentUserItinerary.gender !== "No Preference"
+        ? [where("userInfo.gender", "==", currentUserItinerary.gender)]
+        : []),
+      ...(currentUserItinerary.userInfo?.status && currentUserItinerary.userInfo.status !== "No Preference"
+        ? [where("userInfo.status", "==", currentUserItinerary.userInfo.status)]
+        : []),
+      ...(currentUserItinerary.sexualOrientation && currentUserItinerary.sexualOrientation !== "No Preference"
+        ? [where("userInfo.sexualOrientation", "==", currentUserItinerary.sexualOrientation)]
+        : []),
       where("endDay", ">=", userStartDay),
       orderBy("endDay"),
       limit(20) // Fetch 20 at a time

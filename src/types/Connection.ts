@@ -8,4 +8,5 @@ export interface Connection {
   itineraries: Itinerary[];
   createdAt: Timestamp;
   unreadCounts: { [userId: string]: number };
+  addedUsers?: Array<{ userId: string; addedBy: string }>;
 }

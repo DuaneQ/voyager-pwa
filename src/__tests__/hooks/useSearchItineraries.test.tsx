@@ -498,6 +498,50 @@ describe("useSearchItineraries", () => {
         jest.mock("../../utils/searchCache");
       });
 
+      describe('No Preference Query Filter Logic', () => {
+        it('should add gender, status, and sexualOrientation filters if not No Preference', async () => {
+          const { result } = renderHook(() => useSearchItineraries());
+          const itinerary = {
+            ...baseUserItinerary,
+            gender: 'Female',
+            status: 'single',
+            sexualOrientation: 'heterosexual',
+            userInfo: {
+              ...baseUserItinerary.userInfo,
+              status: 'single',
+            },
+          };
+          // @ts-ignore
+          await act(async () => {
+            await result.current.searchItineraries(itinerary, currentUserId);
+          });
+          expect(where).toHaveBeenCalledWith('userInfo.gender', '==', 'Female');
+          expect(where).toHaveBeenCalledWith('userInfo.status', '==', 'single');
+          expect(where).toHaveBeenCalledWith('userInfo.sexualOrientation', '==', 'heterosexual');
+        });
+
+        it('should skip gender, status, and sexualOrientation filters if set to No Preference', async () => {
+          const { result } = renderHook(() => useSearchItineraries());
+          const itinerary = {
+            ...baseUserItinerary,
+            gender: 'No Preference',
+            status: 'No Preference',
+            sexualOrientation: 'No Preference',
+            userInfo: {
+              ...baseUserItinerary.userInfo,
+              status: 'No Preference',
+            },
+          };
+          // @ts-ignore
+          await act(async () => {
+            await result.current.searchItineraries(itinerary, currentUserId);
+          });
+          expect(where).not.toHaveBeenCalledWith('userInfo.gender', '==', 'No Preference');
+          expect(where).not.toHaveBeenCalledWith('userInfo.status', '==', 'No Preference');
+          expect(where).not.toHaveBeenCalledWith('userInfo.sexualOrientation', '==', 'No Preference');
+        });
+      });
+
       test("should persist cache across page refreshes (integration test)", () => {
         // Store the current mock localStorage  
         const mockLS = window.localStorage;
