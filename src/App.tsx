@@ -11,6 +11,7 @@
  */
 
 import { SnackbarProvider, useSnackbar } from "notistack";
+import { getAnalytics, logEvent } from "firebase/analytics";
 import "./App.css";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
@@ -32,6 +33,23 @@ import { app } from "./environments/firebaseConfig";
 import { BetaBanner } from "./components/utilities/BetaBanner";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { TermsGuard } from "./components/auth/TermsGuard";
+
+// AnalyticsTracker logs a page_view event on every route change
+function AnalyticsTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") {
+      try {
+        const analytics = getAnalytics();
+        logEvent(analytics, "page_view", { page_path: location.pathname });
+      } catch (e) {
+        // Analytics not initialized or not supported
+      }
+    }
+  }, [location]);
+  return null;
+}
+
 const messaging = getMessaging(app);
 
 function App() {
@@ -68,6 +86,7 @@ function App() {
       <AlertProvider>
         <Header />
         <NewConnectionProvider>
+          <AnalyticsTracker />
           <div
             style={{
               display: "flex",
@@ -123,7 +142,6 @@ function App() {
             {!hideBottomNav && <BottomNav />}
           </div>
         </NewConnectionProvider>
-        
         {/* Floating Feedback Button - shows on all pages except login/register */}
         {!hideBottomNav && <FeedbackButton position="bottom-right" />}
       </AlertProvider>
