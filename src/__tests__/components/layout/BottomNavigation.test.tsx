@@ -40,7 +40,7 @@ describe("BottomNav", () => {
     renderWithRouter();
     expect(screen.getAllByText(/chat/i, { exact: false })[0]).toBeInTheDocument();
     expect(screen.getAllByText(/profile/i, { exact: false })[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/search/i, { exact: false })[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/trips/i, { exact: false })[0]).toBeInTheDocument();
   });
 
   it("shows unread badge on Chat when unreadCount > 0", () => {

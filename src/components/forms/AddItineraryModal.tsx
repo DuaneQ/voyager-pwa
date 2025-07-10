@@ -335,6 +335,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 gender: e.target.value,
               }))
             }>
+            <MenuItem value="No Preference">No Preference</MenuItem>
             {GENDER_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option}>
                 {option}
@@ -357,6 +358,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 status: e.target.value,
               }))
             }>
+            <MenuItem value="No Preference">No Preference</MenuItem>
             {STATUS_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option.toLowerCase()}>
                 {option}
@@ -379,6 +381,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 sexualOrientation: e.target.value,
               }))
             }>
+            <MenuItem value="No Preference">No Preference</MenuItem>
             {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
               <MenuItem key={index} value={option.toLowerCase()}>
                 {option}
@@ -386,34 +389,31 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             ))}
           </TextField>
         </FormControl>
-        <Box sx={{ mt: 2 }}>
-          <label>Lower Age Range</label>
+        <Box sx={{ mt: 1 }}>
+          <label>Age Range</label>
           <Slider
-            value={newItinerary.lowerRange}
-            onChange={(e, newValue) =>
+            value={[newItinerary.lowerRange, newItinerary.upperRange]}
+            onChange={(e, newValue) => {
+              const [lower, upper] = newValue as number[];
               setNewItinerary((prev) => ({
                 ...prev,
-                lowerRange: newValue as number,
-              }))
-            }
+                lowerRange: lower,
+                upperRange: upper,
+              }));
+            }}
             valueLabelDisplay="auto"
             min={18}
             max={100}
+            disableSwap
           />
         </Box>
-        <Box sx={{ mt: 2 }}>
-          <label>Upper Age Range</label>
-          <Slider
-            value={newItinerary.upperRange}
-            onChange={(e, newValue) =>
-              setNewItinerary((prev) => ({
-                ...prev,
-                upperRange: newValue as number,
-              }))
-            }
-            valueLabelDisplay="auto"
-            min={18}
-            max={100}
+        {/* Age Range Badge */}
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            color="primary"
+            size="small"
+            label={`Age Range: ${newItinerary.lowerRange} - ${newItinerary.upperRange}`}
+            sx={{ fontWeight: 400, fontSize: '0.85rem', height: 24 }}
           />
         </Box>
         <Button

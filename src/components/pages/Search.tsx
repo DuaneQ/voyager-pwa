@@ -31,6 +31,7 @@ import { useNewConnection } from "../../Context/NewConnectionContext";
 import React from "react";
 import { BetaBanner } from '../utilities/BetaBanner';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
+import { getAnalytics, logEvent } from "firebase/analytics";
 
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
@@ -149,6 +150,7 @@ export const Search = React.memo(() => {
     }
   };
 
+
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
     if (hasReachedLimit()) {
@@ -161,6 +163,12 @@ export const Search = React.memo(() => {
       return;
     }
     saveViewedItinerary(itinerary);
+    try {
+      if (process.env.NODE_ENV === "production") {
+        const analytics = getAnalytics();
+        logEvent(analytics, "itinerary_disliked", { itinerary_id: itinerary.id });
+      }
+    } catch (e) {}
     setCurrentMatchIndex((prev) => prev + 1);
   };
 
@@ -176,6 +184,12 @@ export const Search = React.memo(() => {
       return;
     }
     saveViewedItinerary(itinerary);
+    try {
+      if (process.env.NODE_ENV === "production") {
+        const analytics = getAnalytics();
+        logEvent(analytics, "itinerary_liked", { itinerary_id: itinerary.id });
+      }
+    } catch (e) {}
 
     if (!userId) {
       alert("You must be logged in to like an itinerary.");
@@ -224,6 +238,12 @@ export const Search = React.memo(() => {
       });
       setHasNewConnection(true);
       alert("It's a match! You can now chat with this user.");
+      try {
+        if (process.env.NODE_ENV === "production") {
+          const analytics = getAnalytics();
+          logEvent(analytics, "itinerary_match", { itinerary_id: itinerary.id, matched_user: otherUserUid });
+        }
+      } catch (e) {}
     } else {
       console.log("No mutual like yet.");
     }

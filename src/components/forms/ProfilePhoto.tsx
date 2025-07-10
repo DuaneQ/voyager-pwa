@@ -1,11 +1,12 @@
 
 import profilePlaceholder from "../../assets/images/imagePH.png";
-import { Menu, MenuItem, CircularProgress, Input } from "@mui/material";
+import { Menu, MenuItem, CircularProgress, Input, Alert } from "@mui/material";
 import { useContext, useRef, useState } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
+import { validateImageFile } from "../../utils/validateImageFile";
 
 
 export const ProfilePhoto = () => {
@@ -16,13 +17,21 @@ export const ProfilePhoto = () => {
   const { setUserDbData } = usePostUserProfileToDb();
   const { setUserStorageData } = usePostUserProfileToStorage();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Upload profile photo (slot: 'profile')
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setError(null);
     if (event.target.files && userProfile) {
+      const file = event.target.files[0];
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setError(validationError);
+        if (fileRef.current) fileRef.current.value = "";
+        return;
+      }
       setLoading(true);
       try {
-        const file = event.target.files[0];
         const url = await uploadImage(file, 'profile');
         const updatedPhotos = { ...(userProfile.photos || {}), profile: url };
         const updatedUserProfile = { ...userProfile, photos: updatedPhotos };
@@ -30,6 +39,7 @@ export const ProfilePhoto = () => {
         setUserStorageData(updatedUserProfile);
         setUserDbData(updatedUserProfile);
       } catch (error) {
+        setError("Error uploading profile photo.");
         console.error("Error uploading profile photo:", error);
       } finally {
         setLoading(false);
@@ -40,6 +50,7 @@ export const ProfilePhoto = () => {
 
   // Delete profile photo (slot: 'profile')
   async function handleDeletePic() {
+    setError(null);
     if (userProfile) {
       setLoading(true);
       try {
@@ -49,6 +60,7 @@ export const ProfilePhoto = () => {
         setUserStorageData(updatedUserProfile);
         setUserDbData(updatedUserProfile);
       } catch (error) {
+        setError("Error deleting profile photo.");
         console.error("Error deleting profile photo:", error);
       } finally {
         setLoading(false);
@@ -86,6 +98,7 @@ export const ProfilePhoto = () => {
           if (!loading) setMenuAnchor(event.currentTarget);
         }}
       />
+      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>}
       <Input
         type="file"
         inputRef={fileRef}

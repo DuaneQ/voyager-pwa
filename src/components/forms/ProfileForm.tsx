@@ -87,8 +87,19 @@ export const ProfileForm = () => {
               value={userProfile?.bio || ""}
               name="bio"
               placeholder="Tell us about yourself"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
               }}
             />
           </FormControl>
@@ -105,8 +116,19 @@ export const ProfileForm = () => {
                     .split("T")[0]
                   : new Date().toISOString().split("T")[0]
               }
+              variant="outlined"
               InputProps={{
                 readOnly: true,
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
               }}
             />
           </FormControl>
@@ -118,9 +140,21 @@ export const ProfileForm = () => {
               fullWidth
               name="status"
               label="Status"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
           <FormControl>
             <TextField
@@ -130,9 +164,21 @@ export const ProfileForm = () => {
               fullWidth
               name="gender"
               label="Gender"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
           <FormControl>
             <TextField
@@ -142,9 +188,21 @@ export const ProfileForm = () => {
               fullWidth
               name="sexo"
               label="Sexual Orientation"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
           <FormControl>
             <TextField
@@ -153,9 +211,21 @@ export const ProfileForm = () => {
               required
               label="Education"
               name="edu"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
           <FormControl>
             <TextField
@@ -164,9 +234,21 @@ export const ProfileForm = () => {
               value={userProfile?.drinking || ""}
               label="Drinking"
               name="drinking"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
           <FormControl>
             <TextField
@@ -175,9 +257,21 @@ export const ProfileForm = () => {
               value={userProfile?.smoking || ""}
               label="Smoking"
               name="smoking"
+              variant="outlined"
               InputProps={{
                 readOnly: true,
-              }}></TextField>
+                disableUnderline: true,
+                style: { pointerEvents: 'none', background: '#f5f5f5' },
+              }}
+              sx={{
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#222',
+                },
+                '& .MuiOutlinedInput-root': {
+                  background: '#f5f5f5',
+                },
+              }}
+            />
           </FormControl>
         </Card>
       </form>
