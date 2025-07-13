@@ -63,7 +63,7 @@ export const AddUserToChatModal: React.FC<AddUserToChatModalProps> = ({
             }
           })
         );
-        setUserOptions(withProfiles);
+        setUserOptions(withProfile.filter(Boolean));
       })
       .finally(() => setLoading(false));
   }, [open, currentUserId, currentChatUserIds]);
