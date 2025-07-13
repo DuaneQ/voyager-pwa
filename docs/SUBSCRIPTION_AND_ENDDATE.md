@@ -26,7 +26,7 @@
      - `subscriptionType === 'premium'`
      - `subscriptionEndDate` is in the future
    - If both are true, the user has unlimited views.
-   - If not, the user is limited to 20 views per day.
+   - If not, the user is limited to 10 views per day.
 
 5. **Webhook Reliability**
    - If the webhook fails to update `subscriptionEndDate`, the user may lose access prematurely.

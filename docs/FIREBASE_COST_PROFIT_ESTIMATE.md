@@ -5,7 +5,7 @@ This document provides cost and profit estimates for different user levels, with
 ---
 
 ## Assumptions
-- **Free users:** 10 or 20 itinerary views/searches per day
+- **Free users:** 10 itinerary views/searches per day
 - **Premium users:** 50 views/searches per day (unlimited, but using a realistic average)
 - **Premium conversion rate:** 2%
 - **Premium price:** $9.99/month
@@ -28,17 +28,7 @@ This document provides cost and profit estimates for different user levels, with
 
 ---
 
-## 2. Firebase Cost Table (20 Itineraries/Searches per Day)
-
-| Users      | Free Users | Premium Users | Total Reads | Total Writes | Reads Cost | Writes Cost | Total Cost |
-|------------|------------|--------------|------------|-------------|------------|-------------|------------|
-| 10,000     | 9,800      | 200          | 5,988,000  | 598,800     | $3.59      | $1.08       | $4.67      |
-| 100,000    | 98,000     | 2,000        | 59,880,000 | 5,988,000   | $35.93     | $10.78      | $46.71     |
-| 500,000    | 490,000    | 10,000       | 299,400,000| 29,940,000  | $179.64    | $53.89      | $233.53    |
-| 1,000,000  | 980,000    | 20,000       | 598,800,000| 59,880,000  | $359.28    | $107.78     | $467.06    |
-| 10,000,000 | 9,800,000  | 200,000      | 5,988,000,000| 598,800,000| $3,592.80  | $1,077.84   | $4,670.64  |
-
----
+<!-- Removed 20/day table: free tier is now 10/day -->
 
 ## 3. Profit Table (10 Itineraries/Searches per Day)
 

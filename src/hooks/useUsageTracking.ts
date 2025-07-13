@@ -4,7 +4,7 @@ import { app } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
 import { auth } from '../environments/firebaseConfig';
 
-const FREE_DAILY_LIMIT = 20;
+const FREE_DAILY_LIMIT = 10;
 
 export const useUsageTracking = () => {
   const [isLoading, setIsLoading] = useState(false);

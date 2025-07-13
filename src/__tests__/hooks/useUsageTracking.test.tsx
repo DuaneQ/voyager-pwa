@@ -56,7 +56,7 @@ describe('useUsageTracking', () => {
     const { result } = renderHook(() => useUsageTracking(), {
       wrapper: getWrapper(userProfile),
     });
-    expect(result.current.dailyLimit).toBe(20);
+    expect(result.current.dailyLimit).toBe(10);
   });
 
   it('should detect premium status', () => {
@@ -77,7 +77,7 @@ describe('useUsageTracking', () => {
       subscriptionType: 'free',
       subscriptionEndDate: null,
       subscriptionCancelled: false,
-      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 20 },
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 10 },
     };
     const { result } = renderHook(() => useUsageTracking(), {
       wrapper: getWrapper(profile),
@@ -95,7 +95,7 @@ describe('useUsageTracking', () => {
     const { result } = renderHook(() => useUsageTracking(), {
       wrapper: getWrapper(profile),
     });
-    expect(result.current.getRemainingViews()).toBe(15);
+    expect(result.current.getRemainingViews()).toBe(5);
   });
 
   it('should track a view for free user and update profile/localStorage', async () => {
