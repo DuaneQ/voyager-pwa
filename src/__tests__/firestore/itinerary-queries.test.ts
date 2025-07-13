@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc } from 'firebase/firestore';
 import { Itinerary } from '../../types/Itinerary';
