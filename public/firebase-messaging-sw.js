@@ -22,10 +22,6 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage(function (payload) {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
   // Customize notification here
   const notificationTitle = payload.notification.title || "TravalPass";
   const notificationOptions = {

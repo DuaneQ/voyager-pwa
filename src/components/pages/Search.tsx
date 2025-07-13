@@ -201,7 +201,6 @@ export const Search = React.memo(() => {
     // 3. Check if the other user's UID is in your itinerary's likes array
     const otherUserUid = itinerary.userInfo?.uid ?? "";
     if (!otherUserUid) {
-      console.log("Other user's UID not found on itinerary.");
       setCurrentMatchIndex((prev) => prev + 1);
       return;
     }

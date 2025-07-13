@@ -10,15 +10,11 @@ export const useFCMToken = () => {
     const timer = setTimeout(async () => {
       // We only need userId from Firebase Auth to proceed
       if (!userId) {
-        console.log("FCM: Waiting for user ID...");
         return;
       }
 
-      console.log("FCM: Setting up for user:", userId);
-
       // Validate FCM setup first
       const validation = validateFCMSetup();
-      console.log("FCM: Setup validation:", validation);
 
       if (validation.issues.length > 0) {
         console.warn("FCM: Setup issues detected:", validation.issues);

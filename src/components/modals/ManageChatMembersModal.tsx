@@ -43,9 +43,7 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
   removeUserLoading,
   onViewProfile,
 }) => {
-  // Debug: log all users and currentUserId on every render
-  // eslint-disable-next-line no-console
-  console.log('[ManageChatMembersModal] users:', users, 'currentUserId:', currentUserId);
+
   return (
     <Modal
       open={open}
@@ -153,9 +151,7 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
                     aria-label={`Remove ${user.username}`}
                     aria-disabled={removeUserLoading === user.uid}
                     disabled={removeUserLoading === user.uid}
-                    onClick={() => {
-                      // eslint-disable-next-line no-console
-                      console.log('[ManageChatMembersModal] Remove clicked:', user.uid, user.username, user.addedBy);
+                    onClick={() => {        
                       onRemove(user.uid);
                     }}
                     tabIndex={0}
