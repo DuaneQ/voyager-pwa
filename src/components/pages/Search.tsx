@@ -140,7 +140,7 @@ export const Search = React.memo(() => {
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
     if (hasReachedLimit()) {
-      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
     const success = await trackView();
@@ -161,7 +161,7 @@ export const Search = React.memo(() => {
   // Like handler with usage tracking and mutual like logic
   const handleLike = async (itinerary: Itinerary) => {
     if (hasReachedLimit()) {
-      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
     const success = await trackView();
