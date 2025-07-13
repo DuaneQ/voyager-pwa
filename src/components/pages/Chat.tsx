@@ -25,7 +25,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
-import useGetUserId from "../../hooks/useGetUserId";
+import { auth } from "../../environments/firebaseConfig";
 import { Connection } from "../../types/Connection";
 import { Message } from "../../types/Message";
 import ChatModal from "../modals/ChatModal";
@@ -36,7 +36,7 @@ import { ChatListItem } from "../../components/Chat/ChatListItem";
 const db = getFirestore(app);
 
 export const Chat = React.memo(() => {
-  const userId = useGetUserId();
+  const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const [latestMessages, setLatestMessages] = useState<Message[]>([]);
@@ -251,7 +251,6 @@ export const Chat = React.memo(() => {
             connection={selectedConnection}
             messages={[...olderMessages, ...latestMessages]}
             userId={userId!}
-            // otherUserPhotoURL={selectedPhotoURL} // No longer needed, handled by ChatModal hook
             onPullToRefresh={loadMoreMessages}
             hasMoreMessages={hasMoreMessages}
           />

@@ -1,0 +1,28 @@
+{
+  "testUser1": {
+    "uid": "Yxu8nkH9ewXqyzCZlcYt824IbRw2",
+    "profile": {
+      "username": "Testuser",
+      "gender": "Male",
+      "dob": "1990-01-01",
+      "status": "single",
+      "sexualOrientation": "heterosexual",
+      "email": "travaltestuser@gmail.com"
+    },
+    "itinerary": {
+      "id": "test-itinerary-1",
+      "destination": "Paris",
+      "startDate": "2025-08-01",
+      "endDate": "2025-08-15",
+      "description": "Test itinerary 1",
+      "gender": "Female",
+      "status": "single",
+      "sexualOrientation": "heterosexual",
+      "lowerRange": 25,
+      "upperRange": 35,
+      "activities": ["Sightseeing", "Dining"],
+      "startDay": 1722556800000,
+      "endDay": 1723852800000
+    }
+  }
+}

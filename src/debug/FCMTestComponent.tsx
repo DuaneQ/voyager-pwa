@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button, Box, Typography, Alert, Paper } from '@mui/material';
 import { debugFCMOnDevice } from '../utils/debugFCM';
 import { refreshFCMToken } from '../utils/fcmUtils';
-import useGetUserId from '../hooks/useGetUserId';
+import { auth } from '../environments/firebaseConfig';
 
 interface FCMTestResult {
   success: boolean;
@@ -14,7 +14,7 @@ interface FCMTestResult {
 export const FCMTestComponent: React.FC = () => {
   const [testResult, setTestResult] = useState<FCMTestResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const userId = useGetUserId();
+  const userId = auth.currentUser?.uid;
 
   const handleDebugTest = async () => {
     setIsLoading(true);

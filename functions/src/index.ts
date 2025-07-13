@@ -207,8 +207,7 @@ export const notifyFeedbackSubmission = functions.firestore
       // Prepare email content
       const mailDoc = {
         to: "feedback@travalpass.com",
-        from: "DuaneQHodges@gmail.com",
-        replyTo: "no-reply@travalpass.com",
+        from: "no-reply@travalpass.com",
         message: {
           subject: `[BETA FEEDBACK] ${typeEmoji[feedback.type as string] || "📝"} ${feedback.title}`,
           text: `
@@ -465,7 +464,7 @@ export const notifyViolationReport = functions.firestore
     }
   });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: '2022-11-15' });
 
 const app = express();
 
@@ -485,7 +484,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig as string,
-      process.env.STRIPE_WEBHOOK_SECRET 
+      process.env.STRIPE_WEBHOOK_SECRET || "" // Ensure this is set in your environment variables
     );
     console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {

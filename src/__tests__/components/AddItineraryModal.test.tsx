@@ -1,8 +1,17 @@
+// Mock auth.currentUser for AddItineraryModal
+jest.mock("../../environments/firebaseConfig", () => {
+  return {
+    auth: {
+      get currentUser() {
+        return global.__mockCurrentUser;
+      },
+    },
+  };
+});
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import AddItineraryModal from "../../components/forms/AddItineraryModal";
 import { UserProfileContext } from "../../Context/UserProfileContext";
-import useGetUserId from "../../hooks/useGetUserId";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { AlertContext } from "../../Context/AlertContext";
@@ -36,7 +45,6 @@ if (typeof window !== "undefined" && typeof window.localStorage === "undefined")
 }
 
 // Mock dependencies
-jest.mock("../../hooks/useGetUserId");
 jest.mock("../../hooks/usePostItineraryToFirestore");
 jest.mock("react-google-places-autocomplete", () => {
   return jest.fn().mockImplementation(({ selectProps }) => (
@@ -101,7 +109,7 @@ describe("AddItineraryModal Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.alert = jest.fn();
-    (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
+    global.__mockCurrentUser = { uid: mockUserId };
     (usePostItineraryToFirestore as jest.Mock).mockReturnValue({
       postItinerary: mockPostItinerary,
     });

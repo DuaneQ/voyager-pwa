@@ -30,7 +30,6 @@ import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
 import { app } from "./environments/firebaseConfig";
-import { BetaBanner } from "./components/utilities/BetaBanner";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { TermsGuard } from "./components/auth/TermsGuard";
 
