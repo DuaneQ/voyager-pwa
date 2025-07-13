@@ -63,12 +63,6 @@ export const ChatModal: React.FC<ChatModalProps> = ({
   // Ref for the messages container
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Debug: Log the full connection object and addedUsers on every render
-  // eslint-disable-next-line no-console
-  console.log('[ChatModal] connection object:', connection);
-  // eslint-disable-next-line no-console
-  console.log('[ChatModal] connection.addedUsers:', connection.addedUsers);
-
   // UserId -> Username map (includes added users)
   const [userIdToUsername, setUserIdToUsername] = useState<Record<string, string>>({});
   // UserId -> Avatar URL map (fixes hook-in-loop bug)
@@ -415,7 +409,6 @@ export const ChatModal: React.FC<ChatModalProps> = ({
           let addedBy = undefined;
           if (Array.isArray(connection.addedUsers)) {
             // eslint-disable-next-line no-console
-            console.log('[ChatModal] Looking for addedBy for uid:', uid, 'in addedUsers:', connection.addedUsers);
             const entry = connection.addedUsers.find((au) => String(au.userId).trim() === String(uid).trim());
             if (entry) addedBy = entry.addedBy;
           }
@@ -426,14 +419,12 @@ export const ChatModal: React.FC<ChatModalProps> = ({
             addedBy,
           };
           // eslint-disable-next-line no-console
-          console.log('[ChatModal] User for ManageChatMembersModal:', userObj);
           return userObj;
         })}
         currentUserId={userId}
         removeUserLoading={removeUserLoading}
         onRemove={async (uid) => {
           // eslint-disable-next-line no-console
-          console.log('[ChatModal] Remove user requested:', { uid, remover: userId, connectionId: connection.id });
           if (!window.confirm(`Remove ${userIdToUsername[uid] || uid} from chat?`)) return;
           setRemoveUserLoading(uid);
           try {
@@ -446,7 +437,6 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         }}
         onAddClick={() => {
           // eslint-disable-next-line no-console
-          console.log('[ChatModal] Add user modal opened');
           setManageMembersOpen(false);
           setAddUserModalOpen(true);
         }}
@@ -463,7 +453,6 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         currentChatUserIds={connection.users}
         onAdd={async (userIds) => {
           // eslint-disable-next-line no-console
-          console.log('[ChatModal] Adding users to chat:', { userIds, adder: userId, connectionId: connection.id });
           setAddUserLoading(true);
           try {
             for (const uid of userIds) {

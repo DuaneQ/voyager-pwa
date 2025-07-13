@@ -117,13 +117,6 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     setSubmitError(null);
 
     try {
-      // --- PRODUCTION DEBUG ---
-      if (process.env.NODE_ENV === 'production') {
-        // eslint-disable-next-line no-console
-        console.log('[FeedbackModal] Production: app object:', app);
-        // eslint-disable-next-line no-console
-        console.log('[FeedbackModal] Production: userId:', userId);
-      }
       const db = getFirestore(app);
       // Build feedbackDoc with no undefined values
       const feedbackDoc: Record<string, any> = {

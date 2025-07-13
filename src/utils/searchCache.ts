@@ -31,7 +31,6 @@ class SearchCache {
   }
 
   set(key: string, data: any[]): void {
-    console.log('🔧 Setting cache for key:', key, 'with', data.length, 'items');
 
     // If we're adding a new key and cache is full, remove oldest entry
     if (!this.cache.has(key) && this.cache.size >= this.MAX_CACHE_SIZE) {
@@ -71,7 +70,6 @@ class SearchCache {
 
       // Verify it was actually stored
       const verification = localStorage.getItem('searchCache');
-      console.log('🔧 localStorage verification:', verification ? 'Success' : 'Failed');
 
     } catch (error) {
       console.error('🔧 localStorage error:', error);
@@ -79,11 +77,9 @@ class SearchCache {
   }
 
   get(key: string): any[] | null {
-    console.log('🔧 Getting cache for key:', key);
 
     // Check memory cache first
     const memoryEntry = this.cache.get(key);
-    console.log('🔧 Memory cache result:', memoryEntry ? 'Hit' : 'Miss');
 
     if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
       this.hits++;
@@ -98,14 +94,10 @@ class SearchCache {
     // Check localStorage cache
     try {
       const persistentCache = JSON.parse(localStorage.getItem('searchCache') || '{}');
-      console.log('🔧 localStorage keys:', Object.keys(persistentCache));
-      console.log('🔧 Looking for key:', key);
 
       const persistentEntry = persistentCache[key];
-      console.log('🔧 localStorage entry:', persistentEntry ? 'Found' : 'Not found');
 
       if (persistentEntry && persistentEntry.expiresAt > Date.now()) {
-        console.log('🔧 localStorage hit! Restoring to memory');
         // Restore to memory cache if there's room
         if (this.cache.size < this.MAX_CACHE_SIZE) {
           this.cache.set(key, persistentEntry);
@@ -202,7 +194,6 @@ class SearchCache {
   // Method to preload cache with fresh data
   preloadCache(key: string, data: any[]): void {
     this.set(key, data);
-    console.log(`Cache preloaded for key: ${key}, ${data.length} items`);
   }
 
   // Check if a key exists in cache (for testing)
@@ -235,7 +226,6 @@ const initializeCleanup = () => {
 
   cleanupInterval = setInterval(() => {
     searchCache.cleanup();
-    console.log('Cache cleanup completed:', searchCache.getStats());
   }, 10 * 60 * 1000);
 };
 

@@ -150,8 +150,6 @@ const useSearchItineraries = () => {
 
     const db = getFirestore(app);
     const itinerariesQuery = query(collection(db, "itineraries"), ...constraints);
-    
-    console.log('🔍 Fetching from Firestore:', isNewSearch ? 'New search' : 'Load more');
     const snapshot = await getDocs(itinerariesQuery);
     
     // Update pagination state
@@ -169,26 +167,20 @@ const useSearchItineraries = () => {
   };
 
   // Main search function
-  const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {
-    console.log('🔍 Starting search for:', currentUserItinerary.destination);
-    
+  const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {    
     // ✅ Reset cache flag at start of new search
     setIsFromCache(false);
     
     const params: SearchParams = { currentUserItinerary, currentUserId };
     setCurrentSearchParams(params);
 
-    const cacheKey = generateCacheKey(params);
-    console.log('🔑 Cache key:', cacheKey);
-    
+    const cacheKey = generateCacheKey(params);    
     const cachedResults = searchCache.get(cacheKey);
-    console.log('💾 Cache check result:', cachedResults ? `Found ${cachedResults.length} items` : 'Cache empty');
     
     if (cachedResults) {
       setIsFromCache(true);
       setHasMore(false); // No more to load from cache
 
-      console.log('🎯 Cache hit! Serving from cache - SHOULD NOT CONTINUE');
       const filteredResults = applyClientSideFilters(cachedResults, params);
       setMatchingItineraries(filteredResults);
       setLoading(false);
@@ -199,7 +191,6 @@ const useSearchItineraries = () => {
       return;
     }
     
-    console.log('📡 Cache miss. Fetching from Firestore - THIS SHOULD ONLY HAPPEN ON FIRST SEARCH');
     setLoading(true);
     setError(null);
 
@@ -234,9 +225,7 @@ const useSearchItineraries = () => {
 
     setLoading(true);
 
-    try {
-      console.log('📄 Loading more matches...');
-      
+    try {      
       // Fetch next page
       const moreResults = await fetchFromFirestore(currentSearchParams, false);
       

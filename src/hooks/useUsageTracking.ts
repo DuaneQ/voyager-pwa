@@ -70,7 +70,6 @@ export const useUsageTracking = () => {
     }
     // Check if user has reached limit
     if (hasReachedLimit()) {
-      console.log('User has reached daily limit');
       return false;
     }
     setIsLoading(true);
@@ -98,7 +97,6 @@ export const useUsageTracking = () => {
       updateUserProfile(updatedProfile);
       // Update localStorage
       localStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
-      console.log(`View tracked. Count: ${newViewCount}/${FREE_DAILY_LIMIT}`);
       return true;
     } catch (error) {
       console.error('Error tracking view:', error);

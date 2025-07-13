@@ -13,7 +13,6 @@ import Link from "@mui/material/Link";
 
 // Debug: log what the component sees for sendEmailVerification
 // eslint-disable-next-line no-console
-console.log('sendEmailVerification in component:', sendEmailVerification);
 
 export const ResendEmail = () => {
   const { showAlert } = useContext(AlertContext);

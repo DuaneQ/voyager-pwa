@@ -72,9 +72,6 @@ describe("<AddItineraryModal />", () => {
     mockOnItineraryAdded = cy.stub();
     if (!postItineraryStub) {
       postItineraryStub = cy.stub().callsFake((...args) => {
-        // Debug: log when called
-        // eslint-disable-next-line no-console
-        console.log('postItineraryStub called', ...args);
         return Promise.resolve();
       });
     }

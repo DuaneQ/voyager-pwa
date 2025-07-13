@@ -53,10 +53,6 @@ export const ChatListItem: React.FC<{
 }> = ({ conn, userId, onClick, unread }) => {
   const otherUser = getOtherUser(conn, userId);
   const otherItinerary = getOtherItinerary(conn, userId);
-  // Debug: log the other user for each ChatListItem render
-  // eslint-disable-next-line no-console
-  console.log('[ChatListItem] Rendered for conn:', conn.id, 'otherUser:', otherUser);
-  // Returns the profile slot photo
   const otherUserPhoto = useGetUserProfilePhoto(otherUser.uid);
   const removeConnection = useRemoveConnection();
 
