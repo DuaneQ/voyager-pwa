@@ -56,16 +56,13 @@ export const AddUserToChatModal: React.FC<AddUserToChatModalProps> = ({
           users.map(async (u) => {
             try {
               const snap = await getDoc(doc(db, "users", u.userId));
-              // eslint-disable-next-line no-console
               if (snap.exists())
               return snap.exists() ? { ...u, profile: snap.data() } : u;
             } catch (err) {
-              // eslint-disable-next-line no-console
               return u;
             }
           })
         );
-        // eslint-disable-next-line no-console
         setUserOptions(withProfiles);
       })
       .finally(() => setLoading(false));
