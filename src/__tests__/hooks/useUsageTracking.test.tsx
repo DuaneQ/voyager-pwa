@@ -1,10 +1,26 @@
+// Mock firebase/auth to provide a valid currentUser
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({
+    currentUser: { uid: 'test-user-id' },
+  })),
+}));
 import { renderHook } from '@testing-library/react-hooks';
+// Mock auth.currentUser for useUsageTracking
+jest.mock('../../environments/firebaseConfig', () => {
+  return {
+    app: {},
+    auth: {
+      get currentUser() {
+        return global.__mockCurrentUser;
+      },
+    },
+  };
+});
+
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import React from 'react';
 
-jest.mock('../../environments/firebaseConfig', () => ({
-  app: {},
-}));
+// (already mocked above)
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(),
   doc: jest.fn(),
@@ -20,11 +36,14 @@ describe('useUsageTracking', () => {
   const mockUpdateUserProfile = jest.fn();
 
   function getWrapper(userProfile: any) {
-    return ({ children }: any) => (
-      <UserProfileContext.Provider value={{ userProfile, updateUserProfile: mockUpdateUserProfile }}>
-        {children}
-      </UserProfileContext.Provider>
-    );
+    return ({ children }: any) => {
+      global.__mockCurrentUser = { uid: 'test-user-id' };
+      return (
+        <UserProfileContext.Provider value={{ userProfile, updateUserProfile: mockUpdateUserProfile }}>
+          {children}
+        </UserProfileContext.Provider>
+      );
+    };
   }
 
   it('should return correct daily limit', () => {

@@ -3,12 +3,10 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { TermsGuard } from '../../components/auth/TermsGuard';
 import { useTermsAcceptance } from '../../hooks/useTermsAcceptance';
-import useGetUserId from '../../hooks/useGetUserId';
 import { signOut } from 'firebase/auth';
 
 // Mock the hooks
 jest.mock('../../hooks/useTermsAcceptance');
-jest.mock('../../hooks/useGetUserId');
 
 // Mock Firebase auth
 jest.mock('firebase/auth', () => ({
@@ -16,7 +14,9 @@ jest.mock('firebase/auth', () => ({
 }));
 
 jest.mock('../../environments/firebaseConfig', () => ({
-  auth: {},
+  auth: {
+    currentUser: null,  // We'll update this in each test
+  },
 }));
 
 // Mock the TermsOfServiceModal
@@ -32,8 +32,10 @@ jest.mock('../../components/modals/TermsOfServiceModal', () => ({
 }));
 
 const mockUseTermsAcceptance = useTermsAcceptance as jest.MockedFunction<typeof useTermsAcceptance>;
-const mockUseGetUserId = useGetUserId as jest.MockedFunction<typeof useGetUserId>;
 const mockSignOut = signOut as jest.MockedFunction<typeof signOut>;
+
+// Import and mock the auth object
+import { auth as firebaseAuth } from '../../environments/firebaseConfig';
 
 // Test wrapper with Router
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -48,10 +50,13 @@ describe('TermsGuard', () => {
   const TestChild = () => <div data-testid="protected-content">Protected Content</div>;
 
   it('shows loading state while checking terms', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: true,
+      error: null,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
     });
@@ -66,16 +71,18 @@ describe('TermsGuard', () => {
 
     // Look for the actual loading text from the component
     expect(screen.getByText('Checking terms acceptance...') || 
-           screen.getByRole('progressbar') ||
-           screen.getByTestId('custom-loading')).toBeInTheDocument();
+           screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
   it('renders children when terms are accepted', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: true,
       isLoading: false,
+      error: null,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
     });
@@ -93,12 +100,15 @@ describe('TermsGuard', () => {
   });
 
   it('shows terms modal when terms are not accepted', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
+      error: null,
     });
 
     render(
@@ -116,10 +126,13 @@ describe('TermsGuard', () => {
   });
 
   it('renders children when user is not logged in', () => {
-    mockUseGetUserId.mockReturnValue(null);
+    // Set up the auth mock to return null for currentUser
+    (firebaseAuth as any).currentUser = null;
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
+      error: null,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
     });
@@ -137,10 +150,13 @@ describe('TermsGuard', () => {
   });
 
   it('renders custom fallback during loading', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: true,
+      error: null,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
     });
@@ -162,12 +178,15 @@ describe('TermsGuard', () => {
   it('calls acceptTerms when accept button is clicked', async () => {
     const mockAcceptTerms = jest.fn().mockResolvedValue(undefined);
     
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
       acceptTerms: mockAcceptTerms,
       checkTermsStatus: jest.fn(),
+      error: null,
     });
 
     render(
@@ -190,12 +209,15 @@ describe('TermsGuard', () => {
     const mockAcceptTerms = jest.fn().mockRejectedValue(new Error('Accept failed'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
       acceptTerms: mockAcceptTerms,
       checkTermsStatus: jest.fn(),
+      error: null,
     });
 
     render(
@@ -217,12 +239,15 @@ describe('TermsGuard', () => {
   });
 
   it('handles decline terms correctly', async () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
+      error: null,
     });
 
     render(
@@ -242,12 +267,15 @@ describe('TermsGuard', () => {
   });
 
   it('shows loading state in modal when accepting terms', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
+      error: null,
     });
 
     render(
@@ -265,10 +293,13 @@ describe('TermsGuard', () => {
   });
 
   it('shows component loading state when no fallback provided', () => {
-    mockUseGetUserId.mockReturnValue('user123');
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: true,
+      error: null,
       acceptTerms: jest.fn(),
       checkTermsStatus: jest.fn(),
     });
@@ -284,5 +315,157 @@ describe('TermsGuard', () => {
     // Should show loading spinner (CircularProgress)
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+  });
+  
+  // Add a new test for the error state
+  it('shows error state with retry button', () => {
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
+    const mockCheckTermsStatus = jest.fn().mockResolvedValue(false);
+    
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: false,
+      isLoading: false,
+      acceptTerms: jest.fn(),
+      checkTermsStatus: mockCheckTermsStatus,
+      error: new Error('Failed to check terms'),
+    });
+
+    render(
+      <TestWrapper>
+        <TermsGuard>
+          <TestChild />
+        </TermsGuard>
+      </TestWrapper>
+    );
+
+    // Should show error message
+    expect(screen.getByText('Error checking terms acceptance')).toBeInTheDocument();
+    expect(screen.getByText('Failed to check terms')).toBeInTheDocument();
+    
+    // Should have retry button
+    const retryButton = screen.getByText('Try Again');
+    fireEvent.click(retryButton);
+    
+    expect(mockCheckTermsStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles errors from the useTermsAcceptance hook', async () => {
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: false,
+      isLoading: false,
+      error: new Error('Hook error'),
+      acceptTerms: jest.fn(),
+      checkTermsStatus: jest.fn().mockResolvedValue(false),
+    });
+
+    render(
+      <TestWrapper>
+        <TermsGuard>
+          <TestChild />
+        </TermsGuard>
+      </TestWrapper>
+    );
+
+    // Should show error message from the hook
+    expect(screen.getByText('Error checking terms acceptance')).toBeInTheDocument();
+    expect(screen.getByText('Hook error')).toBeInTheDocument();
+    
+    // Should have retry button and sign out button
+    expect(screen.getByText('Try Again')).toBeInTheDocument();
+    expect(screen.getByText('Sign Out')).toBeInTheDocument();
+  });
+
+  it('allows retry after error and increments retry count', async () => {
+    // Set up the auth mock for this test
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
+    const mockCheckTermsStatus = jest.fn()
+      .mockResolvedValue(false);
+    
+    // First render - shows error state
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: false,
+      isLoading: false,
+      error: new Error('Initial error'),
+      acceptTerms: jest.fn(),
+      checkTermsStatus: mockCheckTermsStatus,
+    });
+
+    const { rerender } = render(
+      <TestWrapper>
+        <TermsGuard>
+          <TestChild />
+        </TermsGuard>
+      </TestWrapper>
+    );
+
+    // First render - shows error
+    expect(screen.getByText('Error checking terms acceptance')).toBeInTheDocument();
+    expect(screen.getByText('Initial error')).toBeInTheDocument();
+    
+    // Update mock for second render - success
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: true,
+      isLoading: false,
+      error: null,
+      acceptTerms: jest.fn(),
+      checkTermsStatus: mockCheckTermsStatus,
+    });
+    
+    // Click retry
+    const retryButton = screen.getByText('Try Again');
+    fireEvent.click(retryButton);
+    
+    // Simulate rerender with new hook value
+    rerender(
+      <TestWrapper>
+        <TermsGuard>
+          <TestChild />
+        </TermsGuard>
+      </TestWrapper>
+    );
+    
+    // Should now show protected content after retry succeeds
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+  });
+
+  it('handles auth-related errors during terms acceptance', async () => {
+    const mockAcceptTerms = jest.fn().mockRejectedValue(
+      new Error('User document not found. Please refresh and try again.')
+    );
+    
+    // Set up auth with user
+    (firebaseAuth as any).currentUser = { uid: 'user123' };
+    
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: false,
+      isLoading: false,
+      error: null,
+      acceptTerms: mockAcceptTerms,
+      checkTermsStatus: jest.fn().mockResolvedValue(false),
+    });
+
+    render(
+      <TestWrapper>
+        <TermsGuard>
+          <TestChild />
+        </TermsGuard>
+      </TestWrapper>
+    );
+
+    // Click accept terms
+    const acceptButton = screen.getByText('Accept Terms');
+    fireEvent.click(acceptButton);
+    
+    // Verify error is displayed
+    await waitFor(() => {
+      // Should show error component with appropriate message
+      expect(screen.getByText('Error checking terms acceptance')).toBeInTheDocument();
+    });
   });
 });

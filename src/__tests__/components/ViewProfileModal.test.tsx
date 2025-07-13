@@ -30,6 +30,7 @@ jest.mock("firebase/firestore");
 jest.mock("../../hooks/useGetUserId");
 jest.mock("../../environments/firebaseConfig", () => ({
   app: {},
+  auth: { currentUser: { uid: "current-user-123" } },
 }));
 
 describe("ViewProfileModal Component", () => {
@@ -60,6 +61,16 @@ describe("ViewProfileModal Component", () => {
   let localStorageMock = {};
 
   beforeEach(() => {
+    // Mock getFirestore to return a non-undefined db object
+    const mockDb = { __mock: true };
+    const getFirestore = require("firebase/firestore").getFirestore;
+    getFirestore.mockReturnValue(mockDb);
+    // Patch collection to check for db and return 'mock-collection' regardless
+    const collection = require("firebase/firestore").collection;
+    collection.mockImplementation((dbArg, ...rest) => {
+      // Always return 'mock-collection' for test assertions
+      return "mock-collection";
+    });
     // Setup mocks
     (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
 

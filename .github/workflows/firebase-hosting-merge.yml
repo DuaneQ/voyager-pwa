@@ -25,6 +25,30 @@ jobs:
         run: npm test -- --coverage --watchAll=false
         env:
           CI: true
+
+      # --- FIRESTORE EMULATOR INTEGRATION TESTS ---
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Start Firestore Emulator
+        run: |
+          firebase emulators:start --only firestore --project test-project --import=./seed-data --export-on-exit=./seed-data &
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+        continue-on-error: true
+
+      - name: Wait for Firestore Emulator
+        run: npx wait-on tcp:8080
+
+      - name: Run Firestore Integration Tests
+        run: npm test -- src/__tests__/firestore/itinerary-queries.test.ts --watchAll=false
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+          CI: true
+
+      - name: Stop Firestore Emulator
+        run: |
+          kill $(lsof -t -i:8080) || true
       
       - name: Run Cypress component tests
         run: npm run cypress:run:component

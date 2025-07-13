@@ -1,0 +1,109 @@
+{
+  "currentUserItinerary": {
+    "id": "test-itinerary-current-user",
+    "destination": "Paris",
+    "startDate": "2035-08-01",
+    "endDate": "2035-08-15",
+    "description": "Current user's itinerary",
+    "userInfo": {
+      "uid": "Yxu8nkH9ewXqyzCZlcYt824IbRw2",
+      "username": "Testuser",
+      "gender": "Male",
+      "dob": "1990-01-01",
+      "status": "single",
+      "sexualOrientation": "heterosexual",
+      "email": "travaltestuser@gmail.com"
+    },
+    "activities": ["Sightseeing", "Dining"],
+    "startDay": 2056636800000,
+    "endDay": 2057932800000,
+    "lowerRange": 25,
+    "upperRange": 35
+  },
+  "matchingItinerary": {
+    "id": "test-itinerary-match-1",
+    "destination": "Paris",
+    "startDate": "2035-08-05",
+    "endDate": "2035-08-12",
+    "description": "Perfect match itinerary",
+    "userInfo": {
+      "uid": "1rquyB2d5mdzK8KJRstX2EiCVmt1",
+      "username": "TestUser2",
+      "gender": "Female",
+      "dob": "1995-01-01",
+      "status": "single",
+      "sexualOrientation": "heterosexual",
+      "email": "test2@example.com"
+    },
+    "activities": ["Museums", "Shopping"],
+    "startDay": 2057068800000,
+    "endDay": 2057673600000,
+    "lowerRange": 25,
+    "upperRange": 40
+  },
+  "nonMatchingItineraries": [
+    {
+      "id": "test-itinerary-nomatch-1",
+      "destination": "Paris",
+      "startDate": "2035-08-01",
+      "endDate": "2035-08-10",
+      "description": "Wrong gender itinerary",
+      "userInfo": {
+        "uid": "1rquyB2d5mdzK8KJRstX2EiCVmt1",
+        "username": "TestUser3",
+        "gender": "Male",
+        "dob": "1995-01-01",
+        "status": "single",
+        "sexualOrientation": "heterosexual",
+        "email": "test3@example.com"
+      },
+      "activities": ["Museums"],
+      "startDay": 2056636800000,
+      "endDay": 2057500800000,
+      "lowerRange": 25,
+      "upperRange": 35
+    },
+    {
+      "id": "test-itinerary-nomatch-2",
+      "destination": "Paris",
+      "startDate": "2035-08-05",
+      "endDate": "2035-08-12",
+      "description": "Outside age range itinerary",
+      "userInfo": {
+        "uid": "OPoJ6tPN3DaCAXxCmXwGFjOF7SI3",
+        "username": "TestUser4",
+        "gender": "Female",
+        "dob": "1980-01-01",
+        "status": "single",
+        "sexualOrientation": "heterosexual",
+        "email": "test4@example.com"
+      },
+      "activities": ["Shopping"],
+      "startDay": 2057068800000,
+      "endDay": 2057673600000,
+      "lowerRange": 25,
+      "upperRange": 35
+    },
+    {
+      "id": "test-itinerary-nomatch-3",
+      "destination": "Paris",
+      "startDate": "2035-08-05",
+      "endDate": "2035-08-12",
+      "description": "Different status itinerary",
+      "userInfo": {
+        "uid": "OPoJ6tPN3DaCAXxCmXwGFjOF7SI3",
+        "username": "TestUser5",
+        "gender": "Female",
+        "dob": "1995-01-01",
+        "status": "married",
+        "sexualOrientation": "heterosexual",
+        "email": "test5@example.com"
+      },
+      "activities": ["Dining"],
+      "startDay": 2057068800000,
+      "endDay": 2057673600000,
+      "lowerRange": 25,
+      "upperRange": 35
+    }
+  ]
+}

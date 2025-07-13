@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../environments/firebaseConfig";
-import useGetUserId from "./useGetUserId";
+import { auth } from "../environments/firebaseConfig";
 
 const storage = getStorage(app);
 
 const useUploadImage = () => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const userId: string | null = useGetUserId();
+  const userId: string | null = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   
   /**
    * Uploads an image to Firebase Storage for a given slot (profile, slot1, slot2, ...).

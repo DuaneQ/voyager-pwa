@@ -7,7 +7,7 @@ import {
   act,
 } from "@testing-library/react";
 import { Chat } from "../../components/pages/Chat";
-import useGetUserId from "../../hooks/useGetUserId";
+// Removed useGetUserId import
 import { useNewConnection } from "../../Context/NewConnectionContext";
 import {
   collection,
@@ -44,11 +44,18 @@ jest.mock("firebase/firestore", () => ({
   })),
 }));
 
-jest.mock("../../hooks/useGetUserId");
+// Removed useGetUserId mock
 jest.mock("../../Context/NewConnectionContext");
-jest.mock("../../environments/firebaseConfig", () => ({
-  app: { _id: "mock-app" },
-}));
+jest.mock("../../environments/firebaseConfig", () => {
+  return {
+    app: { _id: "mock-app" },
+    auth: {
+      get currentUser() {
+        return global.__mockCurrentUser;
+      },
+    },
+  };
+});
 jest.mock("../../components/modals/ChatModal", () => {
   return function MockChatModal({ open, onClose, connection }: any) {
     return open ? (
@@ -83,8 +90,8 @@ describe("Chat Component", () => {
   const mockUserId = "current-user-123";
   const mockSetHasNewConnection = jest.fn();
   const mockDb = { _id: "mock-db" };
-  
-  // Mock connection data
+
+  // Mock connection data (now includes addedUsers)
   const mockConnections = [
     {
       id: "connection-1",
@@ -107,6 +114,7 @@ describe("Chat Component", () => {
         [mockUserId]: 2,
         "other-user-1": 0,
       },
+      addedUsers: [],
     },
     {
       id: "connection-2",
@@ -129,6 +137,7 @@ describe("Chat Component", () => {
         [mockUserId]: 0,
         "other-user-2": 1,
       },
+      addedUsers: [],
     },
   ];
 
@@ -155,7 +164,7 @@ describe("Chat Component", () => {
 
   beforeEach(() => {
     // Setup mocks
-    (useGetUserId as jest.Mock).mockReturnValue(mockUserId);
+    global.__mockCurrentUser = { uid: mockUserId };
     (useNewConnection as jest.Mock).mockReturnValue({
       setHasNewConnection: mockSetHasNewConnection,
     });
@@ -371,7 +380,7 @@ describe("Chat Component", () => {
   });
 
   it("handles user without ID", async () => {
-    (useGetUserId as jest.Mock).mockReturnValue(null);
+    global.__mockCurrentUser = null;
 
     render(<Chat />);
 

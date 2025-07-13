@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   Typography,
@@ -11,7 +11,6 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { removeUserFromConnection } from "../../utils/connectionUtils";
 
 const DEFAULT_AVATAR = "/default-profile.png";
 

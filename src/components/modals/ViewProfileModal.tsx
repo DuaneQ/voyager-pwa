@@ -40,7 +40,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
-import useGetUserId from "../../hooks/useGetUserId";
+import { auth } from "../../environments/firebaseConfig";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import RatingsCommentsList from "../common/RatingsCommentsList";
 
@@ -83,7 +83,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [canRate, setCanRate] = useState<boolean>(false);
   const [checkingConnection, setCheckingConnection] = useState<boolean>(false);
 
-  const currentUserId = useGetUserId();
+  const currentUserId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   // Check if the current user has a connection with the viewed user
   useEffect(() => {
     if (!open || !currentUserId || !userId) {
@@ -506,7 +506,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             {profilePhoto ? (
               <img
                 src={profilePhoto}
-                alt="Profile"
+                alt={profile?.username ? `${profile.username}` : "User"}
                 style={{
                   width: 160,
                   height: 160,
@@ -808,7 +808,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                         <Grid item key={idx}>
                           <img
                             src={photoUrl}
-                            alt={`Photo ${idx + 2}`}
+                            alt={profile?.username ? `${profile.username} photo ${idx + 2}` : `User photo ${idx + 2}`}
                             style={{
                               width: 80,
                               height: 80,
@@ -855,11 +855,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           }}>
           <img
             src={selectedPhoto || ""}
-            alt={
-              profile?.username
-                ? `${profile.username}'s profile`
-                : "User profile"
-            }
+            alt={profile?.username ? `${profile.username}` : "User"}
             style={{
               maxWidth: "80vw",
               maxHeight: "80vh",

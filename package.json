@@ -13,7 +13,6 @@
     "@mui/x-date-pickers": "^7.22.3",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^27.5.2",
     "@types/node": "^17.0.45",
@@ -22,6 +21,7 @@
     "axios": "^1.8.4",
     "bootstrap": "^5.3.3",
     "firebase": "^11.0.1",
+    "firebase-admin": "^13.4.0",
     "notistack": "^3.0.2",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.5",
@@ -58,7 +58,8 @@
     "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "test:ci": "react-scripts test --coverage --watchAll=false --ci"
+    "test:ci": "react-scripts test --coverage --watchAll=false --ci",
+    "test:emulator": "firebase emulators:start & sleep 10 && FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 react-scripts test src/__tests__/integration/useSearchItineraries.test.ts --testTimeout=30000 --detectOpenHandles"
   },
   "eslintConfig": {
     "extends": [
@@ -86,8 +87,10 @@
     "@babel/preset-typescript": "^7.27.1",
     "@cypress/react": "^9.0.1",
     "@cypress/webpack-dev-server": "^4.1.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@hookform/devtools": "^4.3.1",
     "@testing-library/cypress": "^10.0.3",
+    "@testing-library/react": "^16.3.0",
     "@testing-library/react-hooks": "^8.0.1",
     "@types/axios": "^0.9.36",
     "@types/react": "^18.3.11",
