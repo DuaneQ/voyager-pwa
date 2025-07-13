@@ -145,7 +145,6 @@ export const saveFCMTokenToFirestore = async (
       { merge: true }
     );
 
-    console.log("FCM token saved to Firestore successfully");
     return true;
   } catch (error) {
     console.error("Error saving FCM token to Firestore:", error);
@@ -163,9 +162,6 @@ export const setupFCMForUser = async (userId: string): Promise<FCMTokenResult> =
       error: "User ID is required",
     };
   }
-
-  console.log("Setting up FCM for user:", userId);
-
   const tokenResult = await generateFCMToken();
   if (!tokenResult.success || !tokenResult.token) {
     return tokenResult;
@@ -183,7 +179,6 @@ export const setupFCMForUser = async (userId: string): Promise<FCMTokenResult> =
   try {
     const messaging = getMessaging(app);
     onMessage(messaging, (payload) => {
-      console.log("FCM: Message received in foreground:", payload);
       
       if (payload.notification) {
         // Show notification if app is in foreground

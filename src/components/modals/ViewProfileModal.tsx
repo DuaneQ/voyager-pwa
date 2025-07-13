@@ -197,7 +197,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           connData.users.includes(currentUserId) &&
           connData.users.includes(userId)
         ) {
-          console.log(`Deleting connection: ${connDoc.id}`);
           deletePromises.push(deleteDoc(doc(db, "connections", connDoc.id)));
         }
       });
