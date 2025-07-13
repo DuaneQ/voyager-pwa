@@ -51,23 +51,29 @@ export const auth = getAuth(app);
 
 // Firestore instance with offline persistence
 export const db = getFirestore(app);
-enableIndexedDbPersistence(db)
-  .then(() => {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[Firestore] Offline persistence enabled");
-    }
-  })
-  .catch((err) => {
-    if (err.code === "failed-precondition") {
-      // Multiple tabs open, persistence can only be enabled in one tab at a time.
-      console.warn("[Firestore] Persistence failed: Multiple tabs open");
-    } else if (err.code === "unimplemented") {
-      // The current browser does not support all features required to enable persistence
-      console.warn("[Firestore] Persistence is not available in this browser");
-    } else {
-      console.error("[Firestore] Error enabling persistence:", err);
+
+// Only enable persistence in the browser (not in Node.js or test environments)
+if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !== "test") {
+  import("firebase/firestore").then(({ enableIndexedDbPersistence }) => {
+    if (typeof enableIndexedDbPersistence === "function") {
+      enableIndexedDbPersistence(db)
+        .then(() => {
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[Firestore] Offline persistence enabled");
+          }
+        })
+        .catch((err) => {
+          if (err.code === "failed-precondition") {
+            console.warn("[Firestore] Persistence failed: Multiple tabs open");
+          } else if (err.code === "unimplemented") {
+            console.warn("[Firestore] Persistence is not available in this browser");
+          } else {
+            console.error("[Firestore] Error enabling persistence:", err);
+          }
+        });
     }
   });
+}
 
 export const getMessagingInstance = () => {
   if (typeof window !== "undefined" && !isCypress) {

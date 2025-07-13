@@ -1,4 +1,10 @@
-import * as fcmUtils from '../../utils/fcmUtils';
+// Mock firebaseConfig to avoid running real Firestore code during tests
+jest.mock('../../environments/firebaseConfig', () => ({
+  app: {},
+  auth: {},
+  db: {},
+  getMessagingInstance: jest.fn(() => null),
+}));
 
 // Mock browser APIs and Firebase
 const mockGetMessaging = jest.fn();
@@ -10,16 +16,18 @@ const mockGetFirestore = jest.fn();
 const mockDoc = jest.fn();
 
 jest.mock('firebase/messaging', () => ({
-  getMessaging: (...args: any[]) => mockGetMessaging(...args),
-  getToken: (...args: any[]) => mockGetToken(...args),
-  deleteToken: (...args: any[]) => mockDeleteToken(...args),
-  onMessage: (...args: any[]) => mockOnMessage(...args),
+  getMessaging: (...args) => mockGetMessaging(...args),
+  getToken: (...args) => mockGetToken(...args),
+  deleteToken: (...args) => mockDeleteToken(...args),
+  onMessage: (...args) => mockOnMessage(...args),
 }));
 jest.mock('firebase/firestore', () => ({
-  getFirestore: (...args: any[]) => mockGetFirestore(...args),
-  setDoc: (...args: any[]) => mockSetDoc(...args),
-  doc: (...args: any[]) => mockDoc(...args),
+  getFirestore: (...args) => mockGetFirestore(...args),
+  setDoc: (...args) => mockSetDoc(...args),
+  doc: (...args) => mockDoc(...args),
 }));
+
+import * as fcmUtils from '../../utils/fcmUtils';
 
 describe('fcmUtils', () => {
   let isFCMSupportedSpy: jest.SpyInstance | undefined;
