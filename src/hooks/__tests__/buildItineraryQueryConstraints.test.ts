@@ -23,7 +23,6 @@ describe("buildItineraryQueryConstraints", () => {
     const itinerary = { ...baseItinerary, destination: "London" } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
     // Log the structure of the generated constraints
-    console.log("[TEST] Query constraints for destination only:", JSON.stringify(constraints, null, 2));
     /*
       We expect:
       - a 'where' constraint for destination == 'London'
@@ -44,7 +43,6 @@ describe("buildItineraryQueryConstraints", () => {
   it("should add gender filter if not 'No Preference'", () => {
     const itinerary = { ...baseItinerary, gender: "Female" } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
-    console.log("[TEST] Query constraints with gender filter:", JSON.stringify(constraints, null, 2));
     /*
       We expect a 'where' constraint for userInfo.gender == 'Female' in addition to the required constraints.
     */
@@ -58,7 +56,6 @@ describe("buildItineraryQueryConstraints", () => {
   it("should not add gender filter if 'No Preference'", () => {
     const itinerary = { ...baseItinerary, gender: "No Preference" } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
-    console.log("[TEST] Query constraints with gender 'No Preference':", JSON.stringify(constraints, null, 2));
     /*
       We expect NO 'where' constraint for userInfo.gender.
     */
@@ -69,7 +66,6 @@ describe("buildItineraryQueryConstraints", () => {
   it("should add status filter if not 'No Preference'", () => {
     const itinerary = { ...baseItinerary, userInfo: { status: "Single" } } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
-    console.log("[TEST] Query constraints with status filter:", JSON.stringify(constraints, null, 2));
     /*
       We expect a 'where' constraint for userInfo.status == 'Single'.
     */
@@ -83,7 +79,6 @@ describe("buildItineraryQueryConstraints", () => {
   it("should add sexualOrientation filter if not 'No Preference'", () => {
     const itinerary = { ...baseItinerary, sexualOrientation: "LGBTQ+" } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
-    console.log("[TEST] Query constraints with sexualOrientation filter:", JSON.stringify(constraints, null, 2));
     /*
       We expect a 'where' constraint for userInfo.sexualOrientation == 'LGBTQ+'.
     */
@@ -102,7 +97,6 @@ describe("buildItineraryQueryConstraints", () => {
       userInfo: { status: "Single" },
     } as Itinerary;
     const constraints = buildItineraryQueryConstraints({ currentUserItinerary: itinerary, userStartDay });
-    console.log("[TEST] Query constraints with all filters:", JSON.stringify(constraints, null, 2));
     /*
       We expect all filters to be present: destination, gender, status, sexualOrientation, endDay, orderBy, limit.
     */

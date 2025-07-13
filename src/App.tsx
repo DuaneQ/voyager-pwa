@@ -69,7 +69,6 @@ function App() {
           ": " +
           (payload.notification?.body || "")
       );
-      console.log("Foreground FCM message received:", payload);
     });
 
     // Cleanup on unmount

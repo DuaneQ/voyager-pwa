@@ -23,7 +23,6 @@ const useGetItinerariesFromFirestore = () => {
       const auth = getAuth();
       userUid = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
       if (!userUid) {
-        console.log("No authenticated user found.");
         setError("User not authenticated. Please log in.");
         setLoading(false);
         return [];
@@ -41,7 +40,6 @@ const useGetItinerariesFromFirestore = () => {
         id: doc.id,
         ...doc.data(),
       })) as Itinerary[];
-      console.log("Fetched itineraries:", fetchedItineraries);
       return fetchedItineraries;
     } catch (err) {
       console.error("Error fetching itineraries:", err);

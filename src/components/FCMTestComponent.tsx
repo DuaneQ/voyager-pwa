@@ -56,7 +56,6 @@ const FCMTestComponent: React.FC = () => {
         vapidKey: process.env.REACT_APP_VAPID_KEY
       });
 
-      console.log('FCM Token:', token);
     } catch (err) {
       console.error('Error initializing messaging:', err);
       setError(err instanceof Error ? err.message : 'Failed to initialize messaging');
