@@ -21,10 +21,8 @@ const useGetItinerariesFromFirestore = () => {
     let userUid = userCredentials ? JSON.parse(userCredentials).user.uid : null;
     if (!userUid) {
       const auth = getAuth();
-      userUid = auth.currentUser;
-      if (userUid) {
-        userUid = userUid.uid;
-      } else {
+      userUid = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
+      if (!userUid) {
         console.log("No authenticated user found.");
         setError("User not authenticated. Please log in.");
         setLoading(false);

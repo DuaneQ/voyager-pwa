@@ -7,7 +7,6 @@ import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 import { UserAuthContextProvider } from "./Context/UserAuthContext";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
-import { initializeApp } from "firebase/app";
 import { getPerformance } from "firebase/performance";
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { app } from "./environments/firebaseConfig";

@@ -1,4 +1,3 @@
-import { useGetUserProfilePhoto } from "../../hooks/useGetUserProfilePhoto";
 import React, { useEffect, useState, useRef } from "react";
 import {
   Box,
@@ -12,7 +11,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ImageIcon from "@mui/icons-material/Image";
-import { Connection } from "../../types/Connection";
 import { Message } from "../../types/Message";
 import {
   getFirestore,
@@ -34,33 +32,6 @@ import ManageChatMembersModal from "./ManageChatMembersModal";
 const db = getFirestore(app);
 const storage = getStorage(app);
 const DEFAULT_AVATAR = "/default-profile.png";
-
-// Helper to get the other user's info from a connection
-function getOtherUser(connection: Connection, userId: string) {
-  if (!Array.isArray(connection.itineraries)) {
-    return {
-      username: "Unknown",
-      uid: "",
-    };
-  }
-  const otherItinerary = connection.itineraries.find(
-    (it) => it.userInfo && it.userInfo.uid !== userId
-  );
-  return (
-    otherItinerary?.userInfo || {
-      username: "Unknown",
-      uid: "",
-    }
-  );
-}
-
-// Helper to get the other user's itinerary from a connection
-function getOtherItinerary(connection: Connection, userId: string) {
-  if (!Array.isArray(connection.itineraries)) return undefined;
-  return connection.itineraries.find(
-    (it) => it.userInfo && it.userInfo.uid !== userId
-  );
-}
 
 interface ChatModalProps {
   open: boolean;

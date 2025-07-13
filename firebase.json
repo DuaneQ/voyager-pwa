@@ -3,6 +3,24 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "database": {
+      "port": 9000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  },
   "functions": {
     "source": "functions",
     "ignore": [
@@ -12,11 +30,17 @@
       "firebase-debug.*.log",
       "*.local"
     ],
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ]
   },
   "hosting": {
     "public": "build",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
       {
         "source": "**",
@@ -28,11 +52,6 @@
     "rules": "storage.rules"
   },
   "emulators": {
-    "apphosting": {
-      "port": 5002,
-      "rootDirectory": "./",
-      "startCommand": "npm run dev"
-    },
     "auth": {
       "port": 9099
     },
@@ -42,17 +61,15 @@
     "firestore": {
       "port": 8080
     },
-    "database": {
-      "port": 9000
-    },
     "hosting": {
-      "port": 5000
+      "port": 5002
     },
     "storage": {
       "port": 9199
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     },
     "singleProjectMode": true
   },

@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import useGetUserId from "./useGetUserId";
+import { auth } from "../environments/firebaseConfig";
 import { setupFCMForUser, validateFCMSetup } from "../utils/fcmUtils";
 
 export const useFCMToken = () => {
-  const userId = useGetUserId(); // Get UID from Firebase Auth
+  const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null; // Get UID from Firebase Auth
 
   useEffect(() => {
     // Add a small delay to ensure userId is loaded

@@ -85,14 +85,12 @@ export const ProfilePhoto = () => {
         src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
         alt="Profile Placeholder"
         style={{
-          maxWidth: "30%",
-          height: "auto",
-          maxHeight: "300px",
-          marginRight: "10px",
-          width: "auto",
+          width: "100%",
+          height: "100%",
           objectFit: "cover",
           cursor: loading ? "not-allowed" : "pointer",
           opacity: loading ? 0.5 : 1,
+          borderRadius: "8px"
         }}
         onClick={(event) => {
           if (!loading) setMenuAnchor(event.currentTarget);
