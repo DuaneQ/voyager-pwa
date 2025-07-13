@@ -33,7 +33,7 @@ export const createStripeCheckoutSession = functions.https.onCall(async (data, c
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'subscription',
-    line_items: [{ price: process.env.STRIPE_PRODUCTION_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
     customer: stripeCustomerId,
     metadata: { uid },
     success_url: `${origin}/search?checkout=success`,

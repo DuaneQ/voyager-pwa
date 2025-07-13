@@ -122,7 +122,7 @@ const useSearchItineraries = () => {
   };
 
   // Fetch from Firestore with pagination
-  const fetchFromFirestore = async (params: SearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
+   const fetchFromFirestore = async (params: SearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
     const { currentUserItinerary } = params;
     const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
 
@@ -210,7 +210,6 @@ const useSearchItineraries = () => {
 
       // Fetch first page from Firestore
       const results = await fetchFromFirestore(params, true);
-      
       // Cache the raw results (before filtering)
       searchCache.set(cacheKey, results);
       

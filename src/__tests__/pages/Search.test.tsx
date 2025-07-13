@@ -3,14 +3,20 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom";
 
 // Mock ALL modules FIRST, before any imports
-jest.mock("../../environments/firebaseConfig", () => ({
-  app: {
-    name: "[DEFAULT]",
-    options: {},
-    automaticDataCollectionEnabled: false,
-  },
-  db: {},
-}));
+jest.mock("../../environments/firebaseConfig", () => {
+  return {
+    app: {
+      name: "[DEFAULT]",
+      options: {},
+      automaticDataCollectionEnabled: false,
+    },
+    auth: {
+      get currentUser() {
+        return global.__mockCurrentUser;
+      },
+    },
+  };
+});
 
 jest.mock("firebase/storage", () => ({
   getStorage: jest.fn(() => ({})),
@@ -66,10 +72,7 @@ jest.mock("../../hooks/useSearchItineraries", () => ({
   }),
 }));
 
-jest.mock("../../hooks/useGetUserId", () => ({
-  __esModule: true,
-  default: () => "current-user-id",
-}));
+// Removed useGetUserId mock
 
 jest.mock("../../hooks/useGetUserProfile", () => ({
   __esModule: true,
@@ -214,7 +217,8 @@ describe("Search Component", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+    global.__mockCurrentUser = { uid: "current-user-id" };
+
     // Reset all mocks to default values
     mockFetchItineraries.mockResolvedValue(mockItineraries);
     mockSearchItineraries.mockResolvedValue(undefined);

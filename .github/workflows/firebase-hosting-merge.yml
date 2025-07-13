@@ -25,7 +25,7 @@ jobs:
         run: npm test -- --coverage --watchAll=false
         env:
           CI: true
-      
+    
       - name: Run Cypress component tests
         run: npm run cypress:run:component
         env:

@@ -22,7 +22,7 @@ import {
 import { Close as CloseIcon, Send as SendIcon } from '@mui/icons-material';
 import { collection, addDoc, getFirestore } from 'firebase/firestore';
 import { app } from '../../environments/firebaseConfig';
-import useGetUserId from '../../hooks/useGetUserId';
+import { auth } from '../../environments/firebaseConfig';
 
 interface FeedbackData {
   type: 'bug' | 'feature' | 'improvement' | 'general' | '';
@@ -51,7 +51,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const userId = useGetUserId();
+  const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   
   const [formData, setFormData] = useState<FeedbackData>({
     type: initialType,

@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   Warning as WarningIcon,
-  CheckCircle as CheckIcon,
   Gavel as LegalIcon,
 } from '@mui/icons-material';
 
@@ -54,11 +53,6 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
   };
 
   const allAcknowledged = Object.values(acknowledgments).every(Boolean) && hasReadTerms;
-
-  const handleAccept = async () => {
-    if (!allAcknowledged) return;
-    await onAccept();
-  };
 
   const acknowledgmentItems = [
     {

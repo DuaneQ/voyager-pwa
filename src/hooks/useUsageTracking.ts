@@ -2,14 +2,14 @@ import { useState, useCallback, useContext } from 'react';
 import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { app } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
-import useGetUserId from './useGetUserId';
+import { auth } from '../environments/firebaseConfig';
 
-const FREE_DAILY_LIMIT = 20;
+const FREE_DAILY_LIMIT = 10;
 
 export const useUsageTracking = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { userProfile, updateUserProfile } = useContext(UserProfileContext);
-  const userId = useGetUserId();
+  const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   const db = getFirestore(app);
 
   // Get today's date in YYYY-MM-DD format
@@ -17,54 +17,46 @@ export const useUsageTracking = () => {
     return new Date().toISOString().split('T')[0];
   };
 
-  // Check if user has reached daily limit
-  const hasPremium = () => {
+  // Check if user is a premium user with a valid subscription
+  const hasPremium = useCallback(() => {
     if (!userProfile) return false;
     if (userProfile.subscriptionType !== 'premium') return false;
     if (!userProfile.subscriptionEndDate) return false;
     const now = new Date();
     const end = new Date(userProfile.subscriptionEndDate);
     return now <= end;
-  };
+  }, [userProfile]);
 
   const hasReachedLimit = useCallback(() => {
     if (!userProfile) return false;
-    
     // Premium users with valid subscription have unlimited views
     if (hasPremium()) {
       return false;
     }
-
     const today = getTodayString();
     const dailyUsage = userProfile.dailyUsage;
-
     // If no usage data or different date, user hasn't reached limit
     if (!dailyUsage || dailyUsage.date !== today) {
       return false;
     }
-
     return dailyUsage.viewCount >= FREE_DAILY_LIMIT;
-  }, [userProfile]);
+  }, [userProfile, hasPremium]);
 
   // Get remaining views for today
   const getRemainingViews = useCallback(() => {
     if (!userProfile) return 0;
-    
     // Premium users with valid subscription have unlimited views
     if (hasPremium()) {
       return 999; // Represent unlimited
     }
-
     const today = getTodayString();
     const dailyUsage = userProfile.dailyUsage;
-
     // If no usage data or different date, user has full limit
     if (!dailyUsage || dailyUsage.date !== today) {
       return FREE_DAILY_LIMIT;
     }
-
     return Math.max(0, FREE_DAILY_LIMIT - dailyUsage.viewCount);
-  }, [userProfile]);
+  }, [userProfile, hasPremium]);
 
   // Track a view (like or dislike)
   const trackView = useCallback(async (): Promise<boolean> => {
@@ -72,20 +64,16 @@ export const useUsageTracking = () => {
       console.error('No user ID or profile found');
       return false;
     }
-
     // Premium users: unlimited, do not update usage or Firestore
     if (hasPremium()) {
       return true;
     }
-
     // Check if user has reached limit
     if (hasReachedLimit()) {
       console.log('User has reached daily limit');
       return false;
     }
-
     setIsLoading(true);
-
     try {
       const today = getTodayString();
       const currentUsage = userProfile.dailyUsage;

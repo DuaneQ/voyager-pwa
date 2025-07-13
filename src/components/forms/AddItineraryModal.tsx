@@ -13,7 +13,7 @@ import {
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import { Itinerary } from "../../types/Itinerary";
 import { UserProfileContext } from "../../Context/UserProfileContext";
-import useGetUserId from "../../hooks/useGetUserId";
+import { auth } from "../../environments/firebaseConfig";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { GENDER_OPTIONS, STATUS_OPTIONS, SEXUAL_ORIENTATION_OPTIONS } from "../shared-strings/constants";
 import ItineraryCard from "../forms/ItineraryCard";
@@ -33,7 +33,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 }) => {
   const { userProfile } = useContext(UserProfileContext);
   const { postItinerary } = usePostItineraryToFirestore();
-  const userId: string | null = useGetUserId();
+  const userId: string | null = auth.currentUser?.uid ?? null;
 
   const [newItinerary, setNewItinerary] = useState({
     destination: "",

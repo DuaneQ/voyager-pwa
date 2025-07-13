@@ -26,10 +26,9 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
-import useGetUserId from "../../hooks/useGetUserId";
+import { auth } from "../../environments/firebaseConfig";
 import { useNewConnection } from "../../Context/NewConnectionContext";
 import React from "react";
-import { BetaBanner } from '../utilities/BetaBanner';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { getAnalytics, logEvent } from "firebase/analytics";
 
@@ -87,14 +86,11 @@ export const Search = React.memo(() => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const { setHasNewConnection } = useNewConnection();
-  const userId = useGetUserId();
+  const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   const db = getFirestore(app);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
   const {
     hasReachedLimit,
-    getRemainingViews,
     trackView,
-    isLoading: usageLoading
   } = useUsageTracking();
 
   // Prevent body scrolling when component mounts (same as auth pages)
@@ -107,17 +103,7 @@ export const Search = React.memo(() => {
     };
   }, []);
 
-  // Update the banner dismissed handler
-  const handleBannerDismiss = () => {
-    setBannerDismissed(true);
-  };
 
-  // Check if banner is dismissed
-  useEffect(() => {
-    const version = "1.0.0-beta"; // Should match your app version
-    const dismissed = localStorage.getItem(`beta-banner-dismissed-${version}`);
-    setBannerDismissed(!!dismissed);
-  }, []);
 
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
@@ -133,7 +119,7 @@ export const Search = React.memo(() => {
       }
     };
     loadItineraries();
-  }, [refreshKey]);
+  }, [refreshKey, fetchItineraries]);
 
   // Auto-load more matches when user is near the end
   useEffect(() => {
@@ -154,7 +140,7 @@ export const Search = React.memo(() => {
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
     if (hasReachedLimit()) {
-      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
     const success = await trackView();
@@ -175,7 +161,7 @@ export const Search = React.memo(() => {
   // Like handler with usage tracking and mutual like logic
   const handleLike = async (itinerary: Itinerary) => {
     if (hasReachedLimit()) {
-      alert(`Daily limit reached! You've viewed ${10} itineraries today. Upgrade to Premium for unlimited views.`);
+      alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
     const success = await trackView();
@@ -295,17 +281,8 @@ export const Search = React.memo(() => {
         </Box>
       )}
 
-      {/* Subscription Card - always visible, floating bottom left */}
+      {/* Subscription Card - always visible at the bottom */}
       <SubscriptionCard compact />
-      {/* Beta Banner - Position it at the very top */}
-      {!bannerDismissed && (
-        <Box sx={{ position: 'relative', zIndex: 1000, mt: 8, mb: 3 }}>
-          <BetaBanner
-            version="1.0.0-beta"
-            onDismiss={handleBannerDismiss}
-          />
-        </Box>
-      )}
 
 
       {/* Select and Button area - simplified, removed unnecessary Box wrappers */}
@@ -319,10 +296,11 @@ export const Search = React.memo(() => {
           borderBottom: "1px solid rgba(0,0,0,0.05)",
           gap: "16px",
           flexShrink: 0,
-          mt: bannerDismissed ? 10 : 0,
+          mt: 10,
         }}>
         <FormControl fullWidth sx={{ maxWidth: { xs: 180, sm: 240 } }}>
           <Select
+            data-testid="itinerary-select"
             value={selectedItineraryId}
             onChange={(e) => handleItinerarySelect(e.target.value)}
             displayEmpty
@@ -370,6 +348,7 @@ export const Search = React.memo(() => {
           </Select>
         </FormControl>
         <Button
+          data-testid="add-itinerary-button"
           variant="contained"
           onClick={() => setShowModal(true)}
           size="small">
@@ -390,31 +369,56 @@ export const Search = React.memo(() => {
         }}>
         {/* Show onboarding message if user has never created an itinerary */}
         {!isFetching && itineraries.length === 0 && (
-          <Typography
-            variant="body1"
+          <Box
             sx={{
-              backgroundColor: "#f9f9f9",
-              borderRadius: 2,
-              padding: 3,
-              maxWidth: 350,
-              textAlign: "left",
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 2,
+              maxWidth: 300,
+              margin: '0 auto',
+              position: 'relative',
+              zIndex: 1
             }}>
-            Create an itinerary to find matches for your future trips. Once
-            created, select one of your itineraries from the dropdown, and we'll
-            match you with others based on destination, dates, and preferences.
-            Once matched, you can chat and plan your adventures together.
-            Free tier offers 20 daily views of itineraries. 
-            Upgrade to Premium for unlimited views $4 per month.
-          </Typography>
+            <Box
+              sx={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 2,
+                padding: 3,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                maxWidth: '100%',
+                mt: -30
+              }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap'
+                }}>
+                Create an itinerary to find matches for your future trips. Once
+                created, select one of your itineraries from the dropdown, and we'll
+                match you with others based on destination, dates, and preferences.
+                Once matched, you can chat and plan your adventures together.
+              </Typography>
+            </Box>
+          </Box>
         )}
 
         {/* Show current match */}
         {currentMatch && (
-          <ItineraryCard
-            itinerary={currentMatch}
-            onLike={handleLike}
-            onDislike={handleDislike}
-          />
+          <Box data-testid="search-results">
+            <ItineraryCard
+              data-testid="itinerary-card"
+              itinerary={currentMatch}
+              onLike={handleLike}
+              onDislike={handleDislike}
+            />
+          </Box>
         )}
 
         {/* Show loading when searching or loading more, but only if user has itineraries */}

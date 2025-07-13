@@ -1,12 +1,12 @@
 import { useContext, useEffect, useState } from "react";
-import useGetUserId from "./useGetUserId";
+import { auth } from "../environments/firebaseConfig";
 import { app } from "../environments/firebaseConfig";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
 import "firebase/firestore";
 import { UserProfileContext } from "../Context/UserProfileContext";
 
 const useGetUserProfile = () => {
-  const userId: string | null = useGetUserId();
+  const userId: string | null = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   const [isLoading, setIsLoading] = useState(true);
   const { updateUserProfile } = useContext(UserProfileContext);
 

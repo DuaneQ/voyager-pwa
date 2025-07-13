@@ -86,30 +86,40 @@ describe("ProfileForm", () => {
   test("should render the profile form with user details", () => {
     renderComponent();
     expect(screen.getByText("TestUser")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("This is a test bio")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("1990-01-01")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Male")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Heterosexual")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("GED")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Occasionally")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Never")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("single")).toBeInTheDocument(); // Add status test
+    expect(screen.getByText("This is a test bio")).toBeInTheDocument();
+    expect(screen.getByText("35")).toBeInTheDocument();
+    expect(screen.getByText("Male")).toBeInTheDocument();
+    expect(screen.getByText("Heterosexual")).toBeInTheDocument();
+    expect(screen.getByText("GED")).toBeInTheDocument();
+    expect(screen.getByText("Occasionally")).toBeInTheDocument();
+    expect(screen.getByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("single")).toBeInTheDocument();
   });
 
-  test("should open the EditProfileModal when 'Edit Profile' button is clicked", () => {
+  test("should open the EditProfileModal when 'Edit Profile' menu item is clicked", () => {
     renderComponent();
-    const editProfileButton = screen.getByRole("button", {
-      name: /edit profile/i,
-    });
-    fireEvent.click(editProfileButton);
+    // Click the menu icon button first
+    const menuButton = screen.getByRole("button", { name: /more options/i });
+    fireEvent.click(menuButton);
+
+    // Now click the Edit Profile menu item
+    const editProfileMenuItem = screen.getByRole("menuitem", { name: /edit profile/i });
+    fireEvent.click(editProfileMenuItem);
+    
     const modalHeading = screen.getByRole("heading", { name: /edit profile/i });
     expect(modalHeading).toBeInTheDocument();
   });
 
-  test("should log out the user when the logout button is clicked", async () => {
+  test("should log out the user when the logout menu item is clicked", async () => {
     renderComponent();
-    const logoutButton = screen.getByRole("button", { name: /logout/i });
-    fireEvent.click(logoutButton);
+    // Click the menu icon button first
+    const menuButton = screen.getByRole("button", { name: /more options/i });
+    fireEvent.click(menuButton);
+
+    // Now click the logout menu item
+    const logoutMenuItem = screen.getByRole("menuitem", { name: /logout/i });
+    fireEvent.click(logoutMenuItem);
+
     await waitFor(() => {
       expect(signOut).toHaveBeenCalledWith(auth);
     });
