@@ -20,7 +20,8 @@ const prodConfig = {
   projectId: "mundo1-1",
   storageBucket: "mundo1-1.appspot.com",
   messagingSenderId: "533074391000",
-  appId: "1:533074391000:web:2ef7404546e97f4aa2ccad"
+  appId: "1:533074391000:web:2ef7404546e97f4aa2ccad",
+  measurementId: "G-P99K8KRBYJ"
 };
 
 const devHosts = [
