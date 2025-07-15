@@ -21,6 +21,7 @@ const mockUserProfile = {
   drinking: "Occasionally",
   smoking: "Never",
   status: "Single", // Added status field
+  username: "TestUser", // Added username field
 };
 
 // Test context provider with real state
@@ -81,6 +82,7 @@ describe("<EditProfileModal />", () => {
     cy.get('input[name="edu"]').should("have.value", mockUserProfile.edu);
     cy.get('input[name="drinking"]').should("have.value", mockUserProfile.drinking);
     cy.get('input[name="smoking"]').should("have.value", mockUserProfile.smoking);
+    cy.get('input[name="username"]').should("have.value", mockUserProfile.username); // Check username field
     cy.contains("button", "Cancel").should("exist");
     cy.contains("button", "Save").should("exist");
   });
@@ -96,6 +98,19 @@ describe("<EditProfileModal />", () => {
       .trigger('input') // Trigger input event for React
       .type("New bio")
       .should("have.value", "New bio");
+  });
+
+  it("allows editing the username field", () => {
+    mountModal();
+
+    // Method that works reliably with Material-UI
+    cy.get('input[name="username"]')
+      .should("have.value", mockUserProfile.username) // Verify initial state
+      .focus()
+      .invoke('val', '') // Clear using JavaScript - most reliable
+      .trigger('input') // Trigger input event for React
+      .type("NewUsername")
+      .should("have.value", "NewUsername");
   });
 
   it("allows changing the status", () => {

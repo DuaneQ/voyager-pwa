@@ -1,12 +1,12 @@
-
 import profilePlaceholder from "../../assets/images/imagePH.png";
-import { Menu, MenuItem, CircularProgress, Input, Alert } from "@mui/material";
+import { Menu, MenuItem, CircularProgress, Input, Alert, Modal, Box, IconButton, Button } from "@mui/material";
 import { useContext, useRef, useState } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
 import { validateImageFile } from "../../utils/validateImageFile";
+import CloseIcon from "@mui/icons-material/Close";
 
 
 export const ProfilePhoto = () => {
@@ -18,6 +18,7 @@ export const ProfilePhoto = () => {
   const { setUserStorageData } = usePostUserProfileToStorage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
 
   // Upload profile photo (slot: 'profile')
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -79,6 +80,14 @@ export const ProfilePhoto = () => {
     setMenuAnchor(null);
   }
 
+  const handleEnlargePhoto = (photoUrl: string) => {
+    setEnlargedPhoto(photoUrl);
+  };
+
+  const handleCloseEnlargedPhoto = () => {
+    setEnlargedPhoto(null);
+  };
+
   return (
     <>
       <img
@@ -122,9 +131,53 @@ export const ProfilePhoto = () => {
         ) : [
           <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
           <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
+          <MenuItem key="view" onClick={() => {
+            if (userProfile?.photos?.profile) {
+              handleEnlargePhoto(userProfile.photos.profile);
+            }
+          }}>
+            View Photo
+          </MenuItem>,
           <MenuItem key="cancel" onClick={handleCancel}>Cancel</MenuItem>,
         ]}
       </Menu>
+      <Modal
+        open={Boolean(enlargedPhoto)}
+        onClose={handleCloseEnlargedPhoto}
+        aria-labelledby="enlarged-photo-modal"
+        aria-describedby="modal-to-view-enlarged-photo"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+          }}
+        >
+          <IconButton
+            onClick={handleCloseEnlargedPhoto}
+            sx={{ position: "absolute", top: 8, right: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+          {enlargedPhoto && (
+            <img
+              src={enlargedPhoto}
+              alt="Enlarged Profile Photo"
+              style={{
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </Box>
+      </Modal>
     </>
   );
 };
