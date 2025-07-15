@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useContext } from "react";
 import {
   Modal,
@@ -506,6 +505,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               <img
                 src={profilePhoto}
                 alt={profile?.username ? `${profile.username}` : "User"}
+                loading="lazy"
                 style={{
                   width: 160,
                   height: 160,

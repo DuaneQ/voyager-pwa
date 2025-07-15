@@ -165,6 +165,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             <img
               src={noLikeIcon}
               alt="No Like Icon"
+              loading="lazy"
               style={{ width: "40px", height: "40px" }} // smaller on mobile
             />
           </Button>

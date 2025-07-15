@@ -93,6 +93,7 @@ export const ProfilePhoto = () => {
       <img
         src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
         alt="Profile Placeholder"
+        loading="lazy"
         style={{
           width: "100%",
           height: "100%",

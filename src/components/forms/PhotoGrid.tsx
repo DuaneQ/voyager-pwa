@@ -102,6 +102,7 @@ export const PhotoGrid = () => {
             <img
               src={userProfile?.photos?.[slot] ? userProfile.photos[slot] : profilePlaceholder}
               alt={`Profile Placeholder ${index + 1}`}
+              loading="lazy"
               style={{
                 width: IMAGE_SIZE,
                 height: IMAGE_SIZE,
