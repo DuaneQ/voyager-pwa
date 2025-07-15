@@ -23,6 +23,7 @@ import { Close as CloseIcon, Send as SendIcon } from '@mui/icons-material';
 import { collection, addDoc, getFirestore } from 'firebase/firestore';
 import { app } from '../../environments/firebaseConfig';
 import { auth } from '../../environments/firebaseConfig';
+import DOMPurify from 'dompurify';
 
 interface FeedbackData {
   type: 'bug' | 'feature' | 'improvement' | 'general' | '';
@@ -121,15 +122,15 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       // Build feedbackDoc with no undefined values
       const feedbackDoc: Record<string, any> = {
         userId: userId || 'anonymous',
-        userEmail: formData.includeContactInfo ? formData.contactEmail : null,
+        userEmail: formData.includeContactInfo ? DOMPurify.sanitize(formData.contactEmail) : null,
         type: formData.type,
         severity: formData.severity || null,
         rating: typeof formData.rating === 'number' && formData.rating > 0 ? formData.rating : null,
-        title: formData.title,
-        description: formData.description,
-        stepsToReproduce: formData.stepsToReproduce || null,
-        expectedBehavior: formData.expectedBehavior || null,
-        actualBehavior: formData.actualBehavior || null,
+        title: DOMPurify.sanitize(formData.title),
+        description: DOMPurify.sanitize(formData.description),
+        stepsToReproduce: formData.stepsToReproduce ? DOMPurify.sanitize(formData.stepsToReproduce) : null,
+        expectedBehavior: formData.expectedBehavior ? DOMPurify.sanitize(formData.expectedBehavior) : null,
+        actualBehavior: formData.actualBehavior ? DOMPurify.sanitize(formData.actualBehavior) : null,
         deviceInfo: getDeviceInfo(),
         status: 'new',
         priority: formData.severity === 'critical' ? 'urgent' : 

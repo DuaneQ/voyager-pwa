@@ -42,6 +42,7 @@ import { app } from "../../environments/firebaseConfig";
 import { auth } from "../../environments/firebaseConfig";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import RatingsCommentsList from "../common/RatingsCommentsList";
+import DOMPurify from 'dompurify';
 
 const db = getFirestore(app);
 
@@ -282,7 +283,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         reportedUserId: userId,
         reportedByUserId: currentUserId,
         reason: reportReason,
-        description: reportDescription,
+        description: DOMPurify.sanitize(reportDescription),
         timestamp: serverTimestamp(),
         status: "pending",
         userDetails: {
@@ -373,7 +374,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           ...currentRatings.ratedBy,
           [currentUserId]: {
             rating: newRating,
-            comment: newComment,
+            comment: DOMPurify.sanitize(newComment),
             timestamp: Date.now(),
           },
         },
