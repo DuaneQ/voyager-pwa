@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "../environments/firebaseConfig";
 import { auth } from "../environments/firebaseConfig";
+import DOMPurify from 'dompurify';
 
 const storage = getStorage(app);
 
@@ -20,9 +21,11 @@ const useUploadImage = () => {
     setError(null);
     try {
       const id = userId ? userId : null;
+      // Sanitize filename to prevent path traversal and special characters
+      const sanitizedFileName = DOMPurify.sanitize(file.name).replace(/[^a-zA-Z0-9.-]/g, '_');
       const storageRef = ref(
         storage,
-        `photos/${id}/${slot}/${file.name}`
+        `photos/${id}/${slot}/${sanitizedFileName}`
       );
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);

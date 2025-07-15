@@ -17,6 +17,7 @@ import { auth } from "../../environments/firebaseConfig";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { GENDER_OPTIONS, STATUS_OPTIONS, SEXUAL_ORIENTATION_OPTIONS } from "../shared-strings/constants";
 import ItineraryCard from "../forms/ItineraryCard";
+import DOMPurify from 'dompurify';
 
 interface AddItineraryModalProps {
   open: boolean;
@@ -125,6 +126,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       };
       const itineraryWithUserInfo = {
         ...newItinerary,
+        description: DOMPurify.sanitize(newItinerary.description),
+        activities: newItinerary.activities.map(activity => DOMPurify.sanitize(activity)),
         userInfo,
       };
 

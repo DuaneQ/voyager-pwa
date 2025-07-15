@@ -20,6 +20,7 @@ import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { isUserOver18 } from "../utilities/DateChecker";
 import { AlertContext } from "../../Context/AlertContext";
+import DOMPurify from 'dompurify';
 
 export const EditProfileModal = (props: any) => {
   const { setUserDbData } = usePostUserProfileToDb();
@@ -94,8 +95,8 @@ export const EditProfileModal = (props: any) => {
       // Ensure we're using the correct field names when saving
       const updatedProfile = {
         ...userProfile,
-        username: formData.username, // Include username in the updated profile
-        bio: formData.bio,
+        username: DOMPurify.sanitize(formData.username), // Include username in the updated profile
+        bio: DOMPurify.sanitize(formData.bio),
         dob: formData.dob,
         gender: formData.gender,
         sexualOrientation: formData.sexualOrientation,

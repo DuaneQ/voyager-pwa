@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # Enable version updates for npm (main project)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "DuaneQ"
+    assignees:
+      - "DuaneQ"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    # Group security updates for easier review
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security-update"
+
+  # Enable version updates for npm (functions)
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "DuaneQ"
+    assignees:
+      - "DuaneQ"
+    commit-message:
+      prefix: "deps(functions)"
+      include: "scope"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "DuaneQ"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
