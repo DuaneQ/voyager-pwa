@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+// App Check import temporarily removed for emergency hotfix
+// import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const devConfig = {
   apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
@@ -60,7 +62,6 @@ if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !==
       enableIndexedDbPersistence(db)
         .then(() => {
           if (process.env.NODE_ENV !== "production") {
-            console.log("[Firestore] Offline persistence enabled");
           }
         })
         .catch((err) => {

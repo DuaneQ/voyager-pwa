@@ -21,6 +21,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       
+      - name: Security audit (report only)
+        run: |
+          echo "🔍 Running security audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
+          
+      - name: Security audit (fail on critical only)
+        run: npm audit --audit-level=critical
+      
       - name: Run Jest unit tests
         run: npm test -- --coverage --watchAll=false
         env:
@@ -44,6 +52,9 @@ jobs:
           REACT_APP_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
           REACT_APP_VAPID_KEY: ${{ secrets.REACT_APP_VAPID_KEY }}
+          # App Check production configuration
+          REACT_APP_SKIP_APPCHECK_DEV: false
+          REACT_APP_APP_CHECK_DEBUG_TOKEN: false
       
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0

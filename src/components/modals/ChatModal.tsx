@@ -28,6 +28,7 @@ import { ViewProfileModal } from "./ViewProfileModal";
 import { AddUserToChatModal } from "./AddUserToChatModal";
 import { addUserToConnection, removeUserFromConnection } from "../../utils/connectionUtils";
 import ManageChatMembersModal from "./ManageChatMembersModal";
+import DOMPurify from 'dompurify';
 
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -186,9 +187,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({
   const handleSendMessage = async () => {
     if (!connection || !messageInput.trim() || !userId) return;
     setSending(true);
+    const sanitizedMessage = DOMPurify.sanitize(messageInput);
     const messageData = {
       sender: userId,
-      text: messageInput,
+      text: sanitizedMessage,
       createdAt: serverTimestamp(),
       readBy: [userId],
     };

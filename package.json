@@ -20,6 +20,7 @@
     "ajv-keywords": "^3.5.2",
     "axios": "^1.8.4",
     "bootstrap": "^5.3.3",
+    "dompurify": "^3.2.6",
     "firebase": "^11.0.1",
     "firebase-admin": "^13.4.0",
     "notistack": "^3.0.2",
@@ -59,7 +60,16 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "test:ci": "react-scripts test --coverage --watchAll=false --ci",
-    "test:emulator": "firebase emulators:start & sleep 10 && FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 react-scripts test src/__tests__/integration/useSearchItineraries.test.ts --testTimeout=30000 --detectOpenHandles"
+    "test:emulator": "firebase emulators:start & sleep 10 && FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 react-scripts test src/__tests__/integration/useSearchItineraries.test.ts --testTimeout=30000 --detectOpenHandles",
+    "audit:security": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix",
+    "audit:full": "npm audit && cd functions && npm audit"
+  },
+  "overrides": {
+    "nth-check": "^2.1.1",
+    "postcss": "^8.4.31",
+    "svgo": "^3.0.0",
+    "css-select": "^5.1.0"
   },
   "eslintConfig": {
     "extends": [
@@ -93,6 +103,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/react-hooks": "^8.0.1",
     "@types/axios": "^0.9.36",
+    "@types/dompurify": "^3.0.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "babel-loader": "^10.0.0",
