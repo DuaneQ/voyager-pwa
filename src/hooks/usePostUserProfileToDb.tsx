@@ -14,11 +14,17 @@ const usePostUserProfileToDb = () => {
       try {
         const userCredentials = localStorage.getItem("USER_CREDENTIALS");
         const userRef = userCredentials ? JSON.parse(userCredentials) : null;
-        setuserRef(userRef)
-        const db = getFirestore(app);
-        const docRef = doc(db, "users", userRef.user.uid);
-        if (userDbData){
-          await setDoc(docRef, userDbData);
+        setuserRef(userRef);
+        
+        // Check if userRef and userRef.user exist before accessing uid
+        if (userRef && userRef.user && userRef.user.uid) {
+          const db = getFirestore(app);
+          const docRef = doc(db, "users", userRef.user.uid);
+          if (userDbData) {
+            await setDoc(docRef, userDbData);
+          }
+        } else {
+          console.warn("User credentials not found or invalid in localStorage");
         }
       } catch (error) {
         console.log("error", error);

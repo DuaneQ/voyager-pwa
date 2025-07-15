@@ -22,6 +22,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm init
       - run: npm install --save firebase --legacy-peer-deps
+      
+      - name: Security audit (report only)
+        run: |
+          echo "🔍 Running security audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
+          
+      - name: Security audit (fail on critical only)
+        run: npm audit --audit-level=critical
+        
       - run: CI=false npm run build
         env:
           REACT_APP_ENV: development
@@ -44,6 +53,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci --legacy-peer-deps
+      
+      - name: Security audit (report only)
+        run: |
+          echo "🔍 Running security audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
+          
+      - name: Security audit (fail on critical only)
+        run: npm audit --audit-level=critical
+        
       - name: Debug Preview URL
         run: |
           if [ -z "$CYPRESS_BASE_URL" ]; then

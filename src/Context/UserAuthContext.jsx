@@ -16,8 +16,21 @@ export function UserAuthContextProvider({ children }) {
       setLoading(false);
       if (currentUser && currentUser.emailVerified) {
         setUser(currentUser);
+        // Update localStorage with current user credentials
+        const userCredentials = {
+          user: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            emailVerified: currentUser.emailVerified,
+            isAnonymous: currentUser.isAnonymous,
+            providerData: currentUser.providerData,
+          },
+        };
+        localStorage.setItem("USER_CREDENTIALS", JSON.stringify(userCredentials));
       } else {
         setUser(null);
+        // Clear localStorage when user is not authenticated
+        localStorage.removeItem("USER_CREDENTIALS");
       }
     });
     return () => {
