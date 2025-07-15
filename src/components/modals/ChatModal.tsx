@@ -343,6 +343,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                               <img
                                 src={msg.imageUrl}
                                 alt="attachment"
+                                loading="lazy"
                                 style={{ maxWidth: 200, marginTop: 8 }}
                               />
                             )}

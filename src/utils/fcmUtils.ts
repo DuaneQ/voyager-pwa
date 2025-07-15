@@ -103,6 +103,10 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
       serviceWorkerRegistration: swRegistration,
     });
 
+    console.log("VAPID Key:", process.env.REACT_APP_VAPID_KEY);
+    console.log("Service Worker Registration:", swRegistration);
+    console.log("Generated Token:", token);
+
     if (!token) {
       return {
         success: false,
