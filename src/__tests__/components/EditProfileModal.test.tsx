@@ -36,6 +36,7 @@ describe("EditProfileModal", () => {
     edu: "High School",
     drinking: "Never",
     smoking: "Never",
+    username: "TestUser",
   };
 
   beforeEach(() => {
@@ -83,6 +84,7 @@ describe("EditProfileModal", () => {
       edu: mockUserProfile.edu,
       drinking: mockUserProfile.drinking,
       smoking: mockUserProfile.smoking,
+      username: mockUserProfile.username,
     });
 
     expect(mockSetUserStorageData).toHaveBeenCalledWith(expectedProfile);
@@ -258,5 +260,36 @@ describe("EditProfileModal", () => {
     const dateLabels = screen.getAllByText("*Date of birth");
     expect(dateLabels.length).toBeGreaterThan(0);
     expect(dateLabels[0]).toBeInTheDocument();
+  });
+
+  test("should handle username field changes", async () => {
+    renderComponent();
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(mockUserProfile.username)).toBeInTheDocument();
+    });
+
+    // Change username field
+    const usernameField = screen.getByLabelText(/username/i);
+    fireEvent.change(usernameField, { target: { value: "NewUsername" } });
+
+    // Verify field updated
+    expect(screen.getByDisplayValue("NewUsername")).toBeInTheDocument();
+
+    // Submit the form
+    const saveButton = screen.getByText("Save");
+    fireEvent.click(saveButton);
+
+    // Verify the updated data was saved
+    await waitFor(() => {
+      expect(mockSetUserStorageData).toHaveBeenCalled();
+    });
+
+    const expectedProfile = expect.objectContaining({
+      username: "NewUsername",
+    });
+
+    expect(mockSetUserStorageData).toHaveBeenCalledWith(expectedProfile);
   });
 });

@@ -45,6 +45,7 @@ export const EditProfileModal = (props: any) => {
   };
 
   const [formData, setFormData] = useState({
+    username: "", // Added username field
     bio: "",
     dob: "",
     gender: "",
@@ -59,11 +60,11 @@ export const EditProfileModal = (props: any) => {
   useEffect(() => {
     if (userProfile && props.show) {
       setFormData({
+        username: userProfile.username || "", // Sync username field
         bio: userProfile.bio || "",
         dob: userProfile.dob || "",
         gender: userProfile.gender || "",
-        sexualOrientation: userProfile.sexualOrientation || userProfile.sexualOrientation || "",
-
+        sexualOrientation: userProfile.sexualOrientation || "",
         edu: userProfile.edu || "",
         drinking: userProfile.drinking || "",
         smoking: userProfile.smoking || "",
@@ -80,7 +81,7 @@ export const EditProfileModal = (props: any) => {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // Convert date string to Date object for validation
     const dobDate = new Date(formData.dob);
     if (!isUserOver18(dobDate)) {
@@ -88,11 +89,12 @@ export const EditProfileModal = (props: any) => {
       setIsSubmitting(false);
       return;
     }
-    
+
     try {
       // Ensure we're using the correct field names when saving
       const updatedProfile = {
         ...userProfile,
+        username: formData.username, // Include username in the updated profile
         bio: formData.bio,
         dob: formData.dob,
         gender: formData.gender,
@@ -102,7 +104,7 @@ export const EditProfileModal = (props: any) => {
         smoking: formData.smoking,
         status: formData.status,
       };
-      
+
       setUserStorageData(updatedProfile);
       setUserDbData(updatedProfile);
       updateUserProfile(updatedProfile);
@@ -126,20 +128,32 @@ export const EditProfileModal = (props: any) => {
             p: 0,
             width: "100%",
             boxShadow: "none",
-          }}>
+          }}
+        >
           <form
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
             onSubmit={handleSubmit}
-            noValidate>
+            noValidate
+          >
             <Box sx={{ textAlign: "center", mb: 2 }}>
               <h2>Edit Profile</h2>
             </Box>
             <FormControl>
               <TextField
+                id="username"
+                label="Username"
+                value={formData.username}
+                name="username"
+                onChange={handleChange}
+                placeholder="Enter your username"
+                required
+              />
+            </FormControl>
+            <FormControl>
+              <TextField
                 id="bio"
                 label="User Bio"
                 multiline
-                autoFocus
                 rows={4}
                 value={formData.bio}
                 name="bio"
@@ -170,7 +184,8 @@ export const EditProfileModal = (props: any) => {
                 fullWidth
                 name="status"
                 label="Status"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {STATUS_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option.toLowerCase()}>
                     {option}
@@ -187,7 +202,8 @@ export const EditProfileModal = (props: any) => {
                 fullWidth
                 name="gender"
                 label="Gender"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {GENDER_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -204,7 +220,8 @@ export const EditProfileModal = (props: any) => {
                 fullWidth
                 name="sexualOrientation"
                 label="Sexual Orientation"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option.toLowerCase()}>
                     {option}
@@ -220,7 +237,8 @@ export const EditProfileModal = (props: any) => {
                 required
                 label="Education"
                 name="edu"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {EDUCATION_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -236,7 +254,8 @@ export const EditProfileModal = (props: any) => {
                 value={formData.drinking}
                 label="Drinking"
                 name="drinking"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {FREQUENCY.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -252,7 +271,8 @@ export const EditProfileModal = (props: any) => {
                 value={formData.smoking}
                 label="Smoking"
                 name="smoking"
-                onChange={handleChange}>
+                onChange={handleChange}
+              >
                 {FREQUENCY.map((option, index) => (
                   <MenuItem key={index} value={option}>
                     {option}
@@ -265,20 +285,23 @@ export const EditProfileModal = (props: any) => {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 2,
-              }}>
+              }}
+            >
               <Button
                 type="button"
                 fullWidth
                 disabled={isSubmitting}
                 variant="contained"
-                onClick={props.close}>
+                onClick={props.close}
+              >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 fullWidth
                 disabled={isSubmitting}
-                variant="contained">
+                variant="contained"
+              >
                 Save
               </Button>
             </Box>
