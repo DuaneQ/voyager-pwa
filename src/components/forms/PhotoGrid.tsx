@@ -1,5 +1,6 @@
 import React, { useRef, useState, useContext } from "react";
-import { Menu, MenuItem, Grid, Input, CircularProgress, Alert } from "@mui/material";
+import { Menu, MenuItem, Grid, Input, CircularProgress, Alert, Modal, Box, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
@@ -8,7 +9,6 @@ import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage
 import { validateImageFile } from "../../utils/validateImageFile";
 
 const IMAGE_SIZE = 120; // px
-
 
 export const PhotoGrid = () => {
   const { uploadImage } = useUploadImage();
@@ -20,6 +20,7 @@ export const PhotoGrid = () => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
 
   // Define slots for additional photos
   const slots = ["slot1", "slot2", "slot3", "slot4"];
@@ -85,6 +86,14 @@ export const PhotoGrid = () => {
     }
   };
 
+  const handleEnlargePhoto = (photoUrl: string) => {
+    setEnlargedPhoto(photoUrl);
+  };
+
+  const handleCloseEnlargedPhoto = () => {
+    setEnlargedPhoto(null);
+  };
+
   return (
     <>
       <Grid container spacing={2} px={1}>
@@ -134,9 +143,53 @@ export const PhotoGrid = () => {
         ) : [
           <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
           <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
+          <MenuItem key="view" onClick={() => {
+            if (selectedSlot && userProfile?.photos?.[selectedSlot]) {
+              handleEnlargePhoto(userProfile.photos[selectedSlot]);
+            }
+          }}>
+            View Photo
+          </MenuItem>,
           <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
         ]}
       </Menu>
+      <Modal
+        open={Boolean(enlargedPhoto)}
+        onClose={handleCloseEnlargedPhoto}
+        aria-labelledby="enlarged-photo-modal"
+        aria-describedby="modal-to-view-enlarged-photo"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+          }}
+        >
+          <IconButton
+            onClick={handleCloseEnlargedPhoto}
+            sx={{ position: "absolute", top: 8, right: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+          {enlargedPhoto && (
+            <img
+              src={enlargedPhoto}
+              alt="Enlarged Photo"
+              style={{
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </Box>
+      </Modal>
     </>
   );
 };
