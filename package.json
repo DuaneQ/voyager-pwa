@@ -5,6 +5,8 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@firebase/performance": "^0.7.7",
     "@google-cloud/secret-manager": "^5.6.0",
     "@mui/icons-material": "^6.1.4",

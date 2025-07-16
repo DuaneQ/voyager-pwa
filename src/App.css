@@ -47,3 +47,656 @@ textarea {
   align-items: center;
 }
 
+/* Video Feed Page Styles */
+.video-feed-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+}
+
+/* Video Feed Page - Full Screen */
+.video-feed-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* Prevent scrolling */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Prevent body scroll when viewing videos */
+body.video-feed-active {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+.feed-video-player {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* Video Player Styles - Full Screen */
+.video-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Changed from contain to cover for full-screen */
+  cursor: pointer;
+}
+
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.play-button {
+  font-size: 4rem;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.play-overlay:hover .play-button {
+  transform: scale(1.1);
+}
+
+/* Video info overlay - positioned on the video */
+.video-info-overlay {
+  position: absolute;
+  bottom: 80px; /* Lowered to be just above bottom navigator */
+  left: 20px;
+  right: 100px;
+  color: white;
+  text-align: left;
+  z-index: 2;
+}
+
+.video-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+}
+
+.video-description {
+  font-size: 0.95rem;
+  margin: 0 0 12px 0;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+  opacity: 0.9;
+}
+
+/* TravalPass.com branding - styled like the control buttons */
+.video-branding {
+  display: inline-block;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.5px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  margin-top: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Video branding footer for sharing (TikTok/Facebook style) */
+.video-branding-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), transparent);
+  padding: 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.branding-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+.app-name {
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.tagline {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-left: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Download button style (for sharing preview) */
+.branding-content .download-btn {
+  background: #007AFF;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: none;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+}
+
+/* Responsive branding footer */
+@media (max-width: 768px) {
+  .video-branding-footer {
+    padding: 16px;
+  }
+  
+  .app-name {
+    font-size: 16px;
+  }
+  
+  .tagline {
+    font-size: 11px;
+  }
+  
+  .branding-content .download-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
+
+/* Video Controls - Right side - moved closer to center */
+.video-controls {
+  position: absolute;
+  right: 20px; /* Moved closer from 15px */
+  bottom: 200px; /* Moved higher to avoid feedback button */
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Increased from 15px for more spacing */
+  z-index: 3;
+}
+
+.side-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Increased from 15px for more spacing */
+}
+
+.control-button {
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  width: 55px;
+  height: 55px;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-button:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Upload button styling - force exact match with other control buttons */
+.control-button.upload-button {
+  /* Force exact same background and styling as other control buttons */
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+  font-size: 1.5rem;
+}
+
+.control-button.upload-button:hover {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Like button count */
+.like-button, .comment-button {
+  font-size: 0.7rem;
+  line-height: 1.1;
+}
+
+.like-button::after, .comment-button::after {
+  content: attr(data-count);
+  font-size: 0.6rem;
+  margin-top: 2px;
+}
+
+.control-button:active {
+  transform: scale(0.95);
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.error-state button,
+.empty-state button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: linear-gradient(45deg, #ff006e, #3a86ff);
+  border: none;
+  border-radius: 25px;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-state button:hover,
+.empty-state button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.empty-state h2 {
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  margin-bottom: 20px;
+}
+
+/* Video Upload Modal Styles */
+.video-upload-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.video-upload-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.upload-form {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input[type="text"],
+.form-group input[type="file"],
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3a86ff;
+}
+
+.form-group input[type="file"] {
+  padding: 8px;
+}
+
+.file-info {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #666;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.form-help {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Upload progress styles */
+.upload-progress {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.progress-info {
+  margin-bottom: 12px;
+}
+
+.progress-status {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.estimated-time {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(45deg, #ff006e, #3a86ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.privacy-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal !important;
+}
+
+.privacy-label input[type="checkbox"] {
+  width: auto !important;
+  margin: 0;
+}
+
+.error-messages {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  color: #c00;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.error-message:last-child {
+  margin-bottom: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.cancel-button,
+.modal-upload-button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.cancel-button {
+  background: #f8f9fa;
+  color: #666;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.modal-upload-button {
+  background: linear-gradient(45deg, #ff006e, #3a86ff);
+  color: white;
+  font-weight: 600;
+}
+
+.modal-upload-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 0, 110, 0.3);
+  background: linear-gradient(45deg, #ff1a7a, #4d92ff);
+}
+
+.modal-upload-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Video Navigation Hints */
+.video-navigation-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.nav-hint {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  margin: 4px 0;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  animation: fadeInOut 3s ease-in-out;
+  animation-delay: 1s;
+}
+
+.nav-hint-up {
+  top: 20px;
+}
+
+.nav-hint-down {
+  bottom: 20px;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  20%, 80% { opacity: 0.8; }
+}
+
+/* Improve touch responsiveness */
+.video-feed-page {
+  touch-action: pan-y; /* Allow vertical panning for swipes */
+  user-select: none; /* Prevent text selection during swipes */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .video-info-overlay {
+    left: 15px;
+    right: 70px;
+    bottom: 80px; /* Same as desktop - just above bottom navigator */
+  }
+  
+  .video-title {
+    font-size: 1.1rem;
+  }
+  
+  .video-description {
+    font-size: 0.9rem;
+    max-width: 250px;
+  }
+  
+  .video-branding {
+    font-size: 0.95rem;
+    padding: 6px 12px;
+    letter-spacing: 0.3px;
+  }
+  
+  .video-controls {
+    right: 15px; /* Closer to center on mobile */
+    bottom: 160px; /* Moved higher on mobile */
+    gap: 18px; /* Increased spacing on mobile too */
+  }
+  
+  .control-button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  
+  .control-button.upload-button {
+    font-size: 1.2rem; /* Match other mobile button sizes */
+    background: rgba(0, 0, 0, 0.4) !important; /* Force same background on mobile */
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  .video-title {
+    font-size: 1.1rem;
+  }
+  
+  .video-description {
+    font-size: 0.9rem;
+    max-width: 250px;
+  }
+  
+  .video-upload-modal {
+    margin: 10px;
+  }
+}
+

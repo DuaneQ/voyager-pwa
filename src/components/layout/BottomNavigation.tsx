@@ -3,6 +3,7 @@ import { BottomNavigation, BottomNavigationAction, Badge } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import SearchIcon from "@mui/icons-material/Search";
+import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
 import { useNavigate, useLocation } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useNewConnection } from "../../Context/NewConnectionContext";
@@ -47,6 +48,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
         label="Trips"
         value="/Search"
         icon={<SearchIcon />}
+      />
+      <StyledBottomNavigationAction
+        label="Travals"
+        value="/Videos"
+        icon={<VideoLibraryIcon />}
       />
       <StyledBottomNavigationAction
         label="Chat"
