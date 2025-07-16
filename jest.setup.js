@@ -1,3 +1,4 @@
+require('@testing-library/jest-dom');
 // jest.setup.js
 // Mock scrollIntoView for jsdom
 window.HTMLElement.prototype.scrollIntoView = function() {};

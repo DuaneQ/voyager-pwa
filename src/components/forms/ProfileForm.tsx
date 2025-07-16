@@ -16,6 +16,8 @@ import {
   ListItemIcon,
   ListItemText,
   Grid,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import { signOut } from "firebase/auth";
 import { auth } from "../../environments/firebaseConfig";
@@ -60,7 +62,7 @@ const ProfileField = ({ label, value, required }: { label: string, value: string
   </Box>
 );
 
-export const ProfileForm = () => {
+export const ProfileForm = ({ currentTab, onTabChange }: { currentTab?: number; onTabChange?: (newTab: number) => void }) => {
   useGetUserProfile();
   const [showLogin, setShowLogin] = useState(false);
   const { userProfile } = useContext(UserProfileContext);
@@ -74,6 +76,12 @@ export const ProfileForm = () => {
 
   const handleMenuClose = () => {
     setMenuAnchor(null);
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    if (onTabChange) {
+      onTabChange(newValue);
+    }
   };
 
   return (
@@ -155,7 +163,36 @@ export const ProfileForm = () => {
             </Menu>
           </Box>
         </Box>
-        <Card
+
+        {/* Tabs below username */}
+        {onTabChange && (
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>
+            <Tabs 
+              value={currentTab || 0} 
+              onChange={handleTabChange} 
+              centered
+              sx={{
+                '& .MuiTab-root': {
+                  color: 'white',
+                  '&.Mui-selected': {
+                    color: 'white'
+                  }
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: 'white'
+                }
+              }}
+            >
+              <Tab label="Profile" />
+              <Tab label="Photos" />
+              <Tab label="Videos" />
+            </Tabs>
+          </Box>
+        )}
+
+        {/* Profile content - only show when Profile tab is active or no tabs */}
+        {(!onTabChange || currentTab === 0) && (
+          <Card
           elevation={0}
           sx={{
             display: "flex",
@@ -243,6 +280,7 @@ export const ProfileForm = () => {
             </Grid>
           </Grid>
         </Card>
+        )}
       </Box>
       <EditProfileModal show={showLogin} close={() => setShowLogin(false)} />
     </>

@@ -38,9 +38,10 @@ describe("BottomNav", () => {
 
   it("renders all navigation actions", () => {
     renderWithRouter();
+    expect(screen.getAllByText(/trips/i, { exact: false })[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/travals/i, { exact: false })[0]).toBeInTheDocument();
     expect(screen.getAllByText(/chat/i, { exact: false })[0]).toBeInTheDocument();
     expect(screen.getAllByText(/profile/i, { exact: false })[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/trips/i, { exact: false })[0]).toBeInTheDocument();
   });
 
   it("shows unread badge on Chat when unreadCount > 0", () => {
@@ -57,8 +58,8 @@ describe("BottomNav", () => {
   it("navigates to the correct route on click", () => {
     const { container } = renderWithRouter();
     const actions = container.querySelectorAll('.MuiBottomNavigationAction-root');
-    expect(actions.length).toBe(3);
-    fireEvent.click(actions[1]); // Profile
+    expect(actions.length).toBe(4);
+    fireEvent.click(actions[2]); // Chat (now third since Videos was added)
     // No assertion for navigation since useNavigate is mocked
   });
 });
