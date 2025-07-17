@@ -5,6 +5,7 @@ import { VideoGrid } from "../forms/VideoGrid";
 import Box from "@mui/material/Box";
 import React, { useState } from "react";
 import { useFCMToken } from "../../hooks/useFCMToken";
+import loginImage from "../../assets/images/login-image.jpeg";
 
 export const Profile = React.memo(() => {
   // Use the FCM token hook to handle notifications
@@ -27,7 +28,7 @@ export const Profile = React.memo(() => {
   return (
     <Box 
       sx={{ 
-        backgroundImage: 'url(../assets/images/login-image.jpeg)',
+        backgroundImage: `url(${loginImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         height: '100vh', 
@@ -43,7 +44,9 @@ export const Profile = React.memo(() => {
       {/* Fixed Header: ProfilePhoto + Username + Tabs */}
       <Box sx={{ 
         flexShrink: 0,
-        backgroundColor: 'inherit'
+        backgroundColor: 'inherit',
+        pt: 8, // Add padding to account for the app header/navigation bar
+        pb: 2
       }}>
         <ProfileForm 
           currentTab={currentTab} 
