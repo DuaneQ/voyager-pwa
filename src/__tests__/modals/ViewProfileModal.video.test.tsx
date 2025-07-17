@@ -22,6 +22,24 @@ jest.mock('firebase/firestore', () => ({
   deleteDoc: jest.fn(),
   addDoc: jest.fn(),
   serverTimestamp: jest.fn(),
+  Timestamp: {
+    now: jest.fn(() => ({
+      seconds: Math.floor(Date.now() / 1000),
+      nanoseconds: 0,
+      toDate: () => new Date(),
+      toMillis: () => Date.now(),
+      isEqual: jest.fn(() => true),
+      toJSON: jest.fn(() => ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0, type: 'timestamp' }))
+    })),
+    fromDate: jest.fn((date: Date) => ({
+      seconds: Math.floor(date.getTime() / 1000),
+      nanoseconds: 0,
+      toDate: () => date,
+      toMillis: () => date.getTime(),
+      isEqual: jest.fn(() => true),
+      toJSON: jest.fn(() => ({ seconds: Math.floor(date.getTime() / 1000), nanoseconds: 0, type: 'timestamp' }))
+    }))
+  },
 }));
 
 jest.mock('../../environments/firebaseConfig', () => ({
@@ -65,8 +83,18 @@ describe('ViewProfileModal - Video Tab', () => {
       viewCount: 50,
       duration: 60,
       fileSize: 10 * 1024 * 1024,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      createdAt: {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now()
+      } as any,
+      updatedAt: {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now()
+      } as any
     },
     {
       id: 'video-2',
@@ -81,8 +109,18 @@ describe('ViewProfileModal - Video Tab', () => {
       viewCount: 25,
       duration: 45,
       fileSize: 8 * 1024 * 1024,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      createdAt: {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now()
+      } as any,
+      updatedAt: {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now()
+      } as any
     }
   ];
 

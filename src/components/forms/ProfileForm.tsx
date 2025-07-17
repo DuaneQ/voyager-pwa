@@ -32,7 +32,7 @@ import EditIcon from '@mui/icons-material/Edit';
 
 const ProfileField = ({ label, value, required }: { label: string, value: string | number | null | undefined, required?: boolean }) => (
   <Box sx={{
-    p: 2,
+    p: { xs: 1, sm: 2 }, // Much smaller padding on mobile
     borderRadius: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     '&:hover': {
@@ -44,9 +44,9 @@ const ProfileField = ({ label, value, required }: { label: string, value: string
       sx={{
         color: 'rgba(255, 255, 255, 0.6)',
         display: 'block',
-        mb: 0.5,
+        mb: { xs: 0.25, sm: 0.5 }, // Smaller margin on mobile
         fontWeight: 500,
-        fontSize: '0.75rem'
+        fontSize: { xs: '0.65rem', sm: '0.75rem' } // Smaller text on mobile
       }}>
       {label}{required && ' *'}
     </Typography>
@@ -55,7 +55,7 @@ const ProfileField = ({ label, value, required }: { label: string, value: string
       sx={{
         color: 'white',
         fontWeight: 400,
-        fontSize: '0.875rem'
+        fontSize: { xs: '0.75rem', sm: '0.875rem' } // Smaller text on mobile
       }}>
       {value || 'Not specified'}
     </Typography>
@@ -218,7 +218,7 @@ export const ProfileForm = ({
         <Box sx={{
           maxWidth: '300px',
           margin: '0 auto',
-          p: { xs: 1, sm: 2 }
+          p: { xs: 0.5, sm: 2 } // Much smaller padding on mobile
         }}>
           {/* Profile content - only show when Profile tab is active or no tabs */}
           {(!onTabChange || currentTab === 0) && (
@@ -227,10 +227,10 @@ export const ProfileForm = ({
           sx={{
             display: "flex",
             flexDirection: "column",
-            gap: 2,
-            p: 3,
+            gap: { xs: 1, sm: 2 }, // Smaller gap on mobile
+            p: { xs: 1.5, sm: 3 }, // Much smaller padding on mobile
             maxWidth: '100%',
-            margin: "20px auto",
+            margin: { xs: "8px auto", sm: "20px auto" }, // Smaller margin on mobile
             borderRadius: 2,
             backgroundColor: 'rgba(255, 255, 255, 0.05)',
             backdropFilter: 'blur(10px)',
@@ -242,9 +242,9 @@ export const ProfileForm = ({
               sx={{
                 color: 'rgba(255, 255, 255, 0.6)',
                 display: 'block',
-                mb: 0.5,
+                mb: { xs: 0.25, sm: 0.5 }, // Smaller margin on mobile
                 fontWeight: 500,
-                fontSize: '0.75rem'
+                fontSize: { xs: '0.65rem', sm: '0.75rem' } // Smaller text on mobile
               }}>
               Bio
             </Typography>
@@ -254,12 +254,12 @@ export const ProfileForm = ({
                 whiteSpace: 'pre-wrap',
                 color: 'white',
                 fontWeight: 400,
-                fontSize: '0.875rem'
+                fontSize: { xs: '0.75rem', sm: '0.875rem' } // Smaller text on mobile
               }}>
               {userProfile?.bio || "No bio provided"}
             </Typography>
           </Box>
-          <Grid container spacing={2}>
+          <Grid container spacing={{ xs: 1, sm: 2 }}> {/* Smaller spacing on mobile */}
             <Grid item xs={6}>
               <ProfileField 
                 label="Age" 
