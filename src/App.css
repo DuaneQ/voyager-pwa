@@ -320,10 +320,11 @@ body.video-feed-active {
   
   /* Ensure video info is always visible above mobile bottom navigation */
   .feed-video-player .video-info-overlay {
-    bottom: 90px; /* Higher to clear bottom nav */
+    bottom: 110px; /* Higher to clear bottom nav and provide more space */
     left: 12px;
     right: 12px;
     z-index: 1000; /* High z-index to ensure visibility */
+    padding: 14px; /* Consistent with general mobile styles */
   }
 }
 
@@ -543,15 +544,17 @@ video[poster] {
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .video-info-overlay {
-    bottom: 100px; /* Reduced from 120px to give more space */
-    left: 16px;
-    right: 16px; /* Increased from 80px to give more space for text */
-    max-width: calc(100vw - 32px); /* Ensure it doesn't overflow */
+    bottom: 110px; /* Higher to ensure it's above bottom nav */
+    left: 12px;
+    right: 12px; /* More symmetric padding */
+    max-width: calc(100vw - 24px); /* Ensure it doesn't overflow */
+    padding: 14px; /* Slightly reduced padding for more content space */
   }
   
   .video-title {
     font-size: 1.0rem; /* Slightly smaller for better fit */
     line-height: 1.2;
+    margin-bottom: 6px; /* Reduced margin for more space */
   }
   
   .video-description {
@@ -559,6 +562,7 @@ video[poster] {
     -webkit-line-clamp: 2; /* Limit to 2 lines on small screens */
     line-clamp: 2; /* Standard property */
     line-height: 1.3;
+    margin-bottom: 8px; /* Reduced margin */
   }
   
   .mute-button {
@@ -577,18 +581,23 @@ video[poster] {
 /* Extra small mobile screens */
 @media (max-width: 480px) {
   .video-info-overlay {
-    bottom: 80px; /* Even closer to bottom on very small screens */
-    left: 12px;
-    right: 12px;
-    padding: 12px;
+    bottom: 100px; /* Higher positioning for better visibility */
+    left: 10px;
+    right: 10px;
+    padding: 12px; /* Slightly more padding for readability */
   }
   
   .video-title {
-    font-size: 0.9rem;
+    font-size: 0.9rem; /* Even smaller for very small screens */
+    margin-bottom: 4px; /* Minimal margin to conserve space */
   }
   
   .video-description {
-    font-size: 0.75rem;
+    font-size: 0.75rem; /* Smaller text for very small screens */
+    -webkit-line-clamp: 2; /* Keep at 2 lines max */
+    line-clamp: 2;
+    line-height: 1.2; /* Tighter line height */
+    margin-bottom: 4px; /* Reduced margin */
   }
 }
 
@@ -1074,18 +1083,24 @@ video[poster] {
 /* Responsive Design */
 @media (max-width: 768px) {
   .video-info-overlay {
-    left: 15px;
-    right: 70px;
-    bottom: 80px; /* Same as desktop - just above bottom navigator */
+    left: 12px;
+    right: 12px;
+    bottom: 110px; /* Consistent positioning across all responsive rules */
+    padding: 14px; /* Consistent padding */
   }
   
   .video-title {
-    font-size: 1.1rem;
+    font-size: 1.0rem; /* Consistent sizing */
+    margin-bottom: 6px;
   }
   
   .video-description {
-    font-size: 0.9rem;
-    max-width: 250px;
+    font-size: 0.8rem;
+    max-width: none; /* Remove max-width restriction for better mobile use */
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.3;
+    margin-bottom: 8px;
   }
   
   .video-branding {
