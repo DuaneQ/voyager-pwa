@@ -133,6 +133,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleVideoLoadStart = () => {
     console.log('Video load started:', video.videoUrl);
+    console.log('Video element src:', videoRef.current?.src);
   };
 
   const handleVideoCanPlay = () => {
@@ -176,7 +177,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         playsInline
         preload="metadata" // Only load metadata initially to improve performance
         webkit-playsinline="true" // iOS specific attribute
-        crossOrigin="anonymous" // Add CORS support for Firebase Storage
       />
       
       {/* Mute/Unmute button for mobile */}
