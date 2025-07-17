@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { VideoPlayer } from '../video/VideoPlayer';
+import { ShareVideoModal } from '../modals/ShareVideoModal';
 import { Video } from '../../types/Video';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../environments/firebaseConfig';
@@ -13,6 +14,7 @@ export const VideoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // Don't autoplay on individual video pages
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
     if (!videoId) {
@@ -118,12 +120,7 @@ export const VideoPage: React.FC = () => {
           <div className="video-actions">
             <button 
               className="action-button share-button"
-              onClick={() => {
-                // Use the existing sharing functionality
-                import('../../utils/videoSharing').then(({ shareVideoWithBranding }) => {
-                  shareVideoWithBranding(video, window.location.href);
-                });
-              }}
+              onClick={() => setIsShareModalOpen(true)}
             >
               Share Video
             </button>
@@ -137,6 +134,15 @@ export const VideoPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {isShareModalOpen && video && (
+        <ShareVideoModal
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          video={video}
+        />
+      )}
     </div>
   );
 };

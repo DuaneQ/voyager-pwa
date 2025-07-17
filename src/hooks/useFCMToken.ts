@@ -1,11 +1,17 @@
 import { useEffect } from "react";
 import { auth } from "../environments/firebaseConfig";
-import { setupFCMForUser, validateFCMSetup } from "../utils/fcmUtils";
+import { setupFCMForUser, validateFCMSetup, isFCMSupported } from "../utils/fcmUtils";
 
 export const useFCMToken = () => {
   const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null; // Get UID from Firebase Auth
 
   useEffect(() => {
+    // Early exit if FCM is not supported
+    if (!isFCMSupported()) {
+      console.log("FCM: Not supported in this browser environment");
+      return;
+    }
+
     // Add a small delay to ensure userId is loaded
     const timer = setTimeout(async () => {
       // We only need userId from Firebase Auth to proceed

@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
+import { ShareVideoModal } from '../modals/ShareVideoModal';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { Video, VideoUploadData } from '../../types/Video';
 import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../environments/firebaseConfig';
 import { IosShare } from '@mui/icons-material';
-import { shareVideoWithBranding } from '../../utils/videoSharing';
 
 export const VideoFeedPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(true); // Add play state management
@@ -175,15 +176,7 @@ export const VideoFeedPage: React.FC = () => {
 
   const handleShare = async () => {
     if (!currentVideo) return;
-    
-    try {
-      // Create shareable URL for the video (you might want to implement deep linking)
-      const shareUrl = `${window.location.origin}/video/${currentVideo.id}`;
-      await shareVideoWithBranding(currentVideo, shareUrl);
-    } catch (error) {
-      console.error('Failed to share video:', error);
-      // You might want to show an error message to the user
-    }
+    setIsShareModalOpen(true);
   };
 
   // Swipe gesture handling
@@ -379,6 +372,15 @@ export const VideoFeedPage: React.FC = () => {
           isUploading={isUploading}
           uploadProgress={uploadProgress}
           processingStatus={processingStatus}
+        />
+      )}
+
+      {/* Share Modal */}
+      {isShareModalOpen && currentVideo && (
+        <ShareVideoModal
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          video={currentVideo}
         />
       )}
     </div>
