@@ -84,7 +84,9 @@ const modalStyle = {
   borderRadius: 2,
   boxShadow: 24,
   p: 0,
-  overflow: 'hidden'
+  overflow: 'auto',
+  display: 'flex',
+  flexDirection: 'column'
 };
 
 export const ShareVideoModal: React.FC<ShareVideoModalProps> = ({
@@ -161,7 +163,8 @@ ${description}
             justifyContent: 'space-between',
             p: 2,
             borderBottom: '1px solid',
-            borderColor: 'divider'
+            borderColor: 'divider',
+            flexShrink: 0
           }}>
             <Typography variant="h6" component="h2">
               Share Video
@@ -171,8 +174,12 @@ ${description}
             </IconButton>
           </Box>
 
-          {/* Content */}
-          <Box sx={{ p: 3 }}>
+          {/* Scrollable Content */}
+          <Box sx={{ 
+            p: 3, 
+            overflow: 'auto',
+            flex: 1
+          }}>
             {/* Video Preview */}
             <Box sx={{ mb: 3, textAlign: 'center' }}>
               <img 
