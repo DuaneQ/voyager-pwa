@@ -1,5 +1,4 @@
 import { ProfileForm } from "../forms/ProfileForm";
-import Stack from "@mui/material/Stack";
 import { PhotoGrid } from "../forms/PhotoGrid";
 import { VideoGrid } from "../forms/VideoGrid";
 import Box from "@mui/material/Box";

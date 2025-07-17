@@ -80,10 +80,10 @@ if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !==
 }
 
 export const getMessagingInstance = () => {
-  // Enhanced browser support detection
-  const isIOS = typeof window !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isSafari = typeof window !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const isWebView = typeof window !== "undefined" && window.navigator.userAgent.includes('wv');
+  // Enhanced browser support detection with safe navigation
+  const isIOS = typeof window !== "undefined" && typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = typeof window !== "undefined" && typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isWebView = typeof window !== "undefined" && typeof navigator !== "undefined" && navigator.userAgent.includes('wv');
   
   // Don't initialize messaging on unsupported browsers
   // Type assertion for window.chrome which may not exist on all browsers

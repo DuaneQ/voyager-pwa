@@ -389,7 +389,7 @@ describe('VideoGrid', () => {
     
     await waitFor(() => {
       expect(screen.getByTestId('video-grid-error')).toBeInTheDocument();
-      expect(screen.getByText(/Failed to load videos/)).toBeInTheDocument();
+      expect(screen.getByText(/Error loading videos/)).toBeInTheDocument();
     });
   });
 

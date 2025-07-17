@@ -188,6 +188,7 @@ export const VideoGrid = () => {
                 justifyContent: 'center',
               }}
               onClick={(event) => handleVideoClick(event, video)}
+              data-testid={`video-thumbnail-${video.id}`}
             >
               {/* Fallback thumbnail image for mobile */}
               <img
@@ -267,7 +268,7 @@ export const VideoGrid = () => {
         </Box>
       )}
       
-      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }} data-testid="video-grid-error">{error}</Alert>}
       
       {/* VideoUploadModal */}
       <VideoUploadModal
