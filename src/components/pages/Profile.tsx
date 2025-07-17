@@ -60,6 +60,7 @@ export const Profile = React.memo(() => {
         flex: 1,
         overflow: 'auto',
         px: { xs: 1, sm: 2 },
+        pb: 4, // Add bottom padding to ensure content isn't cut off
         position: 'relative',
         '&::-webkit-scrollbar': {
           width: '8px',
@@ -100,7 +101,7 @@ export const Profile = React.memo(() => {
           </Box>
         )}
         
-        <Box mt={-10} mb={10}>
+        <Box mb={4}>
           {/* <Chips /> */}
         </Box>
       </Box>
