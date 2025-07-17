@@ -47,6 +47,21 @@ textarea {
   align-items: center;
 }
 
+/* Profile page header - fix ProfilePhoto and username */
+.profile-header-section {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+/* Profile scrollable content */
+.profile-content-section {
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* Video Page Styles - Individual video viewing */
 .video-page {
   min-height: 100vh;
