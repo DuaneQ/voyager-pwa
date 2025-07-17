@@ -44,8 +44,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    if (isPlaying) {
-      // Only attempt to play if the element is still in the DOM and ready
+    if (isPlaying && hasUserInteracted) {
+      // Only attempt to play if user has interacted and element is ready
       const playVideo = async () => {
         try {
           // Check if element is still connected to DOM
@@ -54,68 +54,74 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             return;
           }
           
-          // For mobile devices, ensure we unmute on user interaction
-          if (hasUserInteracted && isMuted) {
-            videoElement.muted = false;
-            setIsMuted(false);
-          }
-          
-          // Check if video is ready to play
-          if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
-            await videoElement.play();
-          } else {
-            // Wait for video to be ready
+          // Wait for video to be ready if needed
+          if (videoElement.readyState < 2) { // Less than HAVE_CURRENT_DATA
             const onCanPlay = () => {
               videoElement.removeEventListener('canplay', onCanPlay);
-              if (videoElement.isConnected && isPlaying) {
-                videoElement.play().catch(console.log);
+              if (videoElement.isConnected && isPlaying && hasUserInteracted) {
+                videoElement.play().catch(error => {
+                  console.log('Video play failed after canplay:', error);
+                  onPlayToggle?.(); // Reset playing state
+                });
               }
             };
             videoElement.addEventListener('canplay', onCanPlay);
+            return;
           }
+          
+          await videoElement.play();
         } catch (error) {
           if (error instanceof DOMException) {
             if (error.name === 'NotAllowedError') {
-              // Silently handle autoplay policy violations
               console.log('Autoplay blocked - user interaction required');
               onPlayToggle?.(); // Reset playing state
             } else if (error.name === 'AbortError') {
-              // Media was removed or interrupted, ignore
               console.log('Video play interrupted - element likely unmounted');
             } else {
               console.error('Video play error:', error);
+              onPlayToggle?.(); // Reset playing state on error
             }
           } else {
             console.error('Video play error:', error);
+            onPlayToggle?.(); // Reset playing state on error
           }
         }
       };
 
       playVideo();
-    } else {
+    } else if (!isPlaying) {
       // Only pause if element is still in DOM
-      if (videoElement.isConnected) {
+      if (videoElement.isConnected && !videoElement.paused) {
         videoElement.pause();
       }
     }
-  }, [isPlaying, onPlayToggle, hasUserInteracted, isMuted]);
+  }, [isPlaying, onPlayToggle, hasUserInteracted]);
 
   const handleVideoClick = () => {
-    setHasUserInteracted(true); // Mark that user has interacted
-    
-    // On mobile, first click should unmute if muted
     const videoElement = videoRef.current;
-    if (videoElement && isMuted) {
-      videoElement.muted = false;
-      setIsMuted(false);
-      
-      // Force audio context resume on iOS (Safari requirement)
-      if (typeof window !== 'undefined' && window.AudioContext) {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        if (audioContext.state === 'suspended') {
-          audioContext.resume().catch(console.log);
+    if (!videoElement) return;
+
+    setHasUserInteracted(true);
+    
+    // Resume audio context on iOS Safari
+    if (typeof window !== 'undefined' && (window.AudioContext || (window as any).webkitAudioContext)) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        try {
+          const audioContext = new AudioContextClass();
+          if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(console.log);
+          }
+        } catch (e) {
+          console.log('AudioContext creation failed:', e);
         }
       }
+    }
+    
+    // Unmute video on first interaction (mobile requirement)
+    if (isMuted) {
+      videoElement.muted = false;
+      setIsMuted(false);
     }
     
     onPlayToggle?.();
@@ -123,11 +129,36 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     const videoElement = e.currentTarget;
+    const error = videoElement.error;
+    
+    let errorMessage = 'Unknown video error';
+    if (error) {
+      switch (error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video playback aborted';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error while loading video';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = 'Video decode error';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format not supported';
+          break;
+        default:
+          errorMessage = `Video error code: ${error.code}`;
+      }
+    }
+    
     console.error('Video error:', {
+      message: errorMessage,
       error: videoElement.error,
       networkState: videoElement.networkState,
       readyState: videoElement.readyState,
-      src: videoElement.src
+      src: videoElement.src,
+      userAgent: navigator.userAgent,
+      isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     });
   };
 
@@ -172,11 +203,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         className="video-element"
         data-testid="video-element"
         loop={false}
-        muted={isMuted} // Use state-controlled muting
-        controls={false} // We'll handle controls manually for TikTok-like experience
-        playsInline
-        preload="metadata" // Only load metadata initially to improve performance
-        webkit-playsinline="true" // iOS specific attribute
+        muted={true} // Always start muted for mobile compatibility
+        controls={false}
+        playsInline={true}
+        preload="metadata"
+        webkit-playsinline="true"
+        x-webkit-airplay="allow"
+        // Additional mobile-specific attributes
+        crossOrigin="anonymous"
       />
       
       {/* Mute/Unmute button for mobile */}

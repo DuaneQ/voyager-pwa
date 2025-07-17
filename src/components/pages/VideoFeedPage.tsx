@@ -15,7 +15,7 @@ export const VideoFeedPage: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true); // Add play state management
+  const [isPlaying, setIsPlaying] = useState(false); // Start paused for mobile compatibility
   
   // Pagination state
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
@@ -170,8 +170,8 @@ export const VideoFeedPage: React.FC = () => {
   };
 
   const handleVideoEnd = () => {
-    // Auto-start next video when current one ends
-    setIsPlaying(true);
+    // Don't auto-play next video - require user interaction on mobile
+    setIsPlaying(false);
   };
 
   const handleShare = async () => {
@@ -211,7 +211,7 @@ export const VideoFeedPage: React.FC = () => {
   const goToNextVideo = () => {
     if (currentVideoIndex < videos.length - 1) {
       setCurrentVideoIndex(prev => prev + 1);
-      setIsPlaying(true); // Auto-play next video
+      setIsPlaying(false); // Don't auto-play next video on mobile
     } else if (hasMoreVideos && !isLoadingMore) {
       // Load more videos when reaching the end
       loadVideos(true);
@@ -221,7 +221,7 @@ export const VideoFeedPage: React.FC = () => {
   const goToPreviousVideo = () => {
     if (currentVideoIndex > 0) {
       setCurrentVideoIndex(prev => prev - 1);
-      setIsPlaying(true); // Auto-play previous video
+      setIsPlaying(false); // Don't auto-play previous video on mobile
     }
   };
 
