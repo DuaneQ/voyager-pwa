@@ -19,6 +19,7 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
 import { Profile } from "./components/pages/Profile";
 import { VideoFeedPage } from "./components/pages/VideoFeedPage";
+import { VideoPage } from "./components/pages/VideoPage";
 import { Login } from "./components/auth/Login";
 import { Register } from "./components/auth/Register";
 import { Chat } from "./components/pages/Chat";
@@ -129,6 +130,18 @@ function App() {
                         <TermsGuard>
                           <UserProfileProvider>
                             <VideoFeedPage />
+                          </UserProfileProvider>
+                        </TermsGuard>
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/video/:videoId"
+                    element={
+                      <Protected>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <VideoPage />
                           </UserProfileProvider>
                         </TermsGuard>
                       </Protected>
