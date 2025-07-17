@@ -209,8 +209,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         preload="metadata"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
-        // Additional mobile-specific attributes
-        crossOrigin="anonymous"
       />
       
       {/* Mute/Unmute button for mobile */}
