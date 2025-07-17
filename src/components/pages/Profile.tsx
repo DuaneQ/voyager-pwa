@@ -16,11 +16,25 @@ export const Profile = React.memo(() => {
     setCurrentTab(newTab);
   };
 
+  // Prevent body scroll when this component is mounted
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   return (
     <Box 
-      className="authFormContainer"
       sx={{ 
+        backgroundImage: 'url(../assets/images/login-image.jpeg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
         height: '100vh', 
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0,
         display: 'flex', 
         flexDirection: 'column',
         overflow: 'hidden'
@@ -42,7 +56,21 @@ export const Profile = React.memo(() => {
       <Box sx={{ 
         flex: 1,
         overflow: 'auto',
-        px: { xs: 1, sm: 2 }
+        px: { xs: 1, sm: 2 },
+        position: 'relative',
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'rgba(255,255,255,0.1)',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(255,255,255,0.3)',
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: 'rgba(255,255,255,0.5)',
+        }
       }}>
         {/* Profile Tab Content */}
         {currentTab === 0 && (
