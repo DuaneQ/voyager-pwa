@@ -22,21 +22,43 @@ export const Profile = React.memo(() => {
         height: '100vh', 
         display: 'flex', 
         flexDirection: 'column',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundImage: 'url("./assets/images/login-image.jpeg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
       }}
     >
-      <Stack className="authFormContainer">
-        <Box mb={2}>
+      {/* Fixed header with profile photo and tabs */}
+      <Box 
+        sx={{ 
+          flexShrink: 0, // Prevent shrinking
+          zIndex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)', // Add overlay for readability
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        <Box mb={2} sx={{ pt: 2 }}>
           <ProfileForm currentTab={currentTab} onTabChange={handleTabChange} />
         </Box>
-        
+      </Box>
+      
+      {/* Scrollable content area for tabs */}
+      <Box 
+        sx={{ 
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {/* Photos Tab */}
         {currentTab === 1 && (
           <Box 
+            className="profile-scroll-area"
             sx={{ 
               flex: 1,
               overflow: 'auto',
-              mt: -2
+              p: 2
             }}
           >
             <PhotoGrid />
@@ -46,20 +68,17 @@ export const Profile = React.memo(() => {
         {/* Videos Tab */}
         {currentTab === 2 && (
           <Box 
+            className="profile-scroll-area"
             sx={{ 
               flex: 1,
               overflow: 'auto',
-              mt: -2
+              p: 2
             }}
           >
             <VideoGrid />
           </Box>
         )}
-        
-        <Box mt={-10} mb={10}>
-          {/* <Chips /> */}
-        </Box>
-      </Stack>
+      </Box>
     </Box>
   );
 });
