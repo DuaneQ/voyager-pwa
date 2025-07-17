@@ -115,6 +115,46 @@ body.video-feed-active {
   cursor: pointer;
 }
 
+/* Mute button for mobile audio control */
+.mute-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.mute-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.mute-button:active {
+  transform: scale(0.95);
+}
+
+/* Hide mute button on desktop where audio controls are more accessible */
+@media (min-width: 768px) {
+  .mute-button {
+    opacity: 0.7;
+  }
+  
+  .mute-button:hover {
+    opacity: 1;
+  }
+}
+
 .play-overlay {
   position: absolute;
   top: 0;
@@ -122,10 +162,12 @@ body.video-feed-active {
   right: 0;
   bottom: 0;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background: rgba(0, 0, 0, 0.3);
   cursor: pointer;
+  z-index: 5;
 }
 
 .play-button {
@@ -133,10 +175,27 @@ body.video-feed-active {
   color: white;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   transition: transform 0.2s ease;
+  margin-bottom: 1rem;
 }
 
 .play-overlay:hover .play-button {
   transform: scale(1.1);
+}
+
+.audio-hint {
+  font-size: 0.9rem;
+  color: white;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-shadow: none;
+  backdrop-filter: blur(4px);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
 }
 
 /* Video info overlay - positioned on the video */

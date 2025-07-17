@@ -20,17 +20,31 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
+  const [isMuted, setIsMuted] = React.useState(true); // Track mute state
+
+  // Mobile-specific audio initialization
+  React.useEffect(() => {
+    const handleFirstInteraction = () => {
+      setHasUserInteracted(true);
+      // Remove listeners after first interaction
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('click', handleFirstInteraction);
+    };
+
+    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+    document.addEventListener('click', handleFirstInteraction);
+
+    return () => {
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('click', handleFirstInteraction);
+    };
+  }, []);
 
   React.useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
     if (isPlaying) {
-      // Unmute after first user interaction
-      if (hasUserInteracted) {
-        videoElement.muted = false;
-      }
-      
       // Only attempt to play if the element is still in the DOM and ready
       const playVideo = async () => {
         try {
@@ -38,6 +52,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           if (!videoElement.isConnected) {
             console.log('Video element not in DOM, skipping play');
             return;
+          }
+          
+          // For mobile devices, ensure we unmute on user interaction
+          if (hasUserInteracted && isMuted) {
+            videoElement.muted = false;
+            setIsMuted(false);
           }
           
           // Check if video is ready to play
@@ -78,11 +98,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         videoElement.pause();
       }
     }
-  }, [isPlaying, onPlayToggle, hasUserInteracted]);
+  }, [isPlaying, onPlayToggle, hasUserInteracted, isMuted]);
 
   const handleVideoClick = () => {
     setHasUserInteracted(true); // Mark that user has interacted
+    
+    // On mobile, first click should unmute if muted
+    const videoElement = videoRef.current;
+    if (videoElement && isMuted) {
+      videoElement.muted = false;
+      setIsMuted(false);
+      
+      // Force audio context resume on iOS (Safari requirement)
+      if (typeof window !== 'undefined' && window.AudioContext) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioContext.state === 'suspended') {
+          audioContext.resume().catch(console.log);
+        }
+      }
+    }
+    
     onPlayToggle?.();
+  };
+
+  const handleMuteToggle = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering play/pause
+    const videoElement = videoRef.current;
+    if (videoElement) {
+      const newMutedState = !videoElement.muted;
+      videoElement.muted = newMutedState;
+      setIsMuted(newMutedState);
+      setHasUserInteracted(true);
+    }
   };
 
   const handleVideoEnded = () => {
@@ -103,15 +150,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         className="video-element"
         data-testid="video-element"
         loop={false}
-        muted={true} // Muted videos can autoplay in most browsers
+        muted={isMuted} // Use state-controlled muting
         controls={false} // We'll handle controls manually for TikTok-like experience
         playsInline
         preload="metadata" // Only load metadata initially to improve performance
+        webkit-playsinline="true" // iOS specific attribute
       />
+      
+      {/* Mute/Unmute button for mobile */}
+      <button 
+        className="mute-button" 
+        onClick={handleMuteToggle}
+        data-testid="mute-button"
+        aria-label={isMuted ? "Unmute video" : "Mute video"}
+      >
+        {isMuted ? "🔇" : "🔊"}
+      </button>
       
       {!isPlaying && (
         <div className="play-overlay" onClick={handleVideoClick} data-testid="play-overlay">
           <div className="play-button">▶</div>
+          {isMuted && hasUserInteracted && (
+            <div className="audio-hint">Tap 🔇 to unmute</div>
+          )}
         </div>
       )}
 
