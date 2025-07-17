@@ -320,6 +320,68 @@ body.video-feed-active {
     max-width: 100vw;
     max-height: 100vh;
   }
+  
+  /* Ensure video thumbnails display properly on mobile */
+  video[poster] {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  /* Force video thumbnails to show on mobile browsers */
+  video {
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+  }
+}
+
+/* Video Grid and Thumbnail Styles */
+.video-grid-item video {
+  background-color: #000;
+  border-radius: 8px;
+}
+
+/* Ensure video thumbnails always show */
+video[poster] {
+  background-image: var(--poster-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Mobile-specific video thumbnail fixes */
+@media (max-width: 768px) {
+  /* Force video elements to show poster images on mobile */
+  video {
+    background-color: #f0f0f0;
+  }
+  
+  video[poster] {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
+  
+  /* Hide video element if poster is not showing properly on mobile */
+  video:not([poster]):not([src]) {
+    opacity: 0;
+  }
+  
+  /* Ensure video grids work properly on mobile */
+  .video-grid-container video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  
+  /* Better mobile video thumbnail display */
+  video[poster]:not(:playing) {
+    background-image: attr(poster url);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
 }
 
 /* Mute button for mobile audio control */
