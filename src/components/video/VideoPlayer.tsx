@@ -96,7 +96,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 console.log('VideoPlayer: Timeout fallback - attempting play with readyState:', videoElement.readyState);
                 attemptPlay();
               }
-            }, 3000); // 3 second timeout
+            }, 1000); // 1 second timeout (reduced from 3)
             
             return;
           }
@@ -252,7 +252,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         muted={true} // Always start muted for mobile compatibility
         controls={false}
         playsInline={true}
-        preload="metadata"
+        preload="auto"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
       />
