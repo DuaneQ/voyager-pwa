@@ -6,9 +6,21 @@ import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
 export const validateVideoFile = async (file: File): Promise<VideoValidationResult> => {
   const errors: string[] = [];
 
+  // Debug logging to help identify mobile MIME type issues
+  console.log('Video file validation - File type:', file.type, 'File name:', file.name);
+
   // Check file type
   if (!VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.includes(file.type as any)) {
-    errors.push(`Unsupported file format. Supported formats: ${VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.join(', ')}`);
+    // Fallback: check file extension for mobile browsers that may not detect MIME type correctly
+    const fileName = file.name.toLowerCase();
+    const supportedExtensions = ['.mp4', '.mov'];
+    const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      errors.push(`Unsupported file format "${file.type}". Supported formats: ${VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.join(', ')} or files with extensions: ${supportedExtensions.join(', ')}`);
+    } else {
+      console.log('File type not recognized but has valid extension - allowing upload');
+    }
   }
 
   // Check file size

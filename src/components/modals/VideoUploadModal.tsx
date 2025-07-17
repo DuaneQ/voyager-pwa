@@ -132,7 +132,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
             <input
               id="video-file"
               type="file"
-              accept="video/mp4,video/mov"
+              accept="video/mp4,video/mov,video/quicktime,video/x-quicktime"
               onChange={handleFileSelect}
               disabled={actualIsUploading}
               data-testid="file-input"
