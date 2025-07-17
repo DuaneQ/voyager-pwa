@@ -45,7 +45,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
       sx={{ width: "100%", position: "fixed", bottom: 0, bgcolor: "background.paper", // <-- Add this line
     zIndex: 1300, }}>
       <StyledBottomNavigationAction
-        label="Trips"
+        label="TravalMatch "
         value="/Search"
         icon={<SearchIcon />}
       />

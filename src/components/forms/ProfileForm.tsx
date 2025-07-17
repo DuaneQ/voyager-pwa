@@ -101,21 +101,21 @@ export const ProfileForm = ({
         <Box sx={{
           maxWidth: '300px',
           margin: '0 auto',
-          p: { xs: 1, sm: 2 }
+          p: { xs: 0.5, sm: 2 } // Reduced padding on mobile
         }}>
           <Box 
             display="flex" 
             justifyContent="center"
             alignItems="center"
             sx={{
-              px: { xs: 2, sm: 0 },
-              gap: { xs: 1, sm: 2 },
+              px: { xs: 1, sm: 0 },
+              gap: { xs: 0.5, sm: 2 }, // Reduced gap on mobile
               flexDirection: { xs: "column", sm: "row" },
-              mt: { xs: 4, sm: 5 }  // Add margin top for spacing from header
+              mt: { xs: 1, sm: 5 }  // Much smaller top margin on mobile
             }}>
             <Box sx={{ 
-              width: { xs: '120px', sm: '140px' },
-              height: { xs: '120px', sm: '140px' }
+              width: { xs: '80px', sm: '140px' }, // Much smaller on mobile
+              height: { xs: '80px', sm: '140px' } // Much smaller on mobile
             }}>
               <ProfilePhoto />
             </Box>
@@ -130,7 +130,7 @@ export const ProfileForm = ({
                   ml={{ xs: 0, sm: 2 }}
                   color="white"
                   sx={{
-                    fontSize: { xs: "1.5rem", sm: "2rem" },
+                    fontSize: { xs: "1.1rem", sm: "2rem" }, // Much smaller on mobile
                     textAlign: { xs: "center", sm: "left" }
                   }}>
                   {userProfile?.username || ""}
@@ -140,9 +140,10 @@ export const ProfileForm = ({
                   aria-label="more options"
                   sx={{ 
                     color: 'white',
-                    ml: 1
+                    ml: 1,
+                    p: { xs: 0.5, sm: 1 } // Smaller padding on mobile
                   }}>
-                  <MoreVertIcon />
+                  <MoreVertIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                 </IconButton>
               </Box>
               <Menu
@@ -178,7 +179,12 @@ export const ProfileForm = ({
 
           {/* Tabs below username */}
           {onTabChange && (
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>
+            <Box sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider', 
+              mt: { xs: 1, sm: 2 }, // Smaller margin on mobile
+              mb: { xs: 1, sm: 2 }  // Smaller margin on mobile
+            }}>
               <Tabs 
                 value={currentTab || 0} 
                 onChange={handleTabChange} 
@@ -186,6 +192,9 @@ export const ProfileForm = ({
                 sx={{
                   '& .MuiTab-root': {
                     color: 'white',
+                    fontSize: { xs: '0.8rem', sm: '1rem' }, // Smaller font on mobile
+                    minHeight: { xs: '36px', sm: '48px' }, // Smaller height on mobile
+                    padding: { xs: '6px 8px', sm: '12px 16px' }, // Smaller padding on mobile
                     '&.Mui-selected': {
                       color: 'white'
                     }

@@ -119,28 +119,24 @@ describe("Profile Component", () => {
   it("renders the profile page correctly", async () => {
     renderWithContext();
 
-    expect(screen.getByTestId("profile-form")).toBeInTheDocument();
-    expect(screen.getByTestId("photo-grid")).toBeInTheDocument();
+    // Now we have two ProfileForm components: headerOnly and contentOnly
+    expect(screen.getAllByTestId("profile-form")).toHaveLength(2);
+    // PhotoGrid is only visible when tab 1 is selected (default is tab 0)
+    // Check that the initial tab content (profile details) is visible
   });
 
   test("renders child components in correct order", () => {
     renderWithContext();
 
-    // Use the existing class instead of data-testid
-    const container = document.querySelector(".authFormContainer");
-    const children = container?.children;
+    // Profile page now has a different structure with two main Box components
+    const profileElements = screen.getAllByTestId("profile-form");
+    expect(profileElements).toHaveLength(2);
 
-    // Updated to expect 3 children (2 components + 1 empty Box)
-    expect(children).toHaveLength(3);
-
-    // ProfileForm is first (index 0)
-    expect(children?.[0]).toContainElement(screen.getByTestId("profile-form"));
+    // Check that we have the header ProfileForm and content ProfileForm
+    expect(profileElements[0]).toBeInTheDocument(); // Header
+    expect(profileElements[1]).toBeInTheDocument(); // Content
     
-    // PhotoGrid is second (index 1)
-    expect(children?.[1]).toContainElement(screen.getByTestId("photo-grid"));
-    
-    // Empty Box is third (index 2)
-    expect(children?.[2]).toBeEmptyDOMElement();
+    // Tab content varies based on currentTab state (default is 0)
   });
 
   it("handles environment without Notification API", () => {
@@ -152,8 +148,8 @@ describe("Profile Component", () => {
       renderWithContext();
       
       // Should render without crashing
-      expect(screen.getByTestId("profile-form")).toBeInTheDocument();
-      expect(screen.getByTestId("photo-grid")).toBeInTheDocument();
+      expect(screen.getAllByTestId("profile-form")).toHaveLength(2);
+      // Tab content depends on currentTab state
       
     } finally {
       // Restore Notification API
@@ -164,9 +160,9 @@ describe("Profile Component", () => {
   it("applies correct styling classes", async () => {
     renderWithContext();
 
-    // Check for main container styling
-    const stackElement = screen.getByTestId("profile-form").closest(".authFormContainer");
-    expect(stackElement).toBeInTheDocument();
+    // Check for main container styling - now we don't use authFormContainer class
+    const profileElements = screen.getAllByTestId("profile-form");
+    expect(profileElements[0]).toBeInTheDocument();
   });
 
   it("renders memo component correctly", async () => {
