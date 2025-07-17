@@ -977,16 +977,65 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                                 setEnlargedVideo(video);
                               }}
                             >
-                              <video
-                                src={video.videoUrl}
+                              {/* Fallback thumbnail image for mobile */}
+                              <img
+                                src={video.thumbnailUrl}
+                                alt={video.title || 'Video thumbnail'}
                                 style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
                                   width: '100%',
                                   height: '100%',
                                   objectFit: 'cover',
+                                  zIndex: 1,
                                 }}
+                                onError={(e) => {
+                                  // Hide image if thumbnail fails to load
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                              <video
+                                src={video.videoUrl}
+                                poster={video.thumbnailUrl}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  zIndex: 2,
+                                  '--poster-url': `url(${video.thumbnailUrl})`,
+                                } as React.CSSProperties}
                                 muted
                                 preload="metadata"
+                                onLoadedMetadata={(e) => {
+                                  // Ensure thumbnail shows on mobile
+                                  const video = e.target as HTMLVideoElement;
+                                  video.currentTime = 0.1;
+                                }}
+                                onError={() => {
+                                  // Video failed to load, rely on fallback image
+                                }}
                               />
+                              {/* Play icon overlay */}
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  zIndex: 3,
+                                  color: 'white',
+                                  fontSize: '2rem',
+                                  opacity: 0.8,
+                                  pointerEvents: 'none',
+                                  textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                                }}
+                              >
+                                ▶
+                              </Box>
                               <Box
                                 sx={{
                                   position: 'absolute',
