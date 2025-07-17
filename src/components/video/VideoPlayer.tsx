@@ -41,10 +41,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   React.useEffect(() => {
+    console.log('VideoPlayer: Play effect triggered. isPlaying:', isPlaying, 'hasUserInteracted:', hasUserInteracted);
     const videoElement = videoRef.current;
-    if (!videoElement) return;
+    if (!videoElement) {
+      console.log('VideoPlayer: No video element in play effect');
+      return;
+    }
 
     if (isPlaying && hasUserInteracted) {
+      console.log('VideoPlayer: Attempting to play video');
       // Only attempt to play if user has interacted and element is ready
       const playVideo = async () => {
         try {
@@ -54,11 +59,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             return;
           }
           
+          console.log('VideoPlayer: Video readyState:', videoElement.readyState);
+          
           // Wait for video to be ready if needed
           if (videoElement.readyState < 2) { // Less than HAVE_CURRENT_DATA
+            console.log('VideoPlayer: Waiting for video to load');
             const onCanPlay = () => {
               videoElement.removeEventListener('canplay', onCanPlay);
               if (videoElement.isConnected && isPlaying && hasUserInteracted) {
+                console.log('VideoPlayer: Playing video after canplay event');
                 videoElement.play().catch(error => {
                   console.log('Video play failed after canplay:', error);
                   onPlayToggle?.(); // Reset playing state
@@ -69,7 +78,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             return;
           }
           
+          console.log('VideoPlayer: Video is ready, calling play()');
           await videoElement.play();
+          console.log('VideoPlayer: Video play() succeeded');
         } catch (error) {
           if (error instanceof DOMException) {
             if (error.name === 'NotAllowedError') {
@@ -90,17 +101,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       playVideo();
     } else if (!isPlaying) {
+      console.log('VideoPlayer: Pausing video');
       // Only pause if element is still in DOM
       if (videoElement.isConnected && !videoElement.paused) {
         videoElement.pause();
+        console.log('VideoPlayer: Video paused');
       }
+    } else {
+      console.log('VideoPlayer: Not playing because hasUserInteracted is false');
     }
   }, [isPlaying, onPlayToggle, hasUserInteracted]);
 
   const handleVideoClick = () => {
+    console.log('VideoPlayer: handleVideoClick called');
     const videoElement = videoRef.current;
-    if (!videoElement) return;
+    if (!videoElement) {
+      console.log('VideoPlayer: No video element found');
+      return;
+    }
 
+    console.log('VideoPlayer: Setting hasUserInteracted to true');
     setHasUserInteracted(true);
     
     // Resume audio context on iOS Safari
@@ -110,6 +130,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         try {
           const audioContext = new AudioContextClass();
           if (audioContext.state === 'suspended') {
+            console.log('VideoPlayer: Resuming audio context');
             audioContext.resume().catch(console.log);
           }
         } catch (e) {
@@ -120,10 +141,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     
     // Unmute video on first interaction (mobile requirement)
     if (isMuted) {
+      console.log('VideoPlayer: Unmuting video');
       videoElement.muted = false;
       setIsMuted(false);
     }
     
+    console.log('VideoPlayer: Calling onPlayToggle');
     onPlayToggle?.();
   };
 
