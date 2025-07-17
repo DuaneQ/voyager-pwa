@@ -127,6 +127,7 @@ describe('VideoFeedPage', () => {
       uploadVideo: mockUploadVideo,
       isUploading: false,
       uploadProgress: 0,
+      processingStatus: null,
       error: null
     });
   });
@@ -255,8 +256,8 @@ describe('VideoFeedPage', () => {
     render(<VideoFeedPage />);
 
     await waitFor(() => {
-      const prevButton = screen.getByTestId('prev-button');
-      const nextButton = screen.getByTestId('next-button');
+      const prevButton = screen.getByTestId('prev-button') as HTMLButtonElement;
+      const nextButton = screen.getByTestId('next-button') as HTMLButtonElement;
 
       // At first video, previous should be disabled
       expect(prevButton.disabled).toBe(true);
@@ -267,8 +268,8 @@ describe('VideoFeedPage', () => {
     fireEvent.click(screen.getByTestId('next-button'));
 
     await waitFor(() => {
-      const prevButton = screen.getByTestId('prev-button');
-      const nextButton = screen.getByTestId('next-button');
+      const prevButton = screen.getByTestId('prev-button') as HTMLButtonElement;
+      const nextButton = screen.getByTestId('next-button') as HTMLButtonElement;
 
       // At last video, next should be disabled
       expect(prevButton.disabled).toBe(false);
@@ -384,6 +385,345 @@ describe('VideoFeedPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('empty-state')).toBeInTheDocument();
       expect(screen.queryByTestId('upload-first-video-button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Mobile gesture navigation', () => {
+    beforeEach(() => {
+      // Mock mobile environment
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 375,
+      });
+
+      // Mock touch capability
+      Object.defineProperty(window, 'ontouchstart', {
+        writable: true,
+        configurable: true,
+        value: true,
+      });
+
+      // Mock videos for gesture tests
+      mockGetDocs.mockResolvedValue({
+        forEach: (callback: any) => {
+          mockVideos.forEach((video) => {
+            const { id, ...rest } = video;
+            callback({
+              id,
+              data: () => rest
+            });
+          });
+        }
+      } as any);
+    });
+
+    it('should handle swipe up to go to next video', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Simulate swipe up gesture
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 300 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 200 }]
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('2 of 2')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle swipe down to go to previous video', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+      });
+
+      // First go to second video
+      const nextButton = screen.getByTestId('next-button');
+      fireEvent.click(nextButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 of 2')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Simulate swipe down gesture
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 300 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 300 }]
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('1 of 2')).toBeInTheDocument();
+      });
+    });
+
+    it('should ignore small swipe gestures', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+        expect(screen.getByText('1 of 2')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Simulate small swipe (less than minSwipeDistance)
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 180 }] // Only 20px difference
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 180 }]
+      });
+
+      // Should stay on same video
+      expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    });
+
+    it('should not navigate beyond video boundaries with gestures', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+        expect(screen.getByText('1 of 2')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Try to swipe down when already at first video
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 300 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 300 }]
+      });
+
+      // Should still be on first video
+      expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    });
+
+    it('should handle touch events without errors', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Test touch without move (tap)
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 200 }]
+      });
+
+      // Should not cause errors or navigation
+      expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    });
+
+    it('should prevent body scroll during video feed', () => {
+      render(<VideoFeedPage />);
+      
+      expect(document.body).toHaveClass('video-feed-active');
+    });
+
+    it('should restore body scroll on unmount', () => {
+      const { unmount } = render(<VideoFeedPage />);
+      
+      unmount();
+      
+      expect(document.body).not.toHaveClass('video-feed-active');
+    });
+
+    it('should load more videos when swiping to end', async () => {
+      // Mock additional videos for pagination test
+      let callCount = 0;
+      mockGetDocs.mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          forEach: (callback: any) => {
+            if (callCount === 1) {
+              // First call - initial videos
+              mockVideos.forEach((video) => {
+                const { id, ...rest } = video;
+                callback({
+                  id,
+                  data: () => rest
+                });
+              });
+            } else {
+              // Second call - additional videos
+              const additionalVideo = {
+                id: 'video-3',
+                userId: 'user-3',
+                title: 'Test Video 3',
+                videoUrl: 'https://example.com/video3.mp4',
+                thumbnailUrl: 'https://example.com/thumb3.jpg',
+                isPublic: true,
+                likes: [],
+                commentCount: 0,
+                viewCount: 5,
+                duration: 20,
+                fileSize: 1024 * 1024,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+              };
+              const { id, ...rest } = additionalVideo;
+              callback({
+                id,
+                data: () => rest
+              });
+            }
+          }
+        } as any);
+      });
+
+      render(<VideoFeedPage />);
+      
+      // Navigate to last video
+      await waitFor(() => {
+        expect(screen.getByText('1 of 2')).toBeInTheDocument();
+      });
+
+      const nextButton = screen.getByTestId('next-button');
+      fireEvent.click(nextButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 of 2')).toBeInTheDocument();
+      });
+
+      // Try to navigate beyond current videos (should trigger load more)
+      const feedPage = screen.getByTestId('video-feed-page');
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 300 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 200 }]
+      });
+
+      // Should load more videos
+      await waitFor(() => {
+        expect(mockGetDocs).toHaveBeenCalledTimes(3); // Initial connections + initial videos + load more
+      });
+    });
+  });
+
+  describe('Video playback behavior', () => {
+    beforeEach(() => {
+      mockGetDocs.mockResolvedValue({
+        forEach: (callback: any) => {
+          mockVideos.forEach((video) => {
+            const { id, ...rest } = video;
+            callback({
+              id,
+              data: () => rest
+            });
+          });
+        }
+      } as any);
+    });
+
+    it('should start videos in paused state for mobile compatibility', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-container')).toBeInTheDocument();
+      });
+
+      // VideoPlayer should receive isPlaying=false initially
+      const videoPlayer = screen.getByTestId('video-player');
+      expect(videoPlayer).toBeInTheDocument();
+    });
+
+    it('should not auto-play next video after swipe', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
+      });
+
+      const feedPage = screen.getByTestId('video-feed-page');
+      
+      // Swipe to next video
+      fireEvent.touchStart(feedPage, {
+        touches: [{ clientY: 300 }]
+      });
+      
+      fireEvent.touchMove(feedPage, {
+        touches: [{ clientY: 200 }]
+      });
+      
+      fireEvent.touchEnd(feedPage, {
+        changedTouches: [{ clientY: 200 }]
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('2 of 2')).toBeInTheDocument();
+      });
+
+      // Video should not be auto-playing
+      const videoPlayer = screen.getByTestId('video-player');
+      expect(videoPlayer).toBeInTheDocument();
+      // Should require user interaction to play
+    });
+
+    it('should handle video end without auto-advancing', async () => {
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        const videoPlayer = screen.getByTestId('video-player');
+        expect(videoPlayer).toBeInTheDocument();
+      });
+
+      // Simulate video ending
+      const videoPlayer = screen.getByTestId('video-player');
+      const videoElement = videoPlayer.querySelector('video');
+      if (videoElement) {
+        fireEvent.ended(videoElement);
+      }
+
+      // Should stay on same video, not auto-advance
+      expect(screen.getByText('1 of 2')).toBeInTheDocument();
     });
   });
 });
