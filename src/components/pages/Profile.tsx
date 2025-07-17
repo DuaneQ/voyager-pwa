@@ -17,28 +17,62 @@ export const Profile = React.memo(() => {
   };
 
   return (
-    <Stack className="authFormContainer">
-      <Box mb={2}>
-        <ProfileForm currentTab={currentTab} onTabChange={handleTabChange} />
+    <Box 
+      className="authFormContainer"
+      sx={{ 
+        height: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Fixed Header: ProfilePhoto + Username + Tabs */}
+      <Box sx={{ 
+        flexShrink: 0,
+        backgroundColor: 'inherit'
+      }}>
+        <ProfileForm 
+          currentTab={currentTab} 
+          onTabChange={handleTabChange}
+          headerOnly={true}
+        />
       </Box>
       
-      {/* Photos Tab */}
-      {currentTab === 1 && (
-        <Box>
-          <PhotoGrid />
+      {/* Scrollable Content Area */}
+      <Box sx={{ 
+        flex: 1,
+        overflow: 'auto',
+        px: { xs: 1, sm: 2 }
+      }}>
+        {/* Profile Tab Content */}
+        {currentTab === 0 && (
+          <Box>
+            <ProfileForm 
+              currentTab={currentTab} 
+              onTabChange={handleTabChange}
+              contentOnly={true}
+            />
+          </Box>
+        )}
+        
+        {/* Photos Tab */}
+        {currentTab === 1 && (
+          <Box>
+            <PhotoGrid />
+          </Box>
+        )}
+        
+        {/* Videos Tab */}
+        {currentTab === 2 && (
+          <Box>
+            <VideoGrid />
+          </Box>
+        )}
+        
+        <Box mt={-10} mb={10}>
+          {/* <Chips /> */}
         </Box>
-      )}
-      
-      {/* Videos Tab */}
-      {currentTab === 2 && (
-        <Box>
-          <VideoGrid />
-        </Box>
-      )}
-      
-      <Box mt={-10} mb={10}>
-        {/* <Chips /> */}
       </Box>
-    </Stack>
+    </Box>
   );
 });

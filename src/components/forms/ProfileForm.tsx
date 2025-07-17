@@ -62,7 +62,17 @@ const ProfileField = ({ label, value, required }: { label: string, value: string
   </Box>
 );
 
-export const ProfileForm = ({ currentTab, onTabChange }: { currentTab?: number; onTabChange?: (newTab: number) => void }) => {
+export const ProfileForm = ({ 
+  currentTab, 
+  onTabChange, 
+  headerOnly = false, 
+  contentOnly = false 
+}: { 
+  currentTab?: number; 
+  onTabChange?: (newTab: number) => void;
+  headerOnly?: boolean;
+  contentOnly?: boolean;
+}) => {
   useGetUserProfile();
   const [showLogin, setShowLogin] = useState(false);
   const { userProfile } = useContext(UserProfileContext);
@@ -86,202 +96,215 @@ export const ProfileForm = ({ currentTab, onTabChange }: { currentTab?: number; 
 
   return (
     <>
-      <Box sx={{
-        maxWidth: '300px',
-        margin: '0 auto',
-        p: { xs: 1, sm: 2 }
-      }}>
-        <Box 
-          display="flex" 
-          justifyContent="center"
-          alignItems="center"
-          sx={{
-            px: { xs: 2, sm: 0 },
-            gap: { xs: 1, sm: 2 },
-            flexDirection: { xs: "column", sm: "row" },
-            mt: { xs: 4, sm: 5 }  // Add margin top for spacing from header
-          }}>
-          <Box sx={{ 
-            width: { xs: '120px', sm: '140px' },
-            height: { xs: '120px', sm: '140px' }
-          }}>
-            <ProfilePhoto />
-          </Box>
-          <Box sx={{ 
-            flexDirection: "column",
-            alignItems: { xs: "center", sm: "flex-start" },
-            display: "flex",
-            position: "relative"
-          }}>
-            <Box display="flex" alignItems="center">
-              <Typography
-                ml={{ xs: 0, sm: 2 }}
-                color="white"
-                sx={{
-                  fontSize: { xs: "1.5rem", sm: "2rem" },
-                  textAlign: { xs: "center", sm: "left" }
-                }}>
-                {userProfile?.username || ""}
-              </Typography>
-              <IconButton
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-                aria-label="more options"
-                sx={{ 
-                  color: 'white',
-                  ml: 1
-                }}>
-                <MoreVertIcon />
-              </IconButton>
-            </Box>
-            <Menu
-              anchorEl={menuAnchor}
-              open={Boolean(menuAnchor)}
-              onClose={handleMenuClose}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}>
-              <MenuItem onClick={() => {
-                setShowLogin(true);
-                handleMenuClose();
-              }}>
-                <ListItemIcon>
-                  <EditIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Edit Profile</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={handleLogout}>
-                <ListItemIcon>
-                  <LogoutIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Logout</ListItemText>
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Box>
-
-        {/* Tabs below username */}
-        {onTabChange && (
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>
-            <Tabs 
-              value={currentTab || 0} 
-              onChange={handleTabChange} 
-              centered
-              sx={{
-                '& .MuiTab-root': {
-                  color: 'white',
-                  '&.Mui-selected': {
-                    color: 'white'
-                  }
-                },
-                '& .MuiTabs-indicator': {
-                  backgroundColor: 'white'
-                }
-              }}
-            >
-              <Tab label="Profile" />
-              <Tab label="Photos" />
-              <Tab label="Videos" />
-            </Tabs>
-          </Box>
-        )}
-
-        {/* Profile content - only show when Profile tab is active or no tabs */}
-        {(!onTabChange || currentTab === 0) && (
-        <Card
-        elevation={0}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          p: 3,
-          maxWidth: '100%',
-          margin: "20px auto",
-          borderRadius: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+      {/* Header Section: ProfilePhoto + Username + Tabs */}
+      {(headerOnly || (!headerOnly && !contentOnly)) && (
+        <Box sx={{
+          maxWidth: '300px',
+          margin: '0 auto',
+          p: { xs: 1, sm: 2 }
         }}>
-        <Box>
-          <Typography
-            variant="caption"
+          <Box 
+            display="flex" 
+            justifyContent="center"
+            alignItems="center"
             sx={{
-              color: 'rgba(255, 255, 255, 0.6)',
-              display: 'block',
-              mb: 0.5,
-              fontWeight: 500,
-              fontSize: '0.75rem'
+              px: { xs: 2, sm: 0 },
+              gap: { xs: 1, sm: 2 },
+              flexDirection: { xs: "column", sm: "row" },
+              mt: { xs: 4, sm: 5 }  // Add margin top for spacing from header
             }}>
-            Bio
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{
-              whiteSpace: 'pre-wrap',
-              color: 'white',
-              fontWeight: 400,
-              fontSize: '0.875rem'
+            <Box sx={{ 
+              width: { xs: '120px', sm: '140px' },
+              height: { xs: '120px', sm: '140px' }
             }}>
-            {userProfile?.bio || "No bio provided"}
-          </Typography>
+              <ProfilePhoto />
+            </Box>
+            <Box sx={{ 
+              flexDirection: "column",
+              alignItems: { xs: "center", sm: "flex-start" },
+              display: "flex",
+              position: "relative"
+            }}>
+              <Box display="flex" alignItems="center">
+                <Typography
+                  ml={{ xs: 0, sm: 2 }}
+                  color="white"
+                  sx={{
+                    fontSize: { xs: "1.5rem", sm: "2rem" },
+                    textAlign: { xs: "center", sm: "left" }
+                  }}>
+                  {userProfile?.username || ""}
+                </Typography>
+                <IconButton
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                  aria-label="more options"
+                  sx={{ 
+                    color: 'white',
+                    ml: 1
+                  }}>
+                  <MoreVertIcon />
+                </IconButton>
+              </Box>
+              <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}>
+                <MenuItem onClick={() => {
+                  setShowLogin(true);
+                  handleMenuClose();
+                }}>
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Edit Profile</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Logout</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Box>
+          </Box>
+
+          {/* Tabs below username */}
+          {onTabChange && (
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>
+              <Tabs 
+                value={currentTab || 0} 
+                onChange={handleTabChange} 
+                centered
+                sx={{
+                  '& .MuiTab-root': {
+                    color: 'white',
+                    '&.Mui-selected': {
+                      color: 'white'
+                    }
+                  },
+                  '& .MuiTabs-indicator': {
+                    backgroundColor: 'white'
+                  }
+                }}
+              >
+                <Tab label="Profile" />
+                <Tab label="Photos" />
+                <Tab label="Videos" />
+              </Tabs>
+            </Box>
+          )}
         </Box>
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Age" 
-              value={userProfile?.dob ? calculateAge(userProfile.dob) : null} 
-            />
+      )}
+
+      {/* Content Section: Profile Details Card */}
+      {(contentOnly || (!headerOnly && !contentOnly)) && (
+        <Box sx={{
+          maxWidth: '300px',
+          margin: '0 auto',
+          p: { xs: 1, sm: 2 }
+        }}>
+          {/* Profile content - only show when Profile tab is active or no tabs */}
+          {(!onTabChange || currentTab === 0) && (
+          <Card
+          elevation={0}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            p: 3,
+            maxWidth: '100%',
+            margin: "20px auto",
+            borderRadius: 2,
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}>
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                display: 'block',
+                mb: 0.5,
+                fontWeight: 500,
+                fontSize: '0.75rem'
+              }}>
+              Bio
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                color: 'white',
+                fontWeight: 400,
+                fontSize: '0.875rem'
+              }}>
+              {userProfile?.bio || "No bio provided"}
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Age" 
+                value={userProfile?.dob ? calculateAge(userProfile.dob) : null} 
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Status" 
+                value={userProfile?.status} 
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Gender" 
+                value={userProfile?.gender} 
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Sexual Orientation" 
+                value={userProfile?.sexualOrientation} 
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <ProfileField 
+                label="Education" 
+                value={userProfile?.edu} 
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Drinking" 
+                value={userProfile?.drinking} 
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <ProfileField 
+                label="Smoking" 
+                value={userProfile?.smoking} 
+                required
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Status" 
-              value={userProfile?.status} 
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Gender" 
-              value={userProfile?.gender} 
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Sexual Orientation" 
-              value={userProfile?.sexualOrientation} 
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <ProfileField 
-              label="Education" 
-              value={userProfile?.edu} 
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Drinking" 
-              value={userProfile?.drinking} 
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <ProfileField 
-              label="Smoking" 
-              value={userProfile?.smoking} 
-              required
-            />
-          </Grid>
-        </Grid>
-      </Card>
-        )}
-      </Box>
+        </Card>
+          )}
+        </Box>
+      )}
+      
       <EditProfileModal show={showLogin} close={() => setShowLogin(false)} />
     </>
   );
