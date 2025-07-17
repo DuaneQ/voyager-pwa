@@ -41,7 +41,12 @@ export interface VideoValidationResult {
 export const VIDEO_CONSTRAINTS = {
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   MAX_DURATION: 60, // seconds
-  SUPPORTED_FORMATS: ['video/mp4', 'video/mov'] as const,
+  SUPPORTED_FORMATS: [
+    'video/mp4', 
+    'video/mov', 
+    'video/quicktime', // iOS Safari reports .mov files as this
+    'video/x-quicktime' // Some Android browsers use this
+  ] as const,
   MAX_TITLE_LENGTH: 100,
   MAX_DESCRIPTION_LENGTH: 200, // Reduced for better mobile display
 } as const;
