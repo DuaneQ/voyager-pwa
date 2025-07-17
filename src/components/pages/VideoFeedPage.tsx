@@ -166,7 +166,11 @@ export const VideoFeedPage: React.FC = () => {
   };
 
   const handlePlayToggle = () => {
-    setIsPlaying(prev => !prev);
+    console.log('VideoFeedPage: handlePlayToggle called, current isPlaying:', isPlaying);
+    setIsPlaying(prev => {
+      console.log('VideoFeedPage: Setting isPlaying from', prev, 'to', !prev);
+      return !prev;
+    });
   };
 
   const handleVideoEnd = () => {
