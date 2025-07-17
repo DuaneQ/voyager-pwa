@@ -8,6 +8,7 @@ interface VideoPlayerProps {
   onVideoEnd?: () => void;
   className?: string;
   showBranding?: boolean; // For sharing mode
+  showInfoOverlay?: boolean; // Show title/description overlay on video
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -16,7 +17,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onPlayToggle,
   onVideoEnd,
   className = '',
-  showBranding = false
+  showBranding = false,
+  showInfoOverlay = true
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
@@ -277,14 +279,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Video info overlay on the video itself */}
-      <div className="video-info-overlay">
-        {video.title && (
-          <h3 className="video-title" data-testid="video-title">{video.title}</h3>
-        )}
-        {video.description && (
-          <p className="video-description" data-testid="video-description">{video.description}</p>
-        )}
-      </div>
+      {showInfoOverlay && (
+        <div className="video-info-overlay">
+          {video.title && (
+            <h3 className="video-title" data-testid="video-title">{video.title}</h3>
+          )}
+          {video.description && (
+            <p className="video-description" data-testid="video-description">{video.description}</p>
+          )}
+        </div>
+      )}
 
       {/* Branding footer for sharing */}
       {showBranding && (

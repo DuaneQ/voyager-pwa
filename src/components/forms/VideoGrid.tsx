@@ -140,6 +140,7 @@ export const VideoGrid = () => {
         {/* Upload Button - Always show first */}
         <Grid item xs={6} display="flex" justifyContent="center">
           <Box
+            data-testid="add-video-button"
             sx={{
               width: VIDEO_SIZE,
               height: VIDEO_SIZE,
