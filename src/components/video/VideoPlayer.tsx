@@ -64,17 +64,40 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           // Wait for video to be ready if needed
           if (videoElement.readyState < 2) { // Less than HAVE_CURRENT_DATA
             console.log('VideoPlayer: Waiting for video to load');
-            const onCanPlay = () => {
-              videoElement.removeEventListener('canplay', onCanPlay);
+            
+            let playAttempted = false;
+            
+            const attemptPlay = () => {
+              if (playAttempted) return;
+              playAttempted = true;
+              
+              // Clean up listeners
+              videoElement.removeEventListener('canplay', attemptPlay);
+              videoElement.removeEventListener('canplaythrough', attemptPlay);
+              videoElement.removeEventListener('loadeddata', attemptPlay);
+              
               if (videoElement.isConnected && isPlaying && hasUserInteracted) {
-                console.log('VideoPlayer: Playing video after canplay event');
+                console.log('VideoPlayer: Playing video after load event');
                 videoElement.play().catch(error => {
-                  console.log('Video play failed after canplay:', error);
+                  console.log('Video play failed after load event:', error);
                   onPlayToggle?.(); // Reset playing state
                 });
               }
             };
-            videoElement.addEventListener('canplay', onCanPlay);
+            
+            // Listen for multiple video ready events
+            videoElement.addEventListener('canplay', attemptPlay);
+            videoElement.addEventListener('canplaythrough', attemptPlay);
+            videoElement.addEventListener('loadeddata', attemptPlay);
+            
+            // Add timeout fallback for mobile
+            setTimeout(() => {
+              if (!playAttempted && videoElement.readyState >= 1) {
+                console.log('VideoPlayer: Timeout fallback - attempting play with readyState:', videoElement.readyState);
+                attemptPlay();
+              }
+            }, 3000); // 3 second timeout
+            
             return;
           }
           
