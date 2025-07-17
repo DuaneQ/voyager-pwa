@@ -1,11 +1,3 @@
-.profile-scroll-area {
-  position: relative;
-  height: calc(100vh - 56px - 56px); /* header and nav height */
-  overflow-y: auto;
-  width: 100vw;
-  background: inherit;
-  /* Prevent scroll on body, only scroll this area */
-}
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -45,21 +37,6 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-/* Profile page header - fix ProfilePhoto and username */
-.profile-header-section {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-}
-
-/* Profile scrollable content */
-.profile-content-section {
-  flex: 1;
-  overflow-y: auto;
 }
 
 /* Video Page Styles - Individual video viewing */
