@@ -1,10 +1,12 @@
 .profile-scroll-area {
   position: relative;
-  height: calc(100vh - 56px - 56px); /* header and nav height */
+  height: 100%;
   overflow-y: auto;
-  width: 100vw;
+  overflow-x: hidden;
+  width: 100%;
   background: inherit;
   /* Prevent scroll on body, only scroll this area */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 #root {
   max-width: 1280px;

@@ -169,11 +169,8 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               maxLength={200}
               rows={3}
               data-testid="description-input"
-              placeholder="Describe your video... (TravalPass.com branding appears when shared)"
+              placeholder="Describe your video..."
             />
-            <div className="form-help">
-              Videos upload faster without watermarks! TravalPass.com branding appears only when shared (like TikTok/Facebook).
-            </div>
           </div>
 
           <div className="form-group">
