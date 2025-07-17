@@ -5,7 +5,9 @@ interface VideoPlayerProps {
   video: Video;
   isPlaying?: boolean;
   onPlayToggle?: () => void;
-  onVideoEnd?: () => void;
+  onV        muted={isMuted} // Use state-controlled muting
+        controls={false} // We'll handle controls manually for TikTok-like experience
+        playsInlineoEnd?: () => void;
   className?: string;
   showBranding?: boolean; // For sharing mode
 }
@@ -121,6 +123,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onPlayToggle?.();
   };
 
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const videoElement = e.currentTarget;
+    console.error('Video error:', {
+      error: videoElement.error,
+      networkState: videoElement.networkState,
+      readyState: videoElement.readyState,
+      src: videoElement.src
+    });
+  };
+
+  const handleVideoLoadStart = () => {
+    console.log('Video load started:', video.videoUrl);
+  };
+
+  const handleVideoCanPlay = () => {
+    console.log('Video can play:', video.videoUrl);
+  };
+
   const handleMuteToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering play/pause
     const videoElement = videoRef.current;
@@ -147,14 +167,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         poster={video.thumbnailUrl}
         onClick={handleVideoClick}
         onEnded={handleVideoEnded}
+        onError={handleVideoError}
+        onLoadStart={handleVideoLoadStart}
+        onCanPlay={handleVideoCanPlay}
         className="video-element"
         data-testid="video-element"
         loop={false}
         muted={isMuted} // Use state-controlled muting
-        controls={false} // We'll handle controls manually for TikTok-like experience
+        controls={true} // Temporarily enable native controls for debugging
         playsInline
         preload="metadata" // Only load metadata initially to improve performance
         webkit-playsinline="true" // iOS specific attribute
+        crossOrigin="anonymous" // Add CORS support for Firebase Storage
       />
       
       {/* Mute/Unmute button for mobile */}

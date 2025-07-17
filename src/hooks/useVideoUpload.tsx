@@ -33,6 +33,12 @@ export function useVideoUpload(): UseVideoUploadResult {
       throw new Error('User must be authenticated to upload videos');
     }
 
+    // Validate video format for iOS compatibility
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+    if (!allowedTypes.includes(videoData.file.type)) {
+      console.warn(`Video type ${videoData.file.type} may not be compatible with iOS. Recommended: MP4`);
+    }
+
     if (isMounted.current) setIsUploading(true);
     if (isMounted.current) setUploadProgress(0);
     if (isMounted.current) setError(null);
@@ -42,11 +48,21 @@ export function useVideoUpload(): UseVideoUploadResult {
       // Generate unique video ID
       const videoId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Upload original video file to Firebase Storage (no watermarking)
+      // Upload original video file to Firebase Storage with proper metadata
       if (isMounted.current) setProcessingStatus('Uploading video...');
       const videoRef = ref(storage, `users/${userId}/videos/${videoId}.mp4`);
       if (isMounted.current) setUploadProgress(30);
-      const videoSnapshot = await uploadBytes(videoRef, videoData.file);
+      
+      // Add metadata for better browser compatibility
+      const metadata = {
+        contentType: 'video/mp4',
+        customMetadata: {
+          'originalType': videoData.file.type,
+          'uploadedAt': new Date().toISOString()
+        }
+      };
+      
+      const videoSnapshot = await uploadBytes(videoRef, videoData.file, metadata);
       const videoUrl = await getDownloadURL(videoSnapshot.ref);
       if (isMounted.current) setUploadProgress(60);
       
