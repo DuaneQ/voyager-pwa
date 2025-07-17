@@ -78,8 +78,8 @@ const modalStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: { xs: '95%', sm: '500px' },
-  maxHeight: '90vh',
+  width: { xs: '76%', sm: '400px' },
+  maxHeight: '72vh',
   bgcolor: 'background.paper',
   borderRadius: 2,
   boxShadow: 24,
@@ -180,8 +180,8 @@ ${description}
                 alt={title}
                 style={{
                   width: '100%',
-                  maxWidth: '200px',
-                  height: '120px',
+                  maxWidth: '160px',
+                  height: '96px',
                   objectFit: 'cover',
                   borderRadius: '8px'
                 }}

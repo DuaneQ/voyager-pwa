@@ -86,15 +86,11 @@ export const ProfileForm = ({ currentTab, onTabChange }: { currentTab?: number; 
 
   return (
     <>
-      {/* Fixed Header Section - ProfilePhoto and Username */}
-      <Box 
-        className="profile-header-section"
-        sx={{
-          maxWidth: '300px',
-          margin: '0 auto',
-          p: { xs: 1, sm: 2 }
-        }}
-      >
+      <Box sx={{
+        maxWidth: '300px',
+        margin: '0 auto',
+        p: { xs: 1, sm: 2 }
+      }}>
         <Box 
           display="flex" 
           justifyContent="center"
@@ -167,14 +163,7 @@ export const ProfileForm = ({ currentTab, onTabChange }: { currentTab?: number; 
             </Menu>
           </Box>
         </Box>
-      </Box>
 
-      {/* Scrollable Content Section */}
-      <Box sx={{
-        maxWidth: '300px',
-        margin: '0 auto',
-        p: { xs: 1, sm: 2 }
-      }}>
         {/* Tabs below username */}
         {onTabChange && (
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>

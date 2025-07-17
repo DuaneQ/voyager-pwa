@@ -17,49 +17,28 @@ export const Profile = React.memo(() => {
   };
 
   return (
-    <Box 
-      sx={{ 
-        height: '100vh', 
-        display: 'flex', 
-        flexDirection: 'column',
-        overflow: 'hidden'
-      }}
-    >
-      <Stack className="authFormContainer">
-        <Box mb={2}>
-          <ProfileForm currentTab={currentTab} onTabChange={handleTabChange} />
+    <Stack className="authFormContainer">
+      <Box mb={2}>
+        <ProfileForm currentTab={currentTab} onTabChange={handleTabChange} />
+      </Box>
+      
+      {/* Photos Tab */}
+      {currentTab === 1 && (
+        <Box>
+          <PhotoGrid />
         </Box>
-        
-        {/* Photos Tab */}
-        {currentTab === 1 && (
-          <Box 
-            sx={{ 
-              flex: 1,
-              overflow: 'auto',
-              mt: -2
-            }}
-          >
-            <PhotoGrid />
-          </Box>
-        )}
-        
-        {/* Videos Tab */}
-        {currentTab === 2 && (
-          <Box 
-            sx={{ 
-              flex: 1,
-              overflow: 'auto',
-              mt: -2
-            }}
-          >
-            <VideoGrid />
-          </Box>
-        )}
-        
-        <Box mt={-10} mb={10}>
-          {/* <Chips /> */}
+      )}
+      
+      {/* Videos Tab */}
+      {currentTab === 2 && (
+        <Box>
+          <VideoGrid />
         </Box>
-      </Stack>
-    </Box>
+      )}
+      
+      <Box mt={-10} mb={10}>
+        {/* <Chips /> */}
+      </Box>
+    </Stack>
   );
 });
