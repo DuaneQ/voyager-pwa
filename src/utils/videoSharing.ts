@@ -1,3 +1,14 @@
+/**
+ * Video Sharing Utilities
+ * 
+ * IMPORTANT: For optimal social media sharing (especially messaging apps like WhatsApp, 
+ * Telegram, iMessage), implement server-side meta tag generation using the patterns
+ * in src/utils/serverSideSharing.ts
+ * 
+ * The client-side functions in this file provide enhanced sharing for modern browsers
+ * but messaging apps require server-rendered meta tags for reliable thumbnail display.
+ */
+
 import { Video } from '../types/Video';
 
 /**
@@ -107,6 +118,8 @@ export const captureVideoFrameWithBranding = async (
 
 /**
  * Updates page meta tags for better social media sharing
+ * Note: For messaging apps, server-side meta tag generation is more reliable
+ * See src/utils/serverSideSharing.ts for backend implementation guidance
  */
 export const updatePageMetaTags = (video: Video) => {
   const title = video.title || 'Amazing Travel Video';
@@ -120,18 +133,32 @@ export const updatePageMetaTags = (video: Video) => {
   updateMetaTag('og:image:width', '1200');
   updateMetaTag('og:image:height', '630');
   updateMetaTag('og:type', 'video.other');
+  updateMetaTag('og:url', window.location.href);
+  
+  // Add video-specific meta tags for better sharing
+  updateMetaTag('og:video:url', video.videoUrl);
+  updateMetaTag('og:video:secure_url', video.videoUrl);
+  updateMetaTag('og:video:type', 'video/mp4');
+  updateMetaTag('og:video:width', '1920');
+  updateMetaTag('og:video:height', '1080');
   
   // Update Twitter Card meta tags
-  updateMetaTag('twitter:card', 'summary_large_image');
+  updateMetaTag('twitter:card', 'player');
   updateMetaTag('twitter:title', title);
   updateMetaTag('twitter:description', description);
   updateMetaTag('twitter:image', thumbnailUrl);
+  updateMetaTag('twitter:player', video.videoUrl);
+  updateMetaTag('twitter:player:width', '1920');
+  updateMetaTag('twitter:player:height', '1080');
   
   // Update page title
   document.title = `${title} - TravalPass`;
   
   // Update description meta tag
   updateMetaTag('description', description);
+  
+  // Force refresh of link previews (works for some platforms)
+  updateMetaTag('og:updated_time', new Date().toISOString());
 };
 
 /**
@@ -184,10 +211,14 @@ export const shareVideoWithBranding = async (video: Video, videoUrl?: string) =>
     // Update page meta tags dynamically for better social sharing
     updatePageMetaTags(video);
     
+    // Create a more descriptive URL that includes video information
+    const baseUrl = window.location.origin;
+    const shareUrl = videoUrl || `${baseUrl}/video/${video.id}`;
+    
     const shareData: ShareData = {
       title: video.title || 'Amazing Travel Video',
       text: generateShareText(video),
-      url: videoUrl || window.location.href
+      url: shareUrl
     };
 
     // Try to include the thumbnail image if supported
@@ -227,12 +258,13 @@ export const shareVideoWithBranding = async (video: Video, videoUrl?: string) =>
       };
       await navigator.share(fallbackShareData);
     } else {
-      // Fallback: copy to clipboard with thumbnail URL
-      const textToCopy = `${shareData.text}\n\n📸 Thumbnail: ${video.thumbnailUrl}\n🔗 ${shareData.url}`;
+      // Fallback: copy to clipboard with cache-busted URL for better preview refresh
+      const cachebustedUrl = refreshLinkPreview(shareData.url || shareUrl);
+      const textToCopy = `${shareData.text}\n\n${cachebustedUrl}`;
       await navigator.clipboard.writeText(textToCopy);
       
-      // Show success message (you might want to use your app's notification system)
-      alert('Link and thumbnail URL copied to clipboard!');
+      // Show success message
+      alert('Video link copied to clipboard! The thumbnail should appear when you paste the link. For best results in messaging apps, your backend should serve proper meta tags.');
     }
   } catch (error) {
     console.error('Error sharing video:', error);
@@ -352,4 +384,52 @@ export const createBrandedVideoBlob = async (
   // For MVP, we'll just return the original video and handle branding in the UI
   console.log('Video processing not implemented yet - using UI overlay approach');
   return originalVideoBlob;
+};
+
+/**
+ * Generates server-side compatible meta tags for video sharing
+ * This data can be used to pre-render pages with proper meta tags
+ */
+export const generateVideoMetaTags = (video: Video, videoUrl: string) => {
+  const title = video.title || 'Amazing Travel Video';
+  const description = video.description || 'Watch this amazing travel video on TravalPass.com';
+  const thumbnailUrl = video.thumbnailUrl;
+  
+  return {
+    title: `${title} - TravalPass`,
+    description,
+    openGraph: {
+      title,
+      description,
+      image: thumbnailUrl,
+      url: videoUrl,
+      type: 'video.other',
+      video: {
+        url: video.videoUrl,
+        secureUrl: video.videoUrl,
+        type: 'video/mp4',
+        width: 1920,
+        height: 1080
+      }
+    },
+    twitter: {
+      card: 'player',
+      title,
+      description,
+      image: thumbnailUrl,
+      player: video.videoUrl,
+      playerWidth: 1920,
+      playerHeight: 1080
+    }
+  };
+};
+
+/**
+ * Forces link preview refresh for messaging apps (limited effectiveness)
+ */
+export const refreshLinkPreview = (url: string) => {
+  // Add cache-busting parameter to force re-crawl
+  const timestamp = Date.now();
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}_t=${timestamp}`;
 };
