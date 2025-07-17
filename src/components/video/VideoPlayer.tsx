@@ -5,9 +5,7 @@ interface VideoPlayerProps {
   video: Video;
   isPlaying?: boolean;
   onPlayToggle?: () => void;
-  onV        muted={isMuted} // Use state-controlled muting
-        controls={false} // We'll handle controls manually for TikTok-like experience
-        playsInlineoEnd?: () => void;
+  onVideoEnd?: () => void;
   className?: string;
   showBranding?: boolean; // For sharing mode
 }
@@ -174,7 +172,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         data-testid="video-element"
         loop={false}
         muted={isMuted} // Use state-controlled muting
-        controls={true} // Temporarily enable native controls for debugging
+        controls={false} // We'll handle controls manually for TikTok-like experience
         playsInline
         preload="metadata" // Only load metadata initially to improve performance
         webkit-playsinline="true" // iOS specific attribute
