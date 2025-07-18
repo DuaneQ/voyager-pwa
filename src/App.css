@@ -300,15 +300,16 @@ body.video-feed-active {
 }
 
 .feed-video-player {
-  width: 100vw;
-  height: 100vh;
+  /* Default: 90% size for larger devices */
+  width: 90vw;
+  height: 90vh;
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Center the video player */
+  left: 5vw;
+  top: 5vh;
   overflow: hidden;
   background: transparent; /* Remove black background */
+  border-radius: 16px; /* Larger radius for desktop */
 }
 
 /* Mobile feed video player adjustments */
@@ -323,6 +324,7 @@ body.video-feed-active {
     /* Account for mobile browser UI and bottom navigation */
     height: 85dvh; /* Use dynamic viewport height if available */
     height: 85vh; /* Fallback for older browsers */
+    border-radius: 12px; /* Smaller radius for mobile */
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -709,10 +711,10 @@ video[poster] {
   }
 }
 
-/* Video Controls - Right side - moved closer to center */
+/* Video Controls - Right side - positioned for 90% video player */
 .video-controls {
   position: absolute;
-  right: 12px; /* Moved closer to right edge from 20px */
+  right: calc(5vw + 12px); /* Account for 5vw left margin + 12px padding */
   bottom: 280px; /* Moved higher to avoid feedback button from 200px */
   display: flex;
   flex-direction: column;
@@ -1086,11 +1088,11 @@ video[poster] {
 }
 
 .nav-hint-up {
-  top: 20px;
+  top: calc(5vh + 30px); /* Account for 5vh top margin */
 }
 
 .nav-hint-down {
-  bottom: 20px;
+  bottom: calc(5vh + 30px); /* Account for 5vh bottom margin */
 }
 
 @keyframes fadeInOut {
