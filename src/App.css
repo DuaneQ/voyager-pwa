@@ -263,13 +263,18 @@ textarea {
 
 /* Video Feed Page Styles */
 .video-feed-page {
-  position: relative;
+  position: fixed; /* Fixed positioning for full-screen overlay */
+  top: 0;
+  left: 0;
   width: 100vw;
   height: 100vh;
   background: #000;
-  overflow: hidden;
+  overflow: hidden; /* Prevent scrolling */
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  touch-action: pan-y; /* Allow vertical panning for swipes */
+  user-select: none; /* Prevent text selection during swipes */
 }
 
 .video-container {
@@ -279,17 +284,6 @@ textarea {
   justify-content: center;
   align-items: center;
   background: #000;
-}
-
-/* Video Feed Page - Full Screen */
-.video-feed-page {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden; /* Prevent scrolling */
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 1;
 }
 
 /* Prevent body scroll when viewing videos */
@@ -1123,12 +1117,6 @@ video[poster] {
 @keyframes fadeInOut {
   0%, 100% { opacity: 0; }
   20%, 80% { opacity: 0.8; }
-}
-
-/* Improve touch responsiveness */
-.video-feed-page {
-  touch-action: pan-y; /* Allow vertical panning for swipes */
-  user-select: none; /* Prevent text selection during swipes */
 }
 
 /* Responsive Design */
