@@ -72,7 +72,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     if (open && video.id) {
       loadComments();
     }
-  }, [open, video.id]);
+  }, [open, video.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadComments = async () => {
     setLoading(true);
@@ -169,7 +169,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
         id: docRef.id,
         ...commentData,
         username: currentUser.displayName || 'You',
-        profilePhotoURL: currentUser.photoURL || null
+        profilePhotoURL: currentUser.photoURL ?? undefined
       };
 
       setComments(prev => [newCommentWithUser, ...prev]);
