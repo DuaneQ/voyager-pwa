@@ -284,6 +284,8 @@ textarea {
   justify-content: center;
   align-items: center;
   background: #000;
+  width: 100%; /* Ensure full width */
+  overflow: hidden; /* Prevent any overflow issues */
 }
 
 /* Prevent body scroll when viewing videos */
@@ -307,6 +309,13 @@ body.video-feed-active {
   overflow: hidden;
   background: transparent; /* Remove black background */
   border-radius: 0; /* No radius for full-width desktop */
+}
+
+/* Important: Mobile overrides to ensure full width */
+@media (max-width: 768px) {
+  .feed-video-player {
+    max-width: none !important; /* Critical: Remove desktop max-width on mobile */
+  }
 }
 
 /* Tablet adjustments */
@@ -333,8 +342,9 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player wider on mobile to eliminate black space */
-    width: 100vw;
+    /* Make video player truly full width on mobile to eliminate any black space */
+    width: 100vw !important;
+    max-width: none !important; /* Remove any max-width constraints */
     height: 70vh; /* Keep height unchanged - it's fine */
     /* Perfect centering for mobile */
     left: 50%;
@@ -344,6 +354,8 @@ body.video-feed-active {
     height: 70dvh; /* Use dynamic viewport height if available */
     height: 70vh; /* Fallback for older browsers */
     border-radius: 0; /* Remove radius for full-width video */
+    margin: 0 !important; /* Remove any margins */
+    padding: 0 !important; /* Remove any padding */
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -381,6 +393,8 @@ body.video-feed-active {
   align-items: center;
   overflow: hidden;
   border-radius: 12px; /* Add rounded corners for better mobile appearance */
+  max-width: none; /* Remove any width constraints */
+  min-width: 100%; /* Ensure minimum full width */
 }
 
 .video-element {
@@ -395,9 +409,11 @@ body.video-feed-active {
 @media (max-width: 768px) {
   .video-element {
     object-fit: cover; /* Fill the entire container */
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    height: 100% !important;
     border-radius: 12px; /* Consistent rounded corners */
+    max-width: none !important; /* Remove any width constraints */
+    min-width: 100% !important; /* Ensure minimum full width */
   }
   
   /* Ensure video thumbnails display properly on mobile */

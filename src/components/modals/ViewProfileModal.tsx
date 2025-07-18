@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import {
   Modal,
   Box,
@@ -121,6 +121,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   // Videos state
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
+  const [videosError, setVideosError] = useState<string | null>(null);
   const [enlargedVideo, setEnlargedVideo] = useState<Video | null>(null);
 
   const currentUserId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
@@ -162,7 +163,12 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   }, [open, currentUserId, userId]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Clear videos when modal is closed
+      setUserVideos([]);
+      setCurrentTab(0); // Reset to first tab
+      return;
+    }
 
     let isMounted = true;
     setLoading(true);
@@ -177,19 +183,21 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         if (isMounted) setLoading(false);
       });
 
-    // Load user's videos when modal opens
-    loadUserVideos();
-
     return () => {
       isMounted = false;
+      // Clear videos when modal is closed
+      setUserVideos([]);
+      setLoadingVideos(false);
+      setVideosError(null);
     };
   }, [open, userId]);
 
   // Function to load user's videos
-  const loadUserVideos = async () => {
+  const loadUserVideos = useCallback(async () => {
     if (!userId) return;
     
     setLoadingVideos(true);
+    setVideosError(null);
     try {
       const videosQuery = query(
         collection(db, 'videos'),
@@ -211,11 +219,19 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setUserVideos(videos);
     } catch (error) {
       console.error('Error loading user videos:', error);
+      setVideosError('Failed to load videos');
       setUserVideos([]);
     } finally {
       setLoadingVideos(false);
     }
-  };
+  }, [userId]);
+
+  // Load videos only when Videos tab is selected
+  useEffect(() => {
+    if (currentTab === 2 && userId && !loadingVideos && userVideos.length === 0 && !videosError) {
+      loadUserVideos();
+    }
+  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, loadUserVideos]);
 
   useEffect(() => {
     if (profile?.ratings?.ratedBy && currentUserId) {
@@ -226,13 +242,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setNewComment(existingComment);
     }
   }, [profile, currentUserId]);
-
-  // Load videos when Videos tab is selected
-  useEffect(() => {
-    if (currentTab === 2 && profile?.uid && userVideos.length === 0 && !loadingVideos) {
-      loadUserVideos();
-    }
-  }, [currentTab, profile?.uid]); // Removed loadUserVideos from dependencies to avoid infinite loops
 
   // Filter out null/empty photos
   // Use new slot-based photo object
@@ -954,14 +963,21 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 <TabPanel value={currentTab} index={2}>
                   <Box sx={{ py: 1 }}>
                     {loadingVideos ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }} data-testid="videos-loading">
                         <CircularProgress />
+                      </Box>
+                    ) : videosError ? (
+                      <Box sx={{ textAlign: 'center', py: 4 }} data-testid="videos-error">
+                        <Typography variant="h6" color="error">
+                          {videosError}
+                        </Typography>
                       </Box>
                     ) : userVideos.length > 0 ? (
                       <Grid container spacing={2}>
                         {userVideos.map((video) => (
                           <Grid item xs={6} sm={4} md={3} key={video.id}>
                             <Box
+                              data-testid={`user-video-${video.id}`}
                               sx={{
                                 position: 'relative',
                                 aspectRatio: '9/16',
@@ -976,6 +992,15 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                               onClick={() => {
                                 setEnlargedVideo(video);
                               }}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setEnlargedVideo(video);
+                                }
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`Play video: ${video.title || video.description || 'Untitled video'}`}
                             >
                               {/* Fallback thumbnail image for mobile */}
                               <img
@@ -1047,7 +1072,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                                   textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
                                 }}
                               >
-                                {video.description && (
+                                {video.title && (
                                   <Typography
                                     variant="caption"
                                     sx={{
@@ -1057,7 +1082,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                                       overflow: 'hidden',
                                     }}
                                   >
-                                    {video.description}
+                                    {video.title}
                                   </Typography>
                                 )}
                               </Box>
@@ -1066,9 +1091,9 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                         ))}
                       </Grid>
                     ) : (
-                      <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Box sx={{ textAlign: 'center', py: 4 }} data-testid="no-videos-message">
                         <Typography variant="h6" color="text.secondary">
-                          No videos available
+                          No videos shared yet
                         </Typography>
                       </Box>
                     )}
@@ -1117,7 +1142,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       </Modal>
 
       {/* Video modal */}
-      <Modal open={!!enlargedVideo} onClose={() => setEnlargedVideo(null)}>
+      <Modal open={!!enlargedVideo} onClose={() => setEnlargedVideo(null)} data-testid="enlarged-video-modal">
         <Box
           sx={{
             position: "absolute",
