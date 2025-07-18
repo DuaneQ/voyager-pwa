@@ -339,16 +339,16 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player smaller on mobile to ensure description visibility */
-    width: 85vw;
-    height: 70vh; /* Reduced from 85vh to leave room for description */
+    /* Make video player wider on mobile to reduce black space */
+    width: 95vw; /* Increased from 85vw to minimize side black space */
+    height: 65vh; /* Reduced further to ensure bottom visibility */
     /* Perfect centering for mobile */
     left: 50%;
-    top: 45%; /* Slightly higher to leave room at bottom */
+    top: 35%; /* Moved higher to leave more room at bottom */
     transform: translate(-50%, -50%);
     /* Account for mobile browser UI and bottom navigation */
-    height: 70dvh; /* Use dynamic viewport height if available */
-    height: 70vh; /* Fallback for older browsers */
+    height: 65dvh; /* Use dynamic viewport height if available */
+    height: 65vh; /* Fallback for older browsers */
     border-radius: 12px; /* Smaller radius for mobile */
   }
   
@@ -371,11 +371,11 @@ body.video-feed-active {
   }
 
   .nav-hint-up {
-    top: calc((100vh - 70vh) / 2 - 50px); /* Above the smaller mobile video */
+    top: calc((100vh - 65vh) / 2 - 50px); /* Above the mobile video */
   }
 
   .nav-hint-down {
-    bottom: calc((100vh - 70vh) / 2 - 50px); /* Below the smaller mobile video */
+    bottom: calc((100vh - 65vh) / 2 - 50px); /* Below the mobile video */
   }
 }
 
@@ -1164,8 +1164,8 @@ video[poster] {
   }
   
   .video-controls {
-    right: calc((100vw - 85vw) / 2 + 10px); /* Right margin of centered mobile video + padding */
-    bottom: calc(50vh - 35vh + 20px); /* Position relative to smaller mobile video */
+    right: calc((100vw - 95vw) / 2 + 10px); /* Right margin of wider mobile video + padding */
+    bottom: calc(35vh - 32.5vh + 20px); /* Position relative to mobile video placement */
     gap: 18px; /* Increased spacing on mobile too */
   }
   
