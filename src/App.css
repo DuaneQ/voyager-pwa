@@ -353,9 +353,24 @@ body.video-feed-active {
     /* Account for mobile browser UI and bottom navigation */
     height: 70dvh; /* Use dynamic viewport height if available */
     height: 70vh; /* Fallback for older browsers */
-    border-radius: 0; /* Remove radius for full-width video */
+    border-radius: 0 !important; /* Remove radius for full-width video */
     margin: 0 !important; /* Remove any margins */
     padding: 0 !important; /* Remove any padding */
+    box-sizing: border-box !important; /* Ensure proper box model */
+  }
+  
+  /* Ensure the feed video player and all its children take full width */
+  .feed-video-player * {
+    box-sizing: border-box !important;
+  }
+  
+  .feed-video-player .video-player,
+  .feed-video-player .video-element {
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -397,6 +412,19 @@ body.video-feed-active {
   min-width: 100%; /* Ensure minimum full width */
 }
 
+/* Mobile video player adjustments */
+@media (max-width: 768px) {
+  .video-player {
+    border-radius: 0 !important; /* Remove border radius on mobile */
+    margin: 0 !important; /* Remove any margins */
+    padding: 0 !important; /* Remove any padding */
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
 .video-element {
   width: 100%;
   height: 100%;
@@ -411,9 +439,14 @@ body.video-feed-active {
     object-fit: cover; /* Fill the entire container */
     width: 100% !important;
     height: 100% !important;
-    border-radius: 12px; /* Consistent rounded corners */
+    border-radius: 0 !important; /* Remove border radius completely on mobile */
     max-width: none !important; /* Remove any width constraints */
     min-width: 100% !important; /* Ensure minimum full width */
+    margin: 0 !important; /* Remove any margins */
+    padding: 0 !important; /* Remove any padding */
+    left: 0 !important; /* Ensure no left offset */
+    right: 0 !important; /* Ensure no right offset */
+    position: relative !important; /* Override any absolute positioning */
   }
   
   /* Ensure video thumbnails display properly on mobile */
