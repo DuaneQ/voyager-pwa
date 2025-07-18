@@ -98,12 +98,59 @@ export const captureVideoFrameWithBranding = async (
       };
 
       videoElement.onseeked = () => {
-        // Use html2canvas or similar library to capture the frame
-        // For now, we'll return a placeholder
-        setTimeout(() => {
+        try {
+          // Create canvas to capture video frame
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            document.body.removeChild(tempContainer);
+            reject(new Error('Canvas not supported'));
+            return;
+          }
+          
+          // Set canvas size to video dimensions
+          canvas.width = videoElement.videoWidth || 320;
+          canvas.height = videoElement.videoHeight || 568;
+          
+          // Draw the current video frame
+          ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+          
+          // Add branding overlay to the canvas
+          const overlayHeight = Math.floor(canvas.height * 0.2); // 20% of video height
+          
+          // Dark gradient background for text
+          const gradient = ctx.createLinearGradient(0, canvas.height - overlayHeight, 0, canvas.height);
+          gradient.addColorStop(0, 'rgba(0,0,0,0.3)');
+          gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, canvas.height - overlayHeight, canvas.width, overlayHeight);
+          
+          // Add TravalPass branding text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.floor(canvas.width * 0.04)}px Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 2;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          
+          const brandingY = canvas.height - overlayHeight + (overlayHeight * 0.3);
+          ctx.fillText('TravalPass.com', canvas.width / 2, brandingY);
+          
+          // Smaller subtitle
+          ctx.font = `${Math.floor(canvas.width * 0.025)}px Arial, sans-serif`;
+          ctx.fillText('Discover Amazing Travel Videos', canvas.width / 2, brandingY + (overlayHeight * 0.3));
+          
+          // Convert canvas to data URL
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          
           document.body.removeChild(tempContainer);
-          resolve('data:image/png;base64,placeholder'); // Placeholder - integrate with html2canvas
-        }, 100);
+          resolve(dataUrl);
+        } catch (error) {
+          document.body.removeChild(tempContainer);
+          reject(error);
+        }
       };
 
       videoElement.onerror = () => {
@@ -121,10 +168,19 @@ export const captureVideoFrameWithBranding = async (
  * Note: For messaging apps, server-side meta tag generation is more reliable
  * See src/utils/serverSideSharing.ts for backend implementation guidance
  */
-export const updatePageMetaTags = (video: Video) => {
+export const updatePageMetaTags = async (video: Video) => {
   const title = video.title || 'Amazing Travel Video';
   const description = video.description || 'Watch this amazing travel video on TravalPass.com';
-  const thumbnailUrl = video.thumbnailUrl;
+  const videoUrl = `${window.location.origin}/video/${video.id}`;
+  
+  // Try to create a branded thumbnail for better sharing
+  let thumbnailUrl = video.thumbnailUrl;
+  try {
+    const brandedThumbnail = await createShareableVideoCard(video);
+    thumbnailUrl = brandedThumbnail;
+  } catch (error) {
+    console.log('Could not create branded thumbnail, using original:', error);
+  }
 
   // Update or create Open Graph meta tags
   updateMetaTag('og:title', title);
@@ -133,23 +189,50 @@ export const updatePageMetaTags = (video: Video) => {
   updateMetaTag('og:image:width', '1200');
   updateMetaTag('og:image:height', '630');
   updateMetaTag('og:type', 'video.other');
-  updateMetaTag('og:url', window.location.href);
+  updateMetaTag('og:url', videoUrl);
+  updateMetaTag('og:site_name', 'TravalPass');
   
   // Add video-specific meta tags for better sharing
-  updateMetaTag('og:video:url', video.videoUrl);
-  updateMetaTag('og:video:secure_url', video.videoUrl);
-  updateMetaTag('og:video:type', 'video/mp4');
-  updateMetaTag('og:video:width', '1920');
-  updateMetaTag('og:video:height', '1080');
+  if (video.videoUrl) {
+    updateMetaTag('og:video:url', video.videoUrl);
+    updateMetaTag('og:video:secure_url', video.videoUrl);
+    updateMetaTag('og:video:type', 'video/mp4');
+    updateMetaTag('og:video:width', '1920');
+    updateMetaTag('og:video:height', '1080');
+  }
   
   // Update Twitter Card meta tags
-  updateMetaTag('twitter:card', 'player');
+  updateMetaTag('twitter:card', 'summary_large_image');
   updateMetaTag('twitter:title', title);
   updateMetaTag('twitter:description', description);
   updateMetaTag('twitter:image', thumbnailUrl);
-  updateMetaTag('twitter:player', video.videoUrl);
-  updateMetaTag('twitter:player:width', '1920');
-  updateMetaTag('twitter:player:height', '1080');
+  updateMetaTag('twitter:site', '@TravalPass');
+  
+  // Add structured data for better video understanding
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": title,
+    "description": description,
+    "thumbnailUrl": thumbnailUrl,
+    "uploadDate": video.createdAt || new Date().toISOString(),
+    "contentUrl": video.videoUrl,
+    "embedUrl": videoUrl,
+    "publisher": {
+      "@type": "Organization",
+      "name": "TravalPass",
+      "url": "https://travalpass.com"
+    }
+  };
+  
+  // Add or update structured data script
+  let structuredDataScript = document.querySelector('script[type="application/ld+json"]') as HTMLScriptElement;
+  if (!structuredDataScript) {
+    structuredDataScript = document.createElement('script');
+    structuredDataScript.type = 'application/ld+json';
+    document.head.appendChild(structuredDataScript);
+  }
+  structuredDataScript.textContent = JSON.stringify(structuredData);
   
   // Update page title
   document.title = `${title} - TravalPass`;
@@ -296,7 +379,10 @@ export const createShareableVideoCard = async (video: Video): Promise<string> =>
 
       // Load and draw thumbnail
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Don't set crossOrigin if the image is from the same domain
+      if (video.thumbnailUrl && !video.thumbnailUrl.startsWith(window.location.origin)) {
+        img.crossOrigin = 'anonymous';
+      }
       
       img.onload = () => {
         // Calculate aspect ratio to fit image properly
@@ -305,10 +391,10 @@ export const createShareableVideoCard = async (video: Video): Promise<string> =>
         let drawHeight = canvas.height;
         
         if (aspectRatio > canvas.width / canvas.height) {
-          // Image is wider
+          // Image is wider - fit to width
           drawHeight = canvas.width / aspectRatio;
         } else {
-          // Image is taller
+          // Image is taller - fit to height
           drawWidth = canvas.height * aspectRatio;
         }
         
@@ -319,27 +405,32 @@ export const createShareableVideoCard = async (video: Video): Promise<string> =>
         ctx.drawImage(img, x, y, drawWidth, drawHeight);
         
         // Add dark overlay for text readability
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        const overlayGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        overlayGradient.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
+        overlayGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.3)');
+        overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+        ctx.fillStyle = overlayGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Add play button overlay
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        const playButtonSize = Math.min(canvas.width, canvas.height) * 0.12;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, 40, 0, 2 * Math.PI);
+        ctx.arc(canvas.width / 2, canvas.height / 2, playButtonSize, 0, 2 * Math.PI);
         ctx.fill();
         
         // Play triangle
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = '#007AFF';
         ctx.beginPath();
-        ctx.moveTo(canvas.width / 2 - 15, canvas.height / 2 - 20);
-        ctx.lineTo(canvas.width / 2 - 15, canvas.height / 2 + 20);
-        ctx.lineTo(canvas.width / 2 + 20, canvas.height / 2);
+        const triangleSize = playButtonSize * 0.6;
+        ctx.moveTo(canvas.width / 2 - triangleSize * 0.3, canvas.height / 2 - triangleSize * 0.5);
+        ctx.lineTo(canvas.width / 2 - triangleSize * 0.3, canvas.height / 2 + triangleSize * 0.5);
+        ctx.lineTo(canvas.width / 2 + triangleSize * 0.7, canvas.height / 2);
         ctx.closePath();
         ctx.fill();
         
-        // Add text overlay
+        // Add text overlay at bottom
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 48px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         ctx.shadowBlur = 4;
@@ -348,11 +439,30 @@ export const createShareableVideoCard = async (video: Video): Promise<string> =>
         
         // Title
         const title = video.title || 'Amazing Travel Video';
-        ctx.fillText(title.substring(0, 40), canvas.width / 2, 100);
+        const titleFontSize = Math.max(24, canvas.width * 0.04);
+        ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
+        const maxTitleLength = Math.floor(canvas.width / (titleFontSize * 0.6));
+        const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength - 3) + '...' : title;
+        ctx.fillText(truncatedTitle, canvas.width / 2, canvas.height - 120);
         
         // TravalPass branding
-        ctx.font = 'bold 32px Arial, sans-serif';
-        ctx.fillText('TravalPass.com', canvas.width / 2, canvas.height - 50);
+        const brandingFontSize = Math.max(18, canvas.width * 0.027);
+        ctx.font = `bold ${brandingFontSize}px Arial, sans-serif`;
+        ctx.fillStyle = '#007AFF';
+        
+        // Branding background
+        const brandingText = 'TravalPass.com';
+        const brandingMetrics = ctx.measureText(brandingText);
+        const brandingWidth = brandingMetrics.width + 32;
+        const brandingHeight = brandingFontSize + 16;
+        const brandingX = (canvas.width - brandingWidth) / 2;
+        const brandingY = canvas.height - 60;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(brandingX, brandingY - brandingHeight + 8, brandingWidth, brandingHeight);
+        
+        ctx.fillStyle = '#007AFF';
+        ctx.fillText(brandingText, canvas.width / 2, canvas.height - 42);
         
         // Convert to data URL
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
@@ -360,11 +470,78 @@ export const createShareableVideoCard = async (video: Video): Promise<string> =>
       };
       
       img.onerror = () => {
-        reject(new Error('Failed to load thumbnail image'));
+        // Fallback: create branded card without video thumbnail
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#007AFF');
+        gradient.addColorStop(0.5, '#5856D6');
+        gradient.addColorStop(1, '#FF2D92');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add play button overlay
+        const playButtonSize = Math.min(canvas.width, canvas.height) * 0.12;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, playButtonSize, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Play triangle
+        ctx.fillStyle = '#007AFF';
+        ctx.beginPath();
+        const triangleSize = playButtonSize * 0.6;
+        ctx.moveTo(canvas.width / 2 - triangleSize * 0.3, canvas.height / 2 - triangleSize * 0.5);
+        ctx.lineTo(canvas.width / 2 - triangleSize * 0.3, canvas.height / 2 + triangleSize * 0.5);
+        ctx.lineTo(canvas.width / 2 + triangleSize * 0.7, canvas.height / 2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add text overlay
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
+        // Title
+        const title = video.title || 'Amazing Travel Video';
+        const titleFontSize = Math.max(24, canvas.width * 0.04);
+        ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
+        const maxTitleLength = Math.floor(canvas.width / (titleFontSize * 0.6));
+        const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength - 3) + '...' : title;
+        ctx.fillText(truncatedTitle, canvas.width / 2, canvas.height - 120);
+        
+        // TravalPass branding
+        const brandingFontSize = Math.max(18, canvas.width * 0.027);
+        ctx.font = `bold ${brandingFontSize}px Arial, sans-serif`;
+        
+        // Branding background
+        const brandingText = 'TravalPass.com';
+        const brandingMetrics = ctx.measureText(brandingText);
+        const brandingWidth = brandingMetrics.width + 32;
+        const brandingHeight = brandingFontSize + 16;
+        const brandingX = (canvas.width - brandingWidth) / 2;
+        const brandingY = canvas.height - 60;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(brandingX, brandingY - brandingHeight + 8, brandingWidth, brandingHeight);
+        
+        ctx.fillStyle = '#007AFF';
+        ctx.fillText(brandingText, canvas.width / 2, canvas.height - 42);
+        
+        // Convert to data URL
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        resolve(dataUrl);
       };
       
-      // Use thumbnail URL or fallback
-      img.src = video.thumbnailUrl || '/DEFAULT_AVATAR.png';
+      // Start loading the image
+      if (video.thumbnailUrl) {
+        img.src = video.thumbnailUrl;
+      } else {
+        // No thumbnail URL, create gradient background immediately
+        setTimeout(() => img.onerror?.(new Event('error')), 0);
+      }
       
     } catch (error) {
       reject(error);
