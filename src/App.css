@@ -339,40 +339,43 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player 15% smaller on mobile devices */
+    /* Make video player smaller on mobile to ensure description visibility */
     width: 85vw;
-    height: 85vh;
+    height: 70vh; /* Reduced from 85vh to leave room for description */
     /* Perfect centering for mobile */
     left: 50%;
-    top: 50%;
+    top: 45%; /* Slightly higher to leave room at bottom */
     transform: translate(-50%, -50%);
     /* Account for mobile browser UI and bottom navigation */
-    height: 85dvh; /* Use dynamic viewport height if available */
-    height: 85vh; /* Fallback for older browsers */
+    height: 70dvh; /* Use dynamic viewport height if available */
+    height: 70vh; /* Fallback for older browsers */
     border-radius: 12px; /* Smaller radius for mobile */
   }
   
-  /* Ensure video info is always visible above mobile bottom navigation */
+  /* Ensure video info is always visible on mobile */
   .feed-video-player .video-info-overlay {
-    bottom: 110px; /* Higher to clear bottom nav and provide more space */
+    bottom: -60px; /* Position below the video player */
     left: 12px;
     right: 12px;
     z-index: 1000; /* High z-index to ensure visibility */
     padding: 14px; /* Consistent with general mobile styles */
+    background: rgba(0, 0, 0, 0.8); /* Dark background for readability */
+    border-radius: 8px; /* Rounded corners */
+    color: white; /* Ensure text is visible */
   }
 
-  /* Navigation hints positioning for centered mobile video player */
+  /* Navigation hints positioning for mobile video player */
   .video-navigation-hint {
     left: 50%;
     transform: translateX(-50%);
   }
 
   .nav-hint-up {
-    top: calc((100vh - 85vh) / 2 + 30px);
+    top: calc((100vh - 70vh) / 2 - 50px); /* Above the smaller mobile video */
   }
 
   .nav-hint-down {
-    bottom: calc((100vh - 85vh) / 2 + 80px);
+    bottom: calc((100vh - 70vh) / 2 - 50px); /* Below the smaller mobile video */
   }
 }
 
@@ -1162,7 +1165,7 @@ video[poster] {
   
   .video-controls {
     right: calc((100vw - 85vw) / 2 + 10px); /* Right margin of centered mobile video + padding */
-    bottom: 240px; /* Moved higher on mobile to avoid feedback button */
+    bottom: calc(50vh - 35vh + 20px); /* Position relative to smaller mobile video */
     gap: 18px; /* Increased spacing on mobile too */
   }
   
