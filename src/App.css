@@ -311,12 +311,7 @@ body.video-feed-active {
   border-radius: 0; /* No radius for full-width desktop */
 }
 
-/* Important: Mobile overrides to ensure full width */
-@media (max-width: 768px) {
-  .feed-video-player {
-    max-width: none !important; /* Critical: Remove desktop max-width on mobile */
-  }
-}
+
 
 /* Tablet adjustments */
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -342,14 +337,13 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    width: 100vw !important;
-    max-width: none !important; /* Remove any max-width constraints */
-    height: 70vh; /* Keep height unchanged - it's fine */
-    left: 50%;
-    top: 45%; /* Slightly higher to leave room at bottom */
-    transform: translate(-50%, -50%);
-    height: 70dvh; /* Use dynamic viewport height if available */
-    height: 70vh; /* Fallback for older browsers */
+    width: 100vw;
+    height: 70vh;
+    left: 0;
+    top: 15vh; /* Simple top positioning instead of centering */
+    transform: none; /* Remove centering transform */
+    max-width: none;
+    border-radius: 0;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -394,13 +388,11 @@ body.video-feed-active {
 /* Mobile video player adjustments */
 @media (max-width: 768px) {
   .video-player {
-    border-radius: 0 !important; /* Remove border radius on mobile */
-    margin: 0 !important; /* Remove any margins */
-    padding: 0 !important; /* Remove any padding */
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
   }
 }
 
@@ -415,17 +407,10 @@ body.video-feed-active {
 /* Mobile video element adjustments */
 @media (max-width: 768px) {
   .video-element {
-    object-fit: cover; /* Fill the entire container */
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 0 !important; /* Remove border radius completely on mobile */
-    max-width: none !important; /* Remove any width constraints */
-    min-width: 100% !important; /* Ensure minimum full width */
-    margin: 0 !important; /* Remove any margins */
-    padding: 0 !important; /* Remove any padding */
-    left: 0 !important; /* Ensure no left offset */
-    right: 0 !important; /* Ensure no right offset */
-    position: relative !important; /* Override any absolute positioning */
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
   }
   
   /* Ensure video thumbnails display properly on mobile */
