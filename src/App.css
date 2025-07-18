@@ -340,8 +340,8 @@ body.video-feed-active {
     width: 100vw;
     height: 70vh;
     left: 0;
-    top: 15vh; /* Simple top positioning instead of centering */
-    transform: none; /* Remove centering transform */
+    top: 50%;
+    transform: translateY(-50%); /* Only vertical centering, no horizontal transform */
     max-width: none;
     border-radius: 0;
   }
