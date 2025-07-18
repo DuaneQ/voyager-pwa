@@ -9,7 +9,7 @@ export interface Video {
   thumbnailUrl: string;
   isPublic: boolean;
   likes: string[]; // Array of user IDs who liked
-  commentCount: number;
+  comments: VideoComment[]; // Array of comments
   viewCount: number;
   duration: number; // in seconds
   fileSize: number; // in bytes
@@ -19,7 +19,6 @@ export interface Video {
 
 export interface VideoComment {
   id: string;
-  videoId: string;
   userId: string;
   text: string;
   createdAt: Timestamp;

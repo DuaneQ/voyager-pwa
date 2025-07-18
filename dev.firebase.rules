@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to validate video data
+    function isValidVideo(data) {
+      return data.keys().hasAll(['userId', 'videoUrl', 'thumbnailUrl', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.userId is string
+        && data.videoUrl is string
+        && data.thumbnailUrl is string
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (data.title == null || (data.title is string && data.title.size() <= 100))
+        && (data.description == null || (data.description is string && data.description.size() <= 500))
+        && data.likes is list
+        && data.comments is list
+        && data.viewCount is number
+        && data.duration is number
+        && data.fileSize is number;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (
+        request.auth.uid == userId || 
+        (
+          // Allow rating updates by checking:
+          // 1. Only the ratings field is being modified
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ratings']) &&
+          // 2. Rater cannot rate themselves
+          request.auth.uid != userId &&
+          // 3. Rating value is valid (1-5)
+          request.resource.data.ratings.ratedBy[request.auth.uid].rating is number &&
+          request.resource.data.ratings.ratedBy[request.auth.uid].rating >= 1 &&
+          request.resource.data.ratings.ratedBy[request.auth.uid].rating <= 5
+        )
+      );
+    }
+
+    // Itineraries
+    match /itineraries/{itineraryId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Connections
+    match /connections/{connectionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /connections/{connectionId}/messages/{messageId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Videos collection - for video sharing
+    match /videos/{videoId} {
+      // Allow authenticated users to create videos
+      allow create: if request.auth != null 
+        && request.auth.uid != null
+        && request.resource.data.userId == request.auth.uid
+        && isValidVideo(request.resource.data);
+      
+      // Allow reading public videos by any authenticated user
+      allow read: if request.auth != null;
+      
+      // Allow users to update/delete their own videos
+      allow update, delete: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+      
+      // Allow admins to read/update/delete any video
+      allow read, update, delete: if request.auth != null 
+        && request.auth.token.admin == true;
+      
+      // Allow adding comments to videos
+      allow update: if request.auth != null
+        && request.auth.uid != null
+        && (
+          // Only allow updating the comments array
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt']) &&
+          // Ensure user can only add their own comments
+          request.resource.data.comments.size() == resource.data.comments.size() + 1
+        );
+    }
+
+    // FCM Tokens (users collection for FCM token management)
+    match /fcmTokens/{tokenId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Usage tracking
+    match /usage/{usageId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Mail (no client access)
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
+
+    // Violations (admin and reporter logic)
+    match /violations/{violationId} {
+      allow create: if request.auth != null &&
+        request.resource.data.reportedByUserId == request.auth.uid &&
+        request.resource.data.reportedUserId != request.auth.uid;
+      allow read, update, delete: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Feedback
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null && request.auth.uid != null;
+      allow read: if request.auth != null && (request.auth.token.admin == true || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}

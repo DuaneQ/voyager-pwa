@@ -79,7 +79,11 @@ describe('ViewProfileModal - Video Tab', () => {
       thumbnailUrl: 'https://example.com/thumb1.jpg',
       isPublic: true,
       likes: ['user-2'],
-      commentCount: 3,
+      comments: [
+        { id: 'c1', userId: 'user-2', text: 'Great!', createdAt: Timestamp.now() },
+        { id: 'c2', userId: 'user-3', text: 'Nice!', createdAt: Timestamp.now() },
+        { id: 'c3', userId: 'user-4', text: 'Cool!', createdAt: Timestamp.now() }
+      ],
       viewCount: 50,
       duration: 60,
       fileSize: 10 * 1024 * 1024,
@@ -105,7 +109,9 @@ describe('ViewProfileModal - Video Tab', () => {
       thumbnailUrl: 'https://example.com/thumb2.jpg',
       isPublic: false,
       likes: [],
-      commentCount: 1,
+      comments: [
+        { id: 'c4', userId: 'user-5', text: 'Awesome!', createdAt: Timestamp.now() }
+      ],
       viewCount: 25,
       duration: 45,
       fileSize: 8 * 1024 * 1024,

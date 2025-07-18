@@ -189,7 +189,7 @@ export const VideoPage: React.FC = () => {
           <div className="video-stats" data-testid="video-stats">
             <span>👁️ {video.viewCount || 0} views</span>
             <span>❤️ {video.likes?.length || 0} likes</span>
-            <span>💬 {video.commentCount || 0} comments</span>
+            <span>💬 {video.comments?.length || 0} comments</span>
           </div>
           
           <div className="video-actions">

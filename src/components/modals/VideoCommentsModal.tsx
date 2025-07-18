@@ -20,7 +20,7 @@ import {
   Send as SendIcon,
   AccountCircle as AccountCircleIcon
 } from '@mui/icons-material';
-import { collection, query, where, orderBy, addDoc, getDocs, Timestamp, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../../environments/firebaseConfig';
 import { Video, VideoComment } from '../../types/Video';
 import DOMPurify from 'dompurify';
@@ -29,7 +29,7 @@ interface VideoCommentsModalProps {
   open: boolean;
   onClose: () => void;
   video: Video;
-  onCommentAdded?: () => void; // Callback to refresh comment count
+  onCommentAdded?: () => void; // Callback to refresh video data
 }
 
 interface CommentWithUser extends VideoComment {
@@ -72,33 +72,16 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     if (open && video.id) {
       loadComments();
     }
-  }, [open, video.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, video.id, video.comments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadComments = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Query comments for this video
-      const commentsQuery = query(
-        collection(db, 'videoComments'),
-        where('videoId', '==', video.id),
-        orderBy('createdAt', 'desc')
-      );
-
-      const commentsSnapshot = await getDocs(commentsQuery);
-      const commentsData: VideoComment[] = [];
-      
-      commentsSnapshot.forEach((docSnapshot) => {
-        commentsData.push({
-          id: docSnapshot.id,
-          ...docSnapshot.data()
-        } as VideoComment);
-      });
-
-      // Load user data for each comment
+      // Comments are already in the video object, we just need to enrich them with user data
       const commentsWithUsers: CommentWithUser[] = await Promise.all(
-        commentsData.map(async (comment) => {
+        (video.comments || []).map(async (comment) => {
           try {
             const userDoc = await getDoc(doc(db, 'users', comment.userId));
             if (userDoc.exists()) {
@@ -154,26 +137,24 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
       // Sanitize comment text
       const sanitizedComment = DOMPurify.sanitize(newComment.trim());
       
-      // Add comment to Firestore
-      const commentData: Omit<VideoComment, 'id'> = {
-        videoId: video.id,
+      // Create new comment object
+      const newCommentData: VideoComment = {
+        id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         userId: currentUser.uid,
         text: sanitizedComment,
         createdAt: Timestamp.now()
       };
 
-      const docRef = await addDoc(collection(db, 'videoComments'), commentData);
-      
-      // Update the video's comment count
+      // Update the video document by adding the comment to the comments array
       const videoRef = doc(db, 'videos', video.id);
       await updateDoc(videoRef, {
-        commentCount: increment(1)
+        comments: arrayUnion(newCommentData),
+        updatedAt: Timestamp.now()
       });
       
       // Add comment to local state immediately (optimistic update)
       const newCommentWithUser: CommentWithUser = {
-        id: docRef.id,
-        ...commentData,
+        ...newCommentData,
         username: currentUser.displayName || 'You',
         profilePhotoURL: currentUser.photoURL ?? undefined
       };
@@ -181,7 +162,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
       setComments(prev => [newCommentWithUser, ...prev]);
       setNewComment('');
       
-      // Notify parent component
+      // Notify parent component to refresh video data
       onCommentAdded?.();
       
     } catch (error) {
@@ -223,7 +204,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
           flexShrink: 0
         }}>
           <Typography variant="h6" component="h2">
-            Comments ({video.commentCount || 0})
+            Comments ({video.comments?.length || 0})
           </Typography>
           <IconButton onClick={handleClose} size="small" data-testid="close-comments">
             <CloseIcon />
