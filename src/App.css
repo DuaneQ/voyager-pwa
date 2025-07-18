@@ -339,9 +339,9 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player smaller on mobile to ensure description visibility */
-    width: 85vw;
-    height: 70vh; /* Reduced from 85vh to leave room for description */
+    /* Make video player wider on mobile to eliminate black space */
+    width: 100vw;
+    height: 70vh; /* Keep height unchanged - it's fine */
     /* Perfect centering for mobile */
     left: 50%;
     top: 45%; /* Slightly higher to leave room at bottom */
@@ -349,7 +349,7 @@ body.video-feed-active {
     /* Account for mobile browser UI and bottom navigation */
     height: 70dvh; /* Use dynamic viewport height if available */
     height: 70vh; /* Fallback for older browsers */
-    border-radius: 12px; /* Smaller radius for mobile */
+    border-radius: 0; /* Remove radius for full-width video */
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -1161,7 +1161,7 @@ video[poster] {
   }
   
   .video-controls {
-    right: calc((100vw - 85vw) / 2 + 10px); /* Right margin of centered mobile video + padding */
+    right: 12px; /* Simple right margin for full-width mobile video */
     bottom: 240px; /* Moved higher on mobile to avoid feedback button */
     gap: 18px; /* Increased spacing on mobile too */
   }
