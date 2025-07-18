@@ -215,7 +215,7 @@ export const VideoFeedPage: React.FC = () => {
   const goToNextVideo = () => {
     if (currentVideoIndex < videos.length - 1) {
       setCurrentVideoIndex(prev => prev + 1);
-      setIsPlaying(false); // Don't auto-play next video on mobile
+      setIsPlaying(true); // Auto-play next video after swipe
     } else if (hasMoreVideos && !isLoadingMore) {
       // Load more videos when reaching the end
       loadVideos(true);
@@ -225,7 +225,7 @@ export const VideoFeedPage: React.FC = () => {
   const goToPreviousVideo = () => {
     if (currentVideoIndex > 0) {
       setCurrentVideoIndex(prev => prev - 1);
-      setIsPlaying(false); // Don't auto-play previous video on mobile
+      setIsPlaying(true); // Auto-play previous video after swipe
     }
   };
 
@@ -352,6 +352,11 @@ export const VideoFeedPage: React.FC = () => {
                   <IosShare />
                 </button>
               </div>
+            </div>
+
+            {/* Video counter */}
+            <div className="video-counter" data-testid="video-counter">
+              {currentVideoIndex + 1} of {videos.length}
             </div>
 
             {/* Video navigation indicators */}

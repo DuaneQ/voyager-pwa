@@ -272,8 +272,10 @@ describe('VideoGrid', () => {
   it('should open upload modal when add video button is clicked', async () => {
     renderVideoGrid();
     
+    // Wait for loading to complete and button to be enabled
     await waitFor(() => {
       expect(screen.getByTestId('add-video-button')).toBeInTheDocument();
+      expect(screen.getByTestId('add-video-button')).not.toBeDisabled();
     });
     
     fireEvent.click(screen.getByTestId('add-video-button'));
@@ -303,8 +305,16 @@ describe('VideoGrid', () => {
     
     renderVideoGrid();
     
+    // Wait for loading to complete and button to be enabled, then click it
     await waitFor(() => {
-      fireEvent.click(screen.getByTestId('add-video-button'));
+      expect(screen.getByTestId('add-video-button')).not.toBeDisabled();
+    });
+    
+    fireEvent.click(screen.getByTestId('add-video-button'));
+    
+    // Wait for modal to appear
+    await waitFor(() => {
+      expect(screen.getByTestId('video-upload-modal')).toBeInTheDocument();
     });
     
     fireEvent.click(screen.getByTestId('upload-video'));

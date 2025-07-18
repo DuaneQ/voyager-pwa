@@ -218,31 +218,33 @@ beforeEach(() => {
       uploadPromise = result.current!.uploadVideo(mockVideoData);
     });
     
-    // Wait for isUploading to become true and progress to be at 25 (after ref creation)
+    // Wait for isUploading to become true and progress to be at 30 (after ref creation)
     await waitFor(() => expect(result.current!.isUploading).toBe(true), { timeout: 1000 });
-    expect(result.current!.uploadProgress).toBe(25);
+    expect(result.current!.uploadProgress).toBe(30);
     
-    // Complete video upload (this will set progress to 50)
+    // Complete video upload (this will set progress to 60)
     await waitFor(() => expect(resolvers.videoUpload).toBeDefined(), { timeout: 1000 });
     act(() => {
       resolvers.videoUpload({ ref: { fullPath: 'video-path' } });
     });
     
-    await waitFor(() => expect(result.current!.uploadProgress).toBe(50), { timeout: 1000 });
+    await waitFor(() => expect(result.current!.uploadProgress).toBe(60), { timeout: 1000 });
     
-    // Complete thumbnail generation (this will set progress to 75)
+    // Complete thumbnail generation (this will set progress to 80)
     await waitFor(() => expect(resolvers.thumbnailGeneration).toBeDefined(), { timeout: 1000 });
     act(() => {
       resolvers.thumbnailGeneration(mockThumbnailBlob);
     });
     
-    await waitFor(() => expect(result.current!.uploadProgress).toBe(75), { timeout: 1000 });
+    await waitFor(() => expect(result.current!.uploadProgress).toBe(80), { timeout: 1000 });
     
-    // Complete thumbnail upload
+    // Complete thumbnail upload (this will set progress to 90)
     await waitFor(() => expect(resolvers.thumbnailUpload).toBeDefined(), { timeout: 1000 });
     act(() => {
       resolvers.thumbnailUpload({ ref: { fullPath: 'thumbnail-path' } });
     });
+    
+    await waitFor(() => expect(result.current!.uploadProgress).toBe(90), { timeout: 1000 });
     
     // Complete Firestore save
     await waitFor(() => expect(resolvers.firestore).toBeDefined(), { timeout: 1000 });
@@ -287,8 +289,8 @@ beforeEach(() => {
       uploadedVideo = await result.current.uploadVideo(minimalVideoData);
     });
     
-    expect(uploadedVideo.title).toBeUndefined();
-    expect(uploadedVideo.description).toBeUndefined();
+    expect(uploadedVideo.title).toMatch(/^Video \d{1,2}\/\d{1,2}\/\d{4}$/); // Default title format
+    expect(uploadedVideo.description).toBe(''); // Empty string, not undefined
     expect(uploadedVideo.isPublic).toBe(false);
   });
 });

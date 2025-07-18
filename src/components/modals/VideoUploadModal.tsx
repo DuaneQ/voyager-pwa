@@ -220,7 +220,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               type="submit"
               disabled={!selectedFile || actualIsUploading}
               className="modal-upload-button"
-              data-testid="upload-button"
+              data-testid="upload-video"
             >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
