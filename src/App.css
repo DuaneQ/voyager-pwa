@@ -340,10 +340,11 @@ body.video-feed-active {
     width: 100vw;
     height: 70vh;
     left: 0;
-    top: 50%;
+    top: 40%;
     transform: translateY(-50%); /* Only vertical centering, no horizontal transform */
     max-width: none;
     border-radius: 0;
+    position: fixed;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -408,9 +409,14 @@ body.video-feed-active {
 @media (max-width: 768px) {
   .video-element {
     object-fit: cover;
-    width: 100%;
+    width: 100vw; /* Use viewport width instead of percentage */
     height: 100%;
     border-radius: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
   }
   
   /* Ensure video thumbnails display properly on mobile */
