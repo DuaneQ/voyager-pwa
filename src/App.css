@@ -1,6 +1,7 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
+  /* Remove max-width constraint for full-screen video feed */
+  width: 100%;
+  margin: 0;
   text-align: center;
 }
 
@@ -364,11 +365,11 @@ body.video-feed-active {
   }
 
   .nav-hint-up {
-    top: calc((100vh - 85vh) / 2 + 30px);
+    top: 30px;
   }
 
   .nav-hint-down {
-    bottom: calc((100vh - 85vh) / 2 + 80px);
+    bottom: 80px;
   }
 }
 
