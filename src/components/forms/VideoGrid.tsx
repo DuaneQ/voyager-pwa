@@ -14,7 +14,7 @@ import { VideoUploadModal } from "../modals/VideoUploadModal";
 const VIDEO_SIZE = 120; // px
 
 export const VideoGrid = () => {
-  const { uploadVideo, isUploading } = useVideoUpload();
+  const { uploadVideo, isUploading, uploadProgress, processingStatus } = useVideoUpload();
   const { userProfile } = useContext(UserProfileContext);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -68,6 +68,7 @@ export const VideoGrid = () => {
   }, [currentUserId]);
 
   function handleUploadVideo() {
+    if (isUploading || loadingVideos) return;
     setUploadModalOpen(true);
     setMenuAnchor(null);
   }
@@ -85,6 +86,13 @@ export const VideoGrid = () => {
   };
 
   const handleVideoClick = (event: React.MouseEvent<HTMLElement>, video: Video) => {
+    if (!loadingVideos) {
+      setEnlargedVideo(video);
+    }
+  };
+
+  const handleVideoContextMenu = (event: React.MouseEvent<HTMLElement>, video: Video) => {
+    event.preventDefault();
     if (!loadingVideos) {
       setSelectedVideo(video);
       setMenuAnchor(event.currentTarget);
@@ -139,8 +147,10 @@ export const VideoGrid = () => {
       <Grid container spacing={2} px={1}>
         {/* Upload Button - Always show first */}
         <Grid item xs={6} display="flex" justifyContent="center">
-          <Box
+          <Button
             data-testid="add-video-button"
+            disabled={loadingVideos || isUploading}
+            onClick={handleUploadVideo}
             sx={{
               width: VIDEO_SIZE,
               height: VIDEO_SIZE,
@@ -148,8 +158,8 @@ export const VideoGrid = () => {
               borderRadius: 2,
               overflow: 'hidden',
               backgroundColor: '#f5f5f5',
-              cursor: loadingVideos ? "not-allowed" : "pointer",
-              opacity: loadingVideos ? 0.5 : 1,
+              cursor: (loadingVideos || isUploading) ? "not-allowed" : "pointer",
+              opacity: (loadingVideos || isUploading) ? 0.5 : 1,
               boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
               display: 'flex',
               alignItems: 'center',
@@ -158,15 +168,19 @@ export const VideoGrid = () => {
               '&:hover': {
                 backgroundColor: '#eeeeee',
                 borderColor: '#999',
+              },
+              '&:disabled': {
+                backgroundColor: '#f5f5f5',
+                cursor: 'not-allowed',
+                opacity: 0.5,
               }
             }}
-            onClick={handleUploadVideo}
           >
             <Box sx={{ textAlign: 'center', color: '#666' }}>
               <PlayArrowIcon sx={{ fontSize: '2rem', mb: 1 }} />
               <Box sx={{ fontSize: '0.75rem' }}>Add Video</Box>
             </Box>
-          </Box>
+          </Button>
         </Grid>
 
         {/* Dynamic Video Grid - Render all user videos */}
@@ -188,6 +202,24 @@ export const VideoGrid = () => {
                 justifyContent: 'center',
               }}
               onClick={(event) => handleVideoClick(event, video)}
+              onContextMenu={(event) => handleVideoContextMenu(event, video)}
+              onTouchStart={(event) => {
+                // Store touch start time and position for touch handling
+                const touch = event.touches[0];
+                (event.currentTarget as any).touchStartTime = Date.now();
+                (event.currentTarget as any).touchStartX = touch.clientX;
+                (event.currentTarget as any).touchStartY = touch.clientY;
+              }}
+              onTouchEnd={(event) => {
+                // Check if this is a tap (short touch without movement)
+                const target = event.currentTarget as any;
+                const touchEndTime = Date.now();
+                const touchDuration = touchEndTime - (target.touchStartTime || 0);
+                
+                if (touchDuration < 500) { // Short touch (tap)
+                  handleVideoClick(event as any, video);
+                }
+              }}
               data-testid={`video-thumbnail-${video.id}`}
             >
               {/* Fallback thumbnail image for mobile */}
@@ -256,6 +288,7 @@ export const VideoGrid = () => {
                   fontSize: '2rem',
                   textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
                 }}
+                data-testid="play-icon"
               />
             </Box>
           </Grid>
@@ -265,6 +298,13 @@ export const VideoGrid = () => {
       {loadingVideos && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <CircularProgress size={24} />
+        </Box>
+      )}
+      
+      {isUploading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+          <CircularProgress size={24} data-testid="upload-progress-indicator" />
+          <Box sx={{ ml: 1 }}>{Math.round(uploadProgress)}%</Box>
         </Box>
       )}
       
@@ -284,14 +324,15 @@ export const VideoGrid = () => {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         transformOrigin={{ vertical: "top", horizontal: "center" }}
         autoFocus={false}
+        data-testid="video-context-menu"
       >
         {isUploading ? (
           <MenuItem disabled>
-            <CircularProgress size={24} />
+            <CircularProgress size={24} data-testid="upload-progress-indicator" />
           </MenuItem>
         ) : selectedVideo ? [
           <MenuItem key="play" onClick={() => handlePlayVideo(selectedVideo)}>Play Video</MenuItem>,
-          <MenuItem key="delete" onClick={() => handleDeleteClick(selectedVideo)}>Delete Video</MenuItem>,
+          <MenuItem key="delete" onClick={() => handleDeleteClick(selectedVideo)} data-testid="delete-video-option">Delete Video</MenuItem>,
           <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
         ] : [
           <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
@@ -304,6 +345,7 @@ export const VideoGrid = () => {
         onClose={handleCloseVideoModal}
         aria-labelledby="video-player-modal"
         aria-describedby="modal-to-play-video"
+        data-testid="enlarged-video-modal"
       >
         <Box
           sx={{
@@ -340,6 +382,7 @@ export const VideoGrid = () => {
               src={enlargedVideo.videoUrl}
               controls
               autoPlay
+              data-testid="enlarged-video-player"
               style={{
                 maxWidth: "90vw",
                 maxHeight: "90vh",
@@ -355,6 +398,7 @@ export const VideoGrid = () => {
         open={deleteDialogOpen}
         onClose={() => !deletingVideo && setDeleteDialogOpen(false)}
         aria-labelledby="delete-video-dialog-title"
+        data-testid="delete-confirmation-dialog"
       >
         <DialogTitle id="delete-video-dialog-title">
           Delete Video?
@@ -383,6 +427,7 @@ export const VideoGrid = () => {
             variant="contained"
             disabled={deletingVideo}
             startIcon={deletingVideo ? <CircularProgress size={20} /> : <DeleteIcon />}
+            data-testid="confirm-delete-button"
           >
             {deletingVideo ? 'Deleting...' : 'Delete'}
           </Button>

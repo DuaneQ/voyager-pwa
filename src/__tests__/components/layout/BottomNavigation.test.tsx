@@ -38,10 +38,10 @@ describe("BottomNav", () => {
 
   it("renders all navigation actions", () => {
     renderWithRouter();
-    expect(screen.getAllByText(/trips/i, { exact: false })[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/travals/i, { exact: false })[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/chat/i, { exact: false })[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/profile/i, { exact: false })[0]).toBeInTheDocument();
+    expect(screen.getByText("TravalMatch")).toBeInTheDocument();
+    expect(screen.getByText("Travals")).toBeInTheDocument();
+    expect(screen.getByText("Chat")).toBeInTheDocument();
+    expect(screen.getByText("Profile")).toBeInTheDocument();
   });
 
   it("shows unread badge on Chat when unreadCount > 0", () => {

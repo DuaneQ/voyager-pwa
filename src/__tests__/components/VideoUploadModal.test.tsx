@@ -111,7 +111,7 @@ describe('VideoUploadModal', () => {
   it('should prevent submission without file', async () => {
     render(<VideoUploadModal {...defaultProps} />);
     
-    const uploadButton = screen.getByTestId('upload-button');
+    const uploadButton = screen.getByTestId('upload-video');
     expect(uploadButton).toBeDisabled(); // Should be disabled when no file is selected
     expect(mockOnUpload).not.toHaveBeenCalled();
   });
@@ -134,7 +134,7 @@ describe('VideoUploadModal', () => {
     fireEvent.change(screen.getByTestId('description-input'), { target: { value: 'Test Description' } });
     
     // Submit
-    fireEvent.click(screen.getByTestId('upload-button'));
+    fireEvent.click(screen.getByTestId('upload-video'));
     
     await waitFor(() => {
       expect(mockValidateVideoMetadata).toHaveBeenCalledWith('Test Video', 'Test Description');
@@ -162,7 +162,7 @@ describe('VideoUploadModal', () => {
       expect(screen.getByTestId('file-info')).toBeInTheDocument();
     });
     
-    fireEvent.click(screen.getByTestId('upload-button'));
+    fireEvent.click(screen.getByTestId('upload-video'));
     
     await waitFor(() => {
       expect(screen.getByText('Upload failed')).toBeInTheDocument();
@@ -185,7 +185,7 @@ describe('VideoUploadModal', () => {
     });
     
     fireEvent.change(screen.getByTestId('title-input'), { target: { value: 'Very long title that exceeds limits' } });
-    fireEvent.click(screen.getByTestId('upload-button'));
+    fireEvent.click(screen.getByTestId('upload-video'));
     
     await waitFor(() => {
       expect(screen.getByText('Title too long')).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe('VideoUploadModal', () => {
       expect(screen.getByTestId('file-info')).toBeInTheDocument();
     });
     
-    fireEvent.click(screen.getByTestId('upload-button'));
+    fireEvent.click(screen.getByTestId('upload-video'));
     
     await waitFor(() => {
       expect(screen.getByText('Uploading...')).toBeInTheDocument();
