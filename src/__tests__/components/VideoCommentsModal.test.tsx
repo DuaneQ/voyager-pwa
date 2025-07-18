@@ -19,14 +19,10 @@ jest.mock('../../environments/firebaseConfig', () => ({
 
 // Mock Firestore functions
 jest.mock('firebase/firestore', () => ({
-  collection: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  orderBy: jest.fn(),
-  addDoc: jest.fn(),
-  getDocs: jest.fn(),
   doc: jest.fn(),
   getDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  arrayUnion: jest.fn(),
   Timestamp: {
     now: () => ({ toMillis: () => Date.now(), seconds: Math.floor(Date.now() / 1000) }),
     fromDate: (date: Date) => ({ toMillis: () => date.getTime(), seconds: Math.floor(date.getTime() / 1000) })
