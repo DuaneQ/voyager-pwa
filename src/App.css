@@ -186,6 +186,21 @@ textarea {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Action button liked state styling */
+.action-button.like-button.liked {
+  background: #ff145a !important;
+}
+
+.action-button.like-button.liked:hover {
+  background: #e01150 !important;
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .loading-spinner,
 .error-message {
   text-align: center;
@@ -819,6 +834,24 @@ video[poster] {
   content: attr(data-count);
   font-size: 0.6rem;
   margin-top: 2px;
+}
+
+/* Liked state styling */
+.like-button.liked {
+  background: rgba(255, 20, 90, 0.8) !important;
+  border-color: rgba(255, 20, 90, 0.9) !important;
+  transform: scale(1.05);
+}
+
+.like-button.liked:hover {
+  background: rgba(255, 20, 90, 0.9) !important;
+  border-color: rgba(255, 20, 90, 1) !important;
+}
+
+.like-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .control-button:active {

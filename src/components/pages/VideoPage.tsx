@@ -194,11 +194,12 @@ export const VideoPage: React.FC = () => {
           
           <div className="video-actions">
             <button 
-              className="action-button like-button"
+              className={`action-button like-button ${video.likes?.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
               data-testid="like-button"
               onClick={handleLikeVideo}
+              disabled={!auth.currentUser}
             >
-              ❤️ Like
+              ❤️ {video.likes?.includes(auth.currentUser?.uid || '') ? 'Liked' : 'Like'} ({video.likes?.length || 0})
             </button>
             
             <button 

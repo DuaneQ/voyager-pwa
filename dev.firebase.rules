@@ -64,23 +64,49 @@ service cloud.firestore {
       // Allow reading public videos by any authenticated user
       allow read: if request.auth != null;
       
-      // Allow users to update/delete their own videos
-      allow update, delete: if request.auth != null 
+      // Combined update rule: Allow video owners to update their videos OR allow anyone to add comments OR allow anyone to update likes
+      allow update: if request.auth != null 
+        && request.auth.uid != null
+        && (
+          // Video owner can update their own video (general updates)
+          request.auth.uid == resource.data.userId
+          ||
+          // OR anyone can add comments (but only their own comments)
+          (
+            // Only allow updating the comments array and updatedAt
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt']) &&
+            // Ensure user can only add their own comments (check new comment userId)
+            request.resource.data.comments.size() == resource.data.comments.size() + 1 &&
+            // Validate that the new comment belongs to the current user
+            request.resource.data.comments[request.resource.data.comments.size() - 1].userId == request.auth.uid
+          )
+          ||
+          // OR anyone can update likes (add or remove their like)
+          (
+            // Only allow updating the likes array
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+            // Ensure user can only add/remove their own like
+            (
+              // Adding a like: array size increases by 1 and contains user ID
+              (request.resource.data.likes.size() == resource.data.likes.size() + 1 &&
+               request.resource.data.likes.hasAll(resource.data.likes) &&
+               request.resource.data.likes.hasAny([request.auth.uid]))
+              ||
+              // Removing a like: array size decreases by 1 and no longer contains user ID
+              (request.resource.data.likes.size() == resource.data.likes.size() - 1 &&
+               resource.data.likes.hasAll(request.resource.data.likes) &&
+               !request.resource.data.likes.hasAny([request.auth.uid]))
+            )
+          )
+        );
+      
+      // Allow users to delete their own videos
+      allow delete: if request.auth != null 
         && request.auth.uid == resource.data.userId;
       
       // Allow admins to read/update/delete any video
       allow read, update, delete: if request.auth != null 
         && request.auth.token.admin == true;
-      
-      // Allow adding comments to videos
-      allow update: if request.auth != null
-        && request.auth.uid != null
-        && (
-          // Only allow updating the comments array
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt']) &&
-          // Ensure user can only add their own comments
-          request.resource.data.comments.size() == resource.data.comments.size() + 1
-        );
     }
 
     // FCM Tokens (users collection for FCM token management)

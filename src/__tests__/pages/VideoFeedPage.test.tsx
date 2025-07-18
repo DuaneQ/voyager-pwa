@@ -1038,4 +1038,331 @@ describe('VideoFeedPage', () => {
       })).toBeInTheDocument();
     });
   });
+
+  describe('Like functionality', () => {
+    beforeEach(() => {
+      // Reset mocks
+      jest.clearAllMocks();
+      
+      // Mock authenticated user
+      (auth as any).currentUser = {
+        uid: 'test-user-id',
+        email: 'test@example.com'
+      };
+    });
+
+    it('should display like button with correct count', async () => {
+      const mockUpdateDoc = jest.fn().mockResolvedValue({});
+      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+      (firestore.doc as jest.Mock) = jest.fn().mockReturnValue({});
+      (firestore.arrayUnion as jest.Mock) = jest.fn().mockReturnValue({});
+      (firestore.arrayRemove as jest.Mock) = jest.fn().mockReturnValue({});
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: ['other-user'], // Video already has 1 like from different user
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        const likeButton = screen.getByTestId('like-button');
+        expect(likeButton).toBeInTheDocument();
+        expect(likeButton).toHaveTextContent('❤️ 1'); // Should show 1 like
+        expect(likeButton).not.toHaveClass('liked'); // Should not be liked by current user
+      });
+    });
+
+    it('should show liked state when current user has liked the video', async () => {
+      const mockUpdateDoc = jest.fn().mockResolvedValue({});
+      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+      (firestore.doc as jest.Mock) = jest.fn().mockReturnValue({});
+      (firestore.arrayUnion as jest.Mock) = jest.fn().mockReturnValue({});
+      (firestore.arrayRemove as jest.Mock) = jest.fn().mockReturnValue({});
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: ['test-user-id', 'other-user'], // Current user has liked this video
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        const likeButton = screen.getByTestId('like-button');
+        expect(likeButton).toBeInTheDocument();
+        expect(likeButton).toHaveTextContent('❤️ 2'); // Should show 2 likes
+        expect(likeButton).toHaveClass('liked'); // Should be liked by current user
+      });
+    });
+
+    it('should handle like action when not yet liked', async () => {
+      const mockUpdateDoc = jest.fn().mockResolvedValue({});
+      const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
+      const mockArrayUnion = jest.fn().mockReturnValue(['test-user-id']);
+      
+      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+      (firestore.doc as jest.Mock) = mockDoc;
+      (firestore.arrayUnion as jest.Mock) = mockArrayUnion;
+      (firestore.arrayRemove as jest.Mock) = jest.fn().mockReturnValue({});
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: [], // No likes initially
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Wait for component to load
+      await waitFor(() => {
+        expect(screen.getByTestId('like-button')).toBeInTheDocument();
+      });
+
+      const likeButton = screen.getByTestId('like-button');
+      expect(likeButton).toHaveTextContent('❤️ 0');
+      
+      // Click like button
+      fireEvent.click(likeButton);
+      
+      await waitFor(() => {
+        expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'videos', 'video-1');
+        expect(mockArrayUnion).toHaveBeenCalledWith('test-user-id');
+        expect(mockUpdateDoc).toHaveBeenCalledWith({ id: 'video-1' }, {
+          likes: ['test-user-id']
+        });
+      });
+    });
+
+    it('should handle unlike action when already liked', async () => {
+      const mockUpdateDoc = jest.fn().mockResolvedValue({});
+      const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
+      const mockArrayRemove = jest.fn().mockReturnValue([]);
+      
+      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+      (firestore.doc as jest.Mock) = mockDoc;
+      (firestore.arrayUnion as jest.Mock) = jest.fn().mockReturnValue({});
+      (firestore.arrayRemove as jest.Mock) = mockArrayRemove;
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: ['test-user-id'], // User has already liked this video
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Wait for component to load
+      await waitFor(() => {
+        expect(screen.getByTestId('like-button')).toBeInTheDocument();
+      });
+
+      const likeButton = screen.getByTestId('like-button');
+      expect(likeButton).toHaveTextContent('❤️ 1');
+      expect(likeButton).toHaveClass('liked');
+      
+      // Click unlike button
+      fireEvent.click(likeButton);
+      
+      await waitFor(() => {
+        expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'videos', 'video-1');
+        expect(mockArrayRemove).toHaveBeenCalledWith('test-user-id');
+        expect(mockUpdateDoc).toHaveBeenCalledWith({ id: 'video-1' }, {
+          likes: []
+        });
+      });
+    });
+
+    it('should disable like button when user is not authenticated', async () => {
+      // Set no authenticated user
+      (auth as any).currentUser = null;
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: [],
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        const likeButton = screen.getByTestId('like-button');
+        expect(likeButton).toBeInTheDocument();
+        expect(likeButton).toBeDisabled();
+      });
+    });
+
+    it('should handle like errors gracefully', async () => {
+      const mockUpdateDoc = jest.fn().mockRejectedValue(new Error('Firebase error'));
+      const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
+      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+      (firestore.doc as jest.Mock) = mockDoc;
+      (firestore.arrayUnion as jest.Mock) = jest.fn().mockReturnValue(['test-user-id']);
+      
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          videoUrl: 'test-url',
+          thumbnailUrl: 'test-thumb',
+          likes: [],
+          comments: [],
+          userId: 'test-user',
+          createdAt: Timestamp.fromDate(new Date()),
+          isPublic: true
+        }
+      ];
+
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // Connections query (empty)
+          empty: true,
+          docs: []
+        } as any)
+        .mockResolvedValueOnce({
+          // Videos query
+          empty: false,
+          docs: mockVideos.map(video => ({
+            id: video.id,
+            data: () => video
+          }))
+        } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Wait for component to load
+      await waitFor(() => {
+        expect(screen.getByTestId('like-button')).toBeInTheDocument();
+      });
+
+      const likeButton = screen.getByTestId('like-button');
+      
+      // Click like button to trigger error
+      fireEvent.click(likeButton);
+      
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith('Error updating like:', expect.any(Error));
+      });
+      
+      consoleSpy.mockRestore();
+    });
+  });
 });

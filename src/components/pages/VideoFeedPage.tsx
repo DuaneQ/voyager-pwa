@@ -5,7 +5,7 @@ import { ShareVideoModal } from '../modals/ShareVideoModal';
 import { VideoCommentsModal } from '../modals/VideoCommentsModal';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { Video, VideoUploadData } from '../../types/Video';
-import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, auth } from '../../environments/firebaseConfig';
 import { IosShare } from '@mui/icons-material';
 
@@ -196,6 +196,45 @@ export const VideoFeedPage: React.FC = () => {
     // No need for manual increment since comments are part of the video document
   };
 
+  const handleLike = async () => {
+    if (!currentVideo || !auth.currentUser) return;
+
+    try {
+      const videoRef = doc(db, 'videos', currentVideo.id);
+      const currentUserId = auth.currentUser.uid;
+      const isLiked = currentVideo.likes?.includes(currentUserId);
+
+      if (isLiked) {
+        // Unlike the video
+        await updateDoc(videoRef, {
+          likes: arrayRemove(currentUserId)
+        });
+        
+        // Update local state
+        setVideos(prev => prev.map(video => 
+          video.id === currentVideo.id 
+            ? { ...video, likes: video.likes?.filter(id => id !== currentUserId) || [] }
+            : video
+        ));
+      } else {
+        // Like the video
+        await updateDoc(videoRef, {
+          likes: arrayUnion(currentUserId)
+        });
+        
+        // Update local state
+        setVideos(prev => prev.map(video => 
+          video.id === currentVideo.id 
+            ? { ...video, likes: [...(video.likes || []), currentUserId] }
+            : video
+        ));
+      }
+    } catch (err) {
+      console.error('Error updating like:', err);
+      // Could show a toast notification here in the future
+    }
+  };
+
   // Swipe gesture handling
   const minSwipeDistance = 50;
 
@@ -349,7 +388,12 @@ export const VideoFeedPage: React.FC = () => {
                   </button>
                 )}
                 {/* Like button */}
-                <button className="control-button like-button" data-testid="like-button">
+                <button 
+                  className={`control-button like-button ${currentVideo?.likes?.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
+                  data-testid="like-button"
+                  onClick={handleLike}
+                  disabled={!auth.currentUser}
+                >
                   ❤️ {currentVideo?.likes?.length || 0}
                 </button>
                 {/* Comment button */}
