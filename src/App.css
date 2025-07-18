@@ -340,11 +340,14 @@ body.video-feed-active {
     width: 100vw;
     height: 70vh;
     left: 0;
-    top: 40%;
-    transform: translateY(-50%); /* Only vertical centering, no horizontal transform */
+    top: 50%;
+    transform: translateY(-50%);
     max-width: none;
     border-radius: 0;
     position: fixed;
+    right: 0; /* Explicitly set right edge */
+    margin: 0;
+    padding: 0;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -394,6 +397,8 @@ body.video-feed-active {
     padding: 0;
     width: 100%;
     height: 100%;
+    box-sizing: border-box;
+    display: block; /* Ensure proper display */
   }
 }
 
@@ -409,14 +414,13 @@ body.video-feed-active {
 @media (max-width: 768px) {
   .video-element {
     object-fit: cover;
-    width: 100vw; /* Use viewport width instead of percentage */
+    width: 100%;
     height: 100%;
     border-radius: 0;
     margin: 0;
     padding: 0;
-    position: absolute;
-    left: 0;
-    top: 0;
+    display: block; /* Ensure it's a block element */
+    box-sizing: border-box;
   }
   
   /* Ensure video thumbnails display properly on mobile */
