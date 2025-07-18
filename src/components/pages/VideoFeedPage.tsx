@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
 import { ShareVideoModal } from '../modals/ShareVideoModal';
+import { VideoCommentsModal } from '../modals/VideoCommentsModal';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { Video, VideoUploadData } from '../../types/Video';
 import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot } from 'firebase/firestore';
@@ -13,6 +14,7 @@ export const VideoFeedPage: React.FC = () => {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // Start paused for mobile compatibility
@@ -183,6 +185,25 @@ export const VideoFeedPage: React.FC = () => {
     setIsShareModalOpen(true);
   };
 
+  const handleComments = () => {
+    if (!currentVideo) return;
+    setIsCommentsModalOpen(true);
+  };
+
+  const handleCommentAdded = () => {
+    // Refresh the current video's comment count
+    // In a real app, you might want to refetch the video data
+    // For now, we'll increment the local count
+    if (currentVideo) {
+      const updatedVideos = [...videos];
+      updatedVideos[currentVideoIndex] = {
+        ...currentVideo,
+        commentCount: (currentVideo.commentCount || 0) + 1
+      };
+      setVideos(updatedVideos);
+    }
+  };
+
   // Swipe gesture handling
   const minSwipeDistance = 50;
 
@@ -340,7 +361,11 @@ export const VideoFeedPage: React.FC = () => {
                   ❤️ {currentVideo?.likes?.length || 0}
                 </button>
                 {/* Comment button */}
-                <button className="control-button comment-button" data-testid="comment-button">
+                <button 
+                  className="control-button comment-button" 
+                  data-testid="comment-button"
+                  onClick={handleComments}
+                >
                   💬 {currentVideo?.commentCount || 0}
                 </button>
                 {/* Share button */}
@@ -390,6 +415,16 @@ export const VideoFeedPage: React.FC = () => {
           open={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           video={currentVideo}
+        />
+      )}
+
+      {/* Comments Modal */}
+      {isCommentsModalOpen && currentVideo && (
+        <VideoCommentsModal
+          open={isCommentsModalOpen}
+          onClose={() => setIsCommentsModalOpen(false)}
+          video={currentVideo}
+          onCommentAdded={handleCommentAdded}
         />
       )}
     </div>
