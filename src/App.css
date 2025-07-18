@@ -308,6 +308,7 @@ body.video-feed-active {
   right: 0;
   bottom: 0;
   overflow: hidden;
+  background: transparent; /* Remove black background */
 }
 
 /* Mobile feed video player adjustments */
@@ -353,26 +354,29 @@ body.video-feed-active {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: transparent; /* Remove black background */
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  border-radius: 12px; /* Add rounded corners for better mobile appearance */
 }
 
 .video-element {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Changed from contain to cover for full-screen */
+  object-fit: cover; /* Fill the container completely */
   cursor: pointer;
+  border-radius: 12px; /* Match container radius */
 }
 
 /* Mobile video element adjustments */
 @media (max-width: 768px) {
   .video-element {
-    object-fit: cover; /* Ensure video fills mobile screen */
-    max-width: 100vw;
-    max-height: 100vh;
+    object-fit: cover; /* Fill the entire container */
+    width: 100%;
+    height: 100%;
+    border-radius: 12px; /* Consistent rounded corners */
   }
   
   /* Ensure video thumbnails display properly on mobile */
