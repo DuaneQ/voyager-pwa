@@ -313,9 +313,15 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
+    /* Make video player 15% smaller on mobile devices */
+    width: 85vw;
+    height: 85vh;
+    /* Center the smaller video player */
+    left: 7.5vw;
+    top: 7.5vh;
     /* Account for mobile browser UI and bottom navigation */
-    height: 100dvh; /* Use dynamic viewport height if available */
-    height: 100vh; /* Fallback for older browsers */
+    height: 85dvh; /* Use dynamic viewport height if available */
+    height: 85vh; /* Fallback for older browsers */
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -325,6 +331,20 @@ body.video-feed-active {
     right: 12px;
     z-index: 1000; /* High z-index to ensure visibility */
     padding: 14px; /* Consistent with general mobile styles */
+  }
+
+  /* Navigation hints positioning for smaller mobile video player */
+  .video-navigation-hint {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .nav-hint-up {
+    top: calc(7.5vh + 30px);
+  }
+
+  .nav-hint-down {
+    bottom: calc(7.5vh + 80px);
   }
 }
 
@@ -1110,7 +1130,7 @@ video[poster] {
   }
   
   .video-controls {
-    right: 10px; /* Closer to right edge on mobile */
+    right: calc(7.5vw + 10px); /* Adjust for smaller video player position */
     bottom: 240px; /* Moved higher on mobile to avoid feedback button */
     gap: 18px; /* Increased spacing on mobile too */
   }
