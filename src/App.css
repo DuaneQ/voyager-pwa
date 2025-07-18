@@ -304,9 +304,10 @@ body.video-feed-active {
   width: 90vw;
   height: 90vh;
   position: fixed;
-  /* Center the video player */
-  left: 5vw;
-  top: 5vh;
+  /* Perfect centering */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   overflow: hidden;
   background: transparent; /* Remove black background */
   border-radius: 16px; /* Larger radius for desktop */
@@ -318,9 +319,10 @@ body.video-feed-active {
     /* Make video player 15% smaller on mobile devices */
     width: 85vw;
     height: 85vh;
-    /* Center the smaller video player */
-    left: 7.5vw;
-    top: 7.5vh;
+    /* Perfect centering for mobile */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     /* Account for mobile browser UI and bottom navigation */
     height: 85dvh; /* Use dynamic viewport height if available */
     height: 85vh; /* Fallback for older browsers */
@@ -336,18 +338,18 @@ body.video-feed-active {
     padding: 14px; /* Consistent with general mobile styles */
   }
 
-  /* Navigation hints positioning for smaller mobile video player */
+  /* Navigation hints positioning for centered mobile video player */
   .video-navigation-hint {
     left: 50%;
     transform: translateX(-50%);
   }
 
   .nav-hint-up {
-    top: calc(7.5vh + 30px);
+    top: calc((100vh - 85vh) / 2 + 30px);
   }
 
   .nav-hint-down {
-    bottom: calc(7.5vh + 80px);
+    bottom: calc((100vh - 85vh) / 2 + 80px);
   }
 }
 
@@ -711,10 +713,10 @@ video[poster] {
   }
 }
 
-/* Video Controls - Right side - positioned for 90% video player */
+/* Video Controls - Right side - positioned for centered 90% video player */
 .video-controls {
   position: absolute;
-  right: calc(5vw + 12px); /* Account for 5vw left margin + 12px padding */
+  right: calc((100vw - 90vw) / 2 + 12px); /* Right margin of centered video + padding */
   bottom: 280px; /* Moved higher to avoid feedback button from 200px */
   display: flex;
   flex-direction: column;
@@ -1088,11 +1090,11 @@ video[poster] {
 }
 
 .nav-hint-up {
-  top: calc(5vh + 30px); /* Account for 5vh top margin */
+  top: calc((100vh - 90vh) / 2 + 30px); /* Top margin of centered video + padding */
 }
 
 .nav-hint-down {
-  bottom: calc(5vh + 30px); /* Account for 5vh bottom margin */
+  bottom: calc((100vh - 90vh) / 2 + 30px); /* Bottom margin of centered video + padding */
 }
 
 @keyframes fadeInOut {
@@ -1136,7 +1138,7 @@ video[poster] {
   }
   
   .video-controls {
-    right: calc(7.5vw + 10px); /* Adjust for smaller video player position */
+    right: calc((100vw - 85vw) / 2 + 10px); /* Right margin of centered mobile video + padding */
     bottom: 240px; /* Moved higher on mobile to avoid feedback button */
     gap: 18px; /* Increased spacing on mobile too */
   }
