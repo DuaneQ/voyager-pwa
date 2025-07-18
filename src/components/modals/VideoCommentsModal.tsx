@@ -20,7 +20,7 @@ import {
   Send as SendIcon,
   AccountCircle as AccountCircleIcon
 } from '@mui/icons-material';
-import { collection, query, where, orderBy, addDoc, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, getDocs, Timestamp, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../../environments/firebaseConfig';
 import { Video, VideoComment } from '../../types/Video';
 import DOMPurify from 'dompurify';
@@ -163,6 +163,12 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
       };
 
       const docRef = await addDoc(collection(db, 'videoComments'), commentData);
+      
+      // Update the video's comment count
+      const videoRef = doc(db, 'videos', video.id);
+      await updateDoc(videoRef, {
+        commentCount: increment(1)
+      });
       
       // Add comment to local state immediately (optimistic update)
       const newCommentWithUser: CommentWithUser = {
