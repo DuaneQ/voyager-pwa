@@ -296,19 +296,17 @@ body.video-feed-active {
 }
 
 .feed-video-player {
-  /* Default: Full width on larger devices, constrained by max-width */
+  /* Default: Full width on all devices */
   width: 100vw;
   height: 100vh;
-  max-width: 1200px; /* Reasonable max width for very large screens */
-  max-height: 90vh; /* Slight margin on top/bottom for large screens */
   position: fixed;
-  /* Perfect centering */
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
-  background: transparent; /* Remove black background */
-  border-radius: 0; /* No radius for full-width desktop */
+  background: transparent;
+  border-radius: 0;
 }
 
 
@@ -380,14 +378,9 @@ body.video-feed-active {
   position: relative;
   width: 100%;
   height: 100%;
-  background: transparent; /* Remove black background */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background: transparent;
   overflow: hidden;
-  border-radius: 12px; /* Add rounded corners for better mobile appearance */
-  max-width: none; /* Remove any width constraints */
-  min-width: 100%; /* Ensure minimum full width */
+  border-radius: 0;
 }
 
 /* Mobile video player adjustments */
@@ -399,27 +392,25 @@ body.video-feed-active {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    display: block; /* Ensure proper display */
   }
 }
 
 .video-element {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Fill the container completely */
+  object-fit: cover;
   cursor: pointer;
-  border-radius: 12px; /* Match container radius */
+  border-radius: 0;
 }
 
 /* Mobile video element adjustments */
 @media (max-width: 768px) {
   .video-element {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100vw;
-    height: 70vh;
+    position: static;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     border-radius: 0;
     margin: 0;
