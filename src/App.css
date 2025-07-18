@@ -334,6 +334,10 @@ body.video-feed-active {
 
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
+  .video-feed-page {
+    height: 100dvh; /* Use dynamic viewport height for mobile */
+  }
+  
   .feed-video-player {
     position: fixed;
     top: 0;
@@ -341,7 +345,7 @@ body.video-feed-active {
     right: 0;
     bottom: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height to account for mobile browser UI */
     margin: 0;
     padding: 0;
     border-radius: 0;
@@ -599,8 +603,8 @@ video[poster] {
   max-width: 100%;
   word-wrap: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* Limit to 3 lines on mobile */
-  line-clamp: 3; /* Standard property */
+  -webkit-line-clamp: 2; /* Back to 2 lines */
+  line-clamp: 2; /* Standard property */
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -623,7 +627,7 @@ video[poster] {
   
   .video-description {
     font-size: 0.8rem; /* Smaller text for mobile */
-    -webkit-line-clamp: 2; /* Limit to 2 lines on small screens */
+    -webkit-line-clamp: 2; /* Back to 2 lines */
     line-clamp: 2; /* Standard property */
     line-height: 1.3;
     margin-bottom: 8px; /* Reduced margin */
@@ -1155,7 +1159,7 @@ video[poster] {
   .video-description {
     font-size: 0.8rem;
     max-width: none; /* Remove max-width restriction for better mobile use */
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 2; /* Back to 2 lines */
     line-clamp: 2;
     line-height: 1.3;
     margin-bottom: 8px;
