@@ -342,35 +342,14 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player truly full width on mobile to eliminate any black space */
     width: 100vw !important;
     max-width: none !important; /* Remove any max-width constraints */
     height: 70vh; /* Keep height unchanged - it's fine */
-    /* Perfect centering for mobile */
     left: 50%;
     top: 45%; /* Slightly higher to leave room at bottom */
     transform: translate(-50%, -50%);
-    /* Account for mobile browser UI and bottom navigation */
     height: 70dvh; /* Use dynamic viewport height if available */
     height: 70vh; /* Fallback for older browsers */
-    border-radius: 0 !important; /* Remove radius for full-width video */
-    margin: 0 !important; /* Remove any margins */
-    padding: 0 !important; /* Remove any padding */
-    box-sizing: border-box !important; /* Ensure proper box model */
-  }
-  
-  /* Ensure the feed video player and all its children take full width */
-  .feed-video-player * {
-    box-sizing: border-box !important;
-  }
-  
-  .feed-video-player .video-player,
-  .feed-video-player .video-element {
-    width: 100% !important;
-    max-width: none !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
