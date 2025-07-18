@@ -339,29 +339,26 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    /* Make video player wider on mobile to reduce black space */
-    width: 95vw; /* Increased from 85vw to minimize side black space */
-    height: 65vh; /* Reduced further to ensure bottom visibility */
+    /* Back to original full-screen mobile video */
+    width: 100vw;
+    height: 100vh;
     /* Perfect centering for mobile */
     left: 50%;
-    top: 35%; /* Moved higher to leave more room at bottom */
+    top: 50%;
     transform: translate(-50%, -50%);
     /* Account for mobile browser UI and bottom navigation */
-    height: 65dvh; /* Use dynamic viewport height if available */
-    height: 65vh; /* Fallback for older browsers */
-    border-radius: 12px; /* Smaller radius for mobile */
+    height: 100dvh; /* Use dynamic viewport height if available */
+    height: 100vh; /* Fallback for older browsers */
+    border-radius: 0; /* No radius for full-screen mobile */
   }
   
-  /* Ensure video info is always visible on mobile */
+  /* Ensure video info is always visible above mobile bottom navigation */
   .feed-video-player .video-info-overlay {
-    bottom: -60px; /* Position below the video player */
+    bottom: 110px; /* Higher to clear bottom nav and provide more space */
     left: 12px;
     right: 12px;
     z-index: 1000; /* High z-index to ensure visibility */
     padding: 14px; /* Consistent with general mobile styles */
-    background: rgba(0, 0, 0, 0.8); /* Dark background for readability */
-    border-radius: 8px; /* Rounded corners */
-    color: white; /* Ensure text is visible */
   }
 
   /* Navigation hints positioning for mobile video player */
@@ -371,11 +368,11 @@ body.video-feed-active {
   }
 
   .nav-hint-up {
-    top: calc((100vh - 65vh) / 2 - 50px); /* Above the mobile video */
+    top: 30px; /* Simple top margin for full-height mobile video */
   }
 
   .nav-hint-down {
-    bottom: calc((100vh - 65vh) / 2 - 50px); /* Below the mobile video */
+    bottom: 30px; /* Simple bottom margin for full-height mobile video */
   }
 }
 
@@ -1164,8 +1161,8 @@ video[poster] {
   }
   
   .video-controls {
-    right: calc((100vw - 95vw) / 2 + 10px); /* Right margin of wider mobile video + padding */
-    bottom: calc(35vh - 32.5vh + 20px); /* Position relative to mobile video placement */
+    right: 12px; /* Simple right margin for full-width mobile video */
+    bottom: 240px; /* Moved higher on mobile to avoid feedback button */
     gap: 18px; /* Increased spacing on mobile too */
   }
   
