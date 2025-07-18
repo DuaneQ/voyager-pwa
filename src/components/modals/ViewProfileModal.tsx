@@ -960,7 +960,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 </TabPanel>
 
                 {/* Videos Tab */}
-                <TabPanel value={currentTab} index={2}>
+                <TabPanel value={currentTab} index={2} data-testid="videos-tab-panel">
                   <Box sx={{ py: 1 }}>
                     {loadingVideos ? (
                       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }} data-testid="videos-loading">
@@ -992,11 +992,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                               onClick={() => {
                                 setEnlargedVideo(video);
                               }}
-                              onKeyPress={(e) => {
+                              onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault();
                                   setEnlargedVideo(video);
                                 }
+                              }}
+                              onTouchEnd={(e) => {
+                                // Handle touch interactions for mobile
+                                e.preventDefault();
+                                setEnlargedVideo(video);
                               }}
                               tabIndex={0}
                               role="button"
@@ -1046,6 +1051,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                               />
                               {/* Play icon overlay */}
                               <Box
+                                data-testid="play-icon"
                                 sx={{
                                   position: 'absolute',
                                   top: '50%',
@@ -1162,6 +1168,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         >
           <IconButton
             onClick={() => setEnlargedVideo(null)}
+            data-testid="close-enlarged-video"
             sx={{
               position: "absolute",
               top: 8,
@@ -1181,6 +1188,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               src={enlargedVideo.videoUrl}
               controls
               autoPlay
+              data-testid="enlarged-video-player"
               style={{
                 maxWidth: "90vw",
                 maxHeight: "90vh",
