@@ -86,7 +86,7 @@ export function useVideoUpload(): UseVideoUploadResult {
         thumbnailUrl,
         isPublic: videoData.isPublic,
         likes: [],
-        commentCount: 0,
+        comments: [],
         viewCount: 0,
         duration: 0, // Will be updated when we can extract duration
         fileSize: videoData.file.size,

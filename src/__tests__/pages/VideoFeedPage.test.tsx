@@ -16,7 +16,7 @@ Object.defineProperty(window.HTMLMediaElement.prototype, 'load', {
 });
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { VideoFeedPage } from '../../components/pages/VideoFeedPage';
 import { Video } from '../../types/Video';
 import { Timestamp } from 'firebase/firestore';
@@ -81,7 +81,13 @@ describe('VideoFeedPage', () => {
       thumbnailUrl: 'https://example.com/thumb1.jpg',
       isPublic: true,
       likes: ['user-2', 'user-3'],
-      commentCount: 5,
+      comments: [
+        { id: 'c1', userId: 'user-2', text: 'Great video!', createdAt: Timestamp.now() },
+        { id: 'c2', userId: 'user-3', text: 'Nice work!', createdAt: Timestamp.now() },
+        { id: 'c3', userId: 'user-4', text: 'Love it!', createdAt: Timestamp.now() },
+        { id: 'c4', userId: 'user-5', text: 'Amazing!', createdAt: Timestamp.now() },
+        { id: 'c5', userId: 'user-6', text: 'Cool!', createdAt: Timestamp.now() }
+      ],
       viewCount: 100,
       duration: 30,
       fileSize: 1024 * 1024,
@@ -97,7 +103,10 @@ describe('VideoFeedPage', () => {
       thumbnailUrl: 'https://example.com/thumb2.jpg',
       isPublic: true,
       likes: ['user-1'],
-      commentCount: 2,
+      comments: [
+        { id: 'c6', userId: 'user-1', text: 'First comment!', createdAt: Timestamp.now() },
+        { id: 'c7', userId: 'user-3', text: 'Second comment!', createdAt: Timestamp.now() }
+      ],
       viewCount: 50,
       duration: 45,
       fileSize: 2 * 1024 * 1024,
@@ -105,6 +114,14 @@ describe('VideoFeedPage', () => {
       updatedAt: Timestamp.now()
     }
   ];
+
+  const renderVideoFeedPage = async () => {
+    let component: any;
+    await act(async () => {
+      component = render(<VideoFeedPage />);
+    });
+    return component;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -419,7 +436,7 @@ describe('VideoFeedPage', () => {
       thumbnailUrl: 'https://example.com/new-thumb.jpg',
       isPublic: true,
       likes: [],
-      commentCount: 0,
+      comments: [],
       viewCount: 0,
       duration: 20,
       fileSize: 1024 * 1024,
@@ -672,6 +689,26 @@ describe('VideoFeedPage', () => {
     });
 
     it('should ignore small swipe gestures', async () => {
+      // Reset mocks to default success state
+      mockGetDocs.mockClear();
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // First call - connections query (empty)
+          forEach: jest.fn()
+        } as any)
+        .mockResolvedValue({
+          // Subsequent calls - videos query (repeatable)
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
+        } as any);
+
       render(<VideoFeedPage />);
       
       await waitFor(() => {
@@ -730,6 +767,26 @@ describe('VideoFeedPage', () => {
     });
 
     it('should handle touch events without errors', async () => {
+      // Reset mocks to default success state
+      mockGetDocs.mockClear();
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // First call - connections query (empty)
+          forEach: jest.fn()
+        } as any)
+        .mockResolvedValue({
+          // Subsequent calls - videos query (repeatable)
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
+        } as any);
+
       render(<VideoFeedPage />);
       
       await waitFor(() => {
@@ -793,7 +850,7 @@ describe('VideoFeedPage', () => {
                   thumbnailUrl: 'https://example.com/thumb3.jpg',
                   isPublic: true,
                   likes: [],
-                  commentCount: 0,
+                  comments: [],
                   viewCount: 5,
                   duration: 20,
                   fileSize: 1024 * 1024,
@@ -822,7 +879,7 @@ describe('VideoFeedPage', () => {
                 thumbnailUrl: 'https://example.com/thumb4.jpg',
                 isPublic: true,
                 likes: [],
-                commentCount: 0,
+                comments: [],
                 viewCount: 2,
                 duration: 25,
                 fileSize: 1024 * 1024,
@@ -941,6 +998,26 @@ describe('VideoFeedPage', () => {
     });
 
     it('should handle video end without auto-advancing', async () => {
+      // Reset mocks to default success state
+      mockGetDocs.mockClear();
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // First call - connections query (empty)
+          forEach: jest.fn()
+        } as any)
+        .mockResolvedValue({
+          // Subsequent calls - videos query (repeatable)
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
+        } as any);
+
       render(<VideoFeedPage />);
       
       await waitFor(() => {

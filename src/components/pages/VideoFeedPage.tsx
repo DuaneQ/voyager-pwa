@@ -191,17 +191,9 @@ export const VideoFeedPage: React.FC = () => {
   };
 
   const handleCommentAdded = () => {
-    // Refresh the current video's comment count
-    // In a real app, you might want to refetch the video data
-    // For now, we'll increment the local count
-    if (currentVideo) {
-      const updatedVideos = [...videos];
-      updatedVideos[currentVideoIndex] = {
-        ...currentVideo,
-        commentCount: (currentVideo.commentCount || 0) + 1
-      };
-      setVideos(updatedVideos);
-    }
+    // The comment count will be automatically updated when the video data is refreshed
+    // since we're now using the comments array length
+    // No need for manual increment since comments are part of the video document
   };
 
   // Swipe gesture handling
@@ -366,7 +358,7 @@ export const VideoFeedPage: React.FC = () => {
                   data-testid="comment-button"
                   onClick={handleComments}
                 >
-                  💬 {currentVideo?.commentCount || 0}
+                  💬 {currentVideo?.comments?.length || 0}
                 </button>
                 {/* Share button */}
                 <button 

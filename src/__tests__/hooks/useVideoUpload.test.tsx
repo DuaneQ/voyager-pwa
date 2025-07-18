@@ -113,7 +113,7 @@ beforeEach(() => {
       thumbnailUrl: 'https://example.com/thumbnail.jpg',
       isPublic: true,
       likes: [],
-      commentCount: 0,
+      comments: [],
       viewCount: 0,
       duration: 0,
       fileSize: mockVideoFile.size,

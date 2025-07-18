@@ -85,7 +85,13 @@ describe('VideoPage', () => {
     thumbnailUrl: 'https://example.com/thumbnail.jpg',
     isPublic: true,
     likes: ['user-2', 'user-3'],
-    commentCount: 5,
+    comments: [
+      { id: 'c1', userId: 'user-2', text: 'Great video!', createdAt: Timestamp.now() },
+      { id: 'c2', userId: 'user-3', text: 'Amazing!', createdAt: Timestamp.now() },
+      { id: 'c3', userId: 'user-4', text: 'Love it!', createdAt: Timestamp.now() },
+      { id: 'c4', userId: 'user-5', text: 'Nice work!', createdAt: Timestamp.now() },
+      { id: 'c5', userId: 'user-6', text: 'Awesome!', createdAt: Timestamp.now() }
+    ],
     viewCount: 100,
     duration: 120,
     fileSize: 50 * 1024 * 1024, // 50MB

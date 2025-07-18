@@ -47,7 +47,10 @@ const mockVideo: Video = {
   thumbnailUrl: 'https://example.com/thumb.jpg',
   isPublic: true,
   likes: [],
-  commentCount: 2,
+  comments: [
+    { id: 'comment-1', userId: 'user-1', text: 'Great video!', createdAt: Timestamp.now() },
+    { id: 'comment-2', userId: 'user-2', text: 'Nice work!', createdAt: Timestamp.now() }
+  ],
   viewCount: 10,
   duration: 30,
   fileSize: 1024,

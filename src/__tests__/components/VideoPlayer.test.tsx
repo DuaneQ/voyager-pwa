@@ -94,7 +94,7 @@ describe('VideoPlayer', () => {
     thumbnailUrl: 'https://example.com/thumbnail.jpg',
     isPublic: true,
     likes: [],
-    commentCount: 0,
+    comments: [],
     viewCount: 0,
     duration: 30,
     fileSize: 1024 * 1024 * 10, // 10MB
