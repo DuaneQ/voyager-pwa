@@ -337,17 +337,18 @@ body.video-feed-active {
 /* Mobile feed video player adjustments */
 @media (max-width: 768px) {
   .feed-video-player {
-    width: 100vw;
-    height: 70vh;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    max-width: none;
-    border-radius: 0;
     position: fixed;
-    right: 0; /* Explicitly set right edge */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
     margin: 0;
     padding: 0;
+    border-radius: 0;
+    max-width: none;
+    transform: none;
   }
   
   /* Ensure video info is always visible above mobile bottom navigation */
@@ -413,13 +414,17 @@ body.video-feed-active {
 /* Mobile video element adjustments */
 @media (max-width: 768px) {
   .video-element {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 70vh;
     object-fit: cover;
-    width: 100%;
-    height: 100%;
     border-radius: 0;
     margin: 0;
     padding: 0;
-    display: block; /* Ensure it's a block element */
+    display: block;
     box-sizing: border-box;
   }
   
