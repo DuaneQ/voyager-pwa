@@ -171,7 +171,8 @@ export const captureVideoFrameWithBranding = async (
 export const updatePageMetaTags = async (video: Video) => {
   const title = video.title || 'Amazing Travel Video';
   const description = video.description || 'Watch this amazing travel video on TravalPass.com';
-  const videoUrl = `${window.location.origin}/video/${video.id}`;
+  // Use the sharing URL for social media meta tags
+  const videoUrl = `${window.location.origin}/video-share/${video.id}`;
   
   // Try to create a branded thumbnail for better sharing
   let thumbnailUrl = video.thumbnailUrl;
@@ -296,7 +297,8 @@ export const shareVideoWithBranding = async (video: Video, videoUrl?: string) =>
     
     // Create a more descriptive URL that includes video information
     const baseUrl = window.location.origin;
-    const shareUrl = videoUrl || `${baseUrl}/video/${video.id}`;
+    // Use the sharing URL for social media to bypass authentication
+    const shareUrl = videoUrl || `${baseUrl}/video-share/${video.id}`;
     
     const shareData: ShareData = {
       title: video.title || 'Amazing Travel Video',

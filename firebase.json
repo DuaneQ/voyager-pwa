@@ -50,6 +50,10 @@
     ],
     "rewrites": [
       {
+        "source": "/video-share/**",
+        "function": "videoShare"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

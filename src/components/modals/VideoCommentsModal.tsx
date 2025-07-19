@@ -145,12 +145,18 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
         createdAt: Timestamp.now()
       };
 
+      console.log('Attempting to add comment:', newCommentData);
+      console.log('Current user:', { uid: currentUser.uid, email: currentUser.email });
+      console.log('Video ID:', video.id);
+
       // Update the video document by adding the comment to the comments array
       const videoRef = doc(db, 'videos', video.id);
       await updateDoc(videoRef, {
         comments: arrayUnion(newCommentData),
         updatedAt: Timestamp.now()
       });
+      
+      console.log('Comment added successfully to Firebase');
       
       // Add comment to local state immediately (optimistic update)
       const newCommentWithUser: CommentWithUser = {
@@ -167,6 +173,11 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
       
     } catch (error) {
       console.error('Error adding comment:', error);
+      console.error('Error details:', {
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        customData: (error as any)?.customData
+      });
       setError('Failed to add comment. Please try again.');
     } finally {
       setSubmitting(false);

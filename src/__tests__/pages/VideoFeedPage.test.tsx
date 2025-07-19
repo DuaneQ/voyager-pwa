@@ -1041,14 +1041,24 @@ describe('VideoFeedPage', () => {
 
   describe('Like functionality', () => {
     beforeEach(() => {
-      // Reset mocks
-      jest.clearAllMocks();
-      
-      // Mock authenticated user
+      // Only reset the auth mock
       (auth as any).currentUser = {
         uid: 'test-user-id',
         email: 'test@example.com'
       };
+      
+      // Reset the specific problematic mock completely
+      mockGetDocs.mockReset();
+      
+      // Clear all existing mock implementations
+      jest.clearAllMocks();
+      
+      // Re-setup the Firebase query function mocks
+      mockCollection.mockReturnValue({ id: 'videos' } as any);
+      mockWhere.mockReturnValue({ type: 'where' } as any);
+      mockOrderBy.mockReturnValue({ type: 'orderBy' } as any);
+      mockLimit.mockReturnValue({ type: 'limit' } as any);
+      mockQuery.mockReturnValue({ id: 'query' } as any);
     });
 
     it('should display like button with correct count', async () => {
@@ -1072,19 +1082,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Mock both getDocs calls: connections query + videos query
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call: connections query (empty)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call: videos query
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
@@ -1110,7 +1124,7 @@ describe('VideoFeedPage', () => {
           title: 'Test Video',
           videoUrl: 'test-url',
           thumbnailUrl: 'test-thumb',
-          likes: ['test-user-id', 'other-user'], // Current user has liked this video
+          likes: ['test-user-id', 'other-user'], // Current user already liked it
           comments: [],
           userId: 'test-user',
           createdAt: Timestamp.fromDate(new Date()),
@@ -1118,19 +1132,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Mock both getDocs calls: connections query + videos query
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call: connections query (empty)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call: videos query
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
@@ -1167,19 +1185,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Mock both getDocs calls: connections query + videos query
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call: connections query (empty)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call: videos query
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
@@ -1228,19 +1250,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Mock both getDocs calls: connections query + videos query
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call: connections query (empty)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call: videos query
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
@@ -1267,6 +1293,16 @@ describe('VideoFeedPage', () => {
     });
 
     it('should disable like button when user is not authenticated', async () => {
+      // Clear all mocks to avoid interference
+      mockGetDocs.mockClear();
+      
+      // Mock Firebase query functions
+      mockCollection.mockReturnValue({ id: 'videos' } as any);
+      mockWhere.mockReturnValue({ type: 'where' } as any);
+      mockOrderBy.mockReturnValue({ type: 'orderBy' } as any);
+      mockLimit.mockReturnValue({ type: 'limit' } as any);
+      mockQuery.mockReturnValue({ id: 'query' } as any);
+      
       // Set no authenticated user
       (auth as any).currentUser = null;
       
@@ -1284,19 +1320,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Set up fresh mock implementations
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call - connections query (should return empty when no user)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call - videos query (should work for public videos)
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
@@ -1331,19 +1371,23 @@ describe('VideoFeedPage', () => {
         }
       ];
 
+      // Mock both getDocs calls: connections query + videos query
       mockGetDocs
         .mockResolvedValueOnce({
-          // Connections query (empty)
-          empty: true,
-          docs: []
+          // First call: connections query (empty)
+          forEach: jest.fn()
         } as any)
         .mockResolvedValueOnce({
-          // Videos query
-          empty: false,
-          docs: mockVideos.map(video => ({
-            id: video.id,
-            data: () => video
-          }))
+          // Second call: videos query
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
         } as any);
       
       render(<VideoFeedPage />);
