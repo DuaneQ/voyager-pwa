@@ -237,7 +237,8 @@ export const Chat = React.memo(() => {
                   maxWidth: 300,
                   margin: '0 auto',
                   position: 'relative',
-                  zIndex: 1
+                  zIndex: 1,
+                  mt: 15  // Add top margin to account for header
                 }}>
                 <Box
                   sx={{
@@ -247,8 +248,7 @@ export const Chat = React.memo(() => {
                     borderRadius: 2,
                     padding: 3,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    maxWidth: '100%',
-                    mt: -30
+                    maxWidth: '100%'
                   }}>
                   <Typography
                     variant="body1"
