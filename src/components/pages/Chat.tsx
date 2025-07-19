@@ -226,7 +226,8 @@ export const Chat = React.memo(() => {
               border: "none",
               mt: 0,
             }}>
-            {connections.length !== 0 ? (
+            {/* Temporary: Force empty state for testing */}
+            {true || connections.length === 0 ? (
               <Box
                 sx={{
                   display: 'flex',
