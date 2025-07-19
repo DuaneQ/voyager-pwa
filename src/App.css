@@ -504,7 +504,7 @@ video[poster] {
 /* Mute button for mobile audio control */
 .mute-button {
   position: absolute;
-  top: 20px;
+  top: 76px; /* Header height (56px) + 20px spacing */
   right: 20px;
   background: rgba(0, 0, 0, 0.6);
   border: none;

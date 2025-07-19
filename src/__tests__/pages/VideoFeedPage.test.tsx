@@ -1690,4 +1690,169 @@ describe('VideoFeedPage', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('Filter functionality', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      
+      // Mock Firebase query functions
+      mockCollection.mockReturnValue({ id: 'videos' } as any);
+      mockWhere.mockReturnValue({ type: 'where' } as any);
+      mockOrderBy.mockReturnValue({ type: 'orderBy' } as any);
+      mockLimit.mockReturnValue({ type: 'limit' } as any);
+      mockQuery.mockReturnValue({ id: 'query' } as any);
+      
+      // Mock user by default for most tests
+      Object.defineProperty(mockAuth, 'currentUser', {
+        value: { uid: mockUserId },
+        writable: true,
+      });
+      
+      // Mock upload hook
+      mockUseVideoUpload.mockReturnValue({
+        uploadVideo: mockUploadVideo,
+        isUploading: false,
+        uploadProgress: 0,
+        processingStatus: null,
+        error: null
+      });
+    });
+
+    it('should render filter toggle buttons', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-toggles')).toBeInTheDocument();
+        expect(screen.getByTestId('filter-all')).toBeInTheDocument();
+        expect(screen.getByTestId('filter-liked')).toBeInTheDocument();
+        expect(screen.getByTestId('filter-mine')).toBeInTheDocument();
+      });
+    });
+
+    it('should have "All" filter active by default', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        const allButton = screen.getByTestId('filter-all');
+        expect(allButton).toHaveClass('active');
+        expect(screen.getByTestId('filter-liked')).not.toHaveClass('active');
+        expect(screen.getByTestId('filter-mine')).not.toHaveClass('active');
+      });
+    });
+
+    it('should disable filter buttons when user is not authenticated', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      // Mock no user
+      Object.defineProperty(mockAuth, 'currentUser', {
+        value: null,
+        writable: true,
+      });
+      
+      render(<VideoFeedPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-all')).not.toBeDisabled();
+        expect(screen.getByTestId('filter-liked')).toBeDisabled();
+        expect(screen.getByTestId('filter-mine')).toBeDisabled();
+      });
+    });
+
+    it('should show different empty messages for different filters', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Test "All" filter empty message
+      await waitFor(() => {
+        expect(screen.getByText('No videos yet')).toBeInTheDocument();
+        expect(screen.getByText('Be the first to share your travel memories!')).toBeInTheDocument();
+      });
+
+      // Switch to "Liked" filter
+      fireEvent.click(screen.getByTestId('filter-liked'));
+      
+      await waitFor(() => {
+        expect(screen.getByText('No liked videos yet')).toBeInTheDocument();
+        expect(screen.getByText('Videos you like will appear here!')).toBeInTheDocument();
+      });
+
+      // Switch to "My Videos" filter
+      fireEvent.click(screen.getByTestId('filter-mine'));
+      
+      await waitFor(() => {
+        expect(screen.getByText('No videos uploaded yet')).toBeInTheDocument();
+        expect(screen.getByText('Upload your first travel video to get started!')).toBeInTheDocument();
+      });
+    });
+
+    it('should not show upload button for liked videos filter', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Wait for initial render with "All" filter
+      await waitFor(() => {
+        expect(screen.getByTestId('upload-first-video-button')).toBeInTheDocument();
+      });
+
+      // Switch to "Liked" filter
+      fireEvent.click(screen.getByTestId('filter-liked'));
+      
+      await waitFor(() => {
+        expect(screen.queryByTestId('upload-first-video-button')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should change active filter when clicking filter buttons', async () => {
+      // Mock empty query result
+      mockGetDocs.mockResolvedValue({
+        forEach: jest.fn()
+      } as any);
+      
+      render(<VideoFeedPage />);
+      
+      // Initial state - "All" is active
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-all')).toHaveClass('active');
+      });
+
+      // Click "Liked" filter
+      fireEvent.click(screen.getByTestId('filter-liked'));
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-liked')).toHaveClass('active');
+        expect(screen.getByTestId('filter-all')).not.toHaveClass('active');
+        expect(screen.getByTestId('filter-mine')).not.toHaveClass('active');
+      });
+
+      // Click "My Videos" filter
+      fireEvent.click(screen.getByTestId('filter-mine'));
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-mine')).toHaveClass('active');
+        expect(screen.getByTestId('filter-all')).not.toHaveClass('active');
+        expect(screen.getByTestId('filter-liked')).not.toHaveClass('active');
+      });
+    });
+  });
 });
