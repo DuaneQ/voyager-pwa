@@ -63,7 +63,7 @@ export const Chat = React.memo(() => {
     if (!userId) return;
     const q = query(
       collection(db, "connections"),
-      where("users", "array-contains", "userId")
+      where("users", "array-contains", userId)
     );
     const unsub = onSnapshot(q, (snapshot) => {
       const conns: Connection[] = snapshot.docs.map((docSnap) => {
