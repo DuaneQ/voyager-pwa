@@ -5,7 +5,7 @@ import { ShareVideoModal } from '../modals/ShareVideoModal';
 import { VideoCommentsModal } from '../modals/VideoCommentsModal';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { Video, VideoUploadData } from '../../types/Video';
-import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentSnapshot, doc, updateDoc, arrayUnion, arrayRemove, Query, DocumentData } from 'firebase/firestore';
 import { db, auth } from '../../environments/firebaseConfig';
 import { IosShare } from '@mui/icons-material';
 
@@ -103,7 +103,7 @@ export const VideoFeedPage: React.FC = () => {
       // Load only 3-5 videos at a time to minimize Firebase reads
       const BATCH_SIZE = 3;
       
-      let videosQuery;
+      let videosQuery: Query<DocumentData> | null = null;
       
       if (currentFilter === 'all') {
         // All Videos: public videos + private videos from connections
@@ -176,16 +176,25 @@ export const VideoFeedPage: React.FC = () => {
         }
       }
       
-      const querySnapshot = await getDocs(videosQuery!);
+      if (!videosQuery) {
+        // This shouldn't happen, but handle it gracefully
+        setVideos([]);
+        setIsLoading(false);
+        setIsLoadingMore(false);
+        return;
+      }
+      
+      const querySnapshot = await getDocs(videosQuery);
       let loadedVideos: Video[] = [];
       let lastDocument: DocumentSnapshot | null = null;
       
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
         loadedVideos.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Video);
-        lastDocument = doc;
+        lastDocument = doc as DocumentSnapshot;
       });
 
       // For "all" filter, also load private videos from connections
@@ -204,9 +213,10 @@ export const VideoFeedPage: React.FC = () => {
           const privateVideos: Video[] = [];
           
           privateSnapshot.forEach((doc) => {
+            const data = doc.data();
             privateVideos.push({
               id: doc.id,
-              ...doc.data()
+              ...data
             } as Video);
           });
           
