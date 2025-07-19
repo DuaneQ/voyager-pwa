@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Box, List } from "@mui/material";
+import { Box, List, Typography } from "@mui/material";
 import {
   getFirestore,
   collection,
@@ -226,21 +226,63 @@ export const Chat = React.memo(() => {
               border: "none",
               mt: 0,
             }}>
-            {connections.map((conn) => {
-              if (!userId) return null;
-              return (
-                <ChatListItem
-                  key={conn.id}
-                  conn={conn}
-                  userId={userId}
-                  onClick={(photoURL: string) => {
-                    setSelectedConnection(conn);
-                    setSelectedPhotoURL(photoURL);
-                  }}
-                  unread={!!unreadMap[conn.id]}
-                />
-              );
-            })}
+            {connections.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 2,
+                  maxWidth: 300,
+                  margin: '0 auto',
+                  position: 'relative',
+                  zIndex: 1,
+                  mt: 15  // Add top margin to account for header
+                }}>
+                <Box
+                  sx={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 2,
+                    padding: 3,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    maxWidth: '100%'
+                  }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'white',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                    Welcome to your chat hub! 
+                    This is where you'll connect with fellow travelers after matching on the TravalMatch page. 
+                    
+                    Once you've liked someone's itinerary and they've liked yours back, 
+                    your connection will appear here and you can start planning your adventure together.
+                  </Typography>
+                </Box>
+              </Box>
+            ) : (
+              connections.map((conn) => {
+                if (!userId) return null;
+                return (
+                  <ChatListItem
+                    key={conn.id}
+                    conn={conn}
+                    userId={userId}
+                    onClick={(photoURL: string) => {
+                      setSelectedConnection(conn);
+                      setSelectedPhotoURL(photoURL);
+                    }}
+                    unread={!!unreadMap[conn.id]}
+                  />
+                );
+              })
+            )}
           </List>
         </Box>
         

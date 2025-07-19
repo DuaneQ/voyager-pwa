@@ -12,10 +12,14 @@
 
 import { SnackbarProvider, useSnackbar } from "notistack";
 import { getAnalytics, logEvent } from "firebase/analytics";
+import { getMessaging, onMessage } from "firebase/messaging";
+import { Suspense, useEffect } from "react";
 import "./App.css";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
 import { Profile } from "./components/pages/Profile";
+import { VideoFeedPage } from "./components/pages/VideoFeedPage";
+import { VideoPage } from "./components/pages/VideoPage";
 import { Login } from "./components/auth/Login";
 import { Register } from "./components/auth/Register";
 import { Chat } from "./components/pages/Chat";
@@ -27,8 +31,6 @@ import { Protected } from "./Context/Protected";
 import { ResendEmail } from "./components/auth/ResendEmail";
 import { UserProfileProvider } from "./Context/UserProfileContext";
 import { NewConnectionProvider } from "./Context/NewConnectionContext";
-import { getMessaging, onMessage } from "firebase/messaging";
-import { Suspense, useEffect } from "react";
 import { app } from "./environments/firebaseConfig";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { TermsGuard } from "./components/auth/TermsGuard";
@@ -116,6 +118,30 @@ function App() {
                         <TermsGuard>
                           <UserProfileProvider>
                             <Search />
+                          </UserProfileProvider>
+                        </TermsGuard>
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/Videos"
+                    element={
+                      <Protected>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <VideoFeedPage />
+                          </UserProfileProvider>
+                        </TermsGuard>
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/video/:videoId"
+                    element={
+                      <Protected>
+                        <TermsGuard>
+                          <UserProfileProvider>
+                            <VideoPage />
                           </UserProfileProvider>
                         </TermsGuard>
                       </Protected>

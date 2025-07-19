@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import {
   Modal,
   Box,
@@ -18,6 +18,8 @@ import {
   Snackbar,
   Alert,
   MenuItem,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import BlockIcon from "@mui/icons-material/Block";
@@ -37,11 +39,14 @@ import {
   deleteDoc,
   addDoc,
   serverTimestamp,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
 import { auth } from "../../environments/firebaseConfig";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import RatingsCommentsList from "../common/RatingsCommentsList";
+import { Video } from "../../types/Video";
 import DOMPurify from 'dompurify';
 
 const db = getFirestore(app);
@@ -50,6 +55,33 @@ interface ViewProfileModalProps {
   open: boolean;
   onClose: () => void;
   userId: string;
+}
+
+// TabPanel component for Material-UI tabs
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`profile-tabpanel-${index}`}
+      aria-labelledby={`profile-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 0 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
 }
 
 export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
@@ -82,6 +114,15 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [newComment, setNewComment] = useState<string>("");
   const [canRate, setCanRate] = useState<boolean>(false);
   const [checkingConnection, setCheckingConnection] = useState<boolean>(false);
+
+  // Tab state
+  const [currentTab, setCurrentTab] = useState(0);
+  
+  // Videos state
+  const [userVideos, setUserVideos] = useState<Video[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [videosError, setVideosError] = useState<string | null>(null);
+  const [enlargedVideo, setEnlargedVideo] = useState<Video | null>(null);
 
   const currentUserId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   // Check if the current user has a connection with the viewed user
@@ -122,7 +163,12 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   }, [open, currentUserId, userId]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Clear videos when modal is closed
+      setUserVideos([]);
+      setCurrentTab(0); // Reset to first tab
+      return;
+    }
 
     let isMounted = true;
     setLoading(true);
@@ -139,8 +185,53 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 
     return () => {
       isMounted = false;
+      // Clear videos when modal is closed
+      setUserVideos([]);
+      setLoadingVideos(false);
+      setVideosError(null);
     };
   }, [open, userId]);
+
+  // Function to load user's videos
+  const loadUserVideos = useCallback(async () => {
+    if (!userId) return;
+    
+    setLoadingVideos(true);
+    setVideosError(null);
+    try {
+      const videosQuery = query(
+        collection(db, 'videos'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(20) // Load recent videos
+      );
+      
+      const videosSnapshot = await getDocs(videosQuery);
+      const videos: Video[] = [];
+      
+      videosSnapshot.forEach((doc) => {
+        videos.push({
+          id: doc.id,
+          ...doc.data()
+        } as Video);
+      });
+      
+      setUserVideos(videos);
+    } catch (error) {
+      console.error('Error loading user videos:', error);
+      setVideosError('Failed to load videos');
+      setUserVideos([]);
+    } finally {
+      setLoadingVideos(false);
+    }
+  }, [userId]);
+
+  // Load videos only when Videos tab is selected
+  useEffect(() => {
+    if (currentTab === 2 && userId && !loadingVideos && userVideos.length === 0 && !videosError) {
+      loadUserVideos();
+    }
+  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, loadUserVideos]);
 
   useEffect(() => {
     if (profile?.ratings?.ratedBy && currentUserId) {
@@ -156,7 +247,11 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   // Use new slot-based photo object
   const photos = profile?.photos || {};
   const profilePhoto = photos.profile || null;
-  const otherPhotos = [photos.slot1, photos.slot2, photos.slot3, photos.slot4].filter(Boolean);
+
+  // Handle tab change
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setCurrentTab(newValue);
+  };
 
   // Handle block user confirmation
   const handleOpenBlockConfirmation = () => {
@@ -434,15 +529,15 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             transform: "translate(-50%, -50%)",
             width: { xs: "98vw", sm: 400 },
             maxWidth: { xs: 340, sm: 400 },
-            maxHeight: { xs: "85vh", sm: "90vh" },
+            height: { xs: "90vh", sm: "85vh" },
+            maxHeight: { xs: "90vh", sm: "85vh" },
             bgcolor: "background.paper",
             boxShadow: 24,
-            overflowY: "auto",
-            p: { xs: 1, sm: 3 },
+            overflowY: "hidden",
+            p: { xs: 1, sm: 2 },
             borderRadius: 2,
             display: "flex",
             flexDirection: "column",
-            overflow: "hidden",
           }}>
           {/* Top: Block button and close button */}
           <Box
@@ -499,7 +594,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              mb: 2,
+              mb: 1.5,
               position: "relative",
             }}>
             {profilePhoto ? (
@@ -508,17 +603,17 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 alt={profile?.username ? `${profile.username}` : "User"}
                 loading="lazy"
                 style={{
-                  width: 160,
-                  height: 160,
+                  width: 80,
+                  height: 80,
                   objectFit: "cover",
-                  borderRadius: 12,
+                  borderRadius: 8,
                   border: "2px solid #fff",
                   background: "#eee",
                 }}
                 onClick={() => setSelectedPhoto(profilePhoto)}
               />
             ) : null}
-            <Typography variant="h5" sx={{ mt: 2, textAlign: "center" }}>
+            <Typography variant="h6" sx={{ mt: 1, textAlign: "center", fontSize: "1.1rem" }}>
               {profile?.username || "User"}
             </Typography>
             {/* Rating Display (always visible) */}
@@ -527,9 +622,9 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               sx={{
                 display: "flex",
                 alignItems: "center",
-                mt: 1,
+                mt: 0.5,
                 cursor: canRate ? "pointer" : "not-allowed",
-                padding: "4px 8px",
+                padding: "2px 6px",
                 borderRadius: 1,
                 "&:hover": canRate ? {
                   backgroundColor: "rgba(0, 0, 0, 0.04)",
@@ -544,112 +639,125 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 value={profile?.ratings?.average || 0}
                 precision={0.5}
                 readOnly
-                sx={{ color: "primary.main", mr: 1 }}
+                size="small"
+                sx={{ color: "primary.main", mr: 0.5 }}
               />
               {profile?.ratings?.average ? (
                 <>
                   <Typography
                     variant="body2"
-                    sx={{ fontWeight: "medium" }}
+                    sx={{ fontWeight: "medium", fontSize: "0.85rem" }}
                     data-testid="rating-average"
                   >
                     {formatRating(profile.ratings.average)}
                   </Typography>
                   <Typography
                     variant="body2"
-                    sx={{ fontWeight: "medium", ml: 0.5 }}
+                    sx={{ fontWeight: "medium", ml: 0.5, fontSize: "0.85rem" }}
                     data-testid="rating-count"
                   >
                     ({profile.ratings.count})
                   </Typography>
                 </>
               ) : (
-                <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                <Typography variant="body2" sx={{ fontWeight: "medium", fontSize: "0.85rem" }}>
                   No ratings yet
                 </Typography>
               )}
               {!canRate && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1, fontSize: "0.75rem" }}>
                   (Connect to rate)
                 </Typography>
               )}
             </Box>
           </Box>
-          <Box sx={{ flex: 1, overflowY: "auto" }}>
+
+          {/* Tabs */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+            <Tabs value={currentTab} onChange={handleTabChange} centered>
+              <Tab label="Profile" />
+              <Tab label="Photos" />
+              <Tab label="Videos" />
+            </Tabs>
+          </Box>
+
+          <Box sx={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
                 <CircularProgress />
               </Box>
             ) : profile ? (
               <>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    p: 2,
-                  }}>
-                  <FormControl>
-                    <TextField
-                      label="Bio"
-                      value={profile.bio || ""}
-                      InputProps={{
-                        readOnly: true,
-                        disableUnderline: true,
-                        style: { pointerEvents: 'none', background: '#f5f5f5' },
-                      }}
-                      multiline
-                      rows={2}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiInputBase-input.Mui-disabled': {
-                          WebkitTextFillColor: '#222',
-                        },
-                        '& .MuiOutlinedInput-root': {
-                          background: '#f5f5f5',
-                        },
-                      }}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <TextField
-                      label="Age"
-                      value={getAge(profile.dob)}
-                      InputProps={{
-                        readOnly: true,
-                        disableUnderline: true,
-                        style: { pointerEvents: 'none', background: '#f5f5f5' },
-                      }}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiInputBase-input.Mui-disabled': {
-                          WebkitTextFillColor: '#222',
-                        },
-                        '& .MuiOutlinedInput-root': {
-                          background: '#f5f5f5',
-                        },
-                        '& .MuiInputBase-input': {
-                          fontSize: { xs: '0.92rem', sm: '1rem' },
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontSize: { xs: '0.92rem', sm: '1rem' },
-                        },
-                      }}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <TextField
-                      label="Status"
-                      value={profile?.status || ""}
-                      InputProps={{
-                        readOnly: true,
-                        disableUnderline: true,
-                        style: { pointerEvents: 'none', background: '#f5f5f5' },
-                      }}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiInputBase-input.Mui-disabled': {
+                {/* Profile Tab */}
+                <TabPanel value={currentTab} index={0}>
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.5,
+                      p: 2,
+                    }}>
+                    <FormControl>
+                      <TextField
+                        label="Bio"
+                        value={profile.bio || ""}
+                        InputProps={{
+                          readOnly: true,
+                          disableUnderline: true,
+                          style: { pointerEvents: 'none', background: '#f5f5f5' },
+                        }}
+                        multiline
+                        rows={2}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiInputBase-input.Mui-disabled': {
+                            WebkitTextFillColor: '#222',
+                          },
+                          '& .MuiOutlinedInput-root': {
+                            background: '#f5f5f5',
+                          },
+                        }}
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <TextField
+                        label="Age"
+                        value={getAge(profile.dob)}
+                        InputProps={{
+                          readOnly: true,
+                          disableUnderline: true,
+                          style: { pointerEvents: 'none', background: '#f5f5f5' },
+                        }}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiInputBase-input.Mui-disabled': {
+                            WebkitTextFillColor: '#222',
+                          },
+                          '& .MuiOutlinedInput-root': {
+                            background: '#f5f5f5',
+                          },
+                          '& .MuiInputBase-input': {
+                            fontSize: { xs: '0.92rem', sm: '1rem' },
+                          },
+                          '& .MuiInputLabel-root': {
+                            fontSize: { xs: '0.92rem', sm: '1rem' },
+                          },
+                        }}
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <TextField
+                        label="Status"
+                        value={profile?.status || ""}
+                        InputProps={{
+                          readOnly: true,
+                          disableUnderline: true,
+                          style: { pointerEvents: 'none', background: '#f5f5f5' },
+                        }}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiInputBase-input.Mui-disabled': {
                           WebkitTextFillColor: '#222',
                         },
                         '& .MuiOutlinedInput-root': {
@@ -795,35 +903,208 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                     />
                   </FormControl>
                 </Card>
-                {/* Bottom: Other photos */}
-                {otherPhotos.length > 0 && (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ mb: 1, textAlign: "center" }}>
-                      More Photos
-                    </Typography>
-                    <Grid container spacing={2} justifyContent="center">
-                      {otherPhotos.map((photoUrl: string, idx: number) => (
-                        <Grid item key={idx}>
-                          <img
-                            src={photoUrl}
-                            alt={profile?.username ? `${profile.username} photo ${idx + 2}` : `User photo ${idx + 2}`}
-                            style={{
-                              width: 80,
-                              height: 80,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                              border: "1px solid #ccc",
-                              background: "#eee",
-                            }}
-                            onClick={() => setSelectedPhoto(photoUrl)}
-                          />
+                </TabPanel>
+
+                {/* Photos Tab */}
+                <TabPanel value={currentTab} index={1}>
+                  <Box sx={{ py: 1 }}>
+                    {(() => {
+                      const photos = profile?.photos || {};
+                      const allPhotos = [
+                        photos.profile,
+                        photos.slot1,
+                        photos.slot2,
+                        photos.slot3,
+                        photos.slot4
+                      ].filter(Boolean);
+                      
+                      return allPhotos.length > 0 ? (
+                        <Grid container spacing={2}>
+                          {allPhotos.map((photoUrl: string, idx: number) => (
+                            <Grid item xs={6} sm={4} md={3} key={idx}>
+                              <Box
+                                sx={{
+                                  position: 'relative',
+                                  aspectRatio: '1',
+                                  backgroundColor: '#f5f5f5',
+                                  borderRadius: 2,
+                                  overflow: 'hidden',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    opacity: 0.8,
+                                  },
+                                }}
+                                onClick={() => setSelectedPhoto(photoUrl)}
+                              >                              <img
+                                src={photoUrl}
+                                alt={`User photo ${idx + 1}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                              />
+                              </Box>
+                            </Grid>
+                          ))}
                         </Grid>
-                      ))}
-                    </Grid>
+                      ) : (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                          <Typography variant="h6" color="text.secondary">
+                            No photos available
+                          </Typography>
+                        </Box>
+                      );
+                    })()}
                   </Box>
-                )}
+                </TabPanel>
+
+                {/* Videos Tab */}
+                <TabPanel value={currentTab} index={2} data-testid="videos-tab-panel">
+                  <Box sx={{ py: 1 }}>
+                    {loadingVideos ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }} data-testid="videos-loading">
+                        <CircularProgress />
+                      </Box>
+                    ) : videosError ? (
+                      <Box sx={{ textAlign: 'center', py: 4 }} data-testid="videos-error">
+                        <Typography variant="h6" color="error">
+                          {videosError}
+                        </Typography>
+                      </Box>
+                    ) : userVideos.length > 0 ? (
+                      <Grid container spacing={2}>
+                        {userVideos.map((video) => (
+                          <Grid item xs={6} sm={4} md={3} key={video.id}>
+                            <Box
+                              data-testid={`user-video-${video.id}`}
+                              sx={{
+                                position: 'relative',
+                                aspectRatio: '9/16',
+                                backgroundColor: '#000',
+                                borderRadius: 2,
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  opacity: 0.8,
+                                },
+                              }}
+                              onClick={() => {
+                                setEnlargedVideo(video);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setEnlargedVideo(video);
+                                }
+                              }}
+                              onTouchEnd={(e) => {
+                                // Handle touch interactions for mobile
+                                e.preventDefault();
+                                setEnlargedVideo(video);
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`Play video: ${video.title || video.description || 'Untitled video'}`}
+                            >
+                              {/* Fallback thumbnail image for mobile */}
+                              <img
+                                src={video.thumbnailUrl}
+                                alt={video.title || 'Video thumbnail'}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  zIndex: 1,
+                                }}
+                                onError={(e) => {
+                                  // Hide image if thumbnail fails to load
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                              <video
+                                src={video.videoUrl}
+                                poster={video.thumbnailUrl}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  zIndex: 2,
+                                  '--poster-url': `url(${video.thumbnailUrl})`,
+                                } as React.CSSProperties}
+                                muted
+                                preload="metadata"
+                                onLoadedMetadata={(e) => {
+                                  // Ensure thumbnail shows on mobile
+                                  const video = e.target as HTMLVideoElement;
+                                  video.currentTime = 0.1;
+                                }}
+                                onError={() => {
+                                  // Video failed to load, rely on fallback image
+                                }}
+                              />
+                              {/* Play icon overlay */}
+                              <Box
+                                data-testid="play-icon"
+                                sx={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  zIndex: 3,
+                                  color: 'white',
+                                  fontSize: '2rem',
+                                  opacity: 0.8,
+                                  pointerEvents: 'none',
+                                  textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                                }}
+                              >
+                                ▶
+                              </Box>
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                  color: 'white',
+                                  fontSize: '0.75rem',
+                                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                }}
+                              >
+                                {video.title && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    {video.title}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4 }} data-testid="no-videos-message">
+                        <Typography variant="h6" color="text.secondary">
+                          No videos shared yet
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </TabPanel>
               </>
             ) : (
               <Typography>No profile found.</Typography>
@@ -863,6 +1144,58 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               objectFit: "contain",
             }}
           />
+        </Box>
+      </Modal>
+
+      {/* Video modal */}
+      <Modal open={!!enlargedVideo} onClose={() => setEnlargedVideo(null)} data-testid="enlarged-video-modal">
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "#000",
+            boxShadow: 24,
+            borderRadius: 2,
+            outline: "none",
+            maxWidth: "90vw",
+            maxHeight: "90vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconButton
+            onClick={() => setEnlargedVideo(null)}
+            data-testid="close-enlarged-video"
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              color: "white",
+              bgcolor: "rgba(0,0,0,0.5)",
+              "&:hover": {
+                bgcolor: "rgba(0,0,0,0.7)",
+              },
+              zIndex: 1,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          {enlargedVideo && (
+            <video
+              src={enlargedVideo.videoUrl}
+              controls
+              autoPlay
+              data-testid="enlarged-video-player"
+              style={{
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                borderRadius: 8,
+              }}
+            />
+          )}
         </Box>
       </Modal>
 

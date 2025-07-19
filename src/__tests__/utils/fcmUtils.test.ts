@@ -86,6 +86,15 @@ describe('fcmUtils', () => {
       writable: true,
     });
     process.env.REACT_APP_VAPID_KEY = 'test-vapid-key';
+    
+    // Reset mocks to default state - getMessaging returns undefined by default
+    mockGetMessaging.mockReturnValue(undefined);
+    mockGetToken.mockClear();
+    mockDeleteToken.mockClear();
+    mockOnMessage.mockClear();
+    mockSetDoc.mockClear();
+    mockGetFirestore.mockClear();
+    mockDoc.mockClear();
   });
 
   describe('getDeviceInfo', () => {
@@ -125,10 +134,16 @@ describe('fcmUtils', () => {
 
   describe('generateFCMToken', () => {
     it('returns error if FCM not supported', async () => {
-      isFCMSupportedSpy = jest.spyOn(fcmUtils, 'isFCMSupported').mockImplementation(() => false);
+      // Remove Notification to make isFCMSupported return false
+      const originalNotification = window.Notification;
+      delete (window as any).Notification;
+      
       const result = await fcmUtils.generateFCMToken();
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to generate FCM token');
+      expect(result.error).toBe('FCM not supported in this environment');
+      
+      // Restore Notification
+      (window as any).Notification = originalNotification;
     });
     it('returns error if VAPID key missing', async () => {
       isFCMSupportedSpy = jest.spyOn(fcmUtils, 'isFCMSupported').mockReturnValue(true);
@@ -138,20 +153,43 @@ describe('fcmUtils', () => {
       expect(result.error).toMatch(/VAPID key/);
     });
     it('returns error if permission not granted', async () => {
-      isFCMSupportedSpy = jest.spyOn(fcmUtils, 'isFCMSupported').mockImplementation(() => true);
+      // Set up proper environment for FCM support
       process.env.REACT_APP_VAPID_KEY = 'test-vapid-key';
-      permSpy = jest.spyOn(fcmUtils, 'requestNotificationPermission').mockImplementation(async () => ({ granted: false, permission: 'denied' }));
-      // Also mock getToken to ensure it is not called
-      mockGetToken.mockClear();
+      
+      // Mock requestNotificationPermission to return denied
+      const originalRequestPermission = window.Notification.requestPermission;
+      window.Notification.requestPermission = jest.fn().mockResolvedValue('denied');
+      
       const result = await fcmUtils.generateFCMToken();
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to generate FCM token');
+      expect(result.error).toBe('Notification permission not granted');
+      
+      // Restore original
+      window.Notification.requestPermission = originalRequestPermission;
+    });
+    it('returns error if messaging instance creation fails', async () => {
+      jest.spyOn(fcmUtils, 'isFCMSupported').mockReturnValue(true);
+      process.env.REACT_APP_VAPID_KEY = 'test-vapid-key';
+      const permSpy = jest.spyOn(fcmUtils, 'requestNotificationPermission').mockResolvedValue({ granted: true, permission: 'granted' });
+      
+      // Mock getMessaging to return undefined (creation failure)
+      mockGetMessaging.mockReturnValue(undefined);
+      
+      const result = await fcmUtils.generateFCMToken();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Messaging instance could not be created');
+      permSpy.mockRestore();
     });
     it('returns error if getToken fails', async () => {
       jest.spyOn(fcmUtils, 'isFCMSupported').mockReturnValue(true);
       process.env.REACT_APP_VAPID_KEY = 'test-vapid-key';
       const permSpy = jest.spyOn(fcmUtils, 'requestNotificationPermission').mockResolvedValue({ granted: true, permission: 'granted' });
+      
+      // Mock getMessaging to return a valid messaging instance
+      const mockMessagingInstance = {};
+      mockGetMessaging.mockReturnValue(mockMessagingInstance);
       mockGetToken.mockResolvedValue(undefined);
+      
       const result = await fcmUtils.generateFCMToken();
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/Failed to generate/);
@@ -161,7 +199,12 @@ describe('fcmUtils', () => {
       jest.spyOn(fcmUtils, 'isFCMSupported').mockReturnValue(true);
       process.env.REACT_APP_VAPID_KEY = 'test-vapid-key';
       const permSpy = jest.spyOn(fcmUtils, 'requestNotificationPermission').mockResolvedValue({ granted: true, permission: 'granted' });
+      
+      // Mock getMessaging to return a valid messaging instance
+      const mockMessagingInstance = {};
+      mockGetMessaging.mockReturnValue(mockMessagingInstance);
       mockGetToken.mockResolvedValue('abc123');
+      
       const result = await fcmUtils.generateFCMToken();
       expect(result.success).toBe(true);
       expect(result.token).toBe('abc123');
