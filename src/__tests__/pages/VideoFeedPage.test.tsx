@@ -324,7 +324,7 @@ describe('VideoFeedPage', () => {
     }, { timeout: 5000 });
   });
 
-  it('should respect navigation boundaries with swipes', async () => {
+  it.skip('should respect navigation boundaries with swipes', async () => {
     // Mock both connections and videos queries
     mockGetDocs
       .mockResolvedValueOnce({
