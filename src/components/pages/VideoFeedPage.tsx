@@ -678,11 +678,6 @@ export const VideoFeedPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Video counter */}
-            <div className="video-counter" data-testid="video-counter">
-              {currentVideoIndex + 1} of {videos.length}
-            </div>
-
             {/* Video navigation indicators */}
             <div className="video-navigation-hint" data-testid="navigation-hint">
               {currentVideoIndex > 0 && (
