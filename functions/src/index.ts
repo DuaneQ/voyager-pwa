@@ -303,7 +303,7 @@ export const notifyFeedbackSubmission = functions.firestore
                 </div>
 
                 <div style="text-align: center; margin-top: 20px;">
-                  <a href="https://console.firebase.google.com/project/mundo1-dev/firestore/data/feedback/${feedbackId}" 
+                  <a href="https://console.firebase.google.com/project/mundo1-1/firestore/data/feedback/${feedbackId}" 
                      style="display: inline-block; background: #1976d2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                     View in Firebase Console
                   </a>

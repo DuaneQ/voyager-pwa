@@ -33,7 +33,8 @@ function isSocialMediaCrawler(userAgent: string): boolean {
 
 // Generate HTML with video-specific meta tags
 function generateVideoHTML(video: any, videoId: string): string {
-  const baseUrl = 'https://mundo1-dev.web.app';
+  // Use production domain for TravalPass
+  const baseUrl = 'https://travalpass.com';
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
   
@@ -43,11 +44,11 @@ function generateVideoHTML(video: any, videoId: string): string {
   // Clean and truncate description
   const description = video.description 
     ? video.description.substring(0, 160) 
-    : 'Watch this amazing video on Voyager';
+    : 'Watch this amazing video on TravalPass';
   
   const title = video.title 
-    ? `${video.title} - Voyager` 
-    : 'Video - Voyager';
+    ? `${video.title} - TravalPass` 
+    : 'Video - TravalPass';
 
   return `
 <!DOCTYPE html>
@@ -72,7 +73,7 @@ function generateVideoHTML(video: any, videoId: string): string {
   <meta property="og:video" content="${video.videoUrl}">
   <meta property="og:video:secure_url" content="${video.videoUrl}">
   <meta property="og:video:type" content="video/mp4">
-  <meta property="og:site_name" content="Voyager">
+  <meta property="og:site_name" content="TravalPass">
   
   <!-- Twitter -->
   <meta property="twitter:card" content="player">
@@ -109,7 +110,7 @@ function generateVideoHTML(video: any, videoId: string): string {
     <img src="${imageUrl}" alt="Video thumbnail" style="max-width: 600px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
     <h1 style="margin: 20px 0 10px 0; text-align: center; color: #333;">${video.title || 'Video'}</h1>
     <p style="margin: 0 20px 20px 20px; text-align: center; color: #666; max-width: 600px;">${description}</p>
-    <a href="${videoUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Watch on Voyager</a>
+    <a href="${videoUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Watch on TravalPass</a>
     <noscript>
       <meta http-equiv="refresh" content="0; url=${videoUrl}">
     </noscript>
@@ -144,7 +145,7 @@ app.get('/video-share/:videoId', async (req, res) => {
     } else {
       // For regular users, redirect to the actual video page
       console.log('Redirecting regular user to video page for video:', videoId);
-      res.redirect(`https://mundo1-dev.web.app/video/${videoId}`);
+      res.redirect(`https://travalpass.com/video/${videoId}`);
     }
     
   } catch (error) {
@@ -155,7 +156,7 @@ app.get('/video-share/:videoId', async (req, res) => {
 
 // Default route
 app.get('/', (req, res) => {
-  res.redirect('https://mundo1-dev.web.app');
+  res.redirect('https://travalpass.com');
 });
 
 export const videoShare = functions.https.onRequest(app);
