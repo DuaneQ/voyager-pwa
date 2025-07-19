@@ -311,7 +311,7 @@ describe("Search Component", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Create an itinerary to find matches/)
+        screen.getByText(/After completing your profile/)
       ).toBeInTheDocument();
     });
   });

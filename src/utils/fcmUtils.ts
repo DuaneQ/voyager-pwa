@@ -30,13 +30,41 @@ export const getDeviceInfo = (): DeviceInfo => ({
 
 /**
  * Check if FCM is supported in current environment
+ * Enhanced iOS Safari detection
  */
 export const isFCMSupported = (): boolean => {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    typeof window.Notification !== "undefined"
-  );
+  // Basic environment checks
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  // Check for Notification API
+  if (typeof window.Notification === "undefined") {
+    return false;
+  }
+
+  // iOS Safari detection
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  
+  // iOS Safari has limited FCM support
+  // Type assertion for window.chrome which may not exist on all browsers
+  const hasChrome = !!(window as any).chrome;
+  if (isIOS || (isSafari && !hasChrome)) {
+    console.log("FCM: iOS Safari detected - limited FCM support");
+    return false;
+  }
+
+  // Additional checks for other limited environments
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const isWebView = window.navigator.userAgent.includes('wv');
+  
+  if (isWebView && isIOS) {
+    console.log("FCM: iOS WebView detected - FCM not supported");
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -94,8 +122,23 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
       { scope: "/" }
     );
 
-    // Get messaging instance
-    const messaging = getMessaging(app);
+    // Get messaging instance with safety check
+    let messaging;
+    try {
+      messaging = getMessaging(app);
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to initialize messaging: ${error}`,
+      };
+    }
+
+    if (!messaging) {
+      return {
+        success: false,
+        error: "Messaging instance could not be created",
+      };
+    }
 
     // Generate token
     const token = await getToken(messaging, {

@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 // App Check import temporarily removed for emergency hotfix
 // import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
@@ -51,6 +52,7 @@ const firebaseConfig = isCypress || isDevHost ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // Firestore instance with offline persistence
 export const db = getFirestore(app);
@@ -78,9 +80,27 @@ if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !==
 }
 
 export const getMessagingInstance = () => {
-  if (typeof window !== "undefined" && !isCypress) {
-    const { getMessaging } = require("firebase/messaging");
-    return getMessaging(app);
+  // Enhanced browser support detection with safe navigation
+  const isIOS = typeof window !== "undefined" && typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = typeof window !== "undefined" && typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isWebView = typeof window !== "undefined" && typeof navigator !== "undefined" && navigator.userAgent.includes('wv');
+  
+  // Don't initialize messaging on unsupported browsers
+  // Type assertion for window.chrome which may not exist on all browsers
+  const hasChrome = typeof window !== "undefined" && !!(window as any).chrome;
+  if (isIOS || (isSafari && typeof window !== "undefined" && !hasChrome) || isWebView || isCypress) {
+    console.log("FCM: Messaging not supported in this browser environment");
+    return null;
+  }
+  
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      const { getMessaging } = require("firebase/messaging");
+      return getMessaging(app);
+    } catch (error) {
+      console.warn("FCM: Failed to initialize messaging:", error);
+      return null;
+    }
   }
   return null;
 };
