@@ -649,7 +649,7 @@ video[poster] {
   }
   
   .mute-button {
-    top: 16px;
+    top: 76px; /* Same as filter toggles - Header height (56px) + 20px spacing */
     right: 16px;
     width: 44px;
     height: 44px;
