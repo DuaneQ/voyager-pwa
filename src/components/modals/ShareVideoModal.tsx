@@ -97,7 +97,8 @@ export const ShareVideoModal: React.FC<ShareVideoModalProps> = ({
   const [copySuccess, setCopySuccess] = useState('');
   const [isSharing, setIsSharing] = useState(false);
 
-  const videoUrl = `${window.location.origin}/video/${video.id}`;
+  // Generate public sharing URL for social media (bypasses auth)
+  const videoUrl = `${window.location.origin}/video-share/${video.id}`;
   const title = video.title || 'Amazing Travel Video';
   const description = video.description || 'Watch this amazing travel video on TravalPass.com';
 

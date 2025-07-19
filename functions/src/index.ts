@@ -19,8 +19,8 @@ import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import express from "express";
 import bodyParser from "body-parser";
-import { createStripePortalSession } from './createStripePortalSession';
-import { createStripeCheckoutSession } from './createStripeCheckoutSession';
+// import { createStripePortalSession } from './createStripePortalSession';
+// import { createStripeCheckoutSession } from './createStripeCheckoutSession';
 
 admin.initializeApp();
 
@@ -710,4 +710,5 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
 
 // Export the function
 export const stripeWebhook = functions.https.onRequest(app);
-export { createStripePortalSession, createStripeCheckoutSession };
+// export { createStripePortalSession, createStripeCheckoutSession };
+export { videoShare } from './videoSharing';
