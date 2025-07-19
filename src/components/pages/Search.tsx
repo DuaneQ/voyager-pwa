@@ -399,9 +399,9 @@ export const Search = React.memo(() => {
                   lineHeight: 1.6,
                   whiteSpace: 'pre-wrap'
                 }}>
-                Create an itinerary to find matches for your future trips. Once
-                created, select one of your itineraries from the dropdown, and we'll
-                match you with others based on destination, dates, and preferences.
+                After completing your profile, you canreate an itinerary to find matches for 
+                your future trips. Once created, select one of your itineraries from the dropdown, 
+                and we'll match you with others based on destination, dates, and preferences.
                 Once matched, you can chat and plan your adventures together.
               </Typography>
             </Box>
