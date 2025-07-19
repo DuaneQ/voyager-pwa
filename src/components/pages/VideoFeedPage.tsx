@@ -21,6 +21,8 @@ export const VideoFeedPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // Start paused for mobile compatibility
   const [currentFilter, setCurrentFilter] = useState<VideoFilter>('all');
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionDirection, setTransitionDirection] = useState<'up' | 'down' | null>(null);
   
   // Pagination state
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
@@ -339,8 +341,8 @@ export const VideoFeedPage: React.FC = () => {
     }
   };
 
-  // Swipe gesture handling
-  const minSwipeDistance = 50;
+  // Swipe gesture handling with improved responsiveness
+  const minSwipeDistance = 30; // Reduced from 50 for more responsive swiping
 
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null); // otherwise the swipe is fired even with usual touch events
@@ -369,19 +371,43 @@ export const VideoFeedPage: React.FC = () => {
   };
 
   const goToNextVideo = () => {
-    if (currentVideoIndex < videos.length - 1) {
-      setCurrentVideoIndex(prev => prev + 1);
-      setIsPlaying(true); // Auto-play next video after swipe
-    } else if (hasMoreVideos && !isLoadingMore) {
+    if (currentVideoIndex < videos.length - 1 && !isTransitioning) {
+      setIsTransitioning(true);
+      setTransitionDirection('up');
+      
+      // Start transition
+      setTimeout(() => {
+        setCurrentVideoIndex(prev => prev + 1);
+        setIsPlaying(true); // Auto-play next video after swipe
+        
+        // End transition
+        setTimeout(() => {
+          setIsTransitioning(false);
+          setTransitionDirection(null);
+        }, 100);
+      }, 150);
+    } else if (hasMoreVideos && !isLoadingMore && !isTransitioning) {
       // Load more videos when reaching the end
       loadVideos(true);
     }
   };
 
   const goToPreviousVideo = () => {
-    if (currentVideoIndex > 0) {
-      setCurrentVideoIndex(prev => prev - 1);
-      setIsPlaying(true); // Auto-play previous video after swipe
+    if (currentVideoIndex > 0 && !isTransitioning) {
+      setIsTransitioning(true);
+      setTransitionDirection('down');
+      
+      // Start transition
+      setTimeout(() => {
+        setCurrentVideoIndex(prev => prev - 1);
+        setIsPlaying(true); // Auto-play previous video after swipe
+        
+        // End transition
+        setTimeout(() => {
+          setIsTransitioning(false);
+          setTransitionDirection(null);
+        }, 100);
+      }, 150);
     }
   };
 
@@ -596,7 +622,10 @@ export const VideoFeedPage: React.FC = () => {
       
       {videos.length > 0 && (
         <>
-          <div className="video-container" data-testid="video-container">
+          <div 
+            className={`video-container ${isTransitioning ? `transitioning-${transitionDirection}` : ''}`} 
+            data-testid="video-container"
+          >
             {currentVideo && (
               <VideoPlayer
                 video={currentVideo}
