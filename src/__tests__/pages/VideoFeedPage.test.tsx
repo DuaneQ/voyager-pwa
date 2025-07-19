@@ -275,9 +275,7 @@ describe('VideoFeedPage', () => {
     render(<VideoFeedPage />);
 
     await waitFor(() => {
-      expect(screen.getByText((content, element) => {
-        return element?.textContent === '1 of 2';
-      })).toBeInTheDocument();
+      expect(screen.getByTestId('video-counter')).toHaveTextContent('1 of 2');
     });
 
     const feedPage = screen.getByTestId('video-feed-page');
@@ -296,9 +294,7 @@ describe('VideoFeedPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText((content, element) => {
-        return element?.textContent === '2 of 2';
-      })).toBeInTheDocument();
+      expect(screen.getByTestId('video-counter')).toHaveTextContent('2 of 2');
       expect(screen.getByText('❤️ 1')).toBeInTheDocument(); // Second video has 1 like
       expect(screen.getByText('💬 2')).toBeInTheDocument(); // Second video has 2 comments
     });
@@ -317,9 +313,7 @@ describe('VideoFeedPage', () => {
     });
     
     await waitFor(() => {
-      expect(screen.getByText((content, element) => {
-        return element?.textContent === '1 of 2';
-      })).toBeInTheDocument();
+      expect(screen.getByTestId('video-counter')).toHaveTextContent('1 of 2');
     });
   });
 
@@ -788,27 +782,27 @@ describe('VideoFeedPage', () => {
         } as any);
 
       render(<VideoFeedPage />);
-      
+
       await waitFor(() => {
         expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
         expect(screen.getByTestId('video-player')).toBeInTheDocument();
       });
 
       const feedPage = screen.getByTestId('video-feed-page');
-      
+
       // Test touch without move (tap)
       fireEvent.touchStart(feedPage, {
         targetTouches: [{ clientY: 200 }]
       });
-      
+
       fireEvent.touchEnd(feedPage, {
         changedTouches: [{ clientY: 200 }]
       });
 
-      // Should not cause errors or navigation
-      expect(screen.getByText((content, element) => {
-        return element?.textContent === '1 of 2';
-      })).toBeInTheDocument();
+      // Wait for the video counter to appear and assert its content
+      await waitFor(() => {
+        expect(screen.getByTestId('video-counter')).toHaveTextContent('1 of 2');
+      });
     });
 
     it('should prevent body scroll during video feed', () => {
@@ -1082,24 +1076,101 @@ describe('VideoFeedPage', () => {
         }
       ];
 
-      // Mock both getDocs calls: connections query + videos query
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call: connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call: videos query
+      // Always return a QuerySnapshot-like object with videos for every call
+      mockGetDocs.mockImplementation(() =>
+        Promise.resolve({
           forEach: (callback: any) => {
             mockVideos.forEach((video) => {
               const { id, ...rest } = video;
               callback({
                 id,
-                data: () => rest
+                data: () => rest,
               });
             });
-          }
-        } as any);
+          },
+          docs: mockVideos.map((video) => ({
+            id: video.id,
+            data: () => {
+              const { id, ...rest } = video;
+              return rest;
+            },
+            metadata: {
+              hasPendingWrites: false,
+              fromCache: false,
+              isEqual: () => true,
+            },
+            exists: () => true,
+            get: () => undefined,
+            toJSON: () => video,
+            ref: {
+              converter: {
+                toFirestore: () => ({}),
+                fromFirestore: () => ({}),
+              },
+              type: 'document',
+              firestore: {
+                type: 'firestore',
+                app: {
+                  name: 'mock-app',
+                  options: {},
+                  automaticDataCollectionEnabled: false,
+                },
+                toJSON: () => ({}),
+              },
+              id: video.id,
+              path: `videos/${video.id}`,
+              parent: {
+                type: 'collection',
+                id: 'videos',
+                path: 'videos',
+                parent: null,
+                withConverter: function () { return this; },
+                converter: {
+                  toFirestore: () => ({}),
+                  fromFirestore: () => ({}),
+                },
+                firestore: {
+                  type: 'firestore',
+                  app: {
+                    name: 'mock-app',
+                    options: {},
+                    automaticDataCollectionEnabled: false,
+                  },
+                  toJSON: () => ({}),
+                },
+              },
+              withConverter: function () { return this; },
+              toJSON: () => ({}),
+            },
+          })),
+          size: mockVideos.length,
+          empty: mockVideos.length === 0,
+          metadata: {
+            hasPendingWrites: false,
+            fromCache: false,
+            isEqual: () => true,
+          },
+          query: {
+            converter: {
+              toFirestore: (data: any) => data,
+              fromFirestore: (snap: any) => snap.data(),
+            },
+            type: 'query',
+            firestore: {
+              type: 'firestore',
+              app: {
+                name: 'mock-app',
+                options: {},
+                automaticDataCollectionEnabled: false,
+              },
+              toJSON: () => ({}),
+            },
+            withConverter: function (_converter: any) { return this; },
+          },
+          docChanges: () => [],
+          toJSON: () => JSON.stringify(mockVideos),
+        } as any)
+      );
       
       render(<VideoFeedPage />);
       
@@ -1132,24 +1203,100 @@ describe('VideoFeedPage', () => {
         }
       ];
 
-      // Mock both getDocs calls: connections query + videos query
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call: connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call: videos query
+      mockGetDocs.mockImplementation(() =>
+        Promise.resolve({
           forEach: (callback: any) => {
             mockVideos.forEach((video) => {
               const { id, ...rest } = video;
               callback({
                 id,
-                data: () => rest
+                data: () => rest,
               });
             });
-          }
-        } as any);
+          },
+          docs: mockVideos.map((video) => ({
+            id: video.id,
+            data: () => {
+              const { id, ...rest } = video;
+              return rest;
+            },
+            metadata: {
+              hasPendingWrites: false,
+              fromCache: false,
+              isEqual: () => true,
+            },
+            exists: function (): this is typeof this { return true; },
+            get: () => undefined,
+            toJSON: () => video,
+            ref: {
+              converter: {
+                toFirestore: () => ({}),
+                fromFirestore: () => ({}),
+              },
+              type: 'document',
+              firestore: {
+                type: 'firestore',
+                app: {
+                  name: 'mock-app',
+                  options: {},
+                  automaticDataCollectionEnabled: false,
+                },
+                toJSON: () => ({}),
+              },
+              id: video.id,
+              path: `videos/${video.id}`,
+              parent: {
+                type: 'collection',
+                id: 'videos',
+                path: 'videos',
+                parent: null,
+                withConverter: function () { return this; },
+                converter: {
+                  toFirestore: () => ({}),
+                  fromFirestore: () => ({}),
+                },
+                firestore: {
+                  type: 'firestore',
+                  app: {
+                    name: 'mock-app',
+                    options: {},
+                    automaticDataCollectionEnabled: false,
+                  },
+                  toJSON: () => ({}),
+                },
+              },
+              withConverter: function () { return this; },
+              toJSON: () => ({}),
+            },
+          })),
+          size: mockVideos.length,
+          empty: mockVideos.length === 0,
+          metadata: {
+            hasPendingWrites: false,
+            fromCache: false,
+            isEqual: () => true,
+          },
+          query: {
+            converter: {
+              toFirestore: (data: any) => data,
+              fromFirestore: (snap: any) => snap.data(),
+            },
+            type: 'query',
+            firestore: {
+              type: 'firestore',
+              app: {
+                name: 'mock-app',
+                options: {},
+                automaticDataCollectionEnabled: false,
+              },
+              toJSON: () => ({}),
+            },
+            withConverter: function (_converter: any) { return this; },
+          },
+          docChanges: () => [],
+          toJSON: () => JSON.stringify(mockVideos),
+        } as any)
+      );
       
       render(<VideoFeedPage />);
       
@@ -1185,24 +1332,100 @@ describe('VideoFeedPage', () => {
         }
       ];
 
-      // Mock both getDocs calls: connections query + videos query
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call: connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call: videos query
+      mockGetDocs.mockImplementation(() =>
+        Promise.resolve({
           forEach: (callback: any) => {
             mockVideos.forEach((video) => {
               const { id, ...rest } = video;
               callback({
                 id,
-                data: () => rest
+                data: () => rest,
               });
             });
-          }
-        } as any);
+          },
+          docs: mockVideos.map((video) => ({
+            id: video.id,
+            data: () => {
+              const { id, ...rest } = video;
+              return rest;
+            },
+            metadata: {
+              hasPendingWrites: false,
+              fromCache: false,
+              isEqual: () => true,
+            },
+            exists: function (): this is typeof this { return true; },
+            get: () => undefined,
+            toJSON: () => video,
+            ref: {
+              converter: {
+                toFirestore: () => ({}),
+                fromFirestore: () => ({}),
+              },
+              type: 'document',
+              firestore: {
+                type: 'firestore',
+                app: {
+                  name: 'mock-app',
+                  options: {},
+                  automaticDataCollectionEnabled: false,
+                },
+                toJSON: () => ({}),
+              },
+              id: video.id,
+              path: `videos/${video.id}`,
+              parent: {
+                type: 'collection',
+                id: 'videos',
+                path: 'videos',
+                parent: null,
+                withConverter: function () { return this; },
+                converter: {
+                  toFirestore: () => ({}),
+                  fromFirestore: () => ({}),
+                },
+                firestore: {
+                  type: 'firestore',
+                  app: {
+                    name: 'mock-app',
+                    options: {},
+                    automaticDataCollectionEnabled: false,
+                  },
+                  toJSON: () => ({}),
+                },
+              },
+              withConverter: function () { return this; },
+              toJSON: () => ({}),
+            },
+          })),
+          size: mockVideos.length,
+          empty: mockVideos.length === 0,
+          metadata: {
+            hasPendingWrites: false,
+            fromCache: false,
+            isEqual: () => true,
+          },
+          query: {
+            converter: {
+              toFirestore: (data: any) => data,
+              fromFirestore: (snap: any) => snap.data(),
+            },
+            type: 'query',
+            firestore: {
+              type: 'firestore',
+              app: {
+                name: 'mock-app',
+                options: {},
+                automaticDataCollectionEnabled: false,
+              },
+              toJSON: () => ({}),
+            },
+            withConverter: function (_converter: any) { return this; },
+          },
+          docChanges: () => [],
+          toJSON: () => JSON.stringify(mockVideos),
+        } as any)
+      );
       
       render(<VideoFeedPage />);
       
@@ -1250,24 +1473,100 @@ describe('VideoFeedPage', () => {
         }
       ];
 
-      // Mock both getDocs calls: connections query + videos query
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call: connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call: videos query
+      mockGetDocs.mockImplementation(() =>
+        Promise.resolve({
           forEach: (callback: any) => {
             mockVideos.forEach((video) => {
               const { id, ...rest } = video;
               callback({
                 id,
-                data: () => rest
+                data: () => rest,
               });
             });
-          }
-        } as any);
+          },
+          docs: mockVideos.map((video) => ({
+            id: video.id,
+            data: () => {
+              const { id, ...rest } = video;
+              return rest;
+            },
+            metadata: {
+              hasPendingWrites: false,
+              fromCache: false,
+              isEqual: () => true,
+            },
+            exists: function (): this is typeof this { return true; },
+            get: () => undefined,
+            toJSON: () => video,
+            ref: {
+              converter: {
+                toFirestore: () => ({}),
+                fromFirestore: () => ({}),
+              },
+              type: 'document',
+              firestore: {
+                type: 'firestore',
+                app: {
+                  name: 'mock-app',
+                  options: {},
+                  automaticDataCollectionEnabled: false,
+                },
+                toJSON: () => ({}),
+              },
+              id: video.id,
+              path: `videos/${video.id}`,
+              parent: {
+                type: 'collection',
+                id: 'videos',
+                path: 'videos',
+                parent: null,
+                withConverter: function () { return this; },
+                converter: {
+                  toFirestore: () => ({}),
+                  fromFirestore: () => ({}),
+                },
+                firestore: {
+                  type: 'firestore',
+                  app: {
+                    name: 'mock-app',
+                    options: {},
+                    automaticDataCollectionEnabled: false,
+                  },
+                  toJSON: () => ({}),
+                },
+              },
+              withConverter: function () { return this; },
+              toJSON: () => ({}),
+            },
+          })),
+          size: mockVideos.length,
+          empty: mockVideos.length === 0,
+          metadata: {
+            hasPendingWrites: false,
+            fromCache: false,
+            isEqual: () => true,
+          },
+          query: {
+            converter: {
+              toFirestore: (data: any) => data,
+              fromFirestore: (snap: any) => snap.data(),
+            },
+            type: 'query',
+            firestore: {
+              type: 'firestore',
+              app: {
+                name: 'mock-app',
+                options: {},
+                automaticDataCollectionEnabled: false,
+              },
+              toJSON: () => ({}),
+            },
+            withConverter: function (_converter: any) { return this; },
+          },
+          docChanges: () => [],
+          toJSON: () => JSON.stringify(mockVideos),
+        } as any)
+      );
       
       render(<VideoFeedPage />);
       
@@ -1302,45 +1601,36 @@ describe('VideoFeedPage', () => {
       mockOrderBy.mockReturnValue({ type: 'orderBy' } as any);
       mockLimit.mockReturnValue({ type: 'limit' } as any);
       mockQuery.mockReturnValue({ id: 'query' } as any);
-      
+
       // Set no authenticated user
       (auth as any).currentUser = null;
-      
-      const mockVideos = [
-        {
-          id: 'video-1',
-          title: 'Test Video',
-          videoUrl: 'test-url',
-          thumbnailUrl: 'test-thumb',
-          likes: [],
-          comments: [],
-          userId: 'test-user',
-          createdAt: Timestamp.fromDate(new Date()),
-          isPublic: true
-        }
-      ];
 
-      // Set up fresh mock implementations
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call - connections query (should return empty when no user)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call - videos query (should work for public videos)
-          forEach: (callback: any) => {
-            mockVideos.forEach((video) => {
-              const { id, ...rest } = video;
-              callback({
-                id,
-                data: () => rest
-              });
+
+      // Always return a video for any getDocs call (handles multiple calls)
+      mockGetDocs.mockResolvedValue({
+        forEach: (callback: any) => {
+          [{
+            id: 'video-1',
+            title: 'Test Video',
+            videoUrl: 'test-url',
+            thumbnailUrl: 'test-thumb',
+            likes: [],
+            comments: [],
+            userId: 'test-user',
+            createdAt: Timestamp.fromDate(new Date()),
+            isPublic: true
+          }].forEach((video) => {
+            const { id, ...rest } = video;
+            callback({
+              id,
+              data: () => rest
             });
-          }
-        } as any);
-      
+          });
+        }
+      } as any);
+
       render(<VideoFeedPage />);
-      
+
       await waitFor(() => {
         const likeButton = screen.getByTestId('like-button');
         expect(likeButton).toBeInTheDocument();
@@ -1352,60 +1642,51 @@ describe('VideoFeedPage', () => {
       const mockUpdateDoc = jest.fn().mockRejectedValue(new Error('Firebase error'));
       const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
       (firestore.doc as jest.Mock) = mockDoc;
       (firestore.arrayUnion as jest.Mock) = jest.fn().mockReturnValue(['test-user-id']);
-      
-      const mockVideos = [
-        {
-          id: 'video-1',
-          title: 'Test Video',
-          videoUrl: 'test-url',
-          thumbnailUrl: 'test-thumb',
-          likes: [],
-          comments: [],
-          userId: 'test-user',
-          createdAt: Timestamp.fromDate(new Date()),
-          isPublic: true
-        }
-      ];
 
-      // Mock both getDocs calls: connections query + videos query
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call: connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValueOnce({
-          // Second call: videos query
-          forEach: (callback: any) => {
-            mockVideos.forEach((video) => {
-              const { id, ...rest } = video;
-              callback({
-                id,
-                data: () => rest
-              });
+
+      // Always return a video for any getDocs call (handles multiple calls)
+      mockGetDocs.mockResolvedValue({
+        forEach: (callback: any) => {
+          [{
+            id: 'video-1',
+            title: 'Test Video',
+            videoUrl: 'test-url',
+            thumbnailUrl: 'test-thumb',
+            likes: [],
+            comments: [],
+            userId: 'test-user',
+            createdAt: Timestamp.fromDate(new Date()),
+            isPublic: true
+          }].forEach((video) => {
+            const { id, ...rest } = video;
+            callback({
+              id,
+              data: () => rest
             });
-          }
-        } as any);
-      
+          });
+        }
+      } as any);
+
       render(<VideoFeedPage />);
-      
+
       // Wait for component to load
       await waitFor(() => {
         expect(screen.getByTestId('like-button')).toBeInTheDocument();
       });
 
       const likeButton = screen.getByTestId('like-button');
-      
+
       // Click like button to trigger error
       fireEvent.click(likeButton);
-      
+
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith('Error updating like:', expect.any(Error));
       });
-      
+
       consoleSpy.mockRestore();
     });
   });
