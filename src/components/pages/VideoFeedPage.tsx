@@ -9,6 +9,8 @@ import { collection, query, where, orderBy, limit, getDocs, startAfter, Document
 import { db, auth } from '../../environments/firebaseConfig';
 import { IosShare } from '@mui/icons-material';
 
+type VideoFilter = 'all' | 'liked' | 'mine';
+
 export const VideoFeedPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -18,6 +20,7 @@ export const VideoFeedPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // Start paused for mobile compatibility
+  const [currentFilter, setCurrentFilter] = useState<VideoFilter>('all');
   
   // Pagination state
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
@@ -37,7 +40,7 @@ export const VideoFeedPage: React.FC = () => {
   useEffect(() => {
     loadConnectedUsers();
     loadVideos();
-  }, []);
+  }, [currentFilter]);
 
   // Load connected user IDs from connections
   const loadConnectedUsers = async () => {
@@ -100,28 +103,81 @@ export const VideoFeedPage: React.FC = () => {
       // Load only 3-5 videos at a time to minimize Firebase reads
       const BATCH_SIZE = 3;
       
-      // For now, only load public videos to avoid permission issues
-      // TODO: Implement separate queries for private videos from connections
-      let videosQuery = query(
-        collection(db, 'videos'),
-        where('isPublic', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(BATCH_SIZE)
-      );
-
-      // For pagination, start after the last document
-      if (loadMore && lastDoc) {
+      let videosQuery;
+      
+      if (currentFilter === 'all') {
+        // All Videos: public videos + private videos from connections
+        // First get public videos
         videosQuery = query(
           collection(db, 'videos'),
           where('isPublic', '==', true),
           orderBy('createdAt', 'desc'),
-          startAfter(lastDoc),
           limit(BATCH_SIZE)
         );
+
+        if (loadMore && lastDoc) {
+          videosQuery = query(
+            collection(db, 'videos'),
+            where('isPublic', '==', true),
+            orderBy('createdAt', 'desc'),
+            startAfter(lastDoc),
+            limit(BATCH_SIZE)
+          );
+        }
+      } else if (currentFilter === 'liked') {
+        // Liked Videos: videos where current user ID is in likes array
+        if (!userId) {
+          setVideos([]);
+          setIsLoading(false);
+          setIsLoadingMore(false);
+          return;
+        }
+        
+        videosQuery = query(
+          collection(db, 'videos'),
+          where('likes', 'array-contains', userId),
+          orderBy('createdAt', 'desc'),
+          limit(BATCH_SIZE)
+        );
+
+        if (loadMore && lastDoc) {
+          videosQuery = query(
+            collection(db, 'videos'),
+            where('likes', 'array-contains', userId),
+            orderBy('createdAt', 'desc'),
+            startAfter(lastDoc),
+            limit(BATCH_SIZE)
+          );
+        }
+      } else if (currentFilter === 'mine') {
+        // My Videos: videos uploaded by current user
+        if (!userId) {
+          setVideos([]);
+          setIsLoading(false);
+          setIsLoadingMore(false);
+          return;
+        }
+        
+        videosQuery = query(
+          collection(db, 'videos'),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc'),
+          limit(BATCH_SIZE)
+        );
+
+        if (loadMore && lastDoc) {
+          videosQuery = query(
+            collection(db, 'videos'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc'),
+            startAfter(lastDoc),
+            limit(BATCH_SIZE)
+          );
+        }
       }
       
-      const querySnapshot = await getDocs(videosQuery);
-      const loadedVideos: Video[] = [];
+      const querySnapshot = await getDocs(videosQuery!);
+      let loadedVideos: Video[] = [];
       let lastDocument: DocumentSnapshot | null = null;
       
       querySnapshot.forEach((doc) => {
@@ -131,6 +187,37 @@ export const VideoFeedPage: React.FC = () => {
         } as Video);
         lastDocument = doc;
       });
+
+      // For "all" filter, also load private videos from connections
+      if (currentFilter === 'all' && !loadMore && connectedUserIds.length > 0) {
+        try {
+          // Load private videos from connected users
+          const privateQuery = query(
+            collection(db, 'videos'),
+            where('isPublic', '==', false),
+            where('userId', 'in', connectedUserIds.slice(0, 10)), // Firestore 'in' limit is 10
+            orderBy('createdAt', 'desc'),
+            limit(BATCH_SIZE)
+          );
+          
+          const privateSnapshot = await getDocs(privateQuery);
+          const privateVideos: Video[] = [];
+          
+          privateSnapshot.forEach((doc) => {
+            privateVideos.push({
+              id: doc.id,
+              ...doc.data()
+            } as Video);
+          });
+          
+          // Merge and sort by creation date
+          loadedVideos = [...loadedVideos, ...privateVideos]
+            .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)
+            .slice(0, BATCH_SIZE);
+        } catch (privateErr) {
+          console.warn('Could not load private videos from connections:', privateErr);
+        }
+      }
       
       // Update state
       if (loadMore) {
@@ -165,6 +252,13 @@ export const VideoFeedPage: React.FC = () => {
       console.error('Upload failed:', err);
       // Error is handled by the modal
     }
+  };
+
+  const handleFilterChange = (filter: VideoFilter) => {
+    setCurrentFilter(filter);
+    setCurrentVideoIndex(0);
+    setLastDoc(null);
+    setHasMoreVideos(true);
   };
 
   const handlePlayToggle = () => {
@@ -296,11 +390,58 @@ export const VideoFeedPage: React.FC = () => {
     }
   }, [connectedUserIds]);
 
+  const getEmptyStateMessage = () => {
+    switch (currentFilter) {
+      case 'liked':
+        return {
+          title: 'No liked videos yet',
+          subtitle: 'Videos you like will appear here!'
+        };
+      case 'mine':
+        return {
+          title: 'No videos uploaded yet',
+          subtitle: 'Upload your first travel video to get started!'
+        };
+      default:
+        return {
+          title: 'No videos yet',
+          subtitle: 'Be the first to share your travel memories!'
+        };
+    }
+  };
+
   const currentVideo = videos[currentVideoIndex];
 
   if (isLoading) {
     return (
       <div className="video-feed-page" data-testid="video-feed-page">
+        {/* Filter Toggle Buttons */}
+        <div className="filter-toggles" data-testid="filter-toggles">
+          <button
+            className={`filter-toggle ${currentFilter === 'all' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('all')}
+            data-testid="filter-all"
+          >
+            All
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'liked' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('liked')}
+            data-testid="filter-liked"
+            disabled={!userId}
+          >
+            Liked
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'mine' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('mine')}
+            data-testid="filter-mine"
+            disabled={!userId}
+          >
+            My Videos
+          </button>
+        </div>
+        
         <div className="loading-state" data-testid="loading-state">
           Loading videos...
         </div>
@@ -311,6 +452,33 @@ export const VideoFeedPage: React.FC = () => {
   if (error) {
     return (
       <div className="video-feed-page" data-testid="video-feed-page">
+        {/* Filter Toggle Buttons */}
+        <div className="filter-toggles" data-testid="filter-toggles">
+          <button
+            className={`filter-toggle ${currentFilter === 'all' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('all')}
+            data-testid="filter-all"
+          >
+            All
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'liked' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('liked')}
+            data-testid="filter-liked"
+            disabled={!userId}
+          >
+            Liked
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'mine' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('mine')}
+            data-testid="filter-mine"
+            disabled={!userId}
+          >
+            My Videos
+          </button>
+        </div>
+        
         <div className="error-state" data-testid="error-state">
           <p>{error}</p>
           <button onClick={() => loadVideos(false)} data-testid="retry-button">
@@ -322,12 +490,41 @@ export const VideoFeedPage: React.FC = () => {
   }
 
   if (videos.length === 0) {
+    const emptyMessage = getEmptyStateMessage();
+    
     return (
       <div className="video-feed-page" data-testid="video-feed-page">
+        {/* Filter Toggle Buttons */}
+        <div className="filter-toggles" data-testid="filter-toggles">
+          <button
+            className={`filter-toggle ${currentFilter === 'all' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('all')}
+            data-testid="filter-all"
+          >
+            All
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'liked' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('liked')}
+            data-testid="filter-liked"
+            disabled={!userId}
+          >
+            Liked
+          </button>
+          <button
+            className={`filter-toggle ${currentFilter === 'mine' ? 'active' : ''}`}
+            onClick={() => handleFilterChange('mine')}
+            data-testid="filter-mine"
+            disabled={!userId}
+          >
+            My Videos
+          </button>
+        </div>
+        
         <div className="empty-state" data-testid="empty-state">
-          <h2>No videos yet</h2>
-          <p>Be the first to share your travel memories!</p>
-          {userId && (
+          <h2>{emptyMessage.title}</h2>
+          <p>{emptyMessage.subtitle}</p>
+          {(userId && currentFilter !== 'liked') && (
             <button 
               onClick={() => setIsUploadModalOpen(true)}
               className="upload-button"
@@ -360,6 +557,33 @@ export const VideoFeedPage: React.FC = () => {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
+      {/* Filter Toggle Buttons */}
+      <div className="filter-toggles" data-testid="filter-toggles">
+        <button
+          className={`filter-toggle ${currentFilter === 'all' ? 'active' : ''}`}
+          onClick={() => handleFilterChange('all')}
+          data-testid="filter-all"
+        >
+          All
+        </button>
+        <button
+          className={`filter-toggle ${currentFilter === 'liked' ? 'active' : ''}`}
+          onClick={() => handleFilterChange('liked')}
+          data-testid="filter-liked"
+          disabled={!userId}
+        >
+          Liked
+        </button>
+        <button
+          className={`filter-toggle ${currentFilter === 'mine' ? 'active' : ''}`}
+          onClick={() => handleFilterChange('mine')}
+          data-testid="filter-mine"
+          disabled={!userId}
+        >
+          My Videos
+        </button>
+      </div>
+      
       {videos.length > 0 && (
         <>
           <div className="video-container" data-testid="video-container">
