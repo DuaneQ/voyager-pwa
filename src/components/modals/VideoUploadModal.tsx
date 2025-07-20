@@ -34,6 +34,13 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
     if (!file) return;
 
     setErrors([]);
+    
+    // Quick file size check before detailed validation
+    if (file.size > 50 * 1024 * 1024) { // 50MB
+      setErrors([`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 50MB. Please compress your video or use a shorter clip.`]);
+      return;
+    }
+    
     const validation = await validateVideoFile(file);
     
     if (!validation.isValid) {
@@ -128,7 +135,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
           )}
 
           <div className="form-group">
-            <label htmlFor="video-file">Video File</label>
+            <label htmlFor="video-file">Video File (Max 50MB, 60 seconds)</label>
             <input
               id="video-file"
               type="file"
@@ -137,6 +144,9 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               disabled={actualIsUploading}
               data-testid="file-input"
             />
+            <div className="file-requirements" style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>
+              Supported formats: MP4, MOV • Max size: 50MB • Max duration: 60 seconds
+            </div>
             {selectedFile && (
               <div className="file-info" data-testid="file-info">
                 Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
@@ -193,6 +203,11 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                 <div className="progress-status">
                   {processingStatus || 'Processing...'}
                 </div>
+                {processingStatus?.includes('thumbnail') && (
+                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>
+                    This may take longer for large files. Please wait...
+                  </div>
+                )}
               </div>
               <div className="progress-bar">
                 <div 

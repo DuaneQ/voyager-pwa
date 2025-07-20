@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { storage, db, auth } from '../environments/firebaseConfig';
-import { Video, VideoUploadData } from '../types/Video';
+import { Video, VideoUploadData, VIDEO_CONSTRAINTS } from '../types/Video';
 import { generateVideoThumbnail } from '../utils/videoValidation';
 
 interface UseVideoUploadResult {
@@ -33,6 +33,11 @@ export function useVideoUpload(): UseVideoUploadResult {
       throw new Error('User must be authenticated to upload videos');
     }
 
+    // Additional file size check before starting upload
+    if (videoData.file.size > VIDEO_CONSTRAINTS.MAX_FILE_SIZE) {
+      throw new Error(`File too large. Maximum size is ${VIDEO_CONSTRAINTS.MAX_FILE_SIZE / 1024 / 1024}MB`);
+    }
+
     // Validate video format for iOS compatibility
     const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
     if (!allowedTypes.includes(videoData.file.type)) {
@@ -51,30 +56,40 @@ export function useVideoUpload(): UseVideoUploadResult {
       // Upload original video file to Firebase Storage with proper metadata
       if (isMounted.current) setProcessingStatus('Uploading video...');
       const videoRef = ref(storage, `users/${userId}/videos/${videoId}.mp4`);
-      if (isMounted.current) setUploadProgress(30);
+      if (isMounted.current) setUploadProgress(20);
       
       // Add metadata for better browser compatibility
       const metadata = {
         contentType: 'video/mp4',
         customMetadata: {
           'originalType': videoData.file.type,
-          'uploadedAt': new Date().toISOString()
+          'uploadedAt': new Date().toISOString(),
+          'fileSize': videoData.file.size.toString()
         }
       };
       
+      // Upload video with progress tracking
       const videoSnapshot = await uploadBytes(videoRef, videoData.file, metadata);
       const videoUrl = await getDownloadURL(videoSnapshot.ref);
       if (isMounted.current) setUploadProgress(60);
       
-      // Generate and upload thumbnail (no watermarking)
+      // Generate and upload thumbnail with better error handling
       if (isMounted.current) setProcessingStatus('Creating thumbnail...');
-      const thumbnailBlob = await generateVideoThumbnail(videoData.file);
+      let thumbnailUrl = '';
       
-      const thumbnailRef = ref(storage, `users/${userId}/thumbnails/${videoId}.jpg`);
-      if (isMounted.current) setUploadProgress(80);
-      const thumbnailSnapshot = await uploadBytes(thumbnailRef, thumbnailBlob);
-      const thumbnailUrl = await getDownloadURL(thumbnailSnapshot.ref);
-      if (isMounted.current) setUploadProgress(90);
+      try {
+        const thumbnailBlob = await generateVideoThumbnail(videoData.file);
+        const thumbnailRef = ref(storage, `users/${userId}/thumbnails/${videoId}.jpg`);
+        if (isMounted.current) setUploadProgress(80);
+        const thumbnailSnapshot = await uploadBytes(thumbnailRef, thumbnailBlob);
+        thumbnailUrl = await getDownloadURL(thumbnailSnapshot.ref);
+        if (isMounted.current) setUploadProgress(90);
+      } catch (thumbnailError) {
+        console.warn('Failed to generate thumbnail:', thumbnailError);
+        // Use a default thumbnail instead of failing the entire upload
+        thumbnailUrl = '/og-image.png'; // Fallback to default image
+        if (isMounted.current) setUploadProgress(90);
+      }
       
       // Create video document with meaningful defaults
       if (isMounted.current) setProcessingStatus('Saving video details...');
