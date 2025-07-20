@@ -38,7 +38,7 @@ export interface VideoValidationResult {
 
 // Constants for video validation
 export const VIDEO_CONSTRAINTS = {
-  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
+  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB (reduced from 100MB for better reliability)
   MAX_DURATION: 60, // seconds
   SUPPORTED_FORMATS: [
     'video/mp4', 
