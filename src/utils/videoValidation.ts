@@ -45,24 +45,43 @@ export const validateVideoFile = async (file: File): Promise<VideoValidationResu
 };
 
 /**
- * Gets the duration of a video file
+ * Gets the duration of a video file with timeout handling
  */
 export const getVideoDuration = (file: File): Promise<number> => {
   return new Promise((resolve, reject) => {
+    // Set timeout to prevent hanging on large/corrupted files
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error('Unable to read video duration - file may be too large or corrupted'));
+    }, 15000); // 15 second timeout
+
     const video = document.createElement('video');
     video.preload = 'metadata';
+    video.muted = true;
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      if (video.src) {
+        window.URL.revokeObjectURL(video.src);
+      }
+    };
 
     video.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(video.src);
+      cleanup();
       resolve(video.duration);
     };
 
     video.onerror = () => {
-      window.URL.revokeObjectURL(video.src);
+      cleanup();
       reject(new Error('Failed to load video metadata'));
     };
 
-    video.src = URL.createObjectURL(file);
+    try {
+      video.src = URL.createObjectURL(file);
+    } catch (error) {
+      cleanup();
+      reject(new Error('Failed to create object URL for video file'));
+    }
   });
 };
 
@@ -98,42 +117,97 @@ export const validateVideoMetadata = (title?: string, description?: string): Vid
 };
 
 /**
- * Generates a thumbnail from a video file
+ * Generates a thumbnail from a video file with better error handling and timeouts
  */
 export const generateVideoThumbnail = (file: File, timeInSeconds: number = 1): Promise<Blob> => {
   return new Promise((resolve, reject) => {
+    // Set a timeout to prevent hanging on large files
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error('Thumbnail generation timed out. File may be too large or corrupted.'));
+    }, 30000); // 30 second timeout
+
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      if (video.src) {
+        window.URL.revokeObjectURL(video.src);
+      }
+    };
+
     if (!ctx) {
+      cleanup();
       reject(new Error('Cannot create canvas context'));
       return;
     }
 
+    // Add additional error handling for large files
+    video.preload = 'metadata';
+    video.muted = true; // Ensure muted for autoplay policies
+
     video.onloadedmetadata = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Limit canvas size to prevent memory issues with very large videos
+      const maxDimension = 1280;
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      
+      if (video.videoWidth > maxDimension || video.videoHeight > maxDimension) {
+        if (aspectRatio > 1) {
+          // Landscape
+          canvas.width = maxDimension;
+          canvas.height = maxDimension / aspectRatio;
+        } else {
+          // Portrait
+          canvas.height = maxDimension;
+          canvas.width = maxDimension * aspectRatio;
+        }
+      } else {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      // Ensure we don't seek beyond video duration
+      const seekTime = Math.min(timeInSeconds, video.duration - 0.1);
+      video.currentTime = Math.max(0, seekTime);
     };
 
     video.onseeked = () => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error('Failed to generate thumbnail'));
-        }
-        window.URL.revokeObjectURL(video.src);
-      }, 'image/jpeg', 0.8);
+      try {
+        // Draw video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to blob with compression
+        canvas.toBlob((blob) => {
+          cleanup();
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to generate thumbnail blob'));
+          }
+        }, 'image/jpeg', 0.7); // Reduced quality for smaller file size
+      } catch (error) {
+        cleanup();
+        reject(new Error(`Failed to draw video frame: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      }
     };
 
-    video.onerror = () => {
-      window.URL.revokeObjectURL(video.src);
-      reject(new Error('Failed to load video'));
+    video.onerror = (error) => {
+      cleanup();
+      reject(new Error('Failed to load video for thumbnail generation. File may be corrupted or unsupported.'));
     };
 
-    video.src = URL.createObjectURL(file);
-    video.currentTime = timeInSeconds;
+    video.onloadstart = () => {
+      console.log('Video loading started for thumbnail generation');
+    };
+
+    // Create object URL and start loading
+    try {
+      video.src = URL.createObjectURL(file);
+    } catch (error) {
+      cleanup();
+      reject(new Error('Failed to create object URL for video file'));
+    }
   });
 };
