@@ -64,11 +64,38 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css|html|svg|json|woff|woff2)",
+        "source": "**/*.@(js|css)",
         "headers": [
           {
-            "key": "Content-Encoding",
-            "value": "gzip"
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/manifest.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
           }
         ]
       },
@@ -90,10 +117,6 @@
           {
             "key": "Strict-Transport-Security",
             "value": "max-age=31536000; includeSubDomains"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
           },
           {
             "key": "Referrer-Policy",
