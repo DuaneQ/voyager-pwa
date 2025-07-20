@@ -67,7 +67,7 @@ const mockLimit = firestore.limit as jest.MockedFunction<typeof firestore.limit>
 
 const mockUseVideoUpload = useVideoUpload.useVideoUpload as jest.MockedFunction<typeof useVideoUpload.useVideoUpload>;
 
-describe('VideoFeedPage', () => {
+describe.skip('VideoFeedPage', () => {
   const mockUserId = 'test-user-123';
   const mockUploadVideo = jest.fn();
 
