@@ -42,7 +42,21 @@ service cloud.firestore {
 
     // Itineraries
     match /itineraries/{itineraryId} {
-      allow read, write: if request.auth != null;
+      // Allow authenticated users to create itineraries
+      allow create: if request.auth != null 
+        && request.auth.uid != null
+        && request.resource.data.userInfo.uid == request.auth.uid;
+      
+      // Allow authenticated users to read all itineraries (for browsing/matching)
+      allow read: if request.auth != null;
+      
+      // Allow users to update/delete their own itineraries
+      allow update, delete: if request.auth != null 
+        && request.auth.uid == resource.data.userInfo.uid;
+      
+      // Allow admins to read/update/delete any itinerary
+      allow read, update, delete: if request.auth != null 
+        && request.auth.token.admin == true;
     }
 
     // Connections
