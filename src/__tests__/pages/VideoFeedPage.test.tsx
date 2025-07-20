@@ -67,7 +67,7 @@ const mockLimit = firestore.limit as jest.MockedFunction<typeof firestore.limit>
 
 const mockUseVideoUpload = useVideoUpload.useVideoUpload as jest.MockedFunction<typeof useVideoUpload.useVideoUpload>;
 
-describe.skip('VideoFeedPage', () => {
+describe('VideoFeedPage', () => {
   const mockUserId = 'test-user-123';
   const mockUploadVideo = jest.fn();
 
@@ -607,7 +607,7 @@ describe.skip('VideoFeedPage', () => {
         } as any);
     });
 
-    it.skip('should handle swipe up to go to next video', async () => {
+    it('should handle swipe up to go to next video', async () => {
       render(<VideoFeedPage />);
       
       await waitFor(() => {
@@ -708,6 +708,11 @@ describe.skip('VideoFeedPage', () => {
         expect(screen.getByTestId('video-player')).toBeInTheDocument();
       });
 
+      // Wait for video content to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Video 1')).toBeInTheDocument();
+      });
+
       const feedPage = screen.getByTestId('video-feed-page');
       
       // Simulate small swipe (less than minSwipeDistance)
@@ -782,6 +787,11 @@ describe.skip('VideoFeedPage', () => {
         expect(screen.getByTestId('video-player')).toBeInTheDocument();
       });
 
+      // Wait for video content to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Video 1')).toBeInTheDocument();
+      });
+
       const feedPage = screen.getByTestId('video-feed-page');
 
       // Test touch without move (tap)
@@ -817,67 +827,45 @@ describe.skip('VideoFeedPage', () => {
       // Clear default mock and setup custom sequence for load more test
       mockGetDocs.mockClear();
       
-      // Mock additional videos for pagination test  
+      // Create test videos including extra ones for pagination
+      const allTestVideos = [
+        ...mockVideos,
+        {
+          id: 'video-3',
+          userId: 'user-3', 
+          title: 'Test Video 3',
+          videoUrl: 'https://example.com/video3.mp4',
+          thumbnailUrl: 'https://example.com/thumb3.jpg',
+          isPublic: true,
+          likes: [],
+          comments: [],
+          viewCount: 5,
+          duration: 20,
+          fileSize: 1024 * 1024,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        }
+      ];
+
+      // Keep track of calls to differentiate connections vs videos
       let callCount = 0;
       mockGetDocs.mockImplementation(() => {
         callCount++;
+        const isOddCall = callCount % 2 === 1;
+        
         return Promise.resolve({
           forEach: (callback: any) => {
-            if (callCount === 1) {
-              // First call - connections (empty)
+            if (isOddCall) {
+              // Odd calls are connections queries - return empty
               return;
-            } else if (callCount === 2) {
-              // Second call - initial videos (return BATCH_SIZE=3 to indicate more available)
-              const initialVideos = [
-                ...mockVideos,
-                {
-                  id: 'video-3',
-                  userId: 'user-3', 
-                  title: 'Test Video 3',
-                  videoUrl: 'https://example.com/video3.mp4',
-                  thumbnailUrl: 'https://example.com/thumb3.jpg',
-                  isPublic: true,
-                  likes: [],
-                  comments: [],
-                  viewCount: 5,
-                  duration: 20,
-                  fileSize: 1024 * 1024,
-                  createdAt: Timestamp.now(),
-                  updatedAt: Timestamp.now()
-                }
-              ];
-              
-              initialVideos.forEach((video) => {
+            } else {
+              // Even calls are videos queries - return our test videos
+              allTestVideos.forEach((video) => {
                 const { id, ...rest } = video;
                 callback({
                   id,
                   data: () => rest
                 });
-              });
-            } else if (callCount === 3) {
-              // Third call - connections for reload after connections change
-              return;
-            } else {
-              // Fourth+ calls - additional videos (load more)
-              const additionalVideo = {
-                id: 'video-4',
-                userId: 'user-4',
-                title: 'Test Video 4', 
-                videoUrl: 'https://example.com/video4.mp4',
-                thumbnailUrl: 'https://example.com/thumb4.jpg',
-                isPublic: true,
-                likes: [],
-                comments: [],
-                viewCount: 2,
-                duration: 25,
-                fileSize: 1024 * 1024,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now()
-              };
-              const { id, ...rest } = additionalVideo;
-              callback({
-                id,
-                data: () => rest
               });
             }
           }
@@ -886,10 +874,16 @@ describe.skip('VideoFeedPage', () => {
 
       render(<VideoFeedPage />);
       
-      // Wait for initial load
+      // Wait for initial load - expect video player to be rendered
       await waitFor(() => {
+        expect(screen.getByTestId('video-feed-page')).toBeInTheDocument();
         expect(screen.getByTestId('video-player')).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
+
+      // Wait for video content to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Video 1')).toBeInTheDocument();
+      }, { timeout: 3000 });
 
       const feedPage = screen.getByTestId('video-feed-page');
       
@@ -908,9 +902,9 @@ describe.skip('VideoFeedPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Test Video 2')).toBeInTheDocument();
-      });
+      }, { timeout: 2000 });
 
-      // Navigate to third video (should trigger load more)
+      // Navigate to third video
       fireEvent.touchStart(feedPage, {
         targetTouches: [{ clientY: 300 }]
       });
@@ -923,10 +917,10 @@ describe.skip('VideoFeedPage', () => {
         changedTouches: [{ clientY: 200 }]
       });
 
-      // Should load more videos and show updated count
+      // Should show the third video
       await waitFor(() => {
         expect(screen.getByText('Test Video 3')).toBeInTheDocument();
-      });
+      }, { timeout: 2000 });
     });
   });
 

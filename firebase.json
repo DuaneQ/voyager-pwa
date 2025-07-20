@@ -54,6 +54,10 @@
         "function": "videoShare"
       },
       {
+        "source": "/video/**",
+        "function": "videoShare"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

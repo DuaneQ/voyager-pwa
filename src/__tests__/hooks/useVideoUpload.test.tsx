@@ -153,18 +153,25 @@ beforeEach(() => {
     expect(result.current.isUploading).toBe(false);
   });
 
-  it('should handle thumbnail generation error', async () => {
+  it('should handle thumbnail generation error gracefully', async () => {
+    // With the updated implementation, thumbnail errors should not fail the upload
+    // Instead, it should use a fallback thumbnail
     mockGenerateVideoThumbnail.mockRejectedValue(new Error('Thumbnail generation failed'));
     
     const { result } = renderHook(() => useVideoUpload());
 
     await act(async () => {
-      await expect(result.current.uploadVideo(mockVideoData)).rejects.toThrow(
-        'Thumbnail generation failed'
-      );
+      // Upload should succeed even with thumbnail error
+      const uploadedVideo = await result.current.uploadVideo(mockVideoData);
+      
+      // Should use fallback thumbnail
+      expect(uploadedVideo.thumbnailUrl).toBe('/og-image.png');
+      expect(uploadedVideo.title).toBe('Test Video');
     });
 
-    expect(result.current.error).toBe('Thumbnail generation failed');
+    // Upload should complete successfully
+    expect(result.current.error).toBe(null);
+    expect(result.current.isUploading).toBe(false);
   });
 
   it('should handle Firestore save error', async () => {
@@ -218,9 +225,9 @@ beforeEach(() => {
       uploadPromise = result.current!.uploadVideo(mockVideoData);
     });
     
-    // Wait for isUploading to become true and progress to be at 30 (after ref creation)
+    // Wait for isUploading to become true and progress to be at 20 (after ref creation)
     await waitFor(() => expect(result.current!.isUploading).toBe(true), { timeout: 1000 });
-    expect(result.current!.uploadProgress).toBe(30);
+    expect(result.current!.uploadProgress).toBe(20);
     
     // Complete video upload (this will set progress to 60)
     await waitFor(() => expect(resolvers.videoUpload).toBeDefined(), { timeout: 1000 });
