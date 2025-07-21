@@ -31,22 +31,37 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
   const db = getFirestore(app);
   const requestIdRef = useRef(0);
 
-  // Helper to check terms for a specific uid
+  // Helper to check terms for a specific uid with timeout
   const checkTermsStatusForUid = useCallback(async (uid: string): Promise<boolean> => {
     if (!uid) return false;
     const thisRequestId = ++requestIdRef.current;
     setError(null);
     setIsLoading(true);
+    
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
+      // Create a timeout promise that rejects after 10 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Terms check timed out. Please check your connection and try again.'));
+        }, 10000); // 10 second timeout
+      });
+      
+      // Race between the actual request and timeout
+      const userDoc = await Promise.race([
+        getDoc(doc(db, 'users', uid)),
+        timeoutPromise
+      ]);
+      
       // Only update state if this is still the most recent request
       if (requestIdRef.current !== thisRequestId) {
         return false;
       }
+      
       if (!userDoc.exists()) {
         setHasAcceptedTerms(false);
         return false;
       }
+      
       const userData = userDoc.data();
       const termsAcceptance = userData.termsAcceptance;
       const hasValidAcceptance = termsAcceptance?.hasAcceptedTerms && 
@@ -115,10 +130,22 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
       };
       
       const userDocRef = doc(db, 'users', currentUserId);
-      await updateDoc(userDocRef, {
-        termsAcceptance: acceptanceData,
-        lastUpdated: new Date(),
+      
+      // Create a timeout promise that rejects after 15 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Terms acceptance timed out. Please check your connection and try again.'));
+        }, 15000); // 15 second timeout for writes
       });
+      
+      // Race between the actual request and timeout
+      await Promise.race([
+        updateDoc(userDocRef, {
+          termsAcceptance: acceptanceData,
+          lastUpdated: new Date(),
+        }),
+        timeoutPromise
+      ]);
       
       setHasAcceptedTerms(true);
     } catch (error) {

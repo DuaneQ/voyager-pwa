@@ -20,12 +20,32 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
   const [isDeclining, setIsDeclining] = useState(false);
   const [componentError, setComponentError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [loadingTime, setLoadingTime] = useState(0);
   const isMounted = useRef(true);
+  const loadingStartTime = useRef<number | null>(null);
   const userId = auth.currentUser?.uid || null;
   const navigate = useNavigate();
   
   // Combine errors from hook and component
   const error = hookError || componentError;
+  
+  // Track loading time for timeout warnings
+  useEffect(() => {
+    if (isLoading) {
+      loadingStartTime.current = Date.now();
+      const interval = setInterval(() => {
+        if (loadingStartTime.current && isMounted.current) {
+          const elapsed = Math.floor((Date.now() - loadingStartTime.current) / 1000);
+          setLoadingTime(elapsed);
+        }
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    } else {
+      loadingStartTime.current = null;
+      setLoadingTime(0);
+    }
+  }, [isLoading]);
   
   // Track if component is mounted to prevent state updates after unmount
   useEffect(() => {
@@ -128,10 +148,36 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
           Checking terms acceptance...
         </Typography>
         
-        {/* Add a timeout message if loading takes too long */}
+        {/* Show loading time and warnings */}
+        {loadingTime > 3 && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+            Loading for {loadingTime} seconds...
+          </Typography>
+        )}
+        
+        {loadingTime > 8 && (
+          <Typography variant="caption" color="warning.main" sx={{ mt: 1, textAlign: 'center' }}>
+            This is taking longer than expected.<br />
+            Please check your internet connection.
+          </Typography>
+        )}
+        
+        {/* Add retry button after 12 seconds */}
+        {loadingTime > 12 && (
+          <Button 
+            variant="outlined" 
+            size="small"
+            onClick={handleRetry}
+            sx={{ mt: 1 }}
+          >
+            Try Again
+          </Button>
+        )}
+        
+        {/* Add retry count message */}
         {retryCount > 0 && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-            Taking longer than expected. Retry #{retryCount}...
+            Retry attempt #{retryCount}
           </Typography>
         )}
       </Box>

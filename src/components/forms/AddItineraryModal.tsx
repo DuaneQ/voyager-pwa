@@ -9,8 +9,15 @@ import {
   Slider,
   FormControl,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
+import useUpdateItinerary from "../../hooks/useUpdateItinerary";
+import useDeleteItinerary from "../../hooks/useDeleteItinerary";
 import { Itinerary } from "../../types/Itinerary";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { auth } from "../../environments/firebaseConfig";
@@ -23,6 +30,7 @@ interface AddItineraryModalProps {
   open: boolean;
   onClose: () => void;
   onItineraryAdded: (destination: string) => void;
+  onRefresh: () => void;
   itineraries: Itinerary[];
 }
 
@@ -30,10 +38,13 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   open,
   onClose,
   onItineraryAdded,
+  onRefresh,
   itineraries,
 }) => {
   const { userProfile } = useContext(UserProfileContext);
   const { postItinerary } = usePostItineraryToFirestore();
+  const { updateItinerary } = useUpdateItinerary();
+  const { deleteItinerary } = useDeleteItinerary();
   const userId: string | null = auth.currentUser?.uid ?? null;
 
   const [newItinerary, setNewItinerary] = useState({
@@ -54,6 +65,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const [activityInput, setActivityInput] = useState("");
   const [startDateError, setStartDateError] = useState<string | null>(null);
   const [endDateError, setEndDateError] = useState<string | null>(null);
+  
+  // Edit and delete states
+  const [editingItinerary, setEditingItinerary] = useState<Itinerary | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itineraryToDelete, setItineraryToDelete] = useState<Itinerary | null>(null);
+  const [deletingItinerary, setDeletingItinerary] = useState(false);
 
   // Helper function to validate the itinerary
   const validateItinerary = (): string | null => {
@@ -124,20 +141,29 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         sexualOrientation: userProfile?.sexualOrientation || "not specified",
         blocked: userProfile?.blocked || [],
       };
-      const itineraryWithUserInfo = {
+      const itineraryData = {
         ...newItinerary,
         description: DOMPurify.sanitize(newItinerary.description),
         activities: newItinerary.activities.map(activity => DOMPurify.sanitize(activity)),
         userInfo,
       };
 
-      await postItinerary(itineraryWithUserInfo);
-      onItineraryAdded(newItinerary.destination);
+      if (editingItinerary) {
+        // Update existing itinerary
+        await updateItinerary(editingItinerary.id, itineraryData);
+        alert("Itinerary successfully updated!");
+        setEditingItinerary(null);
+        onRefresh(); // Trigger refresh for updated itinerary
+      } else {
+        // Create new itinerary
+        await postItinerary(itineraryData);
+        alert("Itinerary successfully created!");
+        onItineraryAdded(newItinerary.destination); // Keep semantic meaning for new itineraries
+      }
       resetItineraryForm();
-      alert("Itinerary successfully created!");
       onClose();
     } catch (error) {
-      alert("An error occurred while saving the itinerary. Please try again.");
+      alert(`An error occurred while ${editingItinerary ? 'updating' : 'saving'} the itinerary. Please try again.`);
     }
   };
 
@@ -152,7 +178,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   };
 
   const handleDateChange = (type: "startDate" | "endDate", value: string) => {
+    console.log(`=== DATE CHANGE DEBUG (${type}) ===`);
+    console.log('Input value:', value, 'Type:', typeof value);
+    
     const currentDate = new Date().toISOString().split("T")[0];
+    console.log('Current date for validation:', currentDate);
+    
     if (type === "startDate") {
       if (value < currentDate) {
         setStartDateError("Start Date cannot be earlier than today.");
@@ -161,10 +192,15 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       } else {
         setStartDateError(null);
       }
+      // Create date at noon UTC to avoid timezone issues
+      const dateAtNoon = new Date(value + "T12:00:00.000Z");
+      console.log('Created date at noon UTC:', dateAtNoon);
+      console.log('Timestamp:', dateAtNoon.getTime());
+      
       setNewItinerary((prev) => ({
         ...prev,
         startDate: value,
-        startDay: new Date(value).getTime(),
+        startDay: dateAtNoon.getTime(),
       }));
     } else if (type === "endDate") {
       if (newItinerary.startDate && value < newItinerary.startDate) {
@@ -172,33 +208,132 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       } else {
         setEndDateError(null);
       }
+      // Create date at noon UTC to avoid timezone issues
+      const dateAtNoon = new Date(value + "T12:00:00.000Z");
+      console.log('Created date at noon UTC:', dateAtNoon);
+      console.log('Timestamp:', dateAtNoon.getTime());
+      
       setNewItinerary((prev) => ({
         ...prev,
         endDate: value,
-        endDay: new Date(value).getTime(),
+        endDay: dateAtNoon.getTime(),
       }));
     }
+    console.log(`=== END DATE CHANGE DEBUG (${type}) ===`);
+  };
+
+  const handleEditItinerary = (itinerary: Itinerary) => {
+    console.log('=== EDIT ITINERARY DEBUG ===');
+    console.log('Raw itinerary object:', itinerary);
+    console.log('Original startDate:', itinerary.startDate, 'Type:', typeof itinerary.startDate);
+    console.log('Original endDate:', itinerary.endDate, 'Type:', typeof itinerary.endDate);
+    console.log('startDay timestamp:', itinerary.startDay);
+    console.log('endDay timestamp:', itinerary.endDay);
+    
+    setEditingItinerary(itinerary);
+    
+    // Ensure dates are in YYYY-MM-DD format for HTML date inputs
+    const formatDateForInput = (dateValue: string | undefined, fieldName: string) => {
+      console.log(`Formatting ${fieldName}:`, dateValue, 'Type:', typeof dateValue);
+      
+      if (!dateValue) {
+        console.log(`${fieldName} is empty, returning empty string`);
+        return '';
+      }
+      
+      // If it's already in YYYY-MM-DD format, use it directly
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        console.log(`${fieldName} is already in YYYY-MM-DD format:`, dateValue);
+        return dateValue;
+      }
+      
+      // If it's a timestamp or other format, convert to YYYY-MM-DD
+      const date = new Date(dateValue);
+      console.log(`${fieldName} parsed as Date:`, date);
+      
+      if (isNaN(date.getTime())) {
+        console.log(`${fieldName} is invalid date, returning empty string`);
+        return ''; // Invalid date
+      }
+      
+      // Format as YYYY-MM-DD for HTML date input
+      const formatted = date.toISOString().split('T')[0];
+      console.log(`${fieldName} formatted for input:`, formatted);
+      return formatted;
+    };
+    
+    const formattedStartDate = formatDateForInput(itinerary.startDate, 'startDate');
+    const formattedEndDate = formatDateForInput(itinerary.endDate, 'endDate');
+    
+    console.log('Final formatted startDate:', formattedStartDate);
+    console.log('Final formatted endDate:', formattedEndDate);
+    
+    setNewItinerary({
+      destination: itinerary.destination,
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
+      description: itinerary.description || '',
+      activities: itinerary.activities || [],
+      gender: itinerary.gender || '',
+      status: itinerary.status || '',
+      sexualOrientation: itinerary.sexualOrientation || '',
+      startDay: itinerary.startDay || 0,
+      endDay: itinerary.endDay || 0,
+      lowerRange: itinerary.lowerRange || 18,
+      upperRange: itinerary.upperRange || 100,
+      likes: itinerary.likes || [],
+    });
+    
+    console.log('=== END EDIT ITINERARY DEBUG ===');
+  };
+
+  const handleDeleteClick = (itinerary: Itinerary) => {
+    setItineraryToDelete(itinerary);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteItinerary = async () => {
+    if (!itineraryToDelete) return;
+
+    setDeletingItinerary(true);
+    try {
+      await deleteItinerary(itineraryToDelete.id);
+      onRefresh(); // Trigger refresh
+      alert("Itinerary successfully deleted!");
+    } catch (error) {
+      alert("An error occurred while deleting the itinerary. Please try again.");
+    } finally {
+      setDeletingItinerary(false);
+      setDeleteDialogOpen(false);
+      setItineraryToDelete(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItinerary(null);
+    resetItineraryForm();
   };
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: { xs: "90vw", sm: 400 },
-          maxWidth: { xs: "90vw", sm: 400 },
-          minWidth: { xs: "90vw", sm: 400 },
-          bgcolor: "background.paper",
-          boxShadow: 24,
-          p: { xs: 1.5, sm: 4 },
-          borderRadius: 2,
-          maxHeight: { xs: "75vh", sm: "80vh" },
-          overflowY: "auto",
-        }}>
-        <h2>Add New Itinerary</h2>
+      <>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90vw", sm: 400 },
+            maxWidth: { xs: "90vw", sm: 400 },
+            minWidth: { xs: "90vw", sm: 400 },
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: { xs: 1.5, sm: 4 },
+            borderRadius: 2,
+            maxHeight: { xs: "75vh", sm: "80vh" },
+            overflowY: "auto",
+          }}>
+        <h2>{editingItinerary ? 'Edit Itinerary' : 'Add New Itinerary'}</h2>
         <GooglePlacesAutocomplete
           apiKey={process.env.REACT_APP_GOOGLE_PLACES_API_KEY}
           selectProps={{
@@ -426,14 +561,14 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           fullWidth
           sx={{ mt: 2 }}
           onClick={handleSaveItinerary}>
-          Save Itinerary
+          {editingItinerary ? 'Update Itinerary' : 'Save Itinerary'}
         </Button>
         <Button
           variant="outlined"
           color="secondary"
           fullWidth
           sx={{ mt: 2 }}
-          onClick={onClose}>
+          onClick={editingItinerary ? handleCancelEdit : onClose}>
           Cancel
         </Button>
         <Box mt={4}>
@@ -447,6 +582,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 itinerary={itinerary}
                 onLike={() => {}}
                 onDislike={() => {}}
+                onEdit={handleEditItinerary}
+                onDelete={handleDeleteClick}
+                showEditDelete={true}
               />
             ))
           ) : (
@@ -456,6 +594,45 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           )}
         </Box>
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !deletingItinerary && setDeleteDialogOpen(false)}
+        aria-labelledby="delete-itinerary-dialog-title"
+      >
+        <DialogTitle id="delete-itinerary-dialog-title">
+          Delete Itinerary?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this itinerary? This action cannot be undone.
+            {itineraryToDelete?.destination && (
+              <>
+                <br />
+                <strong>"{itineraryToDelete.destination}"</strong>
+              </>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteDialogOpen(false)} 
+            disabled={deletingItinerary}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteItinerary}
+            color="error"
+            variant="contained"
+            disabled={deletingItinerary}
+          >
+            {deletingItinerary ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      </>
     </Modal>
   );
 };
