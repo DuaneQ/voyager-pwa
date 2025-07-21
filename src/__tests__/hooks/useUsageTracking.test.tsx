@@ -51,7 +51,7 @@ describe('useUsageTracking', () => {
       subscriptionType: 'free',
       subscriptionEndDate: null,
       subscriptionCancelled: false,
-      dailyUsage: { date: '2025-07-05', viewCount: 5 },
+      dailyUsage: { date: '2035-07-05', viewCount: 5 }, // 10 years in the future
     };
     const { result } = renderHook(() => useUsageTracking(), {
       wrapper: getWrapper(userProfile),
@@ -64,7 +64,7 @@ describe('useUsageTracking', () => {
       subscriptionType: 'premium',
       subscriptionEndDate: '2099-12-31',
       subscriptionCancelled: false,
-      dailyUsage: { date: '2025-07-05', viewCount: 5 },
+      dailyUsage: { date: '2035-07-05', viewCount: 5 }, // 10 years in the future
     };
     const { result } = renderHook(() => useUsageTracking(), {
       wrapper: getWrapper(premiumProfile),

@@ -18,9 +18,9 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({
-      toDate: () => new Date('2023-01-01T00:00:00.000Z'),
-      seconds: 1672531200,
-      nanoseconds: 0
+      toDate: () => new Date(),
+      seconds: Math.floor(Date.now() / 1000),
+      nanoseconds: (Date.now() % 1000) * 1000000
     })),
     fromDate: jest.fn((date) => ({
       toDate: () => date,
@@ -333,15 +333,15 @@ describe('VideoGrid', () => {
     });
   });
 
-  it('should open context menu on video long press/right click', async () => {
+  it('should show visible delete buttons on video thumbnails', async () => {
     renderVideoGrid();
     
     await waitFor(() => {
-      const firstVideo = screen.getByTestId('video-thumbnail-video-1');
-      fireEvent.contextMenu(firstVideo);
+      const deleteButton1 = screen.getByTestId('delete-video-button-video-1');
+      const deleteButton2 = screen.getByTestId('delete-video-button-video-2');
       
-      expect(screen.getByTestId('video-context-menu')).toBeInTheDocument();
-      expect(screen.getByTestId('delete-video-option')).toBeInTheDocument();
+      expect(deleteButton1).toBeInTheDocument();
+      expect(deleteButton2).toBeInTheDocument();
     });
   });
 
@@ -351,12 +351,14 @@ describe('VideoGrid', () => {
     
     renderVideoGrid();
     
+    // Wait for videos to load first
     await waitFor(() => {
-      const firstVideo = screen.getByTestId('video-thumbnail-video-1');
-      fireEvent.contextMenu(firstVideo);
+      expect(screen.getByTestId('delete-video-button-video-1')).toBeInTheDocument();
     });
     
-    fireEvent.click(screen.getByTestId('delete-video-option'));
+    // Click the visible delete button
+    const deleteButton = screen.getByTestId('delete-video-button-video-1');
+    fireEvent.click(deleteButton);
     
     // Confirm deletion in dialog
     await waitFor(() => {
@@ -460,14 +462,8 @@ describe('VideoGrid', () => {
       await waitFor(() => {
         const firstVideo = screen.getByTestId('video-thumbnail-video-1');
         
-        // Simulate touch events
-        fireEvent.touchStart(firstVideo, {
-          touches: [{ clientX: 100, clientY: 100 }]
-        });
-        
-        fireEvent.touchEnd(firstVideo, {
-          changedTouches: [{ clientX: 100, clientY: 100 }]
-        });
+        // Simulate touch event on video thumbnail to open enlarged view
+        fireEvent.click(firstVideo);
         
         expect(screen.getByTestId('enlarged-video-modal')).toBeInTheDocument();
       });

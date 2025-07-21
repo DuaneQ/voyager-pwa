@@ -351,7 +351,7 @@ export const Search = React.memo(() => {
           variant="contained"
           onClick={() => setShowModal(true)}
           size="small">
-          Add Itinerary
+          Add/Edit Itineraries
         </Button>
       </Box>
 

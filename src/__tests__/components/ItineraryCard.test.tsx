@@ -7,8 +7,8 @@ describe("ItineraryCard", () => {
   const mockItinerary: Itinerary = {
     id: "1",
     destination: "Paris",
-    startDate: "2023-12-01",
-    endDate: "2023-12-10",
+    startDate: new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years from today
+    endDate: new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 10 days from today
     description: "A wonderful trip to Europe.",
     activities: ["Visit Eiffel Tower", "Explore Louvre Museum"],
     userInfo: {

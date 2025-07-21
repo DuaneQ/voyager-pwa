@@ -57,11 +57,17 @@ export const storage = getStorage(app);
 // Firestore instance with offline persistence
 export const db = getFirestore(app);
 
+// Detect Safari browser
+const isSafari = typeof window !== "undefined" && typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
 // Only enable persistence in the browser (not in Node.js or test environments)
-if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !== "test") {
+// Skip persistence on Safari in development to avoid CORS issues
+if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !== "test" && !(isSafari && isDevHost)) {
   import("firebase/firestore").then(({ enableIndexedDbPersistence }) => {
     if (typeof enableIndexedDbPersistence === "function") {
-      enableIndexedDbPersistence(db)
+      enableIndexedDbPersistence(db, {
+        forceOwnership: false // Allow multiple tabs and prevent Safari CORS issues
+      })
         .then(() => {
           if (process.env.NODE_ENV !== "production") {
           }
@@ -73,10 +79,14 @@ if (typeof window !== "undefined" && !window.Cypress && process.env.NODE_ENV !==
             console.warn("[Firestore] Persistence is not available in this browser");
           } else {
             console.error("[Firestore] Error enabling persistence:", err);
+            // For Safari CORS issues, we'll continue without persistence
+            console.warn("[Firestore] Continuing without offline persistence");
           }
         });
     }
   });
+} else if (isSafari && isDevHost) {
+  console.log("[Firestore] Skipping offline persistence on Safari in development to avoid CORS issues");
 }
 
 export const getMessagingInstance = () => {
