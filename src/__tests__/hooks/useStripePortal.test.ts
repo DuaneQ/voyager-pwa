@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useStripePortal } from '../../hooks/useStripePortal';
 
 jest.mock('firebase/functions', () => ({
