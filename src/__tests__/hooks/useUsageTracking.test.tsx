@@ -4,7 +4,7 @@ jest.mock('firebase/auth', () => ({
     currentUser: { uid: 'test-user-id' },
   })),
 }));
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react';
 // Mock auth.currentUser for useUsageTracking
 jest.mock('../../environments/firebaseConfig', () => {
   return {
