@@ -80,6 +80,7 @@ describe("AddItineraryModal Component", () => {
   const mockDeleteItinerary = jest.fn();
   const mockOnClose = jest.fn();
   const mockOnItineraryAdded = jest.fn();
+  const mockOnRefresh = jest.fn();
   const mockShowAlert = jest.fn();
   const mockUpdateUserProfile = jest.fn();
 
@@ -161,6 +162,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -243,6 +245,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -280,6 +283,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -317,6 +321,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -349,6 +354,7 @@ describe("AddItineraryModal Component", () => {
             open={true}
             onClose={mockOnClose}
             onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
             itineraries={mockItineraries}
           />
         </UserProfileContext.Provider>
@@ -375,6 +381,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -393,6 +400,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -433,6 +441,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -480,6 +489,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -495,6 +505,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -520,6 +531,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -569,6 +581,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -593,6 +606,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -617,6 +631,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -642,6 +657,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -671,6 +687,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -713,6 +730,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );

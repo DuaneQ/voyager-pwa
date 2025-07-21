@@ -118,11 +118,12 @@ jest.mock("../../components/forms/ItineraryCard", () => ({
 // Mock the AddItineraryModal component
 jest.mock("../../components/forms/AddItineraryModal", () => ({
   __esModule: true,
-  default: ({ open, onClose, onItineraryAdded }: any) => (
+  default: ({ open, onClose, onItineraryAdded, onRefresh }: any) => (
     open ? (
       <div data-testid="add-itinerary-modal">
         <button onClick={onClose}>Close Modal</button>
         <button onClick={() => onItineraryAdded("New Destination")}>Save Itinerary</button>
+        <button onClick={onRefresh}>Refresh</button>
       </div>
     ) : null
   ),
