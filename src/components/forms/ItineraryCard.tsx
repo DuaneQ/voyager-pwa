@@ -9,26 +9,37 @@ import {
   Avatar,
   IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import favicon from "../../assets/images/ic-like.png";
 import noLikeIcon from "../../assets/images/ic-nolike.png";
 import { Itinerary } from "../../types/Itinerary";
 import { ViewProfileModal } from "../modals/ViewProfileModal";
 import { useGetUserProfilePhoto } from "../../hooks/useGetUserProfilePhoto";
+import { auth } from "../../environments/firebaseConfig";
 
 export interface ItineraryCardProps {
   itinerary: Itinerary;
   onLike: (itinerary: Itinerary) => void;
   onDislike: (itinerary: Itinerary) => void;
+  // New props for edit/delete functionality
+  onEdit?: (itinerary: Itinerary) => void;
+  onDelete?: (itinerary: Itinerary) => void;
+  showEditDelete?: boolean;
 }
 
 const ItineraryCard: React.FC<ItineraryCardProps> = ({
   itinerary,
   onLike,
   onDislike,
+  onEdit,
+  onDelete,
+  showEditDelete = false,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
   // Returns the profile slot photo
   const profilePhoto = useGetUserProfilePhoto(itinerary.userInfo?.uid);
+  const currentUserId = auth.currentUser?.uid;
 
   const startDate = itinerary.startDate
     ? new Date(itinerary.startDate).toLocaleDateString()
@@ -154,35 +165,66 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             alignItems: "center",
             padding: "10px",
           }}>
-          <Button
-            sx={{
-              backgroundColor: "transparent",
-              padding: 0,
-              minWidth: "auto",
-            }}
-            onClick={() => onDislike(itinerary)}
-            aria-label="Dislike">
-            <img
-              src={noLikeIcon}
-              alt="No Like Icon"
-              loading="lazy"
-              style={{ width: "40px", height: "40px" }} // smaller on mobile
-            />
-          </Button>
-          <Button
-            sx={{
-              backgroundColor: "transparent",
-              padding: 0,
-              minWidth: "auto",
-            }}
-            onClick={() => onLike(itinerary)}
-            aria-label="Like">
-            <img
-              src={favicon}
-              alt="Favicon Icon"
-              style={{ width: "40px", height: "40px" }} // smaller on mobile
-            />
-          </Button>
+          {showEditDelete && currentUserId === itinerary.userInfo?.uid ? (
+            // Show edit/delete buttons for user's own itineraries
+            <>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                  color: "#1976d2",
+                }}
+                onClick={() => onEdit?.(itinerary)}
+                aria-label="Edit itinerary">
+                <EditIcon sx={{ width: "32px", height: "32px" }} />
+              </Button>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                  color: "#d32f2f",
+                }}
+                onClick={() => onDelete?.(itinerary)}
+                aria-label="Delete itinerary">
+                <DeleteIcon sx={{ width: "32px", height: "32px" }} />
+              </Button>
+            </>
+          ) : (
+            // Show like/dislike buttons for other users' itineraries
+            <>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                }}
+                onClick={() => onDislike(itinerary)}
+                aria-label="Dislike">
+                <img
+                  src={noLikeIcon}
+                  alt="No Like Icon"
+                  loading="lazy"
+                  style={{ width: "40px", height: "40px" }} // smaller on mobile
+                />
+              </Button>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                }}
+                onClick={() => onLike(itinerary)}
+                aria-label="Like">
+                <img
+                  src={favicon}
+                  alt="Favicon Icon"
+                  style={{ width: "40px", height: "40px" }} // smaller on mobile
+                />
+              </Button>
+            </>
+          )}
         </CardActions>
       </Card>
       {/* ViewProfileModal for read-only profile view */}

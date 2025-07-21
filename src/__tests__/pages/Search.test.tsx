@@ -163,15 +163,15 @@ const mockItineraries = [
   {
     id: "itinerary-1",
     destination: "Paris",
-    startDate: "2024-01-01",
-    endDate: "2024-01-10",
+    startDate: new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years from today
+    endDate: new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 10 days from today
     userInfo: { uid: "user1", email: "user1@example.com" },
   },
   {
     id: "itinerary-2",
     destination: "London",
-    startDate: "2024-02-01",
-    endDate: "2024-02-10",
+    startDate: new Date(Date.now() + 3670 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 20 days from today
+    endDate: new Date(Date.now() + 3680 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 30 days from today
     userInfo: { uid: "user2", email: "user2@example.com" },
   },
 ];
@@ -179,8 +179,8 @@ const mockItineraries = [
 const mockMatchingItinerary = {
   id: "matching-1",
   destination: "Paris",
-  startDate: "2024-01-15",
-  endDate: "2024-01-20",
+  startDate: new Date(Date.now() + 3690 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 40 days from today
+  endDate: new Date(Date.now() + 3700 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 50 days from today
   userInfo: { uid: "other-user", email: "other@example.com" },
 };
 
@@ -266,7 +266,7 @@ describe("Search Component", () => {
     renderWithContext();
     
     await waitFor(() => {
-      expect(screen.getByText("Add Itinerary")).toBeInTheDocument();
+      expect(screen.getByText("Add/Edit Itineraries")).toBeInTheDocument();
     });
   });
 
@@ -274,10 +274,10 @@ describe("Search Component", () => {
     renderWithContext();
 
     await waitFor(() => {
-      expect(screen.getByText("Add Itinerary")).toBeInTheDocument();
+      expect(screen.getByText("Add/Edit Itineraries")).toBeInTheDocument();
     });
 
-    const addButton = screen.getByText("Add Itinerary");
+    const addButton = screen.getByText("Add/Edit Itineraries");
     fireEvent.click(addButton);
 
     expect(screen.getByTestId("add-itinerary-modal")).toBeInTheDocument();
@@ -373,7 +373,7 @@ describe("Search Component", () => {
 
     // Component should still render even if fetch fails
     await waitFor(() => {
-      expect(screen.getByText("Add Itinerary")).toBeInTheDocument();
+      expect(screen.getByText("Add/Edit Itineraries")).toBeInTheDocument();
     });
   });
 
@@ -399,7 +399,7 @@ describe("Search Component", () => {
 
     // Component should still render
     await waitFor(() => {
-      expect(screen.getByText("Add Itinerary")).toBeInTheDocument();
+      expect(screen.getByText("Add/Edit Itineraries")).toBeInTheDocument();
     });
   });
 
