@@ -13,6 +13,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import AddItineraryModal from "../../components/forms/AddItineraryModal";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
+import useUpdateItinerary from "../../hooks/useUpdateItinerary";
+import useDeleteItinerary from "../../hooks/useDeleteItinerary";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { AlertContext } from "../../Context/AlertContext";
 import { Itinerary } from "../../types/Itinerary";
@@ -46,6 +48,8 @@ if (typeof window !== "undefined" && typeof window.localStorage === "undefined")
 
 // Mock dependencies
 jest.mock("../../hooks/usePostItineraryToFirestore");
+jest.mock("../../hooks/useUpdateItinerary");
+jest.mock("../../hooks/useDeleteItinerary");
 jest.mock("react-google-places-autocomplete", () => {
   return jest.fn().mockImplementation(({ selectProps }) => (
     <input
@@ -72,8 +76,11 @@ describe("AddItineraryModal Component", () => {
     blocked: [],
   };
   const mockPostItinerary = jest.fn();
+  const mockUpdateItinerary = jest.fn();
+  const mockDeleteItinerary = jest.fn();
   const mockOnClose = jest.fn();
   const mockOnItineraryAdded = jest.fn();
+  const mockOnRefresh = jest.fn();
   const mockShowAlert = jest.fn();
   const mockUpdateUserProfile = jest.fn();
 
@@ -81,8 +88,8 @@ describe("AddItineraryModal Component", () => {
     {
       id: "1",
       destination: "Paris",
-      startDate: "2023-12-01",
-      endDate: "2023-12-10",
+      startDate: new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years from today
+      endDate: new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 10 years + 10 days from today
       description: "A trip to Paris",
       activities: ["Sightseeing", "Dining"],
       gender: "Female",
@@ -112,6 +119,12 @@ describe("AddItineraryModal Component", () => {
     global.__mockCurrentUser = { uid: mockUserId };
     (usePostItineraryToFirestore as jest.Mock).mockReturnValue({
       postItinerary: mockPostItinerary,
+    });
+    (useUpdateItinerary as jest.Mock).mockReturnValue({
+      updateItinerary: mockUpdateItinerary,
+    });
+    (useDeleteItinerary as jest.Mock).mockReturnValue({
+      deleteItinerary: mockDeleteItinerary,
     });
     (GooglePlacesAutocomplete as unknown as jest.Mock).mockImplementation(
       ({ selectProps }) => (
@@ -149,13 +162,13 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    // Use future dates to avoid validation issues
+    const futureStart = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years from today
+    const futureEnd = new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 10 days from today
 
     // Act
     const genderDropdown = screen.getByRole("combobox", {
@@ -185,10 +198,10 @@ describe("AddItineraryModal Component", () => {
     fireEvent.change(destinationInput, { target: { value: "Paris" } });
 
     const startDateInput = screen.getByLabelText(/start date/i);
-    fireEvent.change(startDateInput, { target: { value: today } });
+    fireEvent.change(startDateInput, { target: { value: futureStart } });
 
     const endDateInput = screen.getByLabelText(/end date/i);
-    fireEvent.change(endDateInput, { target: { value: tomorrow } });
+    fireEvent.change(endDateInput, { target: { value: futureEnd } });
 
     const descriptionInput = screen.getByLabelText(
       /provide a description of your trip/i
@@ -205,8 +218,8 @@ describe("AddItineraryModal Component", () => {
     expect(mockPostItinerary).toHaveBeenCalledWith(
       expect.objectContaining({
         destination: "Paris",
-        startDate: today,
-        endDate: tomorrow,
+        startDate: futureStart,
+        endDate: futureEnd,
         description: "A trip to Paris",
         gender: "Female",
         status: "single",
@@ -232,6 +245,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -269,6 +283,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -306,6 +321,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -338,6 +354,7 @@ describe("AddItineraryModal Component", () => {
             open={true}
             onClose={mockOnClose}
             onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
             itineraries={mockItineraries}
           />
         </UserProfileContext.Provider>
@@ -364,6 +381,7 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
@@ -382,14 +400,14 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
 
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    // Use future dates to avoid validation issues
+    const futureStart = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years from today
+    const futureEnd = new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 10 days from today
 
     // Act - Fill out form but skip status
     const genderDropdown = screen.getByRole("combobox", {
@@ -403,10 +421,10 @@ describe("AddItineraryModal Component", () => {
     fireEvent.change(destinationInput, { target: { value: "Paris" } });
 
     const startDateInput = screen.getByLabelText(/start date/i);
-    fireEvent.change(startDateInput, { target: { value: today } });
+    fireEvent.change(startDateInput, { target: { value: futureStart } });
 
     const endDateInput = screen.getByLabelText(/end date/i);
-    fireEvent.change(endDateInput, { target: { value: tomorrow } });
+    fireEvent.change(endDateInput, { target: { value: futureEnd } });
 
     const saveButton = screen.getByRole("button", { name: /save itinerary/i });
     fireEvent.click(saveButton);
@@ -423,14 +441,14 @@ describe("AddItineraryModal Component", () => {
         open={true}
         onClose={mockOnClose}
         onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
         itineraries={mockItineraries}
       />
     );
 
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    // Use future dates to avoid validation issues
+    const futureStart = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years from today
+    const futureEnd = new Date(Date.now() + 3660 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 10 days from today
 
     // Act - Fill out form but skip sexual orientation
     const genderDropdown = screen.getByRole("combobox", {
@@ -451,10 +469,10 @@ describe("AddItineraryModal Component", () => {
     fireEvent.change(destinationInput, { target: { value: "Paris" } });
 
     const startDateInput = screen.getByLabelText(/start date/i);
-    fireEvent.change(startDateInput, { target: { value: today } });
+    fireEvent.change(startDateInput, { target: { value: futureStart } });
 
     const endDateInput = screen.getByLabelText(/end date/i);
-    fireEvent.change(endDateInput, { target: { value: tomorrow } });
+    fireEvent.change(endDateInput, { target: { value: futureEnd } });
 
     const saveButton = screen.getByRole("button", { name: /save itinerary/i });
     fireEvent.click(saveButton);
@@ -462,5 +480,271 @@ describe("AddItineraryModal Component", () => {
     // Assert
     expect(window.alert).toHaveBeenCalledWith("Please select a sexual orientation preference.");
     expect(mockPostItinerary).not.toHaveBeenCalled();
+  });
+
+  // New tests for edit and delete functionality
+  test("should display edit and delete buttons for existing itineraries", () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Check that edit and delete buttons are present for each itinerary
+    expect(screen.getAllByLabelText(/edit itinerary/i)).toHaveLength(mockItineraries.length);
+    expect(screen.getAllByLabelText(/delete itinerary/i)).toHaveLength(mockItineraries.length);
+  });
+
+  test("should enter edit mode when edit button is clicked", async () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Click edit button for first itinerary
+    const editButtons = screen.getAllByLabelText(/edit itinerary/i);
+    fireEvent.click(editButtons[0]);
+
+    // Check that modal title changes to edit mode
+    expect(screen.getByText("Edit Itinerary")).toBeInTheDocument();
+    
+    // Check that save button changes to update
+    expect(screen.getByRole("button", { name: /update itinerary/i })).toBeInTheDocument();
+    
+    // Check that form is populated with existing data
+    const destinationInput = screen.getByTestId("google-places-autocomplete");
+    expect(destinationInput).toHaveValue(mockItineraries[0].destination);
+  });
+
+  test("should update itinerary when in edit mode", async () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Enter edit mode
+    const editButtons = screen.getAllByLabelText(/edit itinerary/i);
+    fireEvent.click(editButtons[0]);
+
+    // Modify the destination
+    const destinationInput = screen.getByTestId("google-places-autocomplete");
+    fireEvent.change(destinationInput, { target: { value: "Rome" } });
+
+    // Fill out other required fields to ensure validation passes
+    // Use dates further in the future to avoid conflicts with the mock itinerary's future dates
+    const futureStart = new Date(Date.now() + 3670 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 20 days from today
+    const futureEnd = new Date(Date.now() + 3680 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 30 days from today
+
+    // First set the end date to a future date, then set start date to avoid validation errors
+    const endDateInput = screen.getByLabelText(/end date/i);
+    fireEvent.change(endDateInput, { target: { value: futureEnd } });
+
+    const startDateInput = screen.getByLabelText(/start date/i);
+    fireEvent.change(startDateInput, { target: { value: futureStart } });
+
+    // Select required dropdowns - these should already be populated in edit mode
+    // Since the mock itinerary already has gender: "Female", status: "single", sexualOrientation: "heterosexual"
+    // we don't need to set them again, just verify the form can be submitted
+
+    // Click update button
+    const updateButton = screen.getByRole("button", { name: /update itinerary/i });
+    fireEvent.click(updateButton);
+
+    // Assert update was called
+    await waitFor(() => {
+      expect(mockUpdateItinerary).toHaveBeenCalledWith(
+        mockItineraries[0].id,
+        expect.objectContaining({
+          destination: "Rome"
+        })
+      );
+    });
+  });
+
+  test("should show delete confirmation dialog when delete button is clicked", () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Click delete button for first itinerary
+    const deleteButtons = screen.getAllByLabelText(/delete itinerary/i);
+    fireEvent.click(deleteButtons[0]);
+
+    // Check that delete dialog appears
+    expect(screen.getByText("Delete Itinerary?")).toBeInTheDocument();
+    expect(screen.getByText(/are you sure you want to delete this itinerary/i)).toBeInTheDocument();
+    expect(screen.getByText(`"${mockItineraries[0].destination}"`)).toBeInTheDocument();
+    
+    // Check that delete and cancel buttons are present
+    expect(screen.getByRole("button", { name: /delete$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+  });
+
+  test("should delete itinerary when confirmed", async () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Click delete button
+    const deleteButtons = screen.getAllByLabelText(/delete itinerary/i);
+    fireEvent.click(deleteButtons[0]);
+
+    // Confirm deletion
+    const confirmDeleteButton = screen.getByRole("button", { name: /delete$/i });
+    fireEvent.click(confirmDeleteButton);
+
+    // Assert delete was called
+    await waitFor(() => {
+      expect(mockDeleteItinerary).toHaveBeenCalledWith(mockItineraries[0].id);
+    });
+  });
+
+  test("should cancel deletion when cancel button is clicked", async () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Click delete button
+    const deleteButtons = screen.getAllByLabelText(/delete itinerary/i);
+    fireEvent.click(deleteButtons[0]);
+
+    // Cancel deletion
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    // Wait for dialog to close, then check that dialog is closed and delete was not called
+    await waitFor(() => {
+      expect(screen.queryByText("Delete Itinerary?")).not.toBeInTheDocument();
+    });
+    expect(mockDeleteItinerary).not.toHaveBeenCalled();
+  });
+
+  test("should cancel edit mode and reset form", () => {
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Enter edit mode
+    const editButtons = screen.getAllByLabelText(/edit itinerary/i);
+    fireEvent.click(editButtons[0]);
+
+    // Verify we're in edit mode
+    expect(screen.getByText("Edit Itinerary")).toBeInTheDocument();
+
+    // Click cancel
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    // Verify we're back to add mode
+    expect(screen.getByText("Add New Itinerary")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save itinerary/i })).toBeInTheDocument();
+  });
+
+  test("should handle update itinerary errors gracefully", async () => {
+    // Mock update to throw an error
+    mockUpdateItinerary.mockRejectedValueOnce(new Error("Update failed"));
+
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Enter edit mode and fill form
+    const editButtons = screen.getAllByLabelText(/edit itinerary/i);
+    fireEvent.click(editButtons[0]);
+
+    // Fill required fields with dates that won't trigger validation errors
+    // Use dates further in the future to avoid conflicts with the mock itinerary's future dates
+    const futureStart = new Date(Date.now() + 3690 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 40 days from today
+    const futureEnd = new Date(Date.now() + 3700 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 50 days from today
+
+    // First set the end date to a future date, then set start date to avoid validation errors
+    const endDateInput = screen.getByLabelText(/end date/i);
+    fireEvent.change(endDateInput, { target: { value: futureEnd } });
+
+    const startDateInput = screen.getByLabelText(/start date/i);
+    fireEvent.change(startDateInput, { target: { value: futureStart } });
+
+    // The dropdown fields should already be populated from the existing itinerary data
+    // No need to set them again in edit mode
+
+    // Try to update
+    const updateButton = screen.getByRole("button", { name: /update itinerary/i });
+    fireEvent.click(updateButton);
+
+    // Assert error alert is shown
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith("An error occurred while updating the itinerary. Please try again.");
+    });
+  });
+
+  test("should handle delete itinerary errors gracefully", async () => {
+    // Mock delete to throw an error
+    mockDeleteItinerary.mockRejectedValueOnce(new Error("Delete failed"));
+
+    renderWithContext(
+      <AddItineraryModal
+        open={true}
+        onClose={mockOnClose}
+        onItineraryAdded={mockOnItineraryAdded}
+        onRefresh={mockOnRefresh}
+        itineraries={mockItineraries}
+      />
+    );
+
+    // Click delete button and confirm
+    const deleteButtons = screen.getAllByLabelText(/delete itinerary/i);
+    fireEvent.click(deleteButtons[0]);
+
+    const confirmDeleteButton = screen.getByRole("button", { name: /delete$/i });
+    fireEvent.click(confirmDeleteButton);
+
+    // Assert error alert is shown
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith("An error occurred while deleting the itinerary. Please try again.");
+    });
   });
 });

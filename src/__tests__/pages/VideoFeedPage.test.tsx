@@ -926,6 +926,32 @@ describe('VideoFeedPage', () => {
 
   describe('Video playback behavior', () => {
     it('should start videos in paused state for mobile compatibility', async () => {
+      // Set up authenticated user
+      (auth as any).currentUser = {
+        uid: 'test-user-id',
+        email: 'test@example.com'
+      };
+      
+      // Set up dual getDocs mock for connections + videos queries
+      mockGetDocs.mockClear();
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // First call - connections query (empty)
+          forEach: jest.fn()
+        } as any)
+        .mockResolvedValue({
+          // Subsequent calls - videos query (repeatable)
+          forEach: (callback: any) => {
+            mockVideos.forEach((video) => {
+              const { id, ...rest } = video;
+              callback({
+                id,
+                data: () => rest
+              });
+            });
+          }
+        } as any);
+      
       render(<VideoFeedPage />);
       
       await waitFor(() => {
@@ -974,6 +1000,12 @@ describe('VideoFeedPage', () => {
     });
 
     it('should handle video end without auto-advancing', async () => {
+      // Set up authenticated user
+      (auth as any).currentUser = {
+        uid: 'test-user-id',
+        email: 'test@example.com'
+      };
+      
       // Reset mocks to default success state
       mockGetDocs.mockClear();
       mockGetDocs
@@ -1312,100 +1344,25 @@ describe('VideoFeedPage', () => {
         }
       ];
 
-      mockGetDocs.mockImplementation(() =>
-        Promise.resolve({
+      // Set up dual getDocs mock for connections + videos queries
+      mockGetDocs.mockReset();
+      mockGetDocs
+        .mockResolvedValueOnce({
+          // First call - connections query (empty)
+          forEach: jest.fn()
+        } as any)
+        .mockResolvedValue({
+          // Subsequent calls - videos query (repeatable)
           forEach: (callback: any) => {
             mockVideos.forEach((video) => {
               const { id, ...rest } = video;
               callback({
                 id,
-                data: () => rest,
+                data: () => rest
               });
             });
-          },
-          docs: mockVideos.map((video) => ({
-            id: video.id,
-            data: () => {
-              const { id, ...rest } = video;
-              return rest;
-            },
-            metadata: {
-              hasPendingWrites: false,
-              fromCache: false,
-              isEqual: () => true,
-            },
-            exists: function (): this is typeof this { return true; },
-            get: () => undefined,
-            toJSON: () => video,
-            ref: {
-              converter: {
-                toFirestore: () => ({}),
-                fromFirestore: () => ({}),
-              },
-              type: 'document',
-              firestore: {
-                type: 'firestore',
-                app: {
-                  name: 'mock-app',
-                  options: {},
-                  automaticDataCollectionEnabled: false,
-                },
-                toJSON: () => ({}),
-              },
-              id: video.id,
-              path: `videos/${video.id}`,
-              parent: {
-                type: 'collection',
-                id: 'videos',
-                path: 'videos',
-                parent: null,
-                withConverter: function () { return this; },
-                converter: {
-                  toFirestore: () => ({}),
-                  fromFirestore: () => ({}),
-                },
-                firestore: {
-                  type: 'firestore',
-                  app: {
-                    name: 'mock-app',
-                    options: {},
-                    automaticDataCollectionEnabled: false,
-                  },
-                  toJSON: () => ({}),
-                },
-              },
-              withConverter: function () { return this; },
-              toJSON: () => ({}),
-            },
-          })),
-          size: mockVideos.length,
-          empty: mockVideos.length === 0,
-          metadata: {
-            hasPendingWrites: false,
-            fromCache: false,
-            isEqual: () => true,
-          },
-          query: {
-            converter: {
-              toFirestore: (data: any) => data,
-              fromFirestore: (snap: any) => snap.data(),
-            },
-            type: 'query',
-            firestore: {
-              type: 'firestore',
-              app: {
-                name: 'mock-app',
-                options: {},
-                automaticDataCollectionEnabled: false,
-              },
-              toJSON: () => ({}),
-            },
-            withConverter: function (_converter: any) { return this; },
-          },
-          docChanges: () => [],
-          toJSON: () => JSON.stringify(mockVideos),
-        } as any)
-      );
+          }
+        } as any);
       
       render(<VideoFeedPage />);
       

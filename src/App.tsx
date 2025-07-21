@@ -33,7 +33,7 @@ import { UserProfileProvider } from "./Context/UserProfileContext";
 import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { app } from "./environments/firebaseConfig";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
-import { TermsGuard } from "./components/auth/TermsGuard";
+import { SimpleTermsGuard } from "./components/auth/SimpleTermsGuard";
 
 // AnalyticsTracker logs a page_view event on every route change
 function AnalyticsTracker() {
@@ -84,9 +84,10 @@ function App() {
       maxSnack={2}
       anchorOrigin={{ vertical: "bottom", horizontal: "left" }}>
       <AlertProvider>
-        <Header />
-        <NewConnectionProvider>
-          <AnalyticsTracker />
+        <UserProfileProvider>
+          <Header />
+          <NewConnectionProvider>
+            <AnalyticsTracker />
           <div
             style={{
               display: "flex",
@@ -103,11 +104,9 @@ function App() {
                     path="/"
                     element={
                       <Protected>
-                        <TermsGuard>
-                          <UserProfileProvider>
-                            <Profile />
-                          </UserProfileProvider>
-                        </TermsGuard>
+                        <SimpleTermsGuard>
+                          <Profile />
+                        </SimpleTermsGuard>
                       </Protected>
                     }
                   />
@@ -115,11 +114,9 @@ function App() {
                     path="/Search"
                     element={
                       <Protected>
-                        <TermsGuard>
-                          <UserProfileProvider>
-                            <Search />
-                          </UserProfileProvider>
-                        </TermsGuard>
+                        <SimpleTermsGuard>
+                          <Search />
+                        </SimpleTermsGuard>
                       </Protected>
                     }
                   />
@@ -127,11 +124,9 @@ function App() {
                     path="/Videos"
                     element={
                       <Protected>
-                        <TermsGuard>
-                          <UserProfileProvider>
-                            <VideoFeedPage />
-                          </UserProfileProvider>
-                        </TermsGuard>
+                        <SimpleTermsGuard>
+                          <VideoFeedPage />
+                        </SimpleTermsGuard>
                       </Protected>
                     }
                   />
@@ -139,11 +134,9 @@ function App() {
                     path="/video/:videoId"
                     element={
                       <Protected>
-                        <TermsGuard>
-                          <UserProfileProvider>
-                            <VideoPage />
-                          </UserProfileProvider>
-                        </TermsGuard>
+                        <SimpleTermsGuard>
+                          <VideoPage />
+                        </SimpleTermsGuard>
                       </Protected>
                     }
                   />
@@ -151,11 +144,9 @@ function App() {
                     path="/Chat"
                     element={
                       <Protected>
-                        <TermsGuard>
-                          <UserProfileProvider>
-                            <Chat />
-                          </UserProfileProvider>
-                        </TermsGuard>
+                        <SimpleTermsGuard>
+                          <Chat />
+                        </SimpleTermsGuard>
                       </Protected>
                     }
                   />
@@ -168,6 +159,7 @@ function App() {
         </NewConnectionProvider>
         {/* Floating Feedback Button - shows on all pages except login/register */}
         {!hideBottomNav && <FeedbackButton position="bottom-right" />}
+        </UserProfileProvider>
       </AlertProvider>
     </SnackbarProvider>
   );

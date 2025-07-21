@@ -15,9 +15,9 @@ jest.mock('firebase/firestore', () => ({
   arrayRemove: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({
-      toDate: () => new Date('2023-01-01T00:00:00.000Z'),
-      seconds: 1672531200,
-      nanoseconds: 0
+      toDate: () => new Date(),
+      seconds: Math.floor(Date.now() / 1000),
+      nanoseconds: (Date.now() % 1000) * 1000000
     })),
     fromDate: jest.fn((date) => ({
       toDate: () => date,

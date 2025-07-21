@@ -9,33 +9,56 @@ import {
   Avatar,
   IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import favicon from "../../assets/images/ic-like.png";
 import noLikeIcon from "../../assets/images/ic-nolike.png";
 import { Itinerary } from "../../types/Itinerary";
 import { ViewProfileModal } from "../modals/ViewProfileModal";
 import { useGetUserProfilePhoto } from "../../hooks/useGetUserProfilePhoto";
+import { auth } from "../../environments/firebaseConfig";
 
 export interface ItineraryCardProps {
   itinerary: Itinerary;
   onLike: (itinerary: Itinerary) => void;
   onDislike: (itinerary: Itinerary) => void;
+  // New props for edit/delete functionality
+  onEdit?: (itinerary: Itinerary) => void;
+  onDelete?: (itinerary: Itinerary) => void;
+  showEditDelete?: boolean;
 }
 
 const ItineraryCard: React.FC<ItineraryCardProps> = ({
   itinerary,
   onLike,
   onDislike,
+  onEdit,
+  onDelete,
+  showEditDelete = false,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
   // Returns the profile slot photo
   const profilePhoto = useGetUserProfilePhoto(itinerary.userInfo?.uid);
+  const currentUserId = auth.currentUser?.uid;
 
+  // Fix timezone issue by creating date at noon UTC to avoid day shifting
   const startDate = itinerary.startDate
-    ? new Date(itinerary.startDate).toLocaleDateString()
+    ? new Date(itinerary.startDate + "T12:00:00.000Z").toLocaleDateString()
     : "N/A";
   const endDate = itinerary.endDate
-    ? new Date(itinerary.endDate).toLocaleDateString()
+    ? new Date(itinerary.endDate + "T12:00:00.000Z").toLocaleDateString()
     : "N/A";
+
+  // Debug logging for date display
+  console.log('=== ITINERARY CARD DISPLAY DEBUG ===');
+  console.log('Itinerary ID:', itinerary.id);
+  console.log('Raw startDate from itinerary:', itinerary.startDate, 'Type:', typeof itinerary.startDate);
+  console.log('Raw endDate from itinerary:', itinerary.endDate, 'Type:', typeof itinerary.endDate);
+  console.log('Displayed startDate:', startDate);
+  console.log('Displayed endDate:', endDate);
+  console.log('startDay timestamp:', itinerary.startDay);
+  console.log('endDay timestamp:', itinerary.endDay);
+  console.log('=== END ITINERARY CARD DISPLAY DEBUG ===');
 
   return (
     <>
@@ -154,35 +177,66 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             alignItems: "center",
             padding: "10px",
           }}>
-          <Button
-            sx={{
-              backgroundColor: "transparent",
-              padding: 0,
-              minWidth: "auto",
-            }}
-            onClick={() => onDislike(itinerary)}
-            aria-label="Dislike">
-            <img
-              src={noLikeIcon}
-              alt="No Like Icon"
-              loading="lazy"
-              style={{ width: "40px", height: "40px" }} // smaller on mobile
-            />
-          </Button>
-          <Button
-            sx={{
-              backgroundColor: "transparent",
-              padding: 0,
-              minWidth: "auto",
-            }}
-            onClick={() => onLike(itinerary)}
-            aria-label="Like">
-            <img
-              src={favicon}
-              alt="Favicon Icon"
-              style={{ width: "40px", height: "40px" }} // smaller on mobile
-            />
-          </Button>
+          {showEditDelete && currentUserId === itinerary.userInfo?.uid ? (
+            // Show edit/delete buttons for user's own itineraries
+            <>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                  color: "#1976d2",
+                }}
+                onClick={() => onEdit?.(itinerary)}
+                aria-label="Edit itinerary">
+                <EditIcon sx={{ width: "32px", height: "32px" }} />
+              </Button>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                  color: "#d32f2f",
+                }}
+                onClick={() => onDelete?.(itinerary)}
+                aria-label="Delete itinerary">
+                <DeleteIcon sx={{ width: "32px", height: "32px" }} />
+              </Button>
+            </>
+          ) : (
+            // Show like/dislike buttons for other users' itineraries
+            <>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                }}
+                onClick={() => onDislike(itinerary)}
+                aria-label="Dislike">
+                <img
+                  src={noLikeIcon}
+                  alt="No Like Icon"
+                  loading="lazy"
+                  style={{ width: "40px", height: "40px" }} // smaller on mobile
+                />
+              </Button>
+              <Button
+                sx={{
+                  backgroundColor: "transparent",
+                  padding: 0,
+                  minWidth: "auto",
+                }}
+                onClick={() => onLike(itinerary)}
+                aria-label="Like">
+                <img
+                  src={favicon}
+                  alt="Favicon Icon"
+                  style={{ width: "40px", height: "40px" }} // smaller on mobile
+                />
+              </Button>
+            </>
+          )}
         </CardActions>
       </Card>
       {/* ViewProfileModal for read-only profile view */}

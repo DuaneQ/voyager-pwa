@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Menu, MenuItem, Grid, CircularProgress, Alert, Modal, Box, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
+import { Grid, CircularProgress, Alert, Modal, Box, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -16,8 +16,6 @@ const VIDEO_SIZE = 120; // px
 export const VideoGrid = () => {
   const { uploadVideo, isUploading, uploadProgress, processingStatus } = useVideoUpload();
   const { userProfile } = useContext(UserProfileContext);
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [enlargedVideo, setEnlargedVideo] = useState<Video | null>(null);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
@@ -70,7 +68,6 @@ export const VideoGrid = () => {
   function handleUploadVideo() {
     if (isUploading || loadingVideos) return;
     setUploadModalOpen(true);
-    setMenuAnchor(null);
   }
 
   const handleVideoUpload = async (videoData: VideoUploadData) => {
@@ -91,17 +88,8 @@ export const VideoGrid = () => {
     }
   };
 
-  const handleVideoContextMenu = (event: React.MouseEvent<HTMLElement>, video: Video) => {
-    event.preventDefault();
-    if (!loadingVideos) {
-      setSelectedVideo(video);
-      setMenuAnchor(event.currentTarget);
-    }
-  };
-
   const handlePlayVideo = (video: Video) => {
     setEnlargedVideo(video);
-    setMenuAnchor(null);
   };
 
   const handleCloseVideoModal = () => {
@@ -111,7 +99,6 @@ export const VideoGrid = () => {
   const handleDeleteClick = (video: Video) => {
     setVideoToDelete(video);
     setDeleteDialogOpen(true);
-    setMenuAnchor(null);
   };
 
   const handleDeleteVideo = async () => {
@@ -144,7 +131,7 @@ export const VideoGrid = () => {
 
   return (
     <>
-      <Grid container spacing={2} px={1}>
+      <Grid container spacing={2} px={1} pb={10}>
         {/* Upload Button - Always show first */}
         <Grid item xs={6} display="flex" justifyContent="center">
           <Button
@@ -202,24 +189,6 @@ export const VideoGrid = () => {
                 justifyContent: 'center',
               }}
               onClick={(event) => handleVideoClick(event, video)}
-              onContextMenu={(event) => handleVideoContextMenu(event, video)}
-              onTouchStart={(event) => {
-                // Store touch start time and position for touch handling
-                const touch = event.touches[0];
-                (event.currentTarget as any).touchStartTime = Date.now();
-                (event.currentTarget as any).touchStartX = touch.clientX;
-                (event.currentTarget as any).touchStartY = touch.clientY;
-              }}
-              onTouchEnd={(event) => {
-                // Check if this is a tap (short touch without movement)
-                const target = event.currentTarget as any;
-                const touchEndTime = Date.now();
-                const touchDuration = touchEndTime - (target.touchStartTime || 0);
-                
-                if (touchDuration < 500) { // Short touch (tap)
-                  handleVideoClick(event as any, video);
-                }
-              }}
               data-testid={`video-thumbnail-${video.id}`}
             >
               {/* Fallback thumbnail image for mobile */}
@@ -290,25 +259,53 @@ export const VideoGrid = () => {
                 }}
                 data-testid="play-icon"
               />
+              
+              {/* Delete button overlay */}
+              <IconButton
+                sx={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  zIndex: 4,
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  color: 'white',
+                  width: 28,
+                  height: 28,
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,0,0,0.7)',
+                    color: 'white',
+                  },
+                  '&:active': {
+                    backgroundColor: 'rgba(255,0,0,0.8)',
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(video);
+                }}
+                data-testid={`delete-video-button-${video.id}`}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
             </Box>
           </Grid>
         ))}
       </Grid>
       
       {loadingVideos && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 10 }}>
           <CircularProgress size={24} />
         </Box>
       )}
       
       {isUploading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, mb: 10 }}>
           <CircularProgress size={24} data-testid="upload-progress-indicator" />
           <Box sx={{ ml: 1 }}>{Math.round(uploadProgress)}%</Box>
         </Box>
       )}
       
-      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }} data-testid="video-grid-error">{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mt: 2, mb: 10 }} data-testid="video-grid-error">{error}</Alert>}
       
       {/* VideoUploadModal */}
       <VideoUploadModal
@@ -317,28 +314,6 @@ export const VideoGrid = () => {
         onUpload={handleVideoUpload}
       />
       
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => setMenuAnchor(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-        autoFocus={false}
-        data-testid="video-context-menu"
-      >
-        {isUploading ? (
-          <MenuItem disabled>
-            <CircularProgress size={24} data-testid="upload-progress-indicator" />
-          </MenuItem>
-        ) : selectedVideo ? [
-          <MenuItem key="play" onClick={() => handlePlayVideo(selectedVideo)}>Play Video</MenuItem>,
-          <MenuItem key="delete" onClick={() => handleDeleteClick(selectedVideo)} data-testid="delete-video-option">Delete Video</MenuItem>,
-          <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
-        ] : [
-          <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
-        ]}
-      </Menu>
-
       {/* Video Player Modal */}
       <Modal
         open={Boolean(enlargedVideo)}
