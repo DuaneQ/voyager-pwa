@@ -30,6 +30,7 @@ interface AddItineraryModalProps {
   open: boolean;
   onClose: () => void;
   onItineraryAdded: (destination: string) => void;
+  onRefresh: () => void;
   itineraries: Itinerary[];
 }
 
@@ -37,6 +38,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   open,
   onClose,
   onItineraryAdded,
+  onRefresh,
   itineraries,
 }) => {
   const { userProfile } = useContext(UserProfileContext);
@@ -151,13 +153,13 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         await updateItinerary(editingItinerary.id, itineraryData);
         alert("Itinerary successfully updated!");
         setEditingItinerary(null);
+        onRefresh(); // Trigger refresh for updated itinerary
       } else {
         // Create new itinerary
         await postItinerary(itineraryData);
         alert("Itinerary successfully created!");
+        onItineraryAdded(newItinerary.destination); // Keep semantic meaning for new itineraries
       }
-      
-      onItineraryAdded(newItinerary.destination);
       resetItineraryForm();
       onClose();
     } catch (error) {
@@ -234,7 +236,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     setDeletingItinerary(true);
     try {
       await deleteItinerary(itineraryToDelete.id);
-      onItineraryAdded(""); // Trigger refresh
+      onRefresh(); // Trigger refresh
       alert("Itinerary successfully deleted!");
     } catch (error) {
       alert("An error occurred while deleting the itinerary. Please try again.");
