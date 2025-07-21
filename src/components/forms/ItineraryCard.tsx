@@ -41,12 +41,24 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   const profilePhoto = useGetUserProfilePhoto(itinerary.userInfo?.uid);
   const currentUserId = auth.currentUser?.uid;
 
+  // Fix timezone issue by creating date at noon UTC to avoid day shifting
   const startDate = itinerary.startDate
-    ? new Date(itinerary.startDate).toLocaleDateString()
+    ? new Date(itinerary.startDate + "T12:00:00.000Z").toLocaleDateString()
     : "N/A";
   const endDate = itinerary.endDate
-    ? new Date(itinerary.endDate).toLocaleDateString()
+    ? new Date(itinerary.endDate + "T12:00:00.000Z").toLocaleDateString()
     : "N/A";
+
+  // Debug logging for date display
+  console.log('=== ITINERARY CARD DISPLAY DEBUG ===');
+  console.log('Itinerary ID:', itinerary.id);
+  console.log('Raw startDate from itinerary:', itinerary.startDate, 'Type:', typeof itinerary.startDate);
+  console.log('Raw endDate from itinerary:', itinerary.endDate, 'Type:', typeof itinerary.endDate);
+  console.log('Displayed startDate:', startDate);
+  console.log('Displayed endDate:', endDate);
+  console.log('startDay timestamp:', itinerary.startDay);
+  console.log('endDay timestamp:', itinerary.endDay);
+  console.log('=== END ITINERARY CARD DISPLAY DEBUG ===');
 
   return (
     <>
