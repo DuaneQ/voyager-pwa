@@ -100,6 +100,17 @@ export const Profile = React.memo(() => {
           </Box>
         )}
         
+        {/* Travel Preferences Tab */}
+        {currentTab === 3 && (
+          <Box>
+            <ProfileForm 
+              currentTab={currentTab} 
+              onTabChange={handleTabChange}
+              contentOnly={true}
+            />
+          </Box>
+        )}
+        
         <Box mb={4}>
           {/* <Chips /> */}
         </Box>
