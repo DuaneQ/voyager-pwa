@@ -11,12 +11,10 @@ import {
   MenuItem,
   Chip,
   Alert,
-  LinearProgress,
   IconButton,
   Grid,
   Card,
   CardContent,
-  Divider,
   FormHelperText,
 } from '@mui/material';
 import {
@@ -51,15 +49,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   initialDates,
 }) => {
   // Hooks
-  const { 
+    const { 
+    generateItinerary, 
     isGenerating, 
     progress, 
     error, 
-    result, 
-    generateItinerary, 
-    cancelGeneration, 
-    resetGeneration, 
-    estimateCost 
+    resetGeneration,
+    cancelGeneration 
   } = useAIGeneration();
   
   const { 
@@ -72,6 +68,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   // Form state
   const [formData, setFormData] = useState<AIGenerationRequest>({
     destination: initialDestination,
+    departure: '',
     startDate: initialDates?.startDate || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
     endDate: initialDates?.endDate || format(addDays(new Date(), 14), 'yyyy-MM-dd'),
     tripType: 'leisure',
@@ -99,22 +96,36 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
   }, [preferences, formData.preferenceProfileId, getDefaultProfile]);
 
-  // Update cost estimate when form changes
+  // Simple client-side cost estimation to avoid API rate limiting
   useEffect(() => {
-    const updateCostEstimate = async () => {
+    const calculateLocalEstimate = () => {
       if (formData.destination && formData.startDate && formData.endDate && formData.preferenceProfileId) {
         try {
-          const cost = await estimateCost(formData);
-          setEstimatedCost(cost);
+          const profile = getProfileById(formData.preferenceProfileId);
+          if (profile) {
+            const duration = Math.ceil(
+              (new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            
+            // Simple estimation based on profile budget range and duration
+            const baseCost = profile.budgetRange?.max || 1000;
+            const groupMultiplier = profile.groupSize?.preferred || 1;
+            const estimatedCost = Math.min(baseCost, baseCost * 0.8 * duration * groupMultiplier);
+            
+            setEstimatedCost(Math.round(estimatedCost));
+          }
         } catch (err) {
-          console.warn('Failed to estimate cost:', err);
+          console.warn('Failed to calculate local estimate:', err);
+          setEstimatedCost(null);
         }
+      } else {
+        setEstimatedCost(null);
       }
     };
 
-    const debounceTimer = setTimeout(updateCostEstimate, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [formData.destination, formData.startDate, formData.endDate, formData.preferenceProfileId, estimateCost]);
+    // Only calculate local estimate, no API calls
+    calculateLocalEstimate();
+  }, [formData.destination, formData.startDate, formData.endDate, formData.preferenceProfileId, getProfileById]);
 
   // Handle form field changes
   const handleFieldChange = useCallback((field: keyof AIGenerationRequest, value: any) => {
@@ -293,6 +304,77 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               <TravelIcon />
               Trip Details
             </Typography>
+          </Grid>
+
+          {/* Departure Location */}
+          <Grid item xs={12}>
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                Flying From
+              </Typography>
+              <GooglePlacesAutocomplete
+                apiKey={process.env.REACT_APP_GOOGLE_PLACES_API_KEY}
+                selectProps={{
+                  value: formData.departure ? { label: formData.departure, value: formData.departure } : null,
+                  onChange: (selected: any) => {
+                    handleFieldChange('departure', selected?.label || '');
+                  },
+                  placeholder: 'Where are you flying from? (for flight pricing)',
+                  isClearable: true,
+                  styles: {
+                    control: (provided: any) => ({
+                      ...provided,
+                      minHeight: '56px',
+                      fontSize: '16px',
+                      borderColor: '#ccc',
+                      '&:hover': {
+                        borderColor: '#1976d2',
+                      },
+                    }),
+                    menu: (provided: any) => ({
+                      ...provided,
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      zIndex: 9999,
+                      position: 'absolute',
+                    }),
+                    menuList: (provided: any) => ({
+                      ...provided,
+                      backgroundColor: '#ffffff',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                    }),
+                    option: (provided: any, state: any) => ({
+                      ...provided,
+                      backgroundColor: state.isSelected 
+                        ? '#1976d2' 
+                        : state.isFocused 
+                        ? '#f5f5f5' 
+                        : '#ffffff',
+                      color: state.isSelected ? '#ffffff' : '#000000',
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: state.isSelected ? '#1976d2' : '#f5f5f5',
+                      },
+                    }),
+                    singleValue: (provided: any) => ({
+                      ...provided,
+                      color: '#000000',
+                    }),
+                    placeholder: (provided: any) => ({
+                      ...provided,
+                      color: '#999999',
+                    }),
+                  },
+                }}
+                autocompletionRequest={{
+                  types: ['(cities)'],
+                }}
+              />
+            </Box>
           </Grid>
 
           {/* Destination */}
@@ -561,7 +643,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     })()}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    * AI optimization typically saves 10-20% on your budget
+                    * Rough estimate based on your preferences. Detailed cost breakdown will be provided with your AI-generated itinerary.
                   </Typography>
                 </CardContent>
               </Card>

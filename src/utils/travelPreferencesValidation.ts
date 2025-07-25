@@ -201,7 +201,7 @@ export function validateTravelPreferenceProfile(
   if (!isPartialUpdate || profile.transportation !== undefined) {
     const transportation = profile.transportation;
     if (transportation) {
-      const validTransportationModes = ['walking', 'public', 'taxi', 'rental', 'mixed'] as const;
+      const validTransportationModes = ['walking', 'public', 'taxi', 'rental', 'airplane', 'bus', 'train', 'mixed'] as const;
       if (transportation.primaryMode && !validTransportationModes.includes(transportation.primaryMode)) {
         throw TravelPreferencesErrors.invalidProfileData(
           'transportation.primaryMode', 
