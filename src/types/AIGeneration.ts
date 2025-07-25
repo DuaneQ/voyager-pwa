@@ -1,6 +1,7 @@
 // AI Generation types for the modal component
 export interface AIGenerationRequest {
   destination: string;
+  departure?: string; // Added departure location for flight pricing
   startDate: string;
   endDate: string;
   budget?: {
@@ -20,6 +21,7 @@ export interface AIGenerationResponse {
   request: AIGenerationRequest;
   itinerary?: any; // Will be defined later when backend is implemented
   recommendations?: {
+    flights?: any[]; // Flight options with pricing and details
     accommodations: any[];
     transportation: any[];
     activities: any[];

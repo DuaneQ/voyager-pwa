@@ -40,7 +40,7 @@ export interface TravelPreferenceProfile {
   
   // Transportation Preferences
   transportation: {
-    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'mixed';
+    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train' | 'mixed';
     maxWalkingDistance: number; // in minutes
   };
   
