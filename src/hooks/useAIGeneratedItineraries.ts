@@ -156,6 +156,7 @@ export interface AIGeneratedItinerary {
           };
           rating: number;
           amenities: string[];
+          website?: string;
           bookingUrl?: string;
           pros: string[];
           cons: string[];
