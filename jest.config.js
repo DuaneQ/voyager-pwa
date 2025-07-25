@@ -6,6 +6,6 @@ module.exports = {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
   testEnvironment: "jsdom",
-  transformIgnorePatterns: ["node_modules/(?!@mui|@testing-library)"],
+  transformIgnorePatterns: ["node_modules/(?!(@mui|@testing-library|date-fns))"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 };

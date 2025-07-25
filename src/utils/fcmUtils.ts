@@ -56,7 +56,6 @@ export const isFCMSupported = (): boolean => {
   }
 
   // Additional checks for other limited environments
-  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   const isWebView = window.navigator.userAgent.includes('wv');
   
   if (isWebView && isIOS) {

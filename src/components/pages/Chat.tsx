@@ -45,7 +45,6 @@ export const Chat = React.memo(() => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const { setHasNewConnection } = useNewConnection();
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
-  const [selectedPhotoURL, setSelectedPhotoURL] = useState<string>("");
 
   // Prevent body scrolling when component mounts (same as auth pages)
   useEffect(() => {
@@ -276,7 +275,6 @@ export const Chat = React.memo(() => {
                     userId={userId}
                     onClick={(photoURL: string) => {
                       setSelectedConnection(conn);
-                      setSelectedPhotoURL(photoURL);
                     }}
                     unread={!!unreadMap[conn.id]}
                   />

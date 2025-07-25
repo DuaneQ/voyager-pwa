@@ -14,6 +14,20 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Usage Tracking**: Daily interaction limits and premium unlocks
 - **Bottom Navigation**: Mobile-friendly persistent navigation bar
 
+### 🤖 AI-Powered Features (NEW)
+- **AI Itinerary Generation**: Premium users can generate personalized itineraries using OpenAI
+- **Smart Travel Preferences**: AI learns from user behavior and preferences
+- **Cost Estimation**: Instant trip cost estimates for any destination
+- **Intelligent Recommendations**: AI-powered activity and accommodation suggestions
+- **Multi-stage Generation**: 5-stage process with real-time progress tracking
+- **Behavioral Analysis**: AI analyzes past trips to improve future recommendations
+
+### 📺 Video Integration
+- **Video Sharing**: Share travel videos through secure Firebase storage
+- **Video Upload**: Direct video upload with progress tracking
+- **Optimized Playback**: Efficient video streaming and caching
+- **Privacy Controls**: Secure video sharing with access controls
+
 ### Performance Features
 - **Intelligent Caching**: 5-minute search cache reduces Firebase costs by 70-80%
 - **Offline Support**: PWA capabilities for offline browsing
@@ -26,6 +40,8 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Travel Groups**: Multi-traveler itinerary matching
 - **Itinerary Sharing**: Social features for travel planning
 - **Review System**: Post-trip reviews and ratings
+- **AI Teasers**: Free users get preview of AI capabilities
+- **Live Itinerary Updates**: Real-time optimization of generated itineraries
 
 ## 🛠 Tech Stack
 
@@ -41,7 +57,10 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **Firebase Authentication**: Google OAuth integration
 - **Firebase Cloud Messaging**: Push notifications
 - **Firebase Hosting**: Static site hosting
+- **Firebase Storage**: Video and media file storage
 - **Cloud Functions**: Email, notification, and Stripe integration
+- **OpenAI Integration**: AI itinerary generation with GPT-4o-mini
+- **Google Places API**: Location data and activity discovery
 
 ### Development Tools
 - **Jest**: Unit testing framework
@@ -80,6 +99,12 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
    # Google Services
    REACT_APP_GOOGLE_PLACES_API_KEY=your_google_places_api_key
 
+   # OpenAI Configuration (for Firebase Functions)
+   OPENAI_API_KEY=your_openai_api_key
+   
+   # Google Maps (optional, for enhanced location data)
+   GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
    # Firebase Configuration
    REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
    REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
@@ -101,7 +126,13 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
    - Enable Authentication (Google provider)
    - Enable Firestore Database
    - Enable Cloud Messaging
+   - Enable Cloud Storage for video uploads
    - Add your domain to authorized domains
+   - Set up Firebase Functions environment variables:
+     ```bash
+     firebase functions:config:set openai.api_key="your-openai-api-key"
+     firebase functions:config:set google.maps_api_key="your-google-maps-api-key"
+     ```
 
 5. **Start Development Server**
    ```bash
@@ -118,16 +149,22 @@ src/
 │   ├── forms/           # Form components (SignInForm, SignUpForm, etc.)
 │   ├── layout/          # Layout components (BottomNavigation, etc.)
 │   ├── modals/          # Modal components
+│   │   └── AIItineraryGenerationModal.tsx  # AI generation interface
 │   └── auth/            # Auth-related components (Reset, ResendEmail, TermsGuard)
 ├── hooks/               # Custom React hooks
 │   ├── useUsageTracking.ts   # Usage tracking and premium logic
 │   ├── useStripePortal.ts    # Stripe billing portal integration
+│   ├── useAIGeneration.ts    # AI itinerary generation hook
+│   ├── useTravelPreferences.ts  # Travel preference management
 │   └── ...
 ├── utils/               # Utility functions
 │   └── searchCache.ts   # Intelligent search caching
 ├── types/               # TypeScript type definitions
+│   └── AIGeneration.ts  # AI generation types and constants
 ├── environments/        # Firebase configuration
 └── __tests__/           # Jest and Cypress test files
+    └── modals/          # Modal component tests
+        └── AIItineraryGenerationModal.test.tsx  # AI modal tests
 ```
 
 ### Data Flow
@@ -144,8 +181,83 @@ src/
 - **notifyViolationReport**: Admin alert on violation
 - **createStripePortalSession**: Stripe billing portal for premium users
 - **stripeWebhook**: Stripe event handling (subscription, payment)
+- **videoShare**: Secure video sharing with access controls
 
-## 🧪 Testing
+#### 🤖 AI Functions (NEW)
+- **generateItinerary**: Complete AI itinerary generation for premium users
+- **estimateItineraryCost**: Quick cost estimation for any user
+- **getGenerationStatus**: Check status of ongoing AI generation
+
+## � AI Itinerary Generation
+
+### How It Works
+The AI system generates personalized travel itineraries using a sophisticated 5-stage process:
+
+1. **Preference Analysis** (20%) - Analyzes user travel preferences and past behavior
+2. **Destination Research** (40%) - Gathers location data, activities, and weather information
+3. **AI Generation** (60%) - Creates personalized itinerary using OpenAI GPT-4o-mini
+4. **Optimization** (80%) - Fine-tunes timing, routes, and logistics
+5. **Finalization** (100%) - Adds costs, booking info, and saves to database
+
+### Features
+- **Premium Only**: Full AI generation requires premium subscription
+- **Cost Estimation**: Free users can get cost estimates
+- **Smart Preferences**: AI learns from user behavior patterns
+- **Real-time Progress**: Live updates during the generation process
+- **Detailed Itineraries**: Complete day-by-day plans with activities, meals, and transportation
+- **Rate Limiting**: 10 generations per hour for premium users
+
+### Usage
+```javascript
+import { useAIGeneration } from '../hooks/useAIGeneration';
+
+const { generateItinerary, isGenerating, progress, result } = useAIGeneration();
+
+await generateItinerary({
+  destination: "Paris, France",
+  startDate: "2025-08-01",
+  endDate: "2025-08-07",
+  budget: { total: 2000, currency: "USD" },
+  groupSize: 2,
+  tripType: "leisure",
+  preferenceProfileId: "profile-1"
+});
+```
+
+### Backend Architecture
+```
+functions/src/
+├── api/ai/
+│   └── generateItinerary.ts     # Main API endpoints
+├── services/
+│   ├── aiItineraryService.ts    # Core generation logic
+│   └── promptEngineering.ts     # AI prompt optimization
+├── integrations/
+│   ├── openaiClient.ts          # OpenAI API integration
+│   └── googlePlacesService.ts   # Location data service
+├── middleware/
+│   └── premiumAuth.ts           # Authentication & rate limiting
+└── types/
+    └── aiItinerary.ts           # TypeScript definitions
+```
+
+> 📊 **Detailed Architecture**: See [AI_ARCHITECTURE_DIAGRAM.md](AI_ARCHITECTURE_DIAGRAM.md) for comprehensive system diagrams including data flow, sequence diagrams, and database relationships.
+
+## 📺 Video Integration
+
+### Features
+- **Secure Upload**: Direct video upload to Firebase Storage
+- **Access Controls**: Privacy settings for video sharing
+- **Optimized Streaming**: Efficient video playback with caching
+- **Progress Tracking**: Real-time upload progress indication
+
+### Implementation
+- **Firebase Storage**: Secure video file storage
+- **Cloud Functions**: Video processing and access control
+- **React Components**: Video player with custom controls
+- **Security Rules**: Firestore-based access permissions
+
+## �🧪 Testing
 
 ### Run Tests
 ```bash
@@ -170,10 +282,11 @@ npm run cypress:open
 
 ### Test Structure
 - **Unit Tests**: Individual component and hook testing with Jest (see `src/__tests__`)
+- **AI Modal Tests**: Comprehensive testing of AI generation interface (14 test cases)
 - **Integration Tests**: Real-time database and Stripe interaction testing
 - **E2E Tests**: End-to-end testing with Cypress
 - **Component Tests**: Isolated component testing with Cypress
-- **Mock Services**: Firebase and Stripe services mocked for testing environments
+- **Mock Services**: Firebase, OpenAI, and Stripe services mocked for testing environments
 
 ### Cypress Testing
 ```bash
@@ -198,13 +311,78 @@ npx cypress run --spec "cypress/e2e/profile_login.cy.ts"
 - **Performance**: <50ms cached responses vs 500ms+ network requests
 
 ### Firebase Cost Estimates (Monthly)
-| Users | Without Cache | With Cache | Savings |
-|-------|---------------|------------|---------|
-| 1K    | $1.71        | $1.33      | $0.38   |
-| 10K   | $17.30       | $13.52     | $3.78   |
-| 100K  | $176.00      | $138.20    | $37.80  |
+| Users | Without Cache | With Cache | AI Features | Total Savings |
+|-------|---------------|------------|-------------|---------------|
+| 1K    | $1.71        | $1.33      | +$15.00     | $0.38         |
+| 10K   | $17.30       | $13.52     | +$150.00    | $3.78         |
+| 100K  | $176.00      | $138.20    | +$1500.00   | $37.80        |
 
-## 🔐 Security
+*AI feature costs include OpenAI API usage at $0.15 per generation*
+
+## � API Reference
+
+### AI Generation Functions
+
+#### `generateItinerary`
+**Type**: Firebase Callable Function  
+**Access**: Premium users only  
+**Rate Limit**: 10 requests/hour  
+
+```javascript
+const result = await generateItinerary({
+  destination: "Paris, France",
+  startDate: "2025-08-01", 
+  endDate: "2025-08-07",
+  budget: { total: 2000, currency: "USD" },
+  groupSize: 2,
+  tripType: "leisure",
+  preferenceProfileId: "profile-1", // optional
+  mustInclude: ["Eiffel Tower"], // optional
+  mustAvoid: ["Crowded areas"] // optional
+});
+```
+
+#### `estimateItineraryCost`
+**Type**: Firebase Callable Function  
+**Access**: All authenticated users  
+**Rate Limit**: More lenient than full generation  
+
+```javascript
+const estimate = await estimateItineraryCost({
+  destination: "Paris, France",
+  startDate: "2025-08-01",
+  endDate: "2025-08-07", 
+  groupSize: 2,
+  tripType: "leisure"
+});
+// Returns: { success: true, estimatedCost: 1800, currency: "USD" }
+```
+
+#### `getGenerationStatus`
+**Type**: Firebase Callable Function  
+**Access**: Authenticated users (own generations only)  
+
+```javascript
+const status = await getGenerationStatus({
+  generationId: "gen_1234567890_abcdefgh"
+});
+// Returns: { id, status, createdAt, response?, error? }
+```
+
+### Video Functions
+
+#### `videoShare`
+**Type**: Firebase Callable Function  
+**Access**: Authenticated users  
+
+```javascript
+const shareUrl = await videoShare({
+  videoId: "video123",
+  recipientId: "user456"
+});
+```
+
+## �🔐 Security
 
 ### Firebase Security Rules
 ```javascript
@@ -222,9 +400,27 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+    
+    // AI generations are private to each user
+    match /ai_generations/{generationId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    
+    // User preferences are private
+    match /user_preferences/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 ```
+
+### AI Security Measures
+- **Premium Validation**: AI generation requires active premium subscription
+- **Rate Limiting**: Prevents abuse with intelligent request limits
+- **Input Sanitization**: All user inputs are validated and sanitized
+- **Error Masking**: Sensitive error details hidden in production
+- **Usage Analytics**: Monitoring for unusual patterns and abuse
+- **Cost Controls**: Built-in safeguards against runaway AI costs
 
 ### Authentication
 - **Google OAuth**: Secure authentication via Firebase Auth

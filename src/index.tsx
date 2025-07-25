@@ -11,6 +11,24 @@ import { getPerformance } from "firebase/performance";
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { app } from "./environments/firebaseConfig";
 
+// Suppress Google Maps API deprecation warnings
+if (process.env.NODE_ENV === 'development') {
+  const originalConsoleWarn = console.warn;
+  console.warn = function(message, ...args) {
+    // Filter out Google Maps Places API deprecation warnings
+    if (typeof message === 'string' && (
+      message.includes('AutocompleteService is not available to new customers') ||
+      message.includes('google.maps.places.AutocompleteService') ||
+      message.includes('google.maps.places.AutocompleteSuggestion is recommended') ||
+      message.includes('developers.google.com/maps/legacy') ||
+      message.includes('places-migration-overview')
+    )) {
+      return; // Suppress these warnings in development
+    }
+    originalConsoleWarn.apply(console, [message, ...args]);
+  };
+}
+
 let analytics: ReturnType<typeof getAnalytics> | undefined;
 if (process.env.NODE_ENV === "production") {
   getPerformance(app);

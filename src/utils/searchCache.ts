@@ -68,9 +68,6 @@ class SearchCache {
       const serialized = JSON.stringify(persistentCache);
       localStorage.setItem('searchCache', serialized);
 
-      // Verify it was actually stored
-      const verification = localStorage.getItem('searchCache');
-
     } catch (error) {
       console.error('🔧 localStorage error:', error);
     }

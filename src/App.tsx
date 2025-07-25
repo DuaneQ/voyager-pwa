@@ -15,6 +15,8 @@ import { getAnalytics, logEvent } from "firebase/analytics";
 import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
 import "./App.css";
+// Import debug functions for testing Firestore connectivity
+import "./debug/testFirestore";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
 import { Profile } from "./components/pages/Profile";
