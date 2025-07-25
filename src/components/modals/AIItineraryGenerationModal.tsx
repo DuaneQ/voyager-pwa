@@ -26,7 +26,7 @@ import {
 import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
-import { AIGenerationRequest, TRIP_TYPES } from '../../types/AIGeneration';
+import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
 import AIGenerationProgress from '../common/AIGenerationProgress';
 
@@ -76,6 +76,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     specialRequests: '',
     mustInclude: [],
     mustAvoid: [],
+    flightPreferences: {
+      class: 'economy',
+      stopPreference: 'any',
+      preferredAirlines: [],
+    },
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -504,6 +509,97 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             </Grid>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
               {TRIP_TYPES.find(t => t.value === formData.tripType)?.description}
+            </Typography>
+          </Grid>
+
+          {/* Flight Preferences */}
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              ✈️ Flight Preferences
+            </Typography>
+            
+            {/* Flight Class */}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                  Class
+                </Typography>
+                <TextField
+                  fullWidth
+                  select
+                  size="small"
+                  value={formData.flightPreferences?.class || 'economy'}
+                  onChange={(e) => handleFieldChange('flightPreferences', {
+                    ...formData.flightPreferences,
+                    class: e.target.value
+                  })}
+                >
+                  {FLIGHT_CLASSES.map((flightClass) => (
+                    <MenuItem key={flightClass.value} value={flightClass.value}>
+                      {flightClass.icon} {flightClass.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              {/* Stop Preference */}
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                  Stops
+                </Typography>
+                <TextField
+                  fullWidth
+                  select
+                  size="small"
+                  value={formData.flightPreferences?.stopPreference || 'any'}
+                  onChange={(e) => handleFieldChange('flightPreferences', {
+                    ...formData.flightPreferences,
+                    stopPreference: e.target.value
+                  })}
+                >
+                  {STOP_PREFERENCES.map((stopPref) => (
+                    <MenuItem key={stopPref.value} value={stopPref.value}>
+                      {stopPref.icon} {stopPref.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              {/* Preferred Airlines */}
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                  Preferred Airlines
+                </Typography>
+                <TextField
+                  fullWidth
+                  select
+                  size="small"
+                  SelectProps={{
+                    multiple: true,
+                    value: formData.flightPreferences?.preferredAirlines || [],
+                    onChange: (e) => handleFieldChange('flightPreferences', {
+                      ...formData.flightPreferences,
+                      preferredAirlines: typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+                    }),
+                    renderValue: (selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {(selected as string[]).map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    ),
+                  }}
+                >
+                  {POPULAR_AIRLINES.map((airline) => (
+                    <MenuItem key={airline} value={airline}>
+                      {airline}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+            </Grid>
+            <Typography variant="caption" color="text.secondary">
+              These preferences will help us find the best flight options for your trip
             </Typography>
           </Grid>
 

@@ -182,6 +182,12 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       }
     }, (error) => {
       console.error('❌ Firestore listener error:', error);
+      // Don't immediately fail on connection errors - they might be temporary
+      if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        console.warn('🔄 Firestore temporarily unavailable, will retry automatically');
+      } else {
+        setError(`Connection error: ${error.message}`);
+      }
     });
 
     return () => {
@@ -391,6 +397,12 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
                   unsubscribe();
                   resolve(aiResponse);
                 }
+              }
+            }, (error) => {
+              console.error('❌ Firestore recent generations listener error:', error);
+              // Don't immediately fail on connection errors - they might be temporary
+              if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+                console.warn('🔄 Firestore temporarily unavailable for recent generations query, will retry automatically');
               }
             });
             
