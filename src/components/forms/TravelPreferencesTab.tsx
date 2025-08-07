@@ -632,7 +632,7 @@ export const TravelPreferencesTab: React.FC = () => {
             🤖 AI Itinerary Generation
           </Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }}>
-            Use AI to generate personalized travel itineraries based on your preferences and budget.
+            Use AI to generate personalized travel itineraries based on your preferences.
             Use the Traval Profile options below to define your Traval preferences.
           </Typography>
           <Button
@@ -797,41 +797,6 @@ export const TravelPreferencesTab: React.FC = () => {
           </Select>
         </FormControl>
       </Card>
-
-      {/* Budget Range */}
-      <Card sx={{
-        p: { xs: 1.5, sm: 2 },
-        mb: 2,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-      }}>
-        <Typography variant="h6" sx={{ color: 'white', mb: 2, fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-          💰 Budget Range
-        </Typography>
-        <Box sx={{ px: 2 }}>
-          <Slider
-            value={[currentPreferences.budgetRange.min, currentPreferences.budgetRange.max]}
-            onChange={handleBudgetChange}
-            valueLabelDisplay="auto"
-            min={0}
-            max={50000}
-            step={500}
-            sx={{
-              color: 'white',
-              '& .MuiSlider-valueLabel': {
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                color: 'black'
-              }
-            }}
-            valueLabelFormat={(value) => `$${value.toLocaleString()}`}
-          />
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center', mt: 1 }}>
-            ${currentPreferences.budgetRange.min.toLocaleString()} - ${currentPreferences.budgetRange.max.toLocaleString()} {currentPreferences.budgetRange.currency}
-          </Typography>
-        </Box>
-      </Card>
-
       {/* Activity Preferences Accordion */}
       <Accordion sx={{
         mb: 2,
@@ -1108,84 +1073,6 @@ export const TravelPreferencesTab: React.FC = () => {
                   <MenuItem value="mixed">🔄 Mixed</MenuItem>
                 </Select>
               </FormControl>
-              
-              {/* Transportation Cost Estimates */}
-              {['airplane', 'bus', 'train', 'rental'].includes(currentPreferences.transportation.primaryMode) && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                    💰 Estimated Transportation Costs (per person)
-                  </Typography>
-                  {currentPreferences.transportation.primaryMode === 'airplane' && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Chip label="✈️ Economy: $200 - $800" size="small" sx={{ backgroundColor: 'rgba(76, 175, 80, 0.2)', color: '#81C784' }} />
-                      <Chip label="✈️ Premium Economy: $400 - $1,200" size="small" sx={{ backgroundColor: 'rgba(255, 193, 7, 0.2)', color: '#FFD54F' }} />
-                      <Chip label="✈️ Business: $800 - $3,000" size="small" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.2)', color: '#FFB74D' }} />
-                      <Chip label="✈️ First Class: $1,500 - $8,000" size="small" sx={{ backgroundColor: 'rgba(156, 39, 176, 0.2)', color: '#CE93D8' }} />
-                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1 }}>
-                        *Prices vary by destination, season, and booking timing
-                      </Typography>
-                    </Box>
-                  )}
-                  {currentPreferences.transportation.primaryMode === 'bus' && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Chip label="🚌 Local/Regional Bus: $15 - $80" size="small" sx={{ backgroundColor: 'rgba(76, 175, 80, 0.2)', color: '#81C784' }} />
-                      <Chip label="🚌 Long-distance Bus: $30 - $200" size="small" sx={{ backgroundColor: 'rgba(33, 150, 243, 0.2)', color: '#90CAF9' }} />
-                      <Chip label="🚌 Luxury Coach: $80 - $300" size="small" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.2)', color: '#FFB74D' }} />
-                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1 }}>
-                        *Budget-friendly option with scenic routes
-                      </Typography>
-                    </Box>
-                  )}
-                  {currentPreferences.transportation.primaryMode === 'train' && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Chip label="🚄 Standard Train: $50 - $300" size="small" sx={{ backgroundColor: 'rgba(76, 175, 80, 0.2)', color: '#81C784' }} />
-                      <Chip label="🚄 High-Speed Rail: $100 - $500" size="small" sx={{ backgroundColor: 'rgba(33, 150, 243, 0.2)', color: '#90CAF9' }} />
-                      <Chip label="🚄 Sleeper Car: $150 - $800" size="small" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.2)', color: '#FFB74D' }} />
-                      <Chip label="🚄 Luxury Train: $300 - $2,000" size="small" sx={{ backgroundColor: 'rgba(156, 39, 176, 0.2)', color: '#CE93D8' }} />
-                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1 }}>
-                        *Comfortable and eco-friendly travel option
-                      </Typography>
-                    </Box>
-                  )}
-                  {currentPreferences.transportation.primaryMode === 'rental' && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Chip label="🚗 Economy Car: $25 - $50/day" size="small" sx={{ backgroundColor: 'rgba(76, 175, 80, 0.2)', color: '#81C784' }} />
-                      <Chip label="🚗 Mid-size Car: $40 - $80/day" size="small" sx={{ backgroundColor: 'rgba(33, 150, 243, 0.2)', color: '#90CAF9' }} />
-                      <Chip label="🚗 Luxury Car: $80 - $200/day" size="small" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.2)', color: '#FFB74D' }} />
-                      <Chip label="🚗 SUV/Premium: $100 - $300/day" size="small" sx={{ backgroundColor: 'rgba(156, 39, 176, 0.2)', color: '#CE93D8' }} />
-                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1 }}>
-                        *Plus gas (~$30-80/day) and parking fees
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
-              
-              <Typography variant="subtitle2" sx={{ color: 'white', mt: 2, mb: 1 }}>
-                Max Walking Distance (minutes)
-              </Typography>
-              <Slider
-                value={currentPreferences.transportation.maxWalkingDistance}
-                onChange={(_, value) => updateTransportation({
-                  maxWalkingDistance: value as number
-                })}
-                min={5}
-                max={60}
-                step={5}
-                marks={[
-                  { value: 5, label: '5min' },
-                  { value: 30, label: '30min' },
-                  { value: 60, label: '60min' }
-                ]}
-                sx={{
-                  color: 'white',
-                  '& .MuiSlider-markLabel': {
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    fontSize: '0.6rem'
-                  }
-                }}
-                valueLabelDisplay="auto"
-              />
             </Grid>
           </Grid>
         </AccordionDetails>

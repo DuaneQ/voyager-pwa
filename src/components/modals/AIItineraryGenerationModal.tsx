@@ -152,18 +152,22 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const validateForm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
 
-    // if (!formData.destination.trim()) {
-    //   errors.destination = 'Destination is required';
-    // }
+    // Always validate destination
+    if (!formData.destination || !formData.destination.trim()) {
+      errors.destination = 'Destination is required';
+    }
 
+    // Always validate start date
     if (!formData.startDate) {
       errors.startDate = 'Start date is required';
     }
 
+    // Always validate end date
     if (!formData.endDate) {
       errors.endDate = 'End date is required';
     }
 
+    // Validate date logic even if destination is missing
     if (formData.startDate && formData.endDate) {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
@@ -185,6 +189,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
     }
 
+    // Always validate profile selection
     if (!formData.preferenceProfileId) {
       errors.preferenceProfileId = 'Please select a travel preference profile';
     }
