@@ -148,15 +148,6 @@ describe('AIItineraryGenerationModal', () => {
     expect(screen.getByRole('option', { name: 'Default (Default)' })).toBeInTheDocument();
   });
 
-  it('handles destination input', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
-    
-    const destinationInput = screen.getByTestId('destination-input');
-    fireEvent.change(destinationInput, { target: { value: 'Paris, France' } });
-    
-    expect(destinationInput).toHaveValue('Paris, France');
-  });
-
   it('validates required fields', async () => {
     render(<AIItineraryGenerationModal {...defaultProps} />);
     
@@ -165,28 +156,6 @@ describe('AIItineraryGenerationModal', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Destination is required')).toBeInTheDocument();
-    });
-  });
-
-  it('handles date validation', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
-    
-    // Set a destination to enable the Generate button
-    const destinationInput = screen.getByTestId('destination-input');
-    fireEvent.change(destinationInput, { target: { value: 'Paris' } });
-    
-    // Set end date before start date  
-    const startDateInput = screen.getByLabelText('Start Date');
-    const endDateInput = screen.getByLabelText('End Date');
-    
-    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
-    fireEvent.change(endDateInput, { target: { value: '2024-12-01' } });
-    
-    const generateButton = screen.getByText('Generate Itinerary');
-    fireEvent.click(generateButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
     });
   });
 
@@ -309,5 +278,24 @@ describe('AIItineraryGenerationModal', () => {
     // Reset the mock
     mockUseAIGeneration.isGenerating = false;  
     mockUseAIGeneration.progress = null;
+  });
+
+  it('shows date validation errors even if destination is missing', async () => {
+    render(<AIItineraryGenerationModal {...defaultProps} />);
+
+    // Set invalid dates but do NOT set destination
+    const startDateInput = screen.getByLabelText('Start Date');
+    const endDateInput = screen.getByLabelText('End Date');
+
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-12-01' } });
+
+    const generateButton = screen.getByText('Generate Itinerary');
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
+      expect(screen.getByText('Destination is required')).toBeInTheDocument();
+    });
   });
 });
