@@ -1,7 +1,9 @@
 // AI Generation types for the modal component
 export interface AIGenerationRequest {
   destination: string;
+  destinationAirportCode?: string; // IATA code for destination airport
   departure?: string; // Added departure location for flight pricing
+  departureAirportCode?: string; // IATA code for departure airport
   startDate: string;
   endDate: string;
   budget?: {
@@ -9,7 +11,7 @@ export interface AIGenerationRequest {
     currency: 'USD' | 'EUR' | 'GBP';
   };
   groupSize?: number;
-  tripType: 'leisure' | 'business' | 'adventure' | 'romantic' | 'family';
+  tripType: 'leisure' | 'business' | 'adventure' | 'romantic' | 'family' | 'bachelor' | 'bachelorette';
   preferenceProfileId: string;
   specialRequests?: string;
   mustInclude?: string[];
@@ -113,7 +115,9 @@ export const TRIP_TYPES = [
   { value: 'business', label: 'Business', icon: '💼', description: 'Professional travel with some leisure' },
   { value: 'adventure', label: 'Adventure', icon: '🏔️', description: 'Active and thrilling experiences' },
   { value: 'romantic', label: 'Romantic', icon: '💕', description: 'Intimate and romantic getaway' },
-  { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', description: 'Family-friendly activities and venues' },
+  { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', description: 'Family-friendly activities and venues.  Amusement parks and kid friendly events.' },
+  { value: 'bachelor', label: 'Bachelor Party', icon: '🎉', description: 'Bachelor party, group celebration, nightlife and fun' },
+  { value: 'bachelorette', label: 'Bachelorette Party', icon: '👰‍♀️', description: 'Bachelorette party, group celebration, pampering and fun' },
 ];
 
 export const FLIGHT_CLASSES = [

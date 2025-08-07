@@ -29,6 +29,7 @@ import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
 import AIGenerationProgress from '../common/AIGenerationProgress';
+import { AirportSelector } from '../common/AirportSelector';
 
 interface AIItineraryGenerationModalProps {
   open: boolean;
@@ -68,7 +69,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   // Form state
   const [formData, setFormData] = useState<AIGenerationRequest>({
     destination: initialDestination,
+    destinationAirportCode: '',
     departure: '',
+    departureAirportCode: '',
     startDate: initialDates?.startDate || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
     endDate: initialDates?.endDate || format(addDays(new Date(), 14), 'yyyy-MM-dd'),
     tripType: 'leisure',
@@ -155,6 +158,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     // Always validate destination
     if (!formData.destination || !formData.destination.trim()) {
       errors.destination = 'Destination is required';
+    }
+
+    // Validate departure airport code if departure location is provided
+    if (formData.departure && !formData.departureAirportCode) {
+      errors.departure = 'Please select a departure airport for flight pricing';
+    }
+
+    // Validate destination airport code if destination is provided
+    if (formData.destination && !formData.destinationAirportCode) {
+      errors.destination = errors.destination || 'Please select a destination airport for flight pricing';
     }
 
     // Always validate start date
@@ -328,6 +341,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   value: formData.departure ? { label: formData.departure, value: formData.departure } : null,
                   onChange: (selected: any) => {
                     handleFieldChange('departure', selected?.label || '');
+                    // Clear airport code when location changes
+                    if (formData.departureAirportCode) {
+                      handleFieldChange('departureAirportCode', '');
+                    }
                   },
                   placeholder: 'Where are you flying from? (for flight pricing)',
                   isClearable: true,
@@ -387,6 +404,22 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             </Box>
           </Grid>
 
+          {/* Departure Airport Selector */}
+          {formData.departure && (
+            <Grid item xs={12}>
+              <AirportSelector
+                label="Departure Airport"
+                placeholder="Select your departure airport"
+                location={formData.departure}
+                selectedAirportCode={formData.departureAirportCode}
+                onAirportSelect={(code, name) => {
+                  handleFieldChange('departureAirportCode', code);
+                }}
+                onClear={() => handleFieldChange('departureAirportCode', '')}
+              />
+            </Grid>
+          )}
+
           {/* Destination */}
           <Grid item xs={12}>
             <Box>
@@ -399,6 +432,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   value: formData.destination ? { label: formData.destination, value: formData.destination } : null,
                   onChange: (selected: any) => {
                     handleFieldChange('destination', selected?.label || '');
+                    // Clear airport code when location changes
+                    if (formData.destinationAirportCode) {
+                      handleFieldChange('destinationAirportCode', '');
+                    }
                   },
                   placeholder: 'Where would you like to go?',
                   isClearable: true,
@@ -460,6 +497,22 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               )}
             </Box>
           </Grid>
+
+          {/* Destination Airport Selector */}
+          {formData.destination && (
+            <Grid item xs={12}>
+              <AirportSelector
+                label="Destination Airport"
+                placeholder="Select your destination airport"
+                location={formData.destination}
+                selectedAirportCode={formData.destinationAirportCode}
+                onAirportSelect={(code, name) => {
+                  handleFieldChange('destinationAirportCode', code);
+                }}
+                onClear={() => handleFieldChange('destinationAirportCode', '')}
+              />
+            </Grid>
+          )}
 
           {/* Dates */}
           <Grid item xs={6}>
@@ -604,7 +657,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               </Grid>
             </Grid>
             <Typography variant="caption" color="text.secondary">
-              These preferences will help us find the best flight options for your trip
+              Flight preferences will be applied when searching for flights between your selected airports. 
+              {formData.departureAirportCode && formData.destinationAirportCode 
+                ? ` Route: ${formData.departureAirportCode} → ${formData.destinationAirportCode}`
+                : ' Select airports above to see your route.'
+              }
             </Typography>
           </Grid>
 
