@@ -68,7 +68,8 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
       const result: AirportSearchResult = await airportService.searchAirportsNearLocation(
         locationQuery,
         undefined,
-        200 // 200km radius
+        200, // 200km radius
+        5 // 5 closest airports with at least 1 international
       );
       
       setAirports(result.airports);

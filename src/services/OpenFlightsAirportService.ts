@@ -212,10 +212,52 @@ export class OpenFlightsAirportService implements IAirportService {
    */
   private isInternationalAirport(airport: OpenFlightsAirport): boolean {
     const name = airport.name.toLowerCase();
-    return name.includes('international') || 
-           name.includes('intl') ||
-           airport.name.length > 30 || // Usually international airports have longer names
-           ['JFK', 'LAX', 'ORD', 'ATL', 'MIA', 'SEA', 'DEN', 'PHX', 'LHR', 'CDG', 'NRT', 'ICN'].includes(airport.iata || '');
+    
+    // Direct indicators of international status
+    if (name.includes('international') || name.includes('intl')) {
+      return true;
+    }
+    
+    // Exclude clearly regional/domestic airports
+    if (name.includes('regional') || 
+        name.includes('municipal') || 
+        name.includes('county') ||
+        name.includes('field') ||
+        name.includes('airfield') ||
+        name.includes('strip')) {
+      return false;
+    }
+    
+    // Major international airports by IATA code
+    const majorInternationalCodes = [
+      'JFK', 'LAX', 'ORD', 'ATL', 'MIA', 'SEA', 'DEN', 'PHX', 'LGA', 'EWR', 'SFO', 'DFW', 'IAH',
+      'LHR', 'LGW', 'CDG', 'ORY', 'AMS', 'FRA', 'MUC', 'ZUR', 'VIE', 'ARN', 'CPH', 'OSL', 'HEL',
+      'DME', 'SVO', 'IST', 'SAW', 'FCO', 'MXP', 'BCN', 'MAD', 'LIS', 'DUB', 'BRU', 'PRG',
+      'NRT', 'HND', 'KIX', 'ICN', 'PVG', 'PEK', 'CAN', 'HKG', 'SIN', 'BKK', 'KUL', 'CGK',
+      'BOM', 'DEL', 'SYD', 'MEL', 'AKL', 'YYZ', 'YVR', 'YUL', 'MEX', 'PTY', 'BOG', 'LIM',
+      'GRU', 'GIG', 'EZE', 'SCL', 'CAI', 'JNB', 'CPT', 'ADD', 'NBO', 'CMN', 'DXB', 'DOH', 'DWC'
+    ];
+    
+    if (majorInternationalCodes.includes(airport.iata || '')) {
+      return true;
+    }
+    
+    // Capital cities and major metropolitan areas usually have international airports
+    const majorCities = [
+      'new york', 'los angeles', 'chicago', 'miami', 'atlanta', 'seattle', 'denver', 'phoenix',
+      'london', 'paris', 'madrid', 'barcelona', 'berlin', 'rome', 'milan', 'amsterdam', 'brussels',
+      'zurich', 'vienna', 'stockholm', 'oslo', 'copenhagen', 'helsinki', 'moscow', 'istanbul',
+      'tokyo', 'osaka', 'seoul', 'beijing', 'shanghai', 'hong kong', 'singapore', 'bangkok',
+      'mumbai', 'delhi', 'sydney', 'melbourne', 'auckland', 'toronto', 'vancouver', 'montreal'
+    ];
+    
+    const airportCity = airport.city.toLowerCase();
+    if (majorCities.some(city => airportCity.includes(city) || city.includes(airportCity))) {
+      return true;
+    }
+    
+    // Airport names longer than 35 characters are often international
+    return airport.name.length > 35;
   }
 
   /**
@@ -224,7 +266,8 @@ export class OpenFlightsAirportService implements IAirportService {
   async searchAirportsNearLocation(
     locationName: string, 
     coordinates?: LocationCoordinates,
-    maxDistance: number = 200
+    maxDistance: number = 200,
+    maxResults: number = 5
   ): Promise<AirportSearchResult> {
     await this.loadAirportData();
 
@@ -243,6 +286,9 @@ export class OpenFlightsAirportService implements IAirportService {
     const nearbyAirports: Array<{ airport: OpenFlightsAirport; distance: number }> = [];
 
     for (const airport of this.airports) {
+      // Skip airports without IATA codes for better quality results
+      if (!airport.iata) continue;
+
       const distance = this.distanceCalculator.calculateDistance(
         searchCoordinates,
         { lat: airport.latitude, lng: airport.longitude }
@@ -253,11 +299,30 @@ export class OpenFlightsAirportService implements IAirportService {
       }
     }
 
-    // Sort by distance and convert to our Airport type
+    // Sort by distance (closest first)
     nearbyAirports.sort((a, b) => a.distance - b.distance);
     
-    const airports = nearbyAirports
-      .slice(0, 10) // Limit to top 10 nearest airports
+    // Get the closest airports up to maxResults
+    let selectedAirports = nearbyAirports.slice(0, maxResults);
+    
+    // Check if we have at least one international airport
+    const hasInternational = selectedAirports.some(({ airport }) => this.isInternationalAirport(airport));
+    
+    if (!hasInternational && nearbyAirports.length > maxResults) {
+      // Find the closest international airport from the remaining airports
+      const internationalAirports = nearbyAirports.filter(({ airport }) => this.isInternationalAirport(airport));
+      
+      if (internationalAirports.length > 0) {
+        // Replace the last airport with the closest international one
+        selectedAirports = selectedAirports.slice(0, maxResults - 1);
+        selectedAirports.push(internationalAirports[0]);
+        
+        // Re-sort by distance to maintain order
+        selectedAirports.sort((a, b) => a.distance - b.distance);
+      }
+    }
+    
+    const airports = selectedAirports
       .map(({ airport, distance }) => this.convertToAirport(airport, distance));
 
     return {

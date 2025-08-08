@@ -33,6 +33,44 @@ describe('UnifiedAirportService', () => {
       expect(result).toBeDefined();
       expect(result.searchLocation.coordinates).toEqual(coordinates);
     });
+
+    it('should return 5 closest airports with at least 1 international by default', async () => {
+      const result = await service.searchAirportsNearLocation('New York');
+      
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.airports)).toBe(true);
+      
+      // Should return at most 5 airports
+      expect(result.airports.length).toBeLessThanOrEqual(5);
+      
+      // Should have at least 1 international airport if any international airports exist in the area
+      const internationalCount = result.airports.filter(airport => airport.isInternational).length;
+      if (result.airports.length > 0) {
+        // For major cities like New York, we should definitely have international airports
+        expect(internationalCount).toBeGreaterThanOrEqual(1);
+      }
+      
+      // Airports should be sorted by distance (closest first)
+      if (result.airports.length > 1) {
+        for (let i = 1; i < result.airports.length; i++) {
+          const prevDistance = result.airports[i - 1].distance || 0;
+          const currDistance = result.airports[i].distance || 0;
+          expect(currDistance).toBeGreaterThanOrEqual(prevDistance);
+        }
+      }
+    });
+
+    it('should respect custom maxResults parameter', async () => {
+      const result = await service.searchAirportsNearLocation(
+        'New York', 
+        undefined, 
+        200, // Large radius to find many airports
+        2 // Limit to 2 results
+      );
+      
+      expect(result).toBeDefined();
+      expect(result.airports.length).toBeLessThanOrEqual(2);
+    });
   });
 
   describe('getAirportByIataCode', () => {
