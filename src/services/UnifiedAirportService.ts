@@ -27,7 +27,8 @@ export class UnifiedAirportService implements IAirportService {
   async searchAirportsNearLocation(
     locationName: string, 
     coordinates?: LocationCoordinates,
-    maxDistance: number = 200
+    maxDistance: number = 200,
+    maxResults: number = 5
   ): Promise<AirportSearchResult> {
     try {
       // First try to get coordinates from Google Places if not provided
@@ -42,7 +43,8 @@ export class UnifiedAirportService implements IAirportService {
       const result = await this.openFlightsService.searchAirportsNearLocation(
         locationName, 
         coordinates, 
-        maxDistance
+        maxDistance,
+        maxResults
       );
 
       // If we found airports, return them
