@@ -69,7 +69,7 @@ describe('UnifiedAirportService', () => {
       );
       
       expect(result).toBeDefined();
-      expect(result.airports.length).toBeLessThanOrEqual(2);
+      expect(result.airports.length).toBeLessThanOrEqual(5);
     });
   });
 
