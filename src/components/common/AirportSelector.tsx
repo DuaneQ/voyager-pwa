@@ -69,7 +69,7 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
         locationQuery,
         undefined,
         200, // 200km radius
-        5 // 5 closest airports with at least 1 international
+        5 // Up to 5 airports (3 international + 2 domestic, excluding military)
       );
       
       setAirports(result.airports);
@@ -119,18 +119,6 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
     setSearchError(null);
   };
 
-  // Handle manual airport code input
-  const handleManualInput = (inputCode: string) => {
-    if (inputCode.length === 3) {
-      // Validate airport code
-      airportService.validateIataCode(inputCode).then(isValid => {
-        if (isValid) {
-          onAirportSelect(inputCode.toUpperCase(), `${inputCode.toUpperCase()} Airport`);
-        }
-      });
-    }
-  };
-
   // Get display value for the text field
   const getDisplayValue = () => {
     if (selectedAirportCode) {
@@ -163,13 +151,6 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
         onClick={() => {
           if (airports.length > 1) {
             setShowDialog(true);
-          }
-        }}
-        onChange={(e) => {
-          // Allow manual input of 3-letter codes
-          const value = e.target.value.toUpperCase();
-          if (value.length <= 3 && /^[A-Z]*$/.test(value)) {
-            handleManualInput(value);
           }
         }}
       />

@@ -28,7 +28,7 @@ export class UnifiedAirportService implements IAirportService {
     locationName: string, 
     coordinates?: LocationCoordinates,
     maxDistance: number = 200,
-    maxResults: number = 5
+    maxResults: number = 5 // 3 international + 2 domestic
   ): Promise<AirportSearchResult> {
     try {
       // First try to get coordinates from Google Places if not provided
@@ -59,6 +59,7 @@ export class UnifiedAirportService implements IAirportService {
 
       return result;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Error in unified airport search:', error);
       
       // Try Google Places fallback if available
@@ -67,22 +68,20 @@ export class UnifiedAirportService implements IAirportService {
           return await this.searchWithGooglePlacesFallback(locationName, coordinates);
         } catch (fallbackError) {
           console.error('Google Places fallback also failed:', fallbackError);
+          throw new Error(`Airport search failed: ${errorMessage}. Fallback also failed.`);
         }
       }
 
-      // Return empty result if all methods fail
-      return {
-        airports: [],
-        searchLocation: {
-          name: locationName,
-          coordinates: coordinates || { lat: 0, lng: 0 }
-        }
-      };
+      throw new Error(`Airport search failed: ${errorMessage}`);
     }
   }
 
   /**
-   * Fallback search using Google Places API
+   * Fallback search using Google Places API when OpenFlights search fails
+   * @param locationName - Name of the location to search near
+   * @param coordinates - Optional coordinates for the location
+   * @returns Promise<AirportSearchResult> - Search results from Google Places
+   * @throws Error if Google Places service is not available or search fails
    */
   private async searchWithGooglePlacesFallback(
     locationName: string, 
@@ -120,7 +119,7 @@ export class UnifiedAirportService implements IAirportService {
           lng: place.geometry.location.lng
         },
         distance,
-        isInternational: this.isInternationalAirport(place.name)
+        isInternational: this.openFlightsService.isInternationalAirport(place.name)
       };
     });
 
@@ -134,7 +133,9 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Get airport details by IATA code
+   * Get airport details by IATA code using the comprehensive OpenFlights dataset
+   * @param iataCode - 3-letter IATA airport code (e.g., 'JFK', 'LAX')
+   * @returns Promise<Airport | null> - Airport details or null if not found
    */
   async getAirportByIataCode(iataCode: string): Promise<Airport | null> {
     // Always use OpenFlights for IATA code lookup as it's more comprehensive
@@ -142,7 +143,11 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Search for airports directly using query
+   * Search for airports directly using a text query (name, city, IATA code)
+   * Combines OpenFlights dataset with Google Places for comprehensive results
+   * @param query - Search query (airport name, city name, or IATA code)
+   * @returns Promise<Airport[]> - Array of matching airports
+   * @throws Error if search fails
    */
   async searchAirportsByQuery(query: string): Promise<Airport[]> {
     try {
@@ -166,7 +171,7 @@ export class UnifiedAirportService implements IAirportService {
             lat: place.geometry.location.lat,
             lng: place.geometry.location.lng
           },
-          isInternational: this.isInternationalAirport(place.name)
+          isInternational: this.openFlightsService.isInternationalAirport(place.name)
         }));
 
         // Combine and deduplicate results
@@ -184,13 +189,16 @@ export class UnifiedAirportService implements IAirportService {
 
       return openFlightsResults;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred in airport query search';
       console.error('Error in unified airport query search:', error);
-      return [];
+      throw new Error(`Airport query search failed: ${errorMessage}`);
     }
   }
 
   /**
    * Get coordinates for a location using Google Places API
+   * @param locationName - Name of the location to get coordinates for
+   * @returns Promise<LocationCoordinates | null> - Coordinates or null if not found
    */
   async getCoordinatesForLocation(locationName: string): Promise<LocationCoordinates | null> {
     if (this.googlePlacesService) {
@@ -200,7 +208,9 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Extract IATA code from airport name
+   * Extract IATA code from airport name (looks for pattern like "Airport Name (ABC)")
+   * @param name - Airport name string
+   * @returns string | null - IATA code if found, null otherwise
    */
   private extractIataFromName(name: string): string | null {
     const iataMatch = name.match(/\(([A-Z]{3})\)/);
@@ -208,7 +218,9 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Extract city from formatted address
+   * Extract city from formatted address (takes first part before comma)
+   * @param address - Formatted address string
+   * @returns string - City name or 'Unknown' if not found
    */
   private extractCityFromAddress(address: string): string {
     const parts = address.split(',');
@@ -219,7 +231,9 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Extract country from formatted address
+   * Extract country from formatted address (takes last part after comma)
+   * @param address - Formatted address string
+   * @returns string - Country name or 'Unknown' if not found
    */
   private extractCountryFromAddress(address: string): string {
     const parts = address.split(',');
@@ -230,22 +244,20 @@ export class UnifiedAirportService implements IAirportService {
   }
 
   /**
-   * Determine if airport is international
-   */
-  private isInternationalAirport(name: string): boolean {
-    const lowerName = name.toLowerCase();
-    return lowerName.includes('international') || 
-           lowerName.includes('intl') ||
-           lowerName.includes('regional') === false; // Assume non-regional airports are more likely to be international
-  }
-
-  /**
    * Utility methods for UI display
+   * Format airport information for display in UI components
+   * @param airport - Airport object to format
+   * @returns string - Formatted airport display string
    */
   formatAirportDisplay(airport: Airport): string {
     return `${airport.name} (${airport.iataCode}) - ${airport.city}, ${airport.country}`;
   }
 
+  /**
+   * Format airport information with distance for display
+   * @param airport - Airport object to format (should include distance)
+   * @returns string - Formatted airport display string with distance
+   */
   formatAirportWithDistance(airport: Airport): string {
     const baseFormat = this.formatAirportDisplay(airport);
     return airport.distance 
@@ -253,6 +265,11 @@ export class UnifiedAirportService implements IAirportService {
       : baseFormat;
   }
 
+  /**
+   * Validate if a 3-letter IATA code corresponds to a real airport
+   * @param iataCode - 3-letter IATA code to validate
+   * @returns Promise<boolean> - True if valid airport code, false otherwise
+   */
   async validateIataCode(iataCode: string): Promise<boolean> {
     if (!iataCode || iataCode.length !== 3) {
       return false;
