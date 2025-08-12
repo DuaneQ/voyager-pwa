@@ -6,7 +6,7 @@ This document outlines the user stories and API requirements for implementing AI
 ## Business Value Proposition
 - **Premium Revenue Stream**: Differentiate free vs. paid tiers with high-value AI assistance
 - **User Engagement**: Reduce friction in trip planning, increasing platform usage
-- **Personalization**: Leverage user data to create tailored experiences
+- **Personalization**: Leverage user data/Travel Preferences to create tailored experiences
 - **Competitive Advantage**: Offer intelligent trip planning not available elsewhere
 
 ---
@@ -65,32 +65,15 @@ So that I can quickly get a detailed travel plan without manual research.
 
 Acceptance Criteria:
 - User must have active premium subscription
-- User inputs trip parameters: destination, dates, budget, group size, trip type
+- User inputs trip parameters: destination, dates, group size, trip type
 - User selects travel preference profile (from Story 1) 
 - System generates complete itinerary with daily activities, timing, and logistics
+- The system generates daily itinerary for the generation of the trip.
+- The daily itinerary consists of suggestions for breakfast, lunch, dinner and excursions and activities based on user preferences.
 - Generated itinerary is saved to user's account as searchable content
-- User can edit/modify generated itinerary before final save
+- The generated itinerary is normalized so that it can be used in Search.tsx drop down selector so the user can use the ai generated itineraries to find matches.
 - Generation process shows progress indicators ("Finding activities...", "Optimizing schedule...")
 - Itinerary includes all fields needed for platform search functionality
-- User receives email with full travel details (lodging, transportation, booking info)
-```
-
-
-**Story 3: AI Learning and Personalization System**
-```
-As a user who has used the platform over time,
-I want the AI system to learn from my behavior and feedback,
-So that future itinerary recommendations become more accurate and personalized.
-
-Acceptance Criteria:
-- System tracks user behavior: itineraries liked/saved, activities rated, destinations searched
-- AI analyzes patterns in user's historical data (trip types, budget ranges, activity preferences)
-- System incorporates feedback from previous AI generations to improve recommendations
-- Learning system updates user's preference confidence scores based on actual choices
-- AI provides explanations: "Recommended because you liked similar museums in Rome"
-- System asks for confirmation on uncertain recommendations: "You haven't tried fine dining - include?"
-- Personalization improves over time with more user interactions
-- User can see how AI has learned about their preferences in their profile
 ```
 
 **Story 4: Free User AI Itinerary Teaser**
@@ -101,7 +84,7 @@ So that I can understand the value of upgrading to premium.
 
 Acceptance Criteria:
 In-Platform Teaser:
-- Free users can generate 1 limited itinerary per week via platform
+- Free users can generate 1 limited itinerary with mock data to show them how it would work.
 - Generated content shows first 2 days only with clear "Premium: See Full Itinerary" prompts
 - Showcases premium features but content is blurred/limited (detailed timing, restaurant names, specific costs)
 - Clear upgrade prompts integrated throughout the teaser

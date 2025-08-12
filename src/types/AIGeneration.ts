@@ -16,12 +16,26 @@ export interface AIGenerationRequest {
   specialRequests?: string;
   mustInclude?: string[];
   mustAvoid?: string[];
+  
   // Flight preferences
   flightPreferences?: {
     class: 'economy' | 'premium-economy' | 'business' | 'first';
     stopPreference: 'non-stop' | 'one-stop' | 'any';
     preferredAirlines?: string[];
   };
+  
+  // User data passed from frontend to avoid unnecessary Firestore reads
+  userInfo?: {
+    uid: string;
+    username: string;
+    gender: string;
+    dob: string;
+    status: string;
+    sexualOrientation: string;
+    email: string;
+    blocked: string[];
+  };
+  travelPreferences?: any; // Travel preference profile passed from frontend
 }
 
 export interface Activity {

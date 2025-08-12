@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useContext } from 'react';
 import { AIGenerationRequest, AIGenerationResponse } from '../types/AIGeneration';
 import { auth } from '../environments/firebaseConfig';
 import { useTravelPreferences } from './useTravelPreferences';
+import { UserProfileContext } from '../Context/UserProfileContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, getFirestore, collection, query, where, orderBy, limit } from 'firebase/firestore';
 
@@ -89,8 +90,10 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
   const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
   const [pendingResolvers, setPendingResolvers] = useState<{[key: string]: (result: AIGenerationResponse) => void}>({});
   
-  // Add travel preferences hook
+  // Add travel preferences hook and user profile context
   const { getProfileById } = useTravelPreferences();
+  const userProfileContext = useContext(UserProfileContext);
+  const userProfile = userProfileContext?.userProfile;
 
   // Listen for real-time progress updates from Firestore
   useEffect(() => {
@@ -230,21 +233,51 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       console.log('  - Profile ID:', request.preferenceProfileId);
       console.log('  - Profile found:', !!profile);
       console.log('  - Profile data:', profile);
+      console.log('  - User profile context:', userProfile);
       
       if (!profile) {
         console.error('❌ Profile not found! Available profiles might not be loaded yet.');
         throw new Error(`Travel preference profile with ID "${request.preferenceProfileId}" not found. Please ensure your travel preferences are loaded.`);
       }
 
+      // Prepare user info from context to send to backend
+      const userInfoForBackend = userProfile ? {
+        uid: userProfile.uid || auth.currentUser?.uid || '',
+        username: userProfile.username || '',
+        gender: userProfile.gender || '',
+        dob: userProfile.dob || '',
+        status: userProfile.status || '',
+        sexualOrientation: userProfile.sexualOrientation || '',
+        email: userProfile.email || auth.currentUser?.email || '',
+        blocked: userProfile.blocked || []
+      } : undefined;
+
+      // Validate that we have essential user data
+      if (!userInfoForBackend || !userInfoForBackend.uid) {
+        console.error('❌ User profile context not available - this will cause backend Firestore reads');
+        console.error('User profile data:', userProfile);
+        throw new Error('User profile data not loaded. Please ensure you are logged in and try again.');
+      }
+
+      console.log('✅ User profile data ready for backend:', {
+        hasUserInfo: !!userInfoForBackend,
+        hasProfile: !!profile,
+        uid: userInfoForBackend.uid,
+        profileId: profile.id
+      });
+
       // For testing: hardcode destination if empty or problematic
-      const testRequest = {
+      const testRequest: AIGenerationRequest = {
         ...request,
         destination: request.destination || 'Paris, France', // Fallback for testing
         budget: {
           total: profile.budgetRange?.max || 1000,
           currency: 'USD' as const
         },
-        groupSize: profile.groupSize?.preferred || 1
+        groupSize: profile.groupSize?.preferred || 1,
+        // Pass user data from frontend to avoid backend Firestore reads
+        userInfo: userInfoForBackend,
+        travelPreferences: profile
       };
 
       console.log('🚀 Calling Firebase Function: generateItinerary with request:', testRequest);
@@ -511,6 +544,28 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         return baseCost * 0.8 * duration;
       }
 
+      // Prepare user info from context
+      const userInfoForBackend = userProfile ? {
+        uid: userProfile.uid || auth.currentUser?.uid || '',
+        username: userProfile.username || '',
+        gender: userProfile.gender || '',
+        dob: userProfile.dob || '',
+        status: userProfile.status || '',
+        sexualOrientation: userProfile.sexualOrientation || '',
+        email: userProfile.email || auth.currentUser?.email || '',
+        blocked: userProfile.blocked || []
+      } : undefined;
+
+      // Validate user data for cost estimation
+      if (!userInfoForBackend || !userInfoForBackend.uid) {
+        console.warn('⚠️ User profile not available for cost estimation, using fallback calculation');
+        const baseCost = profile?.budgetRange?.max || 1000;
+        const duration = request.startDate && request.endDate 
+          ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
+          : 7;
+        return baseCost * 0.8 * duration;
+      }
+
       // For testing: hardcode destination if empty or problematic
       const testRequest = {
         ...request,
@@ -519,7 +574,10 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           total: profile.budgetRange?.max || 1000,
           currency: 'USD' as const
         },
-        groupSize: profile.groupSize?.preferred || 1
+        groupSize: profile.groupSize?.preferred || 1,
+        // Pass user data from frontend to avoid backend Firestore reads
+        userInfo: userInfoForBackend,
+        travelPreferences: profile
       };
 
       console.log('🚀 Calling Firebase Function: estimateItineraryCost with request:', testRequest);
