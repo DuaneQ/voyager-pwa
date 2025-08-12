@@ -38,13 +38,15 @@ jest.mock('firebase/functions', () => ({
 }));
 import { renderHook, act } from '@testing-library/react';
 import { waitFor } from '@testing-library/react';
+import React from 'react';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { AIGenerationRequest } from '../../types/AIGeneration';
+import { UserProfileContext } from '../../Context/UserProfileContext';
 
 // Mock Firebase auth
 jest.mock('../../environments/firebaseConfig', () => ({
   auth: {
-    currentUser: { uid: 'test-user-id' }
+    currentUser: { uid: 'test-user-id', email: 'test@example.com' }
   }
 }));
 
@@ -80,6 +82,29 @@ jest.mock('../../hooks/useTravelPreferences', () => ({
   })
 }));
 
+// Mock UserProfileContext
+const mockUserProfile = {
+  uid: 'test-user-id',
+  username: 'testuser',
+  email: 'test@example.com',
+  gender: 'male',
+  dob: '1990-01-01',
+  status: 'active',
+  sexualOrientation: 'straight',
+  blocked: []
+};
+
+const MockUserProfileProvider = ({ children }: { children: React.ReactNode }) => {
+  return React.createElement(UserProfileContext.Provider, {
+    value: { 
+      userProfile: mockUserProfile, 
+      setUserProfile: jest.fn(), 
+      updateUserProfile: jest.fn(), 
+      isLoading: false 
+    }
+  }, children);
+};
+
 describe('useAIGeneration', () => {
   const mockRequest: AIGenerationRequest = {
     destination: 'Tokyo, Japan',
@@ -97,7 +122,9 @@ describe('useAIGeneration', () => {
   });
 
   it('should initialize with default state', () => {
-    const { result } = renderHook(() => useAIGeneration());
+    const { result } = renderHook(() => useAIGeneration(), {
+      wrapper: MockUserProfileProvider
+    });
 
     expect(result.current.isGenerating).toBe(false);
     expect(result.current.progress).toBe(null);
@@ -106,7 +133,9 @@ describe('useAIGeneration', () => {
   });
 
   it('should estimate cost correctly', async () => {
-    const { result } = renderHook(() => useAIGeneration());
+    const { result } = renderHook(() => useAIGeneration(), {
+      wrapper: MockUserProfileProvider
+    });
 
     let cost: number = 0;
     await act(async () => {
@@ -129,13 +158,15 @@ describe('useAIGeneration', () => {
     const originalAuth = jest.requireMock('../../environments/firebaseConfig').auth;
     originalAuth.currentUser = null;
 
-    const { result } = renderHook(() => useAIGeneration());
+    const { result } = renderHook(() => useAIGeneration(), {
+      wrapper: MockUserProfileProvider
+    });
 
     await expect(act(async () => {
       await result.current.generateItinerary(mockRequest);
     })).rejects.toThrow('User must be authenticated to generate itineraries');
 
     // Restore auth
-    originalAuth.currentUser = { uid: 'test-user-id' };
+    originalAuth.currentUser = { uid: 'test-user-id', email: 'test@example.com' };
   });
 });
