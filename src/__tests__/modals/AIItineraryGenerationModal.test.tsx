@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import AIItineraryGenerationModal from '../../components/modals/AIItineraryGenerationModal';
+import { AlertContext } from '../../Context/AlertContext';
 
 // Mock the hooks
 const mockUseAIGeneration = {
@@ -93,6 +94,21 @@ const defaultProps = {
   onSuccess: jest.fn(),
 };
 
+// Mock AlertContext provider for tests
+const mockAlertContextValue = {
+  alert: { open: false, severity: 'info' as const, message: '' },
+  showAlert: jest.fn(),
+  closeAlert: jest.fn(),
+};
+
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <AlertContext.Provider value={mockAlertContextValue}>
+      {children}
+    </AlertContext.Provider>
+  );
+};
+
 describe('AIItineraryGenerationModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -104,12 +120,20 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('renders modal with correct title', () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     expect(screen.getByText('Generate AI Itinerary')).toBeInTheDocument();
   });
 
   it('displays all form sections', () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     expect(screen.getByText('Trip Details')).toBeInTheDocument();
     expect(screen.getByText('Destination *')).toBeInTheDocument();
@@ -118,7 +142,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('shows trip type options', () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     expect(screen.getByText(/🏔️ Adventure/)).toBeInTheDocument();
     expect(screen.getByText(/🏖️ Leisure/)).toBeInTheDocument();
@@ -129,7 +157,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('allows selecting trip type', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     const adventureChip = screen.getByText(/🏔️ Adventure/);
     fireEvent.click(adventureChip);
@@ -138,7 +170,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('displays travel preference profiles', () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     // Click to open the select dropdown
     const profileSelect = screen.getByRole('combobox', { name: /Travel Preference Profile/i });
@@ -149,7 +185,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('validates required fields', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     const generateButton = screen.getByText('Generate Itinerary');
     fireEvent.click(generateButton);
@@ -160,7 +200,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('handles must include tags', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     const mustIncludeInput = screen.getByPlaceholderText('Add specific places or activities you want to include');
     fireEvent.change(mustIncludeInput, { target: { value: 'Eiffel Tower' } });
@@ -177,7 +221,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('handles must avoid tags', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     const mustAvoidInput = screen.getByPlaceholderText('Add places or activities you want to avoid');
     fireEvent.change(mustAvoidInput, { target: { value: 'Crowded areas' } });
@@ -190,7 +238,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('removes tags when delete is clicked', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     const mustIncludeInput = screen.getByPlaceholderText('Add specific places or activities you want to include');
     fireEvent.change(mustIncludeInput, { target: { value: 'Eiffel Tower' } });
@@ -212,7 +264,11 @@ describe('AIItineraryGenerationModal', () => {
       }
     };
     
-    render(<AIItineraryGenerationModal {...propsWithInitialData} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...propsWithInitialData} />
+      </TestWrapper>
+    );
     
     // Wait for the component to initialize and profiles to load
     await waitFor(() => {
@@ -246,7 +302,11 @@ describe('AIItineraryGenerationModal', () => {
 
   it('calls onClose when close button is clicked', async () => {
     const onClose = jest.fn();
-    render(<AIItineraryGenerationModal {...defaultProps} onClose={onClose} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} onClose={onClose} />
+      </TestWrapper>
+    );
     
     const closeButton = screen.getByTestId('CloseIcon');
     fireEvent.click(closeButton);
@@ -270,7 +330,11 @@ describe('AIItineraryGenerationModal', () => {
       estimatedTimeRemaining: 45
     };
 
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
     
     expect(screen.getByText(/Creating Your Itinerary/)).toBeInTheDocument();
     expect(screen.getByText(/Stage 2 of 4/)).toBeInTheDocument();
@@ -281,7 +345,11 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('shows date validation errors even if destination is missing', async () => {
-    render(<AIItineraryGenerationModal {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
 
     // Set invalid dates but do NOT set destination
     const startDateInput = screen.getByLabelText('Start Date');

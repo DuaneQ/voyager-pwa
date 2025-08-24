@@ -5,6 +5,7 @@ import { TravelPreferencesTab } from '../../components/forms/TravelPreferencesTa
 import { UserProfileContext } from '../../Context/UserProfileContext.jsx';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { TravelPreferenceProfile } from '../../types/TravelPreferences';
+import { AlertContext } from '../../Context/AlertContext';
 
 // Mock the travel preferences hook
 jest.mock('../../hooks/useTravelPreferences');
@@ -35,12 +36,21 @@ describe('TravelPreferencesTab', () => {
     isLoading: false,
   };
 
+  // Mock AlertContext value
+  const mockAlertContextValue = {
+    alert: { open: false, severity: 'info' as const, message: '' },
+    showAlert: jest.fn(),
+    closeAlert: jest.fn(),
+  };
+
   // Helper to wrap tested component in provider
   function withUserProfileProvider(children: React.ReactNode) {
     return (
-      <UserProfileContext.Provider value={mockUserProfileContextValue}>
-        {children}
-      </UserProfileContext.Provider>
+      <AlertContext.Provider value={mockAlertContextValue}>
+        <UserProfileContext.Provider value={mockUserProfileContextValue}>
+          {children}
+        </UserProfileContext.Provider>
+      </AlertContext.Provider>
     );
   }
   const mockUseTravelPreferences = useTravelPreferences as jest.MockedFunction<typeof useTravelPreferences>;
