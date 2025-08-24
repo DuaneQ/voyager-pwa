@@ -21,6 +21,7 @@ export interface UseAIGenerationReturn {
     stage: number;
     totalStages: number;
     message: string;
+    percent?: number; // Add percent field for backend progress
     stages: AIGenerationStage[];
     estimatedTimeRemaining?: number;
   } | null;
@@ -82,6 +83,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
     stage: number;
     totalStages: number;
     message: string;
+    percent?: number;
     stages: AIGenerationStage[];
     estimatedTimeRemaining?: number;
   } | null>(null);
@@ -119,6 +121,8 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             stage: firebaseProgress.stage,
             totalStages: firebaseProgress.totalStages,
             message: firebaseProgress.message,
+            // Use the percent value from backend - it's at the root level of the document
+            percent: data.percent || 0,
             stages: stages.map((stage, index) => ({
               ...stage,
               status: index < currentStageIndex ? 'completed' : 
@@ -133,7 +137,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           
           const result = data.response;
           const aiResponse: AIGenerationResponse = {
-            id: data.id,
+            id: doc.id, // Use document ID instead of data.id
             request: data.request,
             itinerary: result.data?.itinerary,
             recommendations: result.data?.recommendations,
@@ -153,20 +157,35 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           setCurrentGenerationId(null);
           
           // Resolve any pending promises
-          const resolver = pendingResolvers[data.id];
+          // Use document ID instead of data.id since data.id might be undefined
+          const generationId = doc.id;
+          console.log('🔍 [DEBUG] Looking for resolver for generation:', generationId);
+          console.log('🔍 [DEBUG] Available resolvers:', Object.keys(pendingResolvers));
+          const resolver = pendingResolvers[generationId];
           if (resolver) {
-            resolver(aiResponse);
+            console.log('✅ [DEBUG] Found resolver, calling it with result');
+            try {
+              resolver(aiResponse);
+              console.log('✅ [DEBUG] Resolver called successfully');
+            } catch (resolverError) {
+              console.error('❌ [DEBUG] Error calling resolver:', resolverError);
+            }
             setPendingResolvers(prev => {
               const updated = { ...prev };
-              delete updated[data.id];
+              delete updated[generationId];
               return updated;
             });
+          } else {
+            console.warn('⚠️ [DEBUG] No resolver found for generation:', generationId);
+            console.log('⚠️ [DEBUG] Available resolvers were:', Object.keys(pendingResolvers));
+            console.log('⚠️ [DEBUG] This means the promise will not resolve automatically');
           }
           
           // Final progress update
           setProgress({
             stage: 5,
             totalStages: 5,
+            percent: 100,
             message: 'Generation completed!',
             stages: DEFAULT_STAGES.map(stage => ({
               ...stage,
@@ -218,6 +237,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       setProgress({
         stage: 1,
         totalStages: stages.length,
+        percent: 0,
         message: 'Starting AI generation...',
         stages: stages.map((stage, index) => ({
           ...stage,
@@ -266,21 +286,16 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         profileId: profile.id
       });
 
-      // For testing: hardcode destination if empty or problematic
-      const testRequest: AIGenerationRequest = {
+      // Prepare the request with user data and profile
+      const requestWithUserData: AIGenerationRequest = {
         ...request,
-        destination: request.destination || 'Paris, France', // Fallback for testing
-        budget: {
-          total: profile.budgetRange?.max || 1000,
-          currency: 'USD' as const
-        },
-        groupSize: profile.groupSize?.preferred || 1,
+        groupSize: profile.groupSize?.preferred || request.groupSize || 1,
         // Pass user data from frontend to avoid backend Firestore reads
         userInfo: userInfoForBackend,
         travelPreferences: profile
       };
 
-      console.log('🚀 Calling Firebase Function: generateItinerary with request:', testRequest);
+      console.log('🚀 Calling Firebase Function: generateItinerary with request:', requestWithUserData);
       const functions = getFunctions();
       
       // Configure with longer timeout to match backend
@@ -290,7 +305,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       
       // Increase timeout to 10 minutes and handle deadline-exceeded gracefully
       try {
-        const response = await generateItineraryFn(testRequest);
+        const response = await generateItineraryFn(requestWithUserData);
         const result = response.data as any;
         
         console.log('✅ AI Generation initiated:', result);
@@ -302,12 +317,12 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         // Extract generation ID to listen for progress
         const generationId = result.data?.metadata?.generationId;
         if (generationId) {
-          console.log('� Starting progress tracking for generation:', generationId);
+          console.log('🔄 Starting progress tracking for generation:', generationId);
           setCurrentGenerationId(generationId);
           
           // Return a promise that will be resolved by the real-time listener
           return new Promise<AIGenerationResponse>((resolve, reject) => {
-            setPendingResolvers(prev => ({ ...prev, [generationId]: resolve }));
+            console.log('🎯 [DEBUG] Setting up promise resolver for generation:', generationId);
             
             // Set up a timeout as backup
             const timeoutId = setTimeout(() => {
@@ -320,19 +335,23 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
               reject(new Error('Generation timed out after 10 minutes'));
             }, 600000); // 10 minutes
             
-            // Store the timeout ID so it can be cleared when the promise resolves
-            const originalResolve = resolve;
+            // Store the resolver with cleanup built-in
             const resolveWithCleanup = (result: AIGenerationResponse) => {
+              console.log('🎯 [DEBUG] resolveWithCleanup called for generation:', generationId);
               clearTimeout(timeoutId);
               setPendingResolvers(prev => {
                 const updated = { ...prev };
                 delete updated[generationId];
                 return updated;
               });
-              originalResolve(result);
+              resolve(result);
             };
             
-            setPendingResolvers(prev => ({ ...prev, [generationId]: resolveWithCleanup }));
+            // Store the resolver immediately
+            setPendingResolvers(prev => {
+              console.log('🎯 [DEBUG] Storing resolver for generation:', generationId);
+              return { ...prev, [generationId]: resolveWithCleanup };
+            });
           });
         } else {
           // No generation ID - process immediate result (legacy response format)
@@ -359,6 +378,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           setProgress({
             stage: 5,
             totalStages: 5,
+            percent: 100,
             message: 'Generation completed!',
             stages: DEFAULT_STAGES.map(stage => ({
               ...stage,
@@ -420,6 +440,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
                   setProgress({
                     stage: 5,
                     totalStages: 5,
+                    percent: 100,
                     message: 'Generation completed!',
                     stages: DEFAULT_STAGES.map(stage => ({
                       ...stage,
@@ -448,6 +469,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
                 setProgress({
                   stage: currentStage,
                   totalStages: 5,
+                  percent: (currentStage / 5) * 100,
                   message: currentStage === 5 ? 'Finalizing your itinerary...' : waitingStages[currentStage - 1]?.description || 'Processing...',
                   stages: waitingStages.map((stage, index) => ({
                     ...stage,
@@ -536,12 +558,12 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
       
       if (!profile) {
-        // If no profile, fall back to basic calculation
+        // If no profile, return basic estimate
         const baseCost = 1000;
         const duration = request.startDate && request.endDate 
           ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
           : 7;
-        return baseCost * 0.8 * duration;
+        return baseCost * duration;
       }
 
       // Prepare user info from context
@@ -563,30 +585,25 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         const duration = request.startDate && request.endDate 
           ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
           : 7;
-        return baseCost * 0.8 * duration;
+        return baseCost * duration;
       }
 
-      // For testing: hardcode destination if empty or problematic
-      const testRequest = {
+      // Prepare the request with user data and profile
+      const requestWithUserData = {
         ...request,
-        destination: request.destination || 'Paris, France', // Fallback for testing
-        budget: {
-          total: profile.budgetRange?.max || 1000,
-          currency: 'USD' as const
-        },
-        groupSize: profile.groupSize?.preferred || 1,
+        groupSize: profile.groupSize?.preferred || request.groupSize || 1,
         // Pass user data from frontend to avoid backend Firestore reads
         userInfo: userInfoForBackend,
         travelPreferences: profile
       };
 
-      console.log('🚀 Calling Firebase Function: estimateItineraryCost with request:', testRequest);
+      console.log('🚀 Calling Firebase Function: estimateItineraryCost with request:', requestWithUserData);
       const functions = getFunctions();
       const estimateCostFn = httpsCallable(functions, 'estimateItineraryCost', {
         timeout: 120000 // 2 minutes timeout for cost estimation
       });
       
-      const response = await estimateCostFn(testRequest);
+      const response = await estimateCostFn(requestWithUserData);
       const result = response.data as any;
       
       console.log('✅ Cost Estimation Response:', result);
@@ -612,25 +629,23 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         // Use fallback calculation during rate limiting
         const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
         const baseCost = profile?.budgetRange?.max || 1000;
-        const groupMultiplier = profile?.groupSize?.preferred || 1;
         
         const duration = request.startDate && request.endDate 
           ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
           : 7;
         
-        return Math.min(baseCost, baseCost * 0.8 * duration * groupMultiplier);
+        return baseCost * duration;
       }
       
       // Fallback to basic calculation if API fails
       const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
       const baseCost = profile?.budgetRange?.max || 1000;
-      const groupMultiplier = profile?.groupSize?.preferred || 1;
       
       const duration = request.startDate && request.endDate 
         ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
         : 7;
       
-      return Math.min(baseCost, baseCost * 0.8 * duration * groupMultiplier);
+      return baseCost * duration;
     }
   }, [getProfileById]);
 

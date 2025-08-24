@@ -100,7 +100,17 @@ export const TravelPreferencesTab: React.FC = () => {
   // Update editing preferences when selected profile changes
   useEffect(() => {
     if (selectedProfile) {
-      setEditingPreferences({ ...selectedProfile }); // Create a copy to avoid direct mutations
+      const profileCopy = { ...selectedProfile };
+      
+      // Ensure accommodation type has a valid default if undefined
+      if (!profileCopy.accommodation?.type) {
+        profileCopy.accommodation = {
+          ...profileCopy.accommodation,
+          type: 'hotel'
+        };
+      }
+      
+      setEditingPreferences(profileCopy); // Create a copy to avoid direct mutations
       setHasUnsavedChanges(false);
     }
   }, [selectedProfile]);
@@ -346,8 +356,14 @@ export const TravelPreferencesTab: React.FC = () => {
     });
   };  // Helper function to update accommodation preferences
   const updateAccommodation = (updates: Partial<typeof currentPreferences.accommodation>) => {
+    const defaultAccommodation = {
+      type: 'hotel' as const,
+      starRating: 3
+    };
+    
     updateLocalPreferences({
       accommodation: {
+        ...defaultAccommodation,
         ...currentPreferences.accommodation,
         ...updates
       }
@@ -517,14 +533,47 @@ export const TravelPreferencesTab: React.FC = () => {
   };
 
   const handleAIGenerated = async (result: any) => {
-    console.log('AI Generated Itinerary:', result);
-    // Refresh the AI itineraries list to show the new one
-    if (refreshItineraries) {
-      await refreshItineraries();
+    console.log('🎯 [DEBUG] handleAIGenerated called with result:', result);
+    
+    try {
+      // Immediately refresh the AI itineraries list to show the new one
+      console.log('🔄 [DEBUG] Starting AI itineraries refresh...');
+      if (refreshItineraries) {
+        console.log('🔄 [DEBUG] refreshItineraries function exists, calling it...');
+        await refreshItineraries();
+        console.log('✅ [DEBUG] AI itineraries refreshed successfully');
+      } else {
+        console.warn('⚠️ [DEBUG] refreshItineraries function not available!');
+      }
+
+      // Extract the itinerary ID from the result to auto-select it
+      const newItineraryId = result?.data?.itinerary?.id || result?.data?.metadata?.generationId || result?.id;
+      console.log('🎯 [DEBUG] Extracted itinerary ID:', newItineraryId);
+      if (newItineraryId) {
+        console.log('🎯 [DEBUG] Auto-selecting new itinerary:', newItineraryId);
+        setSelectedAIItineraryId(newItineraryId);
+        console.log('🎯 [DEBUG] setSelectedAIItineraryId called');
+      } else {
+        console.warn('⚠️ [DEBUG] No itinerary ID found in result');
+      }
+
+      // Switch to AI Itineraries tab to show the new result
+      console.log('📋 [DEBUG] Switching to AI Itineraries tab (index 1)');
+      setActiveTab(1);
+      console.log('📋 [DEBUG] setActiveTab(1) called');
+      
+      // Close the AI modal
+      console.log('❌ [DEBUG] Closing AI modal');
+      setAiModalOpen(false);
+      console.log('❌ [DEBUG] setAiModalOpen(false) called');
+      
+      console.log('🎉 [DEBUG] handleAIGenerated completed successfully');
+    } catch (error) {
+      console.error('❌ [DEBUG] Error in handleAIGenerated:', error);
+      // Still switch to the tab even if there's an error
+      setActiveTab(1);
+      setAiModalOpen(false);
     }
-    // Switch to AI Itineraries tab to show the new result
-    setActiveTab(1);
-    setAiModalOpen(false);
   };
 
   const ActivitySlider = ({ 
@@ -994,7 +1043,7 @@ export const TravelPreferencesTab: React.FC = () => {
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
-                  value={currentPreferences.accommodation.type}
+                  value={currentPreferences.accommodation?.type || 'hotel'}
                   onChange={(e) => updateAccommodation({
                     type: e.target.value as TravelPreferenceProfile['accommodation']['type']
                   })}
@@ -1020,7 +1069,7 @@ export const TravelPreferencesTab: React.FC = () => {
                 Star Rating Preference
               </Typography>
               <Slider
-                value={currentPreferences.accommodation.starRating}
+                value={currentPreferences.accommodation?.starRating || 3}
                 onChange={(_, value) => updateAccommodation({
                   starRating: value as number
                 })}

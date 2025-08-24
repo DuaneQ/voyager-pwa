@@ -13,8 +13,6 @@ import {
   Alert,
   IconButton,
   Grid,
-  Card,
-  CardContent,
   FormHelperText,
 } from '@mui/material';
 import {
@@ -49,8 +47,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   initialDestination = '',
   initialDates,
 }) => {
-  // Hooks
-    const { 
+  // Hooks  
+  const { 
     generateItinerary, 
     isGenerating, 
     progress, 
@@ -87,9 +85,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [mustIncludeInput, setMustIncludeInput] = useState('');
   const [mustAvoidInput, setMustAvoidInput] = useState('');
+  const [showSuccessState, setShowSuccessState] = useState(false);
 
   // Initialize preference profile when available
   useEffect(() => {
@@ -103,37 +101,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
     }
   }, [preferences, formData.preferenceProfileId, getDefaultProfile]);
-
-  // Simple client-side cost estimation to avoid API rate limiting
-  useEffect(() => {
-    const calculateLocalEstimate = () => {
-      if (formData.destination && formData.startDate && formData.endDate && formData.preferenceProfileId) {
-        try {
-          const profile = getProfileById(formData.preferenceProfileId);
-          if (profile) {
-            const duration = Math.ceil(
-              (new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24)
-            );
-            
-            // Simple estimation based on profile budget range and duration
-            const baseCost = profile.budgetRange?.max || 1000;
-            const groupMultiplier = profile.groupSize?.preferred || 1;
-            const estimatedCost = Math.min(baseCost, baseCost * 0.8 * duration * groupMultiplier);
-            
-            setEstimatedCost(Math.round(estimatedCost));
-          }
-        } catch (err) {
-          console.warn('Failed to calculate local estimate:', err);
-          setEstimatedCost(null);
-        }
-      } else {
-        setEstimatedCost(null);
-      }
-    };
-
-    // Only calculate local estimate, no API calls
-    calculateLocalEstimate();
-  }, [formData.destination, formData.startDate, formData.endDate, formData.preferenceProfileId, getProfileById]);
 
   // Handle form field changes
   const handleFieldChange = useCallback((field: keyof AIGenerationRequest, value: any) => {
@@ -213,31 +180,45 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Handle generation
   const handleGenerate = useCallback(async () => {
+    setFormErrors({});
     if (!validateForm()) {
       return;
     }
-
-    // Check if preferences are still loading
     if (preferencesLoading) {
-      console.warn('⚠️ Preferences are still loading, cannot generate itinerary');
+      setFormErrors({ general: 'Preferences are still loading, please wait.' });
       return;
     }
-
-    // Additional validation: ensure the selected profile exists
     const selectedProfile = getProfileById(formData.preferenceProfileId);
     if (!selectedProfile) {
-      console.error('❌ Selected profile not found:', formData.preferenceProfileId);
-      console.error('Available profiles:', preferences?.profiles?.map(p => ({ id: p.id, name: p.name })));
+      setFormErrors({ preferenceProfileId: 'Selected profile not found.' });
       return;
     }
-
-    console.log('✅ Profile validation passed:', selectedProfile.name);
-
     try {
       const result = await generateItinerary(formData);
+      
+      console.log('🎉 [DEBUG] AI generation successful, result:', result);
+      
+      // Show success state in the modal
+      console.log('🎉 [DEBUG] Setting showSuccessState to true');
+      setShowSuccessState(true);
+      
+      // Call onGenerated to trigger the parent refresh
+      console.log('🎉 [DEBUG] Calling onGenerated callback with result');
       onGenerated?.(result);
-    } catch (err) {
-      console.error('Generation failed:', err);
+      console.log('🎉 [DEBUG] onGenerated callback completed');
+
+      // Close modal after showing success for 2 seconds
+      console.log('⏰ [DEBUG] Setting 2-second timeout to close modal');
+      setTimeout(() => {
+        console.log('⏰ [DEBUG] 2 seconds elapsed, closing modal');
+        onClose();
+      }, 5000);
+    } catch (err: any) {
+      let message = err?.message || 'Failed to generate itinerary';
+      if (err?.code === 'permission-denied' && message.includes('Premium subscription')) {
+        message = 'You need a premium subscription to use AI itinerary generation.';
+      }
+      setFormErrors({ general: message });
     }
   }, [formData, validateForm, generateItinerary, onGenerated, preferencesLoading, getProfileById, preferences?.profiles]);
 
@@ -247,6 +228,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       cancelGeneration();
     }
     resetGeneration();
+    setShowSuccessState(false);
     onClose();
   }, [isGenerating, cancelGeneration, resetGeneration, onClose]);
 
@@ -296,13 +278,20 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       </DialogTitle>
 
       <DialogContent dividers>
+        {/* Error Alert - always show if error exists */}
+        {formErrors.general && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormErrors({})}>
+            {formErrors.general}
+          </Alert>
+        )}
+
         {/* Generation Progress */}
         {isGenerating && progress && progress.stages && (
           <AIGenerationProgress
             stages={progress.stages}
             currentStage={progress.stage}
             totalStages={progress.totalStages}
-            progress={(progress.stage / progress.totalStages) * 100}
+            progress={progress.percent || (progress.stage / progress.totalStages) * 100}
             message={progress.message}
             estimatedTimeRemaining={progress.estimatedTimeRemaining}
             onCancel={cancelGeneration}
@@ -311,15 +300,36 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           />
         )}
 
-        {/* Error Display - Only show if not generating */}
-        {error && !isGenerating && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => resetGeneration()}>
-            {error}
-          </Alert>
+        {/* Success State Display */}
+        {showSuccessState && (
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Typography variant="h2" sx={{ mb: 3, fontSize: '4rem' }}>
+              🎉
+            </Typography>
+            <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>
+              Success!
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 3, color: 'text.primary' }}>
+              Your AI itinerary has been generated successfully!
+            </Typography>
+            <Alert severity="success" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                ✅ Generation Complete
+              </Typography>
+              <Typography variant="body2">
+                • Itinerary saved to your account<br/>
+                • Check the "AI Itineraries" tab to view<br/>
+                • Modal will close automatically
+              </Typography>
+            </Alert>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+              Closing modal in a moment...
+            </Typography>
+          </Box>
         )}
 
-        {/* Form Content - Hide when generating */}
-        {!isGenerating && (
+        {/* Form Content - Hide when generating or showing success */}
+        {!isGenerating && !showSuccessState && (
           <Grid container spacing={3}>
           {/* Trip Details Section */}
           <Grid item xs={12}>
@@ -784,29 +794,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               placeholder="Any special requirements, accessibility needs, or preferences..."
             />
           </Grid>
-
-          {/* Cost Estimate */}
-          {estimatedCost && (
-            <Grid item xs={12}>
-              <Card variant="outlined" sx={{ bgcolor: 'background.default' }}>
-                <CardContent sx={{ py: 2 }}>
-                  <Typography variant="h6" color="primary" sx={{ mb: 1 }}>
-                    Estimated Cost: ${estimatedCost.toLocaleString()}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {(() => {
-                      const profile = getProfileById(formData.preferenceProfileId);
-                      const groupSize = profile?.groupSize?.preferred || 1;
-                      return `$${Math.round(estimatedCost / groupSize).toLocaleString()} per person`;
-                    })()}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    * Rough estimate based on your preferences. Detailed cost breakdown will be provided with your AI-generated itinerary.
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          )}
         </Grid>
         )}
       </DialogContent>

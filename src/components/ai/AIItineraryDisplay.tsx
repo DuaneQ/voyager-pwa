@@ -23,8 +23,10 @@ import {
   TrendingUp,
   TrendingDown,
   Phone,
+  Link,
   Language,
   Restaurant,
+  Book,
 } from '@mui/icons-material';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 
@@ -65,8 +67,16 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     });
   };
 
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+  const formatFlightDateTime = (dateString: string, timeString: string) => {
+    if (!dateString || !timeString) return 'Time TBD';
+    
+    // Parse the date and format it nicely
+    const date = new Date(dateString + 'T' + timeString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }) + ' • ' + date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
@@ -183,7 +193,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             )}
 
             {/* Daily Cost Breakdown */}
-            {costBreakdown.byDay && costBreakdown.byDay.length > 0 && (
+            {costBreakdown.byDay && Array.isArray(costBreakdown.byDay) && costBreakdown.byDay.length > 0 && (
               <Box>
                 <Typography variant="subtitle1" gutterBottom sx={{ color: 'white' }}>
                   Daily Cost Breakdown
@@ -240,7 +250,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       )}
 
       {/* Flight Prices Section */}
-      {recommendations?.flights && recommendations.flights.length > 0 && (
+      {recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0 && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -265,7 +275,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {recommendations.flights.map((flight: any, index: number) => (
+              {recommendations.flights.filter((flight: any) => flight).map((flight: any, index: number) => (
                 <Card key={flight.id || index} variant="outlined" sx={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -279,13 +289,18 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                           {flight.route}
                         </Typography>
+                        {flight.departure && flight.departure.date && flight.departure.time && (
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 0.5 }}>
+                            Departure: {formatFlightDateTime(flight.departure.date, flight.departure.time)}
+                          </Typography>
+                        )}
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="h6" color="primary">
-                          ${flight.price.amount}
+                        <Typography variant="h6" sx={{ color: 'white' }}>
+                          ${flight.price?.amount || 'Price TBD'}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {flight.class}
+                          {flight.cabin || flight.class}
                         </Typography>
                       </Box>
                     </Box>
@@ -295,7 +310,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                             label={flight.duration} 
                             size="small" 
                             sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                      <Chip label={flight.departureTime} 
+                      <Chip label={flight.departureTime || flight.departure?.time} 
                             size="small" 
                             variant="outlined"
                             sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }} />
@@ -304,7 +319,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                               size="small" 
                               sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
                       ) : (
-                        <Chip label={`${flight.stops} stop${flight.stops > 1 ? 's' : ''}`} 
+                        <Chip label={flight.stops === undefined ? "undefined stop" : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`} 
                               size="small" 
                               sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
                       )}
@@ -327,7 +342,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                               {flight.return.airline} {flight.return.flightNumber}
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {flight.return.departure.date} • {flight.return.departure.time}
+                              Return: {formatFlightDateTime(flight.return.departure.date, flight.return.departure.time)}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -338,6 +353,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                               <Chip label="Direct" 
                                     size="small" 
                                     sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
+                            ) : flight.return.stops === undefined ? (
+                              <Chip label="undefined stop" 
+                                    size="small" 
+                                    sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
                             ) : (
                               <Chip label={`${flight.return.stops} stop${flight.return.stops > 1 ? 's' : ''}`} 
                                     size="small" 
@@ -357,7 +376,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       )}
 
       {/* Accommodation Recommendations - Moved from AI Recommendations section */}
-      {recommendations?.accommodations && recommendations.accommodations.length > 0 && (
+      {recommendations?.accommodations && Array.isArray(recommendations.accommodations) && recommendations.accommodations.length > 0 && (
         <Accordion sx={{
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -375,7 +394,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Grid container spacing={2}>
-              {recommendations.accommodations.map((accommodation, accommodationIndex) => (
+              {recommendations.accommodations.filter(accommodation => accommodation).map((accommodation, accommodationIndex) => (
                 <Grid item xs={12} sm={6} key={`accommodation-${accommodationIndex}-${accommodation.id}`}>
                   <Card variant="outlined" sx={{
                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -384,18 +403,18 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     <CardContent>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                         <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                          {accommodation.name}
+                          {accommodation.name || 'Accommodation'}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Star sx={{ color: '#FFD700', fontSize: 16 }} />
                           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            {accommodation.rating}
+                            {accommodation.rating || 'N/A'}
                           </Typography>
                         </Box>
                       </Box>
 
                       <Chip 
-                        label={accommodation.type} 
+                        label={accommodation.type || 'Accommodation'} 
                         size="small" 
                         sx={{ 
                           backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -407,22 +426,45 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
                         <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {accommodation.location.name}
+                          {accommodation.location?.name || 'Location not specified'}
                         </Typography>
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
                         <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          ${accommodation.pricePerNight.amount}/night
+                          ${accommodation.pricePerNight?.amount || 'Price TBD'}/night
                         </Typography>
                       </Box>
+
+                      {/* Website link for accommodation */}
+                      {accommodation.website && (
+                        <Box sx={{ mb: 2 }}>
+                          <Button
+                            href={accommodation.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="small"
+                            startIcon={<Link sx={{ fontSize: 16 }} />}
+                            sx={{ 
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              border: '1px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 255, 0.5)'
+                              }
+                            }}
+                          >
+                            Book Now
+                          </Button>
+                        </Box>
+                      )}
 
                       {/* Amenities */}
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'white' }}>Amenities:</Typography>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                          {accommodation.amenities && accommodation.amenities.slice(0, 3).map((amenity, idx) => (
+                          {accommodation.amenities && Array.isArray(accommodation.amenities) && accommodation.amenities.slice(0, 3).map((amenity, idx) => (
                             <Chip 
                               key={idx} 
                               label={amenity} 
@@ -453,7 +495,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#81C784' }}>
                             <TrendingUp sx={{ fontSize: 16 }} /> Pros
                           </Typography>
-                          {accommodation.pros && accommodation.pros.slice(0, 2).map((pro, proIndex) => (
+                          {accommodation.pros && Array.isArray(accommodation.pros) && accommodation.pros.slice(0, 2).map((pro, proIndex) => (
                             <Typography key={`accommodation-${accommodationIndex}-pro-${proIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                               • {pro}
                             </Typography>
@@ -463,7 +505,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#FFB74D' }}>
                             <TrendingDown sx={{ fontSize: 16 }} /> Cons
                           </Typography>
-                          {accommodation.cons && accommodation.cons.slice(0, 2).map((con, conIndex) => (
+                          {accommodation.cons && Array.isArray(accommodation.cons) && accommodation.cons.slice(0, 2).map((con, conIndex) => (
                             <Typography key={`accommodation-${accommodationIndex}-con-${conIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                               • {con}
                             </Typography>
@@ -514,7 +556,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       )}
 
       {/* Hotel Recommendations Section */}
-      {itineraryData.externalData?.hotelRecommendations && itineraryData.externalData.hotelRecommendations.length > 0 && (
+      {itineraryData.externalData?.hotelRecommendations && Array.isArray(itineraryData.externalData.hotelRecommendations) && itineraryData.externalData.hotelRecommendations.length > 0 && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -539,7 +581,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {itineraryData.externalData.hotelRecommendations.map((hotel: any, index: number) => (
+              {itineraryData.externalData.hotelRecommendations.filter(hotel => hotel).map((hotel: any, index: number) => (
                 <Card key={hotel.id || index} variant="outlined" sx={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -548,27 +590,27 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                       <Box>
                         <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                          {hotel.name}
+                          {hotel.name || 'Hotel'}
                         </Typography>
                         <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'rgba(255, 255, 255, 0.7)' }}>
                           <LocationOn fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
-                          {hotel.address}
+                          {hotel.address || 'Address not available'}
                         </Typography>
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
                         <Typography variant="h6" color="primary">
-                          ${hotel.pricePerNight}/night
+                          ${hotel.pricePerNight || 'Price TBD'}/night
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Star fontSize="small" sx={{ color: '#FFD700' }} />
                           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            {hotel.rating} ({hotel.reviewCount} reviews)
+                            {hotel.rating || 'N/A'} {hotel.reviewCount ? `(${hotel.reviewCount} reviews)` : ''}
                           </Typography>
                         </Box>
                       </Box>
                     </Box>
                     
-                    {hotel.amenities && hotel.amenities.length > 0 && (
+                    {hotel.amenities && Array.isArray(hotel.amenities) && hotel.amenities.length > 0 && (
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                         {hotel.amenities.slice(0, 4).map((amenity: string, amenityIndex: number) => (
                           <Chip key={amenityIndex} 
@@ -635,7 +677,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       {(() => {
         const dailyData = itineraryData.days || itineraryData.dailyPlans;
         
-        if (dailyData && dailyData.length > 0) {
+        if (dailyData && Array.isArray(dailyData) && dailyData.length > 0) {
           return dailyData.map((day: any, index: number) => (
             <Accordion key={index} defaultExpanded={index === 0} sx={{
               mb: 2,
@@ -666,7 +708,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               <AccordionDetails>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {/* Display Activities */}
-                  {day.activities && day.activities.map((activity: any, activityIndex: number) => (
+                  {day.activities && Array.isArray(day.activities) && day.activities.filter((activity: any) => activity).map((activity: any, activityIndex: number) => (
                     <Card key={`day-${index}-activity-${activityIndex}-${activity.id || activityIndex}`} variant="outlined" sx={{
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -674,10 +716,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                           <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                            {activity.name}
+                            {activity.name || 'Activity'}
                           </Typography>
                           <Chip 
-                            label={activity.category} 
+                            label={activity.category || 'Activity'} 
                             size="small" 
                             color="primary" 
                             variant="outlined"
@@ -689,7 +731,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         </Box>
                         
                         <Typography sx={{ color: 'rgba(255, 255, 255, 0.8)' }} paragraph>
-                          {activity.description}
+                          {activity.description || 'No description available'}
                         </Typography>
                         
                         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -697,7 +739,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {activity.timing.startTime} - {activity.timing.endTime}
+                                {activity.timing.startTime || activity.startTime || 'Time'} - {activity.timing.endTime || activity.endTime || 'TBD'}
                               </Typography>
                             </Box>
                           )}
@@ -705,20 +747,66 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {activity.location?.name || activity.location || 'Location not specified'}
+                              {typeof activity.location === 'string' 
+                                ? activity.location 
+                                : (activity.location as any)?.name || 'Location not specified'}
                             </Typography>
                           </Box>
                           
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              ${activity.cost?.amount?.toFixed(2) || activity.estimatedCost?.amount?.toFixed(2) || '0.00'} {activity.cost?.currency || activity.estimatedCost?.currency || 'USD'}
+                              Price TBD
                             </Typography>
                           </Box>
                         </Box>
 
+                        {/* Website and booking links */}
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                          {activity.website && (
+                            <Button
+                              href={activity.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              size="small"
+                              startIcon={<Link sx={{ fontSize: 16 }} />}
+                              sx={{ 
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  border: '1px solid rgba(255, 255, 255, 0.5)'
+                                }
+                              }}
+                            >
+                              Visit Website
+                            </Button>
+                          )}
+                          
+                          {activity.bookingUrl && (
+                            <Button
+                              href={activity.bookingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              size="small"
+                              startIcon={<Book sx={{ fontSize: 16 }} />}
+                              sx={{ 
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                border: '1px solid rgba(33, 150, 243, 0.5)',
+                                backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                                  border: '1px solid rgba(33, 150, 243, 0.7)'
+                                }
+                              }}
+                            >
+                              Book Now
+                            </Button>
+                          )}
+                        </Box>
+
                         {/* Display tips if available */}
-                        {activity.tips && activity.tips.length > 0 && (
+                        {activity.tips && Array.isArray(activity.tips) && activity.tips.length > 0 && (
                           <Box sx={{ mt: 2 }}>
                             <Typography variant="subtitle2" sx={{ mb: 1, color: 'white' }}>Tips:</Typography>
                             {activity.tips.map((tip: string, tipIndex: number) => (
@@ -733,7 +821,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   ))}
 
                   {/* Display Meals */}
-                  {day.meals && day.meals.map((meal: any, mealIndex: number) => (
+                  {day.meals && Array.isArray(day.meals) && day.meals.filter((meal: any) => meal).map((meal: any, mealIndex: number) => (
                     <Card key={`day-${index}-meal-${mealIndex}-${meal.id || mealIndex}`} variant="outlined" sx={{ 
                       backgroundColor: 'rgba(255, 193, 7, 0.1)',
                       border: '1px solid rgba(255, 193, 7, 0.3)'
@@ -741,7 +829,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                           <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                            🍽️ {meal.name}
+                            🍽️ {meal.name || 'Meal'}
                           </Typography>
                           <Chip 
                             label={meal.type || 'meal'} 
@@ -757,7 +845,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {meal.timing?.time}
+                              {meal.timing?.time || meal.time || 'Time TBD'}
                             </Typography>
                           </Box>
                           
@@ -771,7 +859,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              ${meal.cost?.amount?.toFixed(2) || '0.00'} {meal.cost?.currency || 'USD'}
+                              ${meal.cost?.amount?.toFixed(2) || 'Price TBD'} {meal.cost?.currency || ''}
                             </Typography>
                           </Box>
 
@@ -845,7 +933,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   ))}
 
                   {/* Display Transportation */}
-                  {day.transportation && day.transportation.map((transport: any, transportIndex: number) => (
+                  {day.transportation && Array.isArray(day.transportation) && day.transportation.filter((transport: any) => transport).map((transport: any, transportIndex: number) => (
                     <Card key={`day-${index}-transport-${transportIndex}-${transport.id || transportIndex}`} variant="outlined" sx={{ 
                       backgroundColor: 'rgba(33, 150, 243, 0.1)',
                       border: '1px solid rgba(33, 150, 243, 0.3)'
@@ -866,7 +954,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              ${transport.cost?.amount?.toFixed(2) || '0.00'} {transport.cost?.currency || 'USD'}
+                              ${transport.cost?.amount?.toFixed(2) || 'Price TBD'} {transport.cost?.currency || ''}
                             </Typography>
                           </Box>
                         </Box>
@@ -919,84 +1007,8 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       {recommendations && (
         <Box sx={{ mt: 3 }}>
 
-          {/* Transportation Recommendations */}
-          {recommendations.transportation && recommendations.transportation.length > 0 && (
-            <Accordion sx={{
-              mb: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '&:before': { display: 'none' }
-            }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <DirectionsCar sx={{ color: 'white' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Transportation Options ({recommendations.transportation.length})
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  {recommendations.transportation.map((transport, transportIndex) => (
-                    <Grid item xs={12} sm={6} key={`transport-rec-${transportIndex}-${transport.provider || transportIndex}`}>
-                      <Card variant="outlined" sx={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}>
-                        <CardContent>
-                          <Typography variant="h6" component="h3" gutterBottom sx={{ color: 'white' }}>
-                            {transport.mode} - {transport.provider}
-                          </Typography>
-
-                          <Box sx={{ display: 'flex', justify: 'space-between', mb: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                ${transport.estimatedCost?.amount?.toFixed(2) || '0.00'}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {transport.duration}
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          <Grid container spacing={1}>
-                            <Grid item xs={6}>
-                              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#81C784' }}>
-                                <TrendingUp sx={{ fontSize: 16 }} /> Pros
-                              </Typography>
-                              {transport.pros && transport.pros.slice(0, 2).map((pro, proIndex) => (
-                                <Typography key={`transport-${transportIndex}-pro-${proIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                  • {pro}
-                                </Typography>
-                              ))}
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#FFB74D' }}>
-                                <TrendingDown sx={{ fontSize: 16 }} /> Cons
-                              </Typography>
-                              {transport.cons && transport.cons.slice(0, 2).map((con, conIndex) => (
-                                <Typography key={`transport-${transportIndex}-con-${conIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                  • {con}
-                                </Typography>
-                              ))}
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          )}
-
           {/* Alternative Activities */}
-          {recommendations.alternativeActivities && recommendations.alternativeActivities.length > 0 && (
+          {recommendations.alternativeActivities && Array.isArray(recommendations.alternativeActivities) && recommendations.alternativeActivities.length > 0 && (
             <Accordion sx={{
               mb: 2,
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -1014,7 +1026,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  {recommendations.alternativeActivities.map((activity, activityIndex) => (
+                  {recommendations.alternativeActivities.filter((activity: any) => activity).map((activity, activityIndex) => (
                     <Grid item xs={12} sm={6} key={`alt-activity-${activityIndex}-${activity.id || activityIndex}`}>
                       <Card variant="outlined" sx={{
                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -1045,13 +1057,15 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {activity.location?.name || 'Location not specified'}
+                                {typeof activity.location === 'string' 
+                                  ? activity.location 
+                                  : (activity.location as any)?.name || 'Location not specified'}
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                ${activity.estimatedCost?.amount?.toFixed(2) || '0.00'}
+                                Price TBD
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

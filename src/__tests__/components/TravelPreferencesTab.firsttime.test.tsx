@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TravelPreferencesTab } from '../../components/forms/TravelPreferencesTab';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { UserProfileContext } from '../../Context/UserProfileContext';
+import { AlertContext } from '../../Context/AlertContext';
 
 // Mock the hook
 jest.mock('../../hooks/useTravelPreferences');
@@ -21,12 +22,21 @@ describe('TravelPreferencesTab - First Time User Experience', () => {
     isLoading: false,
   };
 
+  // Mock AlertContext value
+  const mockAlertContextValue = {
+    alert: { open: false, severity: 'info' as const, message: '' },
+    showAlert: jest.fn(),
+    closeAlert: jest.fn(),
+  };
+
   // Helper to wrap tested component in provider
   function withUserProfileProvider(children) {
     return (
-      <UserProfileContext.Provider value={mockUserProfileContextValue}>
-        {children}
-      </UserProfileContext.Provider>
+      <AlertContext.Provider value={mockAlertContextValue}>
+        <UserProfileContext.Provider value={mockUserProfileContextValue}>
+          {children}
+        </UserProfileContext.Provider>
+      </AlertContext.Provider>
     );
   }
   const mockCreateProfile = jest.fn();
