@@ -84,6 +84,36 @@ const result = await getStatus({
 });
 ```
 
+### New: searchFlights (HTTP POST)
+
+**Endpoint**: `/searchFlights` (HTTPS function)  
+**Description**: Accepts a JSON payload with flight search parameters and returns a simplified list of flights from Amadeus (mapped). Useful for the AI Itinerary modal.
+
+**Example payload**:
+```json
+{
+  "departureAirportCode": "JFK",
+  "destinationAirportCode": "LAX",
+  "departureDate": "2025-09-01",
+  "returnDate": "2025-09-08",
+  "cabinClass": "ECONOMY",
+  "preferredAirlines": ["DL","AA"],
+  "stops": "ONE_OR_FEWER",
+  "maxResults": 5
+}
+```
+
+**Call example (emulator)**:
+```bash
+# after running `npm run serve` to start functions emulator
+curl -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '{"departureAirportCode":"JFK","destinationAirportCode":"LAX","departureDate":"2025-09-01","returnDate":"2025-09-08"}' \\
+  http://localhost:5001/YOUR_PROJECT/us-central1/searchFlights
+```
+
+Logs: The function will console.log the incoming params and a sample of mapped flights for quick verification.
+
 ## Data Models
 
 ### Request Format

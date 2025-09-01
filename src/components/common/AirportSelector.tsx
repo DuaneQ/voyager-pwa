@@ -50,21 +50,30 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
-  const [airportService] = useState(() => 
-    AirportServiceFactory.createUnifiedAirportService(process.env.REACT_APP_GOOGLE_PLACES_API_KEY || '')
-  );
+  // Initialize airport service
+  const [airportService] = useState(() => {
+    console.log('[AirportSelector] Initializing AirportService with API key:', process.env.REACT_APP_GOOGLE_PLACES_API_KEY ? 'Present' : 'Missing');
+    const service = AirportServiceFactory.createUnifiedAirportService(process.env.REACT_APP_GOOGLE_PLACES_API_KEY || '');
+    console.log('[AirportSelector] AirportService created:', service);
+    return service;
+  });
 
   // Search for airports when location changes
   const searchAirports = useCallback(async (locationQuery: string) => {
+    console.log('[AirportSelector] searchAirports called with:', locationQuery);
+    
     if (!locationQuery.trim()) {
+      console.log('[AirportSelector] Empty location query, clearing airports');
       setAirports([]);
       return;
     }
 
+    console.log('[AirportSelector] Starting airport search...');
     setLoading(true);
     setSearchError(null);
 
     try {
+      console.log('[AirportSelector] Calling airportService.searchAirportsNearLocation');
       const result: AirportSearchResult = await airportService.searchAirportsNearLocation(
         locationQuery,
         undefined,
@@ -72,39 +81,60 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
         5 // Up to 5 airports (3 international + 2 domestic, excluding military)
       );
       
+      console.log('[AirportSelector] Search result:', result);
       setAirports(result.airports);
       
       // Auto-select if only one airport found
       if (result.airports.length === 1 && !selectedAirportCode) {
         const airport = result.airports[0];
+        console.log('[AirportSelector] Auto-selecting single airport:', airport);
         onAirportSelect(airport.iataCode, airport.name);
       }
       // Show dialog if multiple airports found
       else if (result.airports.length > 1 && !selectedAirportCode) {
+        console.log('[AirportSelector] Multiple airports found, showing dialog');
         setShowDialog(true);
       }
     } catch (err) {
-      console.error('Error searching airports:', err);
+      console.error('[AirportSelector] Error searching airports:', err);
       setSearchError(err instanceof Error ? err.message : 'Failed to search airports');
       setAirports([]);
     } finally {
       setLoading(false);
     }
-  }, [airportService, selectedAirportCode, onAirportSelect]);
+  }, [airportService, selectedAirportCode, onAirportSelect]); // Add onAirportSelect back since it's now stable
 
   // Search for airports when location changes
   useEffect(() => {
+    console.log('[AirportSelector] Location changed:', location);
+    
     if (location && location.trim()) {
+      // Reset state when location changes
+      setSearchError(null);
+      setShowDialog(false);
+      
       const timeoutId = setTimeout(() => {
+        console.log('[AirportSelector] Starting search for:', location);
         searchAirports(location);
       }, 500); // Debounce search
       
       return () => clearTimeout(timeoutId);
     } else {
+      console.log('[AirportSelector] Clearing airports - no location');
       setAirports([]);
       setSearchError(null);
+      setShowDialog(false);
     }
   }, [location, searchAirports]);
+
+  // Reset component state on mount
+  useEffect(() => {
+    console.log('[AirportSelector] Component mounted/reset');
+    setAirports([]);
+    setLoading(false);
+    setSearchError(null);
+    setShowDialog(false);
+  }, []);
 
   // Handle airport selection
   const handleAirportSelect = (airport: Airport) => {

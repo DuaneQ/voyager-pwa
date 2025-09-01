@@ -336,12 +336,14 @@ describe('AIItineraryGenerationModal', () => {
       </TestWrapper>
     );
     
-    expect(screen.getByText(/Creating Your Itinerary/)).toBeInTheDocument();
-    expect(screen.getByText(/Stage 2 of 4/)).toBeInTheDocument();
-    
-    // Reset the mock
-    mockUseAIGeneration.isGenerating = false;  
-    mockUseAIGeneration.progress = null;
+  // Updated to match current modal loading text and button state
+  expect(screen.getByText(/Searching for flights/i)).toBeInTheDocument();
+  expect(screen.getByText(/Please wait while we find the best flight options for your trip/i)).toBeInTheDocument();
+  const generatingButton = screen.getByRole('button', { name: /Generating/i });
+  expect(generatingButton).toBeDisabled();
+  // Reset the mock
+  mockUseAIGeneration.isGenerating = false;
+  mockUseAIGeneration.progress = null;
   });
 
   it('shows date validation errors even if destination is missing', async () => {
