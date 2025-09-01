@@ -1,685 +1,161 @@
-import { useState, useCallback, useEffect, useContext } from 'react';
-import { AIGenerationRequest, AIGenerationResponse } from '../types/AIGeneration';
-import { auth } from '../environments/firebaseConfig';
-import { useTravelPreferences } from './useTravelPreferences';
-import { UserProfileContext } from '../Context/UserProfileContext';
+import { useState, useCallback, useContext } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { doc, onSnapshot, getFirestore, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../environments/firebaseConfig';
+import { UserProfileContext } from '../Context/UserProfileContext';
+import { AIGenerationRequest } from '../types/AIGeneration';
+import { AirlineCodeConverter } from '../utils/airlineMapping';
 
-export interface AIGenerationStage {
+interface FlightSearchResult {
+  flights: any[];
+  searchId: string;
+  message?: string;
+}
+
+interface ItineraryResult {
   id: string;
-  label: string;
-  description: string;
-  status: 'pending' | 'active' | 'completed' | 'error';
-  estimatedDuration?: number; // in seconds
+  success: boolean;
 }
 
-export interface UseAIGenerationReturn {
-  // State
-  isGenerating: boolean;
-  progress: {
-    stage: number;
-    totalStages: number;
-    message: string;
-    percent?: number; // Add percent field for backend progress
-    stages: AIGenerationStage[];
-    estimatedTimeRemaining?: number;
-  } | null;
-  error: string | null;
-  result: AIGenerationResponse | null;
-  
-  // Actions
-  generateItinerary: (request: AIGenerationRequest) => Promise<AIGenerationResponse>;
-  cancelGeneration: () => void;
-  resetGeneration: () => void;
-  
-  // Utilities
-  estimateCost: (request: Partial<AIGenerationRequest>) => Promise<number>;
-  checkGenerationStatus: (generationId: string) => Promise<any>;
-}
-
-// Default generation stages
-const DEFAULT_STAGES: AIGenerationStage[] = [
-  {
-    id: 'analyzing',
-    label: 'Analyzing preferences',
-    description: 'Processing your travel preferences and requirements',
-    status: 'pending',
-    estimatedDuration: 15
-  },
-  {
-    id: 'finding',
-    label: 'Finding activities',
-    description: 'Discovering the best activities and attractions',
-    status: 'pending',
-    estimatedDuration: 30
-  },
-  {
-    id: 'optimizing',
-    label: 'Optimizing schedule',
-    description: 'Creating the perfect daily schedule',
-    status: 'pending',
-    estimatedDuration: 25
-  },
-  {
-    id: 'calculating',
-    label: 'Calculating costs',
-    description: 'Estimating costs and finding the best deals',
-    status: 'pending',
-    estimatedDuration: 20
-  },
-  {
-    id: 'finalizing',
-    label: 'Finalizing itinerary',
-    description: 'Putting the finishing touches on your trip',
-    status: 'pending',
-    estimatedDuration: 10
-  }
-];
-
-export const useAIGeneration = (): UseAIGenerationReturn => {
+export const useAIGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState<{
-    stage: number;
-    totalStages: number;
-    message: string;
-    percent?: number;
-    stages: AIGenerationStage[];
-    estimatedTimeRemaining?: number;
-  } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AIGenerationResponse | null>(null);
-  const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
-  const [pendingResolvers, setPendingResolvers] = useState<{[key: string]: (result: AIGenerationResponse) => void}>({});
-  
-  // Add travel preferences hook and user profile context
-  const { getProfileById } = useTravelPreferences();
-  const userProfileContext = useContext(UserProfileContext);
-  const userProfile = userProfileContext?.userProfile;
+  const { userProfile } = useContext(UserProfileContext);
 
-  // Listen for real-time progress updates from Firestore
-  useEffect(() => {
-    if (!currentGenerationId) return;
-
-    console.log('🔔 Setting up Firestore listener for generation:', currentGenerationId);
-    const db = getFirestore();
-    const generationDoc = doc(db, 'ai_generations', currentGenerationId);
-    
-    const unsubscribe = onSnapshot(generationDoc, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
-        console.log('📊 Firestore progress update:', data.progress);
-        
-        if (data.progress) {
-          const firebaseProgress = data.progress;
-          
-          // Convert Firebase progress to our format
-          const stages = [...DEFAULT_STAGES];
-          const currentStageIndex = firebaseProgress.stage - 1;
-          
-          setProgress({
-            stage: firebaseProgress.stage,
-            totalStages: firebaseProgress.totalStages,
-            message: firebaseProgress.message,
-            // Use the percent value from backend - it's at the root level of the document
-            percent: data.percent || 0,
-            stages: stages.map((stage, index) => ({
-              ...stage,
-              status: index < currentStageIndex ? 'completed' : 
-                     index === currentStageIndex ? 'active' : 'pending'
-            })) as AIGenerationStage[],
-          });
-        }
-
-        // Check if generation is completed
-        if (data.status === 'completed' && data.response?.success) {
-          console.log('✅ Generation completed, processing result...');
-          
-          const result = data.response;
-          const aiResponse: AIGenerationResponse = {
-            id: doc.id, // Use document ID instead of data.id
-            request: data.request,
-            itinerary: result.data?.itinerary,
-            recommendations: result.data?.recommendations,
-            costBreakdown: result.data?.costBreakdown,
-            status: 'completed',
-            progress: {
-              stage: 5,
-              totalStages: 5,
-              message: 'Generation completed!'
-            },
-            createdAt: data.createdAt?.toDate() || new Date(),
-            completedAt: new Date()
-          };
-
-          setResult(aiResponse);
-          setIsGenerating(false);
-          setCurrentGenerationId(null);
-          
-          // Resolve any pending promises
-          // Use document ID instead of data.id since data.id might be undefined
-          const generationId = doc.id;
-          console.log('🔍 [DEBUG] Looking for resolver for generation:', generationId);
-          console.log('🔍 [DEBUG] Available resolvers:', Object.keys(pendingResolvers));
-          const resolver = pendingResolvers[generationId];
-          if (resolver) {
-            console.log('✅ [DEBUG] Found resolver, calling it with result');
-            try {
-              resolver(aiResponse);
-              console.log('✅ [DEBUG] Resolver called successfully');
-            } catch (resolverError) {
-              console.error('❌ [DEBUG] Error calling resolver:', resolverError);
-            }
-            setPendingResolvers(prev => {
-              const updated = { ...prev };
-              delete updated[generationId];
-              return updated;
-            });
-          } else {
-            console.warn('⚠️ [DEBUG] No resolver found for generation:', generationId);
-            console.log('⚠️ [DEBUG] Available resolvers were:', Object.keys(pendingResolvers));
-            console.log('⚠️ [DEBUG] This means the promise will not resolve automatically');
-          }
-          
-          // Final progress update
-          setProgress({
-            stage: 5,
-            totalStages: 5,
-            percent: 100,
-            message: 'Generation completed!',
-            stages: DEFAULT_STAGES.map(stage => ({
-              ...stage,
-              status: 'completed'
-            })) as AIGenerationStage[],
-          });
-        }
-
-        // Check if generation failed
-        if (data.status === 'failed') {
-          console.error('❌ Generation failed:', data.errorDetails);
-          setError(data.errorDetails?.message || 'Generation failed');
-          setIsGenerating(false);
-          setCurrentGenerationId(null);
-        }
-      }
-    }, (error) => {
-      console.error('❌ Firestore listener error:', error);
-      // Don't immediately fail on connection errors - they might be temporary
-      if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
-        console.warn('🔄 Firestore temporarily unavailable, will retry automatically');
-      } else {
-        setError(`Connection error: ${error.message}`);
-      }
-    });
-
-    return () => {
-      console.log('🔕 Cleaning up Firestore listener');
-      unsubscribe();
-    };
-  }, [currentGenerationId, pendingResolvers]);
-
-  const generateItinerary = useCallback(async (request: AIGenerationRequest): Promise<AIGenerationResponse> => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
-      throw new Error('User must be authenticated to generate itineraries');
-    }
-
-    console.log('🚀 Starting AI Generation with request:', request);
-
-    try {
-      setIsGenerating(true);
-      setError(null);
-      setResult(null);
-      
-      // Initialize stages
-      const stages = [...DEFAULT_STAGES];
-      
-      setProgress({
-        stage: 1,
-        totalStages: stages.length,
-        percent: 0,
-        message: 'Starting AI generation...',
-        stages: stages.map((stage, index) => ({
-          ...stage,
-          status: index === 0 ? 'active' : 'pending'
-        })) as AIGenerationStage[],
-      });
-
-      // Get profile data to populate missing fields
-      console.log('🔍 About to call getProfileById with:', request.preferenceProfileId);
-      const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
-      
-      console.log('🔍 Profile Debug Info:');
-      console.log('  - Profile ID:', request.preferenceProfileId);
-      console.log('  - Profile found:', !!profile);
-      console.log('  - Profile data:', profile);
-      console.log('  - User profile context:', userProfile);
-      
-      if (!profile) {
-        console.error('❌ Profile not found! Available profiles might not be loaded yet.');
-        throw new Error(`Travel preference profile with ID "${request.preferenceProfileId}" not found. Please ensure your travel preferences are loaded.`);
-      }
-
-      // Prepare user info from context to send to backend
-      const userInfoForBackend = userProfile ? {
-        uid: userProfile.uid || auth.currentUser?.uid || '',
-        username: userProfile.username || '',
-        gender: userProfile.gender || '',
-        dob: userProfile.dob || '',
-        status: userProfile.status || '',
-        sexualOrientation: userProfile.sexualOrientation || '',
-        email: userProfile.email || auth.currentUser?.email || '',
-        blocked: userProfile.blocked || []
-      } : undefined;
-
-      // Validate that we have essential user data
-      if (!userInfoForBackend || !userInfoForBackend.uid) {
-        console.error('❌ User profile context not available - this will cause backend Firestore reads');
-        console.error('User profile data:', userProfile);
-        throw new Error('User profile data not loaded. Please ensure you are logged in and try again.');
-      }
-
-      console.log('✅ User profile data ready for backend:', {
-        hasUserInfo: !!userInfoForBackend,
-        hasProfile: !!profile,
-        uid: userInfoForBackend.uid,
-        profileId: profile.id
-      });
-
-      // Prepare the request with user data and profile
-      const requestWithUserData: AIGenerationRequest = {
-        ...request,
-        groupSize: profile.groupSize?.preferred || request.groupSize || 1,
-        // Pass user data from frontend to avoid backend Firestore reads
-        userInfo: userInfoForBackend,
-        travelPreferences: profile
-      };
-
-      console.log('🚀 Calling Firebase Function: generateItinerary with request:', requestWithUserData);
-      const functions = getFunctions();
-      
-      // Configure with longer timeout to match backend
-      const generateItineraryFn = httpsCallable(functions, 'generateItinerary', {
-        timeout: 600000 // 10 minutes (600,000 milliseconds)
-      });
-      
-      // Increase timeout to 10 minutes and handle deadline-exceeded gracefully
-      try {
-        const response = await generateItineraryFn(requestWithUserData);
-        const result = response.data as any;
-        
-        console.log('✅ AI Generation initiated:', result);
-        
-        if (!result.success) {
-          throw new Error(result.error?.message || 'AI generation failed to start');
-        }
-
-        // Extract generation ID to listen for progress
-        const generationId = result.data?.metadata?.generationId;
-        if (generationId) {
-          console.log('🔄 Starting progress tracking for generation:', generationId);
-          setCurrentGenerationId(generationId);
-          
-          // Return a promise that will be resolved by the real-time listener
-          return new Promise<AIGenerationResponse>((resolve, reject) => {
-            console.log('🎯 [DEBUG] Setting up promise resolver for generation:', generationId);
-            
-            // Set up a timeout as backup
-            const timeoutId = setTimeout(() => {
-              console.warn('⏰ Generation timeout reached after 10 minutes');
-              setPendingResolvers(prev => {
-                const updated = { ...prev };
-                delete updated[generationId];
-                return updated;
-              });
-              reject(new Error('Generation timed out after 10 minutes'));
-            }, 600000); // 10 minutes
-            
-            // Store the resolver with cleanup built-in
-            const resolveWithCleanup = (result: AIGenerationResponse) => {
-              console.log('🎯 [DEBUG] resolveWithCleanup called for generation:', generationId);
-              clearTimeout(timeoutId);
-              setPendingResolvers(prev => {
-                const updated = { ...prev };
-                delete updated[generationId];
-                return updated;
-              });
-              resolve(result);
-            };
-            
-            // Store the resolver immediately
-            setPendingResolvers(prev => {
-              console.log('🎯 [DEBUG] Storing resolver for generation:', generationId);
-              return { ...prev, [generationId]: resolveWithCleanup };
-            });
-          });
-        } else {
-          // No generation ID - process immediate result (legacy response format)
-          const fallbackResponse: AIGenerationResponse = {
-            id: `gen_${Date.now()}`,
-            request,
-            itinerary: result.data?.itinerary,
-            recommendations: result.data?.recommendations,
-            costBreakdown: result.data?.costBreakdown,
-            status: 'completed',
-            progress: {
-              stage: 5,
-              totalStages: 5,
-              message: 'Generation completed!'
-            },
-            createdAt: new Date(),
-            completedAt: new Date()
-          };
-
-          setResult(fallbackResponse);
-          setIsGenerating(false);
-          setCurrentGenerationId(null);
-          
-          setProgress({
-            stage: 5,
-            totalStages: 5,
-            percent: 100,
-            message: 'Generation completed!',
-            stages: DEFAULT_STAGES.map(stage => ({
-              ...stage,
-              status: 'completed'
-            })) as AIGenerationStage[],
-          });
-
-          return fallbackResponse;
-        }
-      } catch (timeoutError: any) {
-        console.log('⏰ Function timed out, but checking for completed generation...');
-        
-        if (timeoutError.code === 'deadline-exceeded' || timeoutError.message?.includes('deadline-exceeded')) {
-          // The function timed out, but the generation might have completed
-          // Set up a listener to check for the most recent completed generation for this user
-          return new Promise((resolve, reject) => {
-            const db = getFirestore();
-            
-            // Look for recent generations by this user
-            const recentGenerationsQuery = query(
-              collection(db, 'ai_generations'),
-              where('userId', '==', userId),
-              where('status', '==', 'completed'),
-              orderBy('createdAt', 'desc'),
-              limit(1)
-            );
-            
-            const unsubscribe = onSnapshot(recentGenerationsQuery, (snapshot: any) => {
-              if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                const data = doc.data();
-                const docCreatedAt = data.createdAt?.toDate();
-                
-                // Only process if this was created within the last 5 minutes
-                if (docCreatedAt && (Date.now() - docCreatedAt.getTime()) < 300000) {
-                  console.log('🎉 Found recent completed generation after timeout:', doc.id);
-                  
-                  const result = data.response;
-                  const aiResponse: AIGenerationResponse = {
-                    id: doc.id,
-                    request: data.request,
-                    itinerary: result.data?.itinerary,
-                    recommendations: result.data?.recommendations,
-                    costBreakdown: result.data?.costBreakdown,
-                    status: 'completed',
-                    progress: {
-                      stage: 5,
-                      totalStages: 5,
-                      message: 'Generation completed!'
-                    },
-                    createdAt: data.createdAt?.toDate() || new Date(),
-                    completedAt: new Date()
-                  };
-
-                  setResult(aiResponse);
-                  setIsGenerating(false);
-                  setCurrentGenerationId(null);
-                  
-                  setProgress({
-                    stage: 5,
-                    totalStages: 5,
-                    percent: 100,
-                    message: 'Generation completed!',
-                    stages: DEFAULT_STAGES.map(stage => ({
-                      ...stage,
-                      status: 'completed'
-                    })) as AIGenerationStage[],
-                  });
-                  
-                  unsubscribe();
-                  resolve(aiResponse);
-                }
-              }
-            }, (error) => {
-              console.error('❌ Firestore recent generations listener error:', error);
-              // Don't immediately fail on connection errors - they might be temporary
-              if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
-                console.warn('🔄 Firestore temporarily unavailable for recent generations query, will retry automatically');
-              }
-            });
-            
-            // Show extended progress while waiting
-            const waitingStages = [...DEFAULT_STAGES];
-            let currentStage = 4; // Start at stage 4 since we know it's processing
-            
-            const updateProgress = () => {
-              if (currentStage <= 5) {
-                setProgress({
-                  stage: currentStage,
-                  totalStages: 5,
-                  percent: (currentStage / 5) * 100,
-                  message: currentStage === 5 ? 'Finalizing your itinerary...' : waitingStages[currentStage - 1]?.description || 'Processing...',
-                  stages: waitingStages.map((stage, index) => ({
-                    ...stage,
-                    status: index < currentStage - 1 ? 'completed' : 
-                           index === currentStage - 1 ? 'active' : 'pending'
-                  })) as AIGenerationStage[],
-                });
-                
-                if (currentStage < 5) {
-                  currentStage++;
-                  setTimeout(updateProgress, 3000);
-                } else {
-                  // Keep showing finalizing
-                  setTimeout(updateProgress, 2000);
-                }
-              }
-            };
-            
-            setTimeout(updateProgress, 200);
-            
-            // Give up after 5 more minutes
-            setTimeout(() => {
-              unsubscribe();
-              reject(new Error('Generation timed out. Please check your AI Itineraries tab to see if it completed.'));
-            }, 300000);
-          });
-        } else {
-          throw timeoutError;
-        }
-      }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      setIsGenerating(false);
-      setProgress(null);
-      throw err;
-    }
-  }, [getProfileById]);
-
-  const cancelGeneration = useCallback(() => {
-    // Note: Firebase Cloud Functions don't support direct cancellation
-    // The generation will continue on the backend but we reset the UI state
-    setIsGenerating(false);
-    setProgress(null);
-    setError('Generation cancelled by user');
-    setCurrentGenerationId(null);
-    setPendingResolvers({});
-  }, []);
-
-  const resetGeneration = useCallback(() => {
-    setIsGenerating(false);
-    setProgress(null);
+  const generateItinerary = useCallback(async (request: AIGenerationRequest): Promise<ItineraryResult> => {
+    setIsGenerating(true);
     setError(null);
-    setResult(null);
-    setCurrentGenerationId(null);
-    setPendingResolvers({});
-  }, []);
 
-  const estimateCost = useCallback(async (request: Partial<AIGenerationRequest>): Promise<number> => {
     try {
-      // Create a detailed cache key for rate limiting
-      const cacheKey = JSON.stringify({
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('🔍 [useAIGeneration] Calling Firebase Cloud Function with request:', request);
+
+      const functions = getFunctions();
+      const searchFlights = httpsCallable(functions, 'searchFlights');
+      
+      // Convert airline names to IATA codes for API compatibility
+      const preferredAirlineCodes = request.flightPreferences?.preferredAirlines 
+        ? AirlineCodeConverter.convertNamesToCodes(request.flightPreferences.preferredAirlines)
+        : [];
+      
+      console.log('🔍 [useAIGeneration] Original airline names:', request.flightPreferences?.preferredAirlines);
+      console.log('🔍 [useAIGeneration] Converted airline codes:', preferredAirlineCodes);
+      
+      const flightResult = await searchFlights({
+        departureAirportCode: request.departureAirportCode,
+        destinationAirportCode: request.destinationAirportCode,
+        departureDate: request.startDate,
+        returnDate: request.endDate,
+        cabinClass: request.flightPreferences?.class?.toUpperCase() || 'ECONOMY',
+        stopPreference: request.flightPreferences?.stopPreference === 'non-stop' ? 'NONSTOP' : 
+                       request.flightPreferences?.stopPreference === 'one-stop' ? 'ONE_OR_FEWER' : 'ANY',
+        preferredAirlines: preferredAirlineCodes
+      });
+
+      console.log('✅ [useAIGeneration] Flight search successful:', flightResult.data);
+
+      // Create a single ID for the generation
+      const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const itineraryData = {
+        id: generationId,
         destination: request.destination,
-        departure: request.departure,
+        departure: request.departure || '',
         startDate: request.startDate,
         endDate: request.endDate,
-        profileId: request.preferenceProfileId,
-        budget: request.budget?.total,
-        groupSize: request.groupSize
-      });
-      
-      const cachedEstimate = sessionStorage.getItem(`rate-limit-cache-${btoa(cacheKey)}`);
-      const cachedTime = sessionStorage.getItem(`rate-limit-time-${btoa(cacheKey)}`);
-      
-      // Use cached result if less than 2 minutes old to prevent rate limiting
-      if (cachedEstimate && cachedTime) {
-        const timeDiff = Date.now() - parseInt(cachedTime);
-        if (timeDiff < 120000) { // 2 minutes
-          console.log('📋 Using cached cost estimate to prevent rate limiting');
-          return parseInt(cachedEstimate);
-        }
-      }
-      
-      // Get profile data to populate missing fields
-      const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
-      
-      if (!profile) {
-        // If no profile, return basic estimate
-        const baseCost = 1000;
-        const duration = request.startDate && request.endDate 
-          ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
-          : 7;
-        return baseCost * duration;
-      }
-
-      // Prepare user info from context
-      const userInfoForBackend = userProfile ? {
-        uid: userProfile.uid || auth.currentUser?.uid || '',
-        username: userProfile.username || '',
-        gender: userProfile.gender || '',
-        dob: userProfile.dob || '',
-        status: userProfile.status || '',
-        sexualOrientation: userProfile.sexualOrientation || '',
-        email: userProfile.email || auth.currentUser?.email || '',
-        blocked: userProfile.blocked || []
-      } : undefined;
-
-      // Validate user data for cost estimation
-      if (!userInfoForBackend || !userInfoForBackend.uid) {
-        console.warn('⚠️ User profile not available for cost estimation, using fallback calculation');
-        const baseCost = profile?.budgetRange?.max || 1000;
-        const duration = request.startDate && request.endDate 
-          ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
-          : 7;
-        return baseCost * duration;
-      }
-
-      // Prepare the request with user data and profile
-      const requestWithUserData = {
-        ...request,
-        groupSize: profile.groupSize?.preferred || request.groupSize || 1,
-        // Pass user data from frontend to avoid backend Firestore reads
-        userInfo: userInfoForBackend,
-        travelPreferences: profile
+        description: `Flight search for ${request.destination}`,
+        // Search functionality fields
+        gender: 'Any',
+        sexualOrientation: 'Any',
+        status: 'Any',
+        startDay: new Date(request.startDate).getTime(),
+        endDay: new Date(request.endDate).getTime(),
+        lowerRange: 18,
+        upperRange: 100,
+        likes: [],
+        userInfo: {
+          username: userProfile?.username || 'Anonymous',
+          gender: userProfile?.gender || 'Any',
+          dob: userProfile?.dob || '',
+          uid: userId,
+          email: userProfile?.email || auth.currentUser?.email || '',
+          status: userProfile?.status || 'Any',
+          sexualOrientation: userProfile?.sexualOrientation || 'Any',
+          blocked: userProfile?.blocked || []
+        },
+        // AI Generation specific fields
+        aiGenerated: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
 
-      console.log('🚀 Calling Firebase Function: estimateItineraryCost with request:', requestWithUserData);
-      const functions = getFunctions();
-      const estimateCostFn = httpsCallable(functions, 'estimateItineraryCost', {
-        timeout: 120000 // 2 minutes timeout for cost estimation
+      // Save only to ai_generations collection
+      console.log('💾 [useAIGeneration] Saving generation to Firestore...');
+      
+      // Save to ai_generations collection using itineraryData
+      await setDoc(doc(db, 'ai_generations', generationId), {
+        id: generationId,
+        userId: userId,
+        status: 'completed',
+        request: request,
+        response: {
+          success: true,
+          data: {
+            itinerary: itineraryData,
+            recommendations: {
+              flights: (flightResult.data as FlightSearchResult)?.flights || []
+            },
+            metadata: {
+              generationId: generationId,
+              confidence: 0.8,
+              processingTime: Date.now(),
+              aiModel: 'flight-search-v1',
+              version: '1.0.0'
+            }
+          }
+        },
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        processingTimeMs: 1000
       });
-      
-      const response = await estimateCostFn(requestWithUserData);
-      const result = response.data as any;
-      
-      console.log('✅ Cost Estimation Response:', result);
-      
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Cost estimation failed');
-      }
 
-      const estimatedCost = result.data?.estimatedCost || 0;
-      
-      // Cache successful result for rate limiting prevention
-      sessionStorage.setItem(`rate-limit-cache-${btoa(cacheKey)}`, estimatedCost.toString());
-      sessionStorage.setItem(`rate-limit-time-${btoa(cacheKey)}`, Date.now().toString());
+      console.log('✅ [useAIGeneration] Generation saved successfully');
 
-      return estimatedCost;
+      // Return simple result with just ID and status
+      return {
+        id: generationId,
+        success: true
+      };
+
     } catch (err: any) {
-      console.error('❌ Cost estimation error:', err);
-      
-      // Handle rate limiting gracefully
-      if (err.message?.includes('Rate limit') || err.message?.includes('429') || err.code === 'functions/resource-exhausted') {
-        console.warn('⚠️ Rate limit detected, using fallback calculation');
-        
-        // Use fallback calculation during rate limiting
-        const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
-        const baseCost = profile?.budgetRange?.max || 1000;
-        
-        const duration = request.startDate && request.endDate 
-          ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
-          : 7;
-        
-        return baseCost * duration;
-      }
-      
-      // Fallback to basic calculation if API fails
-      const profile = request.preferenceProfileId ? getProfileById(request.preferenceProfileId) : null;
-      const baseCost = profile?.budgetRange?.max || 1000;
-      
-      const duration = request.startDate && request.endDate 
-        ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24))
-        : 7;
-      
-      return baseCost * duration;
+      console.error('❌ [useAIGeneration] Flight search failed:', err);
+      const errorMessage = err?.message || 'Failed to search flights';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsGenerating(false);
     }
-  }, [getProfileById]);
+  }, [userProfile]);
 
-  const checkGenerationStatus = useCallback(async (generationId: string) => {
-    try {
-      console.log('🚀 Calling Firebase Function: getGenerationStatus');
-      const functions = getFunctions();
-      const getStatusFn = httpsCallable(functions, 'getGenerationStatus');
-      
-      const response = await getStatusFn({ generationId });
-      const result = response.data as any;
-      
-      console.log('✅ Status Check Response:', result);
-      
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Status check failed');
-      }
+  const resetGeneration = useCallback(() => {
+    setError(null);
+    setIsGenerating(false);
+  }, []);
 
-      return result.data;
-    } catch (err) {
-      console.error('❌ Status check error:', err);
-      throw err;
-    }
+  const cancelGeneration = useCallback(() => {
+    setIsGenerating(false);
   }, []);
 
   return {
-    isGenerating,
-    progress,
-    error,
-    result,
     generateItinerary,
-    cancelGeneration,
+    isGenerating,
+    error,
     resetGeneration,
-    estimateCost,
-    checkGenerationStatus,
+    cancelGeneration,
+    progress: null // Keep for compatibility with modal
   };
 };

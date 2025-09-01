@@ -343,13 +343,10 @@ describe('AIItineraryGenerationModal', () => {
     mockUseAIGeneration.mockReturnValue({
       generateItinerary: mockGenerateItinerary,
       isGenerating: true,
-      progress: { ...mockProgressState, percent: 50 },
       error: null,
-      result: null,
       resetGeneration: mockResetGeneration,
       cancelGeneration: mockCancelGeneration,
-      estimateCost: jest.fn(),
-      checkGenerationStatus: jest.fn()
+  progress: null
     });
 
     render(
@@ -358,7 +355,11 @@ describe('AIItineraryGenerationModal', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByText('AI Generation Progress')).toBeInTheDocument();
+  // Updated: check for loading text and disabled button
+  expect(screen.getByText(/Searching for flights/i)).toBeInTheDocument();
+  expect(screen.getByText(/Please wait while we find the best flight options for your trip/i)).toBeInTheDocument();
+  const generatingButton = screen.getByRole('button', { name: /Generating/i });
+  expect(generatingButton).toBeDisabled();
   });
 
   it('should reset state when modal closes', async () => {

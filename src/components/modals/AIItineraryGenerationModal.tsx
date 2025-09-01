@@ -88,35 +88,71 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [mustIncludeInput, setMustIncludeInput] = useState('');
   const [mustAvoidInput, setMustAvoidInput] = useState('');
   const [showSuccessState, setShowSuccessState] = useState(false);
+  const [modalKey, setModalKey] = useState(0); // Key to force re-render of Google Places components
 
-  // Initialize preference profile when available
+  // Track if modal was previously closed to detect new opens
+  const [wasOpen, setWasOpen] = useState(false);
+
+  // Reset form and increment key when modal opens to force Google Places to re-initialize
   useEffect(() => {
-    if (preferences && !formData.preferenceProfileId) {
-      const defaultProfile = getDefaultProfile();
-      if (defaultProfile) {
-        setFormData(prev => ({
-          ...prev,
-          preferenceProfileId: defaultProfile.id
-        }));
-      }
+    if (open && !wasOpen) {
+      // Modal just opened
+      setModalKey(prev => prev + 1);
+      setWasOpen(true);
+      
+      // Reset form data only once when modal opens
+      const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
+      
+      setFormData({
+        destination: initialDestination,
+        destinationAirportCode: '',
+        departure: '',
+        departureAirportCode: '',
+        startDate: initialDates?.startDate || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+        endDate: initialDates?.endDate || format(addDays(new Date(), 14), 'yyyy-MM-dd'),
+        tripType: 'leisure',
+        preferenceProfileId: defaultProfileId,
+        specialRequests: '',
+        mustInclude: [],
+        mustAvoid: [],
+        flightPreferences: {
+          class: 'economy',
+          stopPreference: 'any',
+          preferredAirlines: [],
+        },
+      });
+      
+      setFormErrors({});
+      setMustIncludeInput('');
+      setMustAvoidInput('');
+      setShowSuccessState(false);
+    } else if (!open && wasOpen) {
+      // Modal just closed
+      setWasOpen(false);
     }
-  }, [preferences, formData.preferenceProfileId, getDefaultProfile]);
+  }, [open, wasOpen, initialDestination, initialDates, preferences]);
 
-  // Handle form field changes
-  const handleFieldChange = useCallback((field: keyof AIGenerationRequest, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear related errors
-    if (formErrors[field]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  }, [formErrors]);
+    // Handle form field changes
+  const handleFieldChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Stable airport selection callbacks
+  const handleDepartureAirportSelect = useCallback((code: string, name: string) => {
+    handleFieldChange('departureAirportCode', code);
+  }, [handleFieldChange]);
+
+  const handleDestinationAirportSelect = useCallback((code: string, name: string) => {
+    handleFieldChange('destinationAirportCode', code);
+  }, [handleFieldChange]);
+
+  const handleDepartureAirportClear = useCallback(() => {
+    handleFieldChange('departureAirportCode', '');
+  }, [handleFieldChange]);
+
+  const handleDestinationAirportClear = useCallback(() => {
+    handleFieldChange('destinationAirportCode', '');
+  }, [handleFieldChange]);
 
   // Validation
   const validateForm = useCallback((): boolean => {
@@ -195,24 +231,19 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
     try {
       const result = await generateItinerary(formData);
-      
-      console.log('🎉 [DEBUG] AI generation successful, result:', result);
-      
-      // Show success state in the modal
-      console.log('🎉 [DEBUG] Setting showSuccessState to true');
-      setShowSuccessState(true);
-      
-      // Call onGenerated to trigger the parent refresh
-      console.log('🎉 [DEBUG] Calling onGenerated callback with result');
-      onGenerated?.(result);
-      console.log('🎉 [DEBUG] onGenerated callback completed');
 
-      // Close modal after showing success for 2 seconds
-      console.log('⏰ [DEBUG] Setting 2-second timeout to close modal');
+      console.log('🎉 [MODAL] Generation successful, result:', result);
+
+      // Show success state in the modal
+      setShowSuccessState(true);
+
+      // Call onGenerated to trigger the parent refresh
+      onGenerated?.(result);
+
+      // Close modal after showing success
       setTimeout(() => {
-        console.log('⏰ [DEBUG] 2 seconds elapsed, closing modal');
         onClose();
-      }, 5000);
+      }, 3000);
     } catch (err: any) {
       let message = err?.message || 'Failed to generate itinerary';
       if (err?.code === 'permission-denied' && message.includes('Premium subscription')) {
@@ -220,7 +251,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
       setFormErrors({ general: message });
     }
-  }, [formData, validateForm, generateItinerary, onGenerated, preferencesLoading, getProfileById, preferences?.profiles]);
+  }, [formData, validateForm, generateItinerary, onGenerated, preferencesLoading, getProfileById]);
 
   // Handle modal close
   const handleClose = useCallback(() => {
@@ -229,8 +260,36 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
     resetGeneration();
     setShowSuccessState(false);
+    
+    // Reset form data to clear Google Places inputs
+    setFormData({
+      destination: '',
+      destinationAirportCode: '',
+      departure: '',
+      departureAirportCode: '',
+      startDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+      endDate: format(addDays(new Date(), 14), 'yyyy-MM-dd'),
+      tripType: 'leisure',
+      preferenceProfileId: preferences?.profiles?.find(p => p.isDefault)?.id || '',
+      specialRequests: '',
+      mustInclude: [],
+      mustAvoid: [],
+      flightPreferences: {
+        class: 'economy',
+        stopPreference: 'any',
+        preferredAirlines: [],
+      },
+    });
+    
+    // Reset tag inputs
+    setMustIncludeInput('');
+    setMustAvoidInput('');
+    
+    // Clear any form errors
+    setFormErrors({});
+    
     onClose();
-  }, [isGenerating, cancelGeneration, resetGeneration, onClose]);
+  }, [isGenerating, cancelGeneration, resetGeneration, onClose, preferences]);
 
   // Handle tag input
   const handleTagAdd = useCallback((type: 'mustInclude' | 'mustAvoid', value: string) => {
@@ -285,19 +344,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           </Alert>
         )}
 
-        {/* Generation Progress */}
-        {isGenerating && progress && progress.stages && (
-          <AIGenerationProgress
-            stages={progress.stages}
-            currentStage={progress.stage}
-            totalStages={progress.totalStages}
-            progress={progress.percent || (progress.stage / progress.totalStages) * 100}
-            message={progress.message}
-            estimatedTimeRemaining={progress.estimatedTimeRemaining}
-            onCancel={cancelGeneration}
-            showCancel={true}
-            error={error}
-          />
+        {/* Simple Loading State */}
+        {isGenerating && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Searching for flights...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please wait while we find the best flight options for your trip.
+            </Typography>
+          </Box>
         )}
 
         {/* Success State Display */}
@@ -346,6 +402,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 Flying From
               </Typography>
               <GooglePlacesAutocomplete
+                key={`departure-${modalKey}`}
                 apiKey={process.env.REACT_APP_GOOGLE_PLACES_API_KEY}
                 selectProps={{
                   value: formData.departure ? { label: formData.departure, value: formData.departure } : null,
@@ -418,14 +475,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           {formData.departure && (
             <Grid item xs={12}>
               <AirportSelector
+                key={`departure-airport-${modalKey}`}
                 label="Departure Airport"
                 placeholder="Select your departure airport"
                 location={formData.departure}
                 selectedAirportCode={formData.departureAirportCode}
-                onAirportSelect={(code, name) => {
-                  handleFieldChange('departureAirportCode', code);
-                }}
-                onClear={() => handleFieldChange('departureAirportCode', '')}
+                onAirportSelect={handleDepartureAirportSelect}
+                onClear={handleDepartureAirportClear}
               />
             </Grid>
           )}
@@ -437,6 +493,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 Destination *
               </Typography>
               <GooglePlacesAutocomplete
+                key={`destination-${modalKey}`}
                 apiKey={process.env.REACT_APP_GOOGLE_PLACES_API_KEY}
                 selectProps={{
                   value: formData.destination ? { label: formData.destination, value: formData.destination } : null,
@@ -512,14 +569,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           {formData.destination && (
             <Grid item xs={12}>
               <AirportSelector
+                key={`destination-airport-${modalKey}`}
                 label="Destination Airport"
                 placeholder="Select your destination airport"
                 location={formData.destination}
                 selectedAirportCode={formData.destinationAirportCode}
-                onAirportSelect={(code, name) => {
-                  handleFieldChange('destinationAirportCode', code);
-                }}
-                onClear={() => handleFieldChange('destinationAirportCode', '')}
+                onAirportSelect={handleDestinationAirportSelect}
+                onClear={handleDestinationAirportClear}
               />
             </Grid>
           )}

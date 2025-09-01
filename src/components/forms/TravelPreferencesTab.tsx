@@ -546,9 +546,9 @@ export const TravelPreferencesTab: React.FC = () => {
         console.warn('⚠️ [DEBUG] refreshItineraries function not available!');
       }
 
-      // Extract the itinerary ID from the result to auto-select it
-      const newItineraryId = result?.data?.itinerary?.id || result?.data?.metadata?.generationId || result?.id;
-      console.log('🎯 [DEBUG] Extracted itinerary ID:', newItineraryId);
+      // Extract the generation ID from the result to auto-select it
+      const newItineraryId = result?.id || result?.data?.metadata?.generationId;
+      console.log('🎯 [DEBUG] Extracted generation ID:', newItineraryId);
       if (newItineraryId) {
         console.log('🎯 [DEBUG] Auto-selecting new itinerary:', newItineraryId);
         setSelectedAIItineraryId(newItineraryId);

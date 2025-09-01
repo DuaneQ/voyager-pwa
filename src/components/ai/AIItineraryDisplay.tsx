@@ -70,17 +70,46 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const formatFlightDateTime = (dateString: string, timeString: string) => {
     if (!dateString || !timeString) return 'Time TBD';
     
-    // Parse the date and format it nicely
-    const date = new Date(dateString + 'T' + timeString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }) + ' • ' + date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    try {
+      // Handle different date formats
+      let formattedDate = dateString;
+      if (dateString.length === 10 && !dateString.includes('T')) {
+        // YYYY-MM-DD format
+        formattedDate = dateString;
+      }
+      
+      // Handle different time formats
+      let formattedTime = timeString;
+      if (timeString.length === 5 && timeString.includes(':')) {
+        // HH:MM format, add seconds
+        formattedTime = timeString + ':00';
+      } else if (timeString.length === 4 && !timeString.includes(':')) {
+        // HHMM format, convert to HH:MM:SS
+        formattedTime = timeString.substring(0, 2) + ':' + timeString.substring(2) + ':00';
+      }
+      
+      // Create the datetime string
+      const dateTimeString = `${formattedDate}T${formattedTime}`;
+      const date = new Date(dateTimeString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }) + ' • ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting flight datetime:', error, { dateString, timeString });
+      return 'Invalid Date';
+    }
   };
 
   return (
@@ -249,8 +278,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         </Accordion>
       )}
 
-      {/* Flight Prices Section */}
-      {recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0 && (
+      {/* Flight Prices Section - Support both legacy and new flight data structures */}
+      {((recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0) || 
+        ((itineraryData as any)?.flights && Array.isArray((itineraryData as any).flights) && (itineraryData as any).flights.length > 0)) && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -262,7 +292,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
               <Chip 
-                label={`${recommendations.flights.length} options`} 
+                label={`${(recommendations?.flights || (itineraryData as any)?.flights || []).length} options`} 
                 size="small" 
                 color="primary" 
                 variant="outlined"
@@ -275,7 +305,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {recommendations.flights.filter((flight: any) => flight).map((flight: any, index: number) => (
+              {(recommendations?.flights || (itineraryData as any)?.flights || []).filter((flight: any) => flight).map((flight: any, index: number) => (
                 <Card key={flight.id || index} variant="outlined" sx={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -336,33 +366,52 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1 }}>
                           Return Flight
                         </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                           <Box>
-                            <Typography variant="body2" sx={{ color: 'white' }}>
-                              {flight.return.airline} {flight.return.flightNumber}
+                            <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
+                              {flight.return.airline || flight.airline} {flight.return.flightNumber || flight.flightNumber}
                             </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              Return: {formatFlightDateTime(flight.return.departure.date, flight.return.departure.time)}
+                            <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                              {flight.return.route || `${flight.return.departure?.iata || ''} → ${flight.return.arrival?.iata || ''}`}
                             </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Chip label={flight.return.duration} 
-                                  size="small" 
-                                  sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                            {flight.return.stops === 0 ? (
-                              <Chip label="Direct" 
-                                    size="small" 
-                                    sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
-                            ) : flight.return.stops === undefined ? (
-                              <Chip label="undefined stop" 
-                                    size="small" 
-                                    sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                            ) : (
-                              <Chip label={`${flight.return.stops} stop${flight.return.stops > 1 ? 's' : ''}`} 
-                                    size="small" 
-                                    sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
+                            {flight.return.departure && flight.return.departure.date && flight.return.departure.time && (
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 0.5 }}>
+                                Departure: {formatFlightDateTime(flight.return.departure.date, flight.return.departure.time)}
+                              </Typography>
                             )}
                           </Box>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="h6" sx={{ color: 'white' }}>
+                              ${flight.price?.amount || 'Price TBD'}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                              {flight.cabin || flight.class}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          <Chip icon={<AccessTime sx={{ color: 'white' }} />} 
+                                label={flight.return.duration || 'Duration TBD'} 
+                                size="small" 
+                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
+                          <Chip label={flight.return.departure?.time || 'Time TBD'} 
+                                size="small" 
+                                variant="outlined"
+                                sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }} />
+                          {flight.return.stops === 0 ? (
+                            <Chip label="Direct" 
+                                  size="small" 
+                                  sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
+                          ) : flight.return.stops === undefined ? (
+                            <Chip label="TBD stops" 
+                                  size="small" 
+                                  sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
+                          ) : (
+                            <Chip label={`${flight.return.stops} stop${flight.return.stops > 1 ? 's' : ''}`} 
+                                  size="small" 
+                                  sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
+                          )}
                         </Box>
                       </Box>
                     )}
