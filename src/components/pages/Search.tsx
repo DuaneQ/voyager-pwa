@@ -103,8 +103,6 @@ export const Search = React.memo(() => {
     };
   }, []);
 
-
-
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
     const loadItineraries = async () => {
@@ -139,6 +137,11 @@ export const Search = React.memo(() => {
 
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
+    // Do not track or write for example itineraries used as illustrations
+    if (itinerary.id && itinerary.id.toString().startsWith('example_')) {
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
@@ -160,6 +163,11 @@ export const Search = React.memo(() => {
 
   // Like handler with usage tracking and mutual like logic
   const handleLike = async (itinerary: Itinerary) => {
+    // If this is an example itinerary (illustrative), skip tracking and writes
+    if (itinerary.id && itinerary.id.toString().startsWith('example_')) {
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
@@ -246,6 +254,36 @@ export const Search = React.memo(() => {
   // Get current match or show appropriate message
   const currentMatch = matchingItineraries[currentMatchIndex];
   const isAtEnd = currentMatchIndex >= matchingItineraries.length;
+
+  // Build example itinerary to mirror selected itinerary when no matches
+  const selectedItinerary = itineraries.find((it) => it.id === selectedItineraryId) || null;
+  const showExample = !!selectedItinerary && matchingItineraries.length === 0 && !searchLoading;
+  const exampleItinerary: Itinerary | null = showExample && selectedItinerary ? {
+    id: `example_${selectedItinerary.id}`,
+    destination: selectedItinerary.destination || 'Unknown Destination',
+    gender: selectedItinerary.gender || selectedItinerary.userInfo?.gender || 'Any',
+    sexualOrientation: selectedItinerary.sexualOrientation || selectedItinerary.userInfo?.sexualOrientation || 'Any',
+    likes: selectedItinerary.likes || [],
+    startDate: selectedItinerary.startDate,
+    endDate: selectedItinerary.endDate,
+    startDay: selectedItinerary.startDay,
+    endDay: selectedItinerary.endDay,
+    description: selectedItinerary.description || 'This is an example itinerary showing what a match would look like. No matches were found for your selected itinerary.',
+    activities: selectedItinerary.activities || [],
+    lowerRange: selectedItinerary.lowerRange,
+    upperRange: selectedItinerary.upperRange,
+    status: selectedItinerary.status || 'new',
+    userInfo: {
+      username: selectedItinerary.userInfo?.username || 'Example User',
+      gender: selectedItinerary.userInfo?.gender || 'Any',
+      dob: selectedItinerary.userInfo?.dob || '',
+      uid: selectedItinerary.userInfo?.uid || '',
+      email: selectedItinerary.userInfo?.email || '',
+      status: selectedItinerary.userInfo?.status || '',
+      sexualOrientation: selectedItinerary.userInfo?.sexualOrientation || '',
+      blocked: selectedItinerary.userInfo?.blocked || [],
+    }
+  } : null;
 
   return (
     <Box
@@ -399,10 +437,7 @@ export const Search = React.memo(() => {
                   lineHeight: 1.6,
                   whiteSpace: 'pre-wrap'
                 }}>
-                After completing your profile, you canreate an itinerary to find matches for 
-                your future trips. Once created, select one of your itineraries from the dropdown, 
-                and we'll match you with others based on destination, dates, and preferences.
-                Once matched, you can chat and plan your adventures together.
+               After completing your profile, you can create an AI-generated itinerary from the Travel Preferences tab on your profile page or manually from the Add/Edit Itinerary page. Once an itinerary is created, select it from the dropdown and we’ll search for travelers with matching destinations, dates, and preferences. If matches are found, their itineraries will appear here. You can like or reject an itinerary, and if both travelers like each other’s, it’s a match—unlocking chat to plan your trip together.”
               </Typography>
             </Box>
           </Box>
@@ -420,6 +455,31 @@ export const Search = React.memo(() => {
           </Box>
         )}
 
+        {/* Show example card when user selected an itinerary but there are no matches */}
+        {!currentMatch && showExample && exampleItinerary && (
+          <Box data-testid="example-itinerary" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+            {/* When example is shown, await dislike/like handlers then close the example to avoid clearing selectedItineraryId early */}
+            <ItineraryCard
+              itinerary={exampleItinerary}
+              onLike={async (it) => {
+                try {
+                  await handleLike(it);
+                } finally {
+                  setSelectedItineraryId('');
+                }
+              }}
+              onDislike={async (it) => {
+                try {
+                  await handleDislike(it);
+                } finally {
+                  setSelectedItineraryId('');
+                }
+              }}
+              isExample
+            />
+          </Box>
+        )}
+
         {/* Show loading when searching or loading more, but only if user has itineraries */}
         {searchLoading && !currentMatch && itineraries.length > 0 && (
           <Typography sx={{ padding: 2 }}>
@@ -428,7 +488,7 @@ export const Search = React.memo(() => {
         )}
 
         {/* Show end message with loading state, only if user has itineraries */}
-        {isAtEnd && !searchLoading && itineraries.length > 0 && (
+  {isAtEnd && !searchLoading && itineraries.length > 0 && !showExample && (
           <Box sx={{ textAlign: 'center', padding: 2 }}>
             <Typography>
               {hasMore

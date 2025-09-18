@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TravelPreferencesTab } from '../../components/forms/TravelPreferencesTab';
 import { UserProfileContext } from '../../Context/UserProfileContext.jsx';
@@ -71,7 +71,7 @@ describe('TravelPreferencesTab', () => {
       foodBudgetLevel: 'medium'
     },
     accommodation: { type: 'hotel', starRating: 3 },
-    transportation: { primaryMode: 'mixed', maxWalkingDistance: 20 },
+  transportation: { primaryMode: 'mixed', maxWalkingDistance: 20 },
     groupSize: { preferred: 2, sizes: [1, 2, 4] },
     accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
     createdAt: new Date('2024-01-01'),
@@ -189,17 +189,74 @@ describe('TravelPreferencesTab', () => {
       render(withUserProfileProvider(<TravelPreferencesTab />));
       expect(screen.getByText('Saved')).toBeDisabled();
     });
+
+  // Include Flights control removed — no UI test required
   });
 
   describe('Profile Management', () => {
     it('allows users to switch between profiles', async () => {
+  render(withUserProfileProvider(<TravelPreferencesTab />));
+  const profileSelects = screen.getAllByRole('combobox');
+  const profileSelect = profileSelects[0]; // First combobox should be profile selector
+  // Initially should show default profile in dropdown - use getAllByText to handle multiple matches
+  expect(screen.getAllByText(/Default Profile/)[0]).toBeInTheDocument();
+  // Open dropdown to show it's working
+  await userEvent.click(profileSelect);
+    });
+
+    it('saves canonical transportation.primaryMode when selecting Driving (rental)', async () => {
+      // Ensure editing preferences are present so Save button appears after change
+      mockHookReturnValue.editingPreferences = mockDefaultProfile;
+      mockUseTravelPreferences.mockReturnValue(mockHookReturnValue);
+
       render(withUserProfileProvider(<TravelPreferencesTab />));
-      const profileSelects = screen.getAllByRole('combobox');
-      const profileSelect = profileSelects[0]; // First combobox should be profile selector
-      // Initially should show default profile in dropdown - use getAllByText to handle multiple matches
-      expect(screen.getAllByText(/Default Profile/)[0]).toBeInTheDocument();
-      // Open dropdown to show it's working
-      await userEvent.click(profileSelect);
+
+      // Robustly find the Transport Type combobox by iterating all comboboxes
+      const comboboxes = screen.getAllByRole('combobox');
+      let selected = false;
+
+      for (const cb of comboboxes) {
+        // Open this combobox's menu
+        await act(async () => {
+          fireEvent.mouseDown(cb);
+        });
+
+        // See if the Driving (rental) option is present in the opened menu
+        try {
+          const drivingOption = await waitFor(() => screen.getByRole('option', { name: /Driving \(rental\)/i }), { timeout: 200 });
+          // Click it and mark success
+          await act(async () => {
+            fireEvent.click(drivingOption);
+          });
+          selected = true;
+          break;
+        } catch (err) {
+          // Option not in this menu — close it and continue
+          await act(async () => {
+            fireEvent.keyDown(cb, { key: 'Escape', code: 'Escape' });
+          });
+        }
+      }
+
+      expect(selected).toBe(true);
+
+      // The Save Changes button should appear and be enabled
+      const saveButton = await screen.findByText('Save Changes');
+      expect(saveButton).toBeEnabled();
+
+      // Click save and assert updateProfile was called with canonical 'rental'
+      await act(async () => {
+        await userEvent.click(saveButton);
+      });
+
+      await waitFor(() => {
+        expect(mockHookReturnValue.updateProfile).toHaveBeenCalledWith(
+          mockDefaultProfile.id,
+          expect.objectContaining({
+            transportation: expect.objectContaining({ primaryMode: 'rental' })
+          })
+        );
+      });
     });
   });
 

@@ -961,11 +961,13 @@ describe('VideoFeedPage', () => {
               }
             } as any);
           render(<VideoFeedPage />);
+          // Wait for the container to render, then wait for the mocked VideoPlayer
           await waitFor(() => {
             expect(screen.getByTestId('video-container')).toBeInTheDocument();
           });
-          const videoPlayer = screen.getByTestId('video-player');
-          expect(videoPlayer).toBeInTheDocument();
+          await waitFor(() => {
+            expect(screen.getByTestId('video-player')).toBeInTheDocument();
+          });
     });
 
     it.skip('should auto-play next video after swipe', async () => {

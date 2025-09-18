@@ -26,7 +26,7 @@ import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
-import AIGenerationProgress from '../common/AIGenerationProgress';
+// ...existing code...
 import { AirportSelector } from '../common/AirportSelector';
 
 interface AIItineraryGenerationModalProps {
@@ -60,7 +60,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const { 
     preferences, 
     loading: preferencesLoading, 
-    getDefaultProfile,
     getProfileById
   } = useTravelPreferences();
 
@@ -224,13 +223,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({ general: 'Preferences are still loading, please wait.' });
       return;
     }
-    const selectedProfile = getProfileById(formData.preferenceProfileId);
+    const selectedProfile = typeof getProfileById === 'function'
+      ? getProfileById(formData.preferenceProfileId)
+      : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
     if (!selectedProfile) {
       setFormErrors({ preferenceProfileId: 'Selected profile not found.' });
       return;
     }
     try {
-      const result = await generateItinerary(formData);
+  // Include the selected preference profile in the generation request so the hook
+  // can map accommodation preferences -> search params (starRating, accessibility, etc.)
+  const requestWithProfile = { ...formData, preferenceProfile: selectedProfile } as any;
+  const result = await generateItinerary(requestWithProfile);
 
       console.log('🎉 [MODAL] Generation successful, result:', result);
 
@@ -313,6 +317,34 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Get available preference profiles
   const availableProfiles = preferences?.profiles || [];
+
+  // Determine whether to show the flight section based on the currently-selected profile's transportation
+  const selectedProfileForRender = typeof getProfileById === 'function'
+    ? getProfileById(formData.preferenceProfileId)
+    : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
+
+  // Flight section should show if the profile explicitly enables flight searching via includeFlights
+  // or if the primaryMode is the canonical 'airplane' value. This avoids relying on legacy UI labels.
+  const profileTransportation = selectedProfileForRender?.transportation;
+  const showFlightSection = !!(
+    profileTransportation && (
+      profileTransportation.includeFlights === true ||
+      String(profileTransportation.primaryMode).toLowerCase() === 'airplane'
+    )
+  );
+
+  // If the selected profile does not support flights, clear any selected airport codes
+  // so the AirportSelector doesn't show stale values or trigger the popup.
+  useEffect(() => {
+    if (!showFlightSection) {
+      if (formData.departureAirportCode) {
+        handleFieldChange('departureAirportCode', '');
+      }
+      if (formData.destinationAirportCode) {
+        handleFieldChange('destinationAirportCode', '');
+      }
+    }
+  }, [showFlightSection, handleFieldChange, formData.departureAirportCode, formData.destinationAirportCode]);
 
   return (
     <Dialog 
@@ -471,8 +503,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             </Box>
           </Grid>
 
-          {/* Departure Airport Selector */}
-          {formData.departure && (
+          {/* Departure Airport Selector (only when flights enabled for profile) */}
+          {showFlightSection && formData.departure && (
             <Grid item xs={12}>
               <AirportSelector
                 key={`departure-airport-${modalKey}`}
@@ -565,8 +597,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             </Box>
           </Grid>
 
-          {/* Destination Airport Selector */}
-          {formData.destination && (
+          {/* Destination Airport Selector (only when flights enabled for profile) */}
+          {showFlightSection && formData.destination && (
             <Grid item xs={12}>
               <AirportSelector
                 key={`destination-airport-${modalKey}`}
@@ -636,100 +668,102 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             </Typography>
           </Grid>
 
-          {/* Flight Preferences */}
-          <Grid item xs={12}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              ✈️ Flight Preferences
-            </Typography>
-            
-            {/* Flight Class */}
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
-                  Class
-                </Typography>
-                <TextField
-                  fullWidth
-                  select
-                  size="small"
-                  value={formData.flightPreferences?.class || 'economy'}
-                  onChange={(e) => handleFieldChange('flightPreferences', {
-                    ...formData.flightPreferences,
-                    class: e.target.value
-                  })}
-                >
-                  {FLIGHT_CLASSES.map((flightClass) => (
-                    <MenuItem key={flightClass.value} value={flightClass.value}>
-                      {flightClass.icon} {flightClass.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              {/* Stop Preference */}
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
-                  Stops
-                </Typography>
-                <TextField
-                  fullWidth
-                  select
-                  size="small"
-                  value={formData.flightPreferences?.stopPreference || 'any'}
-                  onChange={(e) => handleFieldChange('flightPreferences', {
-                    ...formData.flightPreferences,
-                    stopPreference: e.target.value
-                  })}
-                >
-                  {STOP_PREFERENCES.map((stopPref) => (
-                    <MenuItem key={stopPref.value} value={stopPref.value}>
-                      {stopPref.icon} {stopPref.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              {/* Preferred Airlines */}
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
-                  Preferred Airlines
-                </Typography>
-                <TextField
-                  fullWidth
-                  select
-                  size="small"
-                  SelectProps={{
-                    multiple: true,
-                    value: formData.flightPreferences?.preferredAirlines || [],
-                    onChange: (e) => handleFieldChange('flightPreferences', {
+          {/* Flight Preferences - rendered only when selected profile allows flights */}
+          {showFlightSection && (
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                ✈️ Flight Preferences
+              </Typography>
+              
+              {/* Flight Class */}
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                    Class
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    value={formData.flightPreferences?.class || 'economy'}
+                    onChange={(e) => handleFieldChange('flightPreferences', {
                       ...formData.flightPreferences,
-                      preferredAirlines: typeof e.target.value === 'string' ? [e.target.value] : e.target.value
-                    }),
-                    renderValue: (selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {(selected as string[]).map((value) => (
-                          <Chip key={value} label={value} size="small" />
-                        ))}
-                      </Box>
-                    ),
-                  }}
-                >
-                  {POPULAR_AIRLINES.map((airline) => (
-                    <MenuItem key={airline} value={airline}>
-                      {airline}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                      class: e.target.value
+                    })}
+                  >
+                    {FLIGHT_CLASSES.map((flightClass) => (
+                      <MenuItem key={flightClass.value} value={flightClass.value}>
+                        {flightClass.icon} {flightClass.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Stop Preference */}
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                    Stops
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    value={formData.flightPreferences?.stopPreference || 'any'}
+                    onChange={(e) => handleFieldChange('flightPreferences', {
+                      ...formData.flightPreferences,
+                      stopPreference: e.target.value
+                    })}
+                  >
+                    {STOP_PREFERENCES.map((stopPref) => (
+                      <MenuItem key={stopPref.value} value={stopPref.value}>
+                        {stopPref.icon} {stopPref.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Preferred Airlines */}
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                    Preferred Airlines
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    SelectProps={{
+                      multiple: true,
+                      value: formData.flightPreferences?.preferredAirlines || [],
+                      onChange: (e) => handleFieldChange('flightPreferences', {
+                        ...formData.flightPreferences,
+                        preferredAirlines: typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+                      }),
+                      renderValue: (selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {(selected as string[]).map((value) => (
+                            <Chip key={value} label={value} size="small" />
+                          ))}
+                        </Box>
+                      ),
+                    }}
+                  >
+                    {POPULAR_AIRLINES.map((airline) => (
+                      <MenuItem key={airline} value={airline}>
+                        {airline}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
               </Grid>
+              <Typography variant="caption" color="text.secondary">
+                Flight preferences will be applied when searching for flights between your selected airports. 
+                {formData.departureAirportCode && formData.destinationAirportCode 
+                  ? ` Route: ${formData.departureAirportCode} → ${formData.destinationAirportCode}`
+                  : ' Select airports above to see your route.'
+                }
+              </Typography>
             </Grid>
-            <Typography variant="caption" color="text.secondary">
-              Flight preferences will be applied when searching for flights between your selected airports. 
-              {formData.departureAirportCode && formData.destinationAirportCode 
-                ? ` Route: ${formData.departureAirportCode} → ${formData.destinationAirportCode}`
-                : ' Select airports above to see your route.'
-              }
-            </Typography>
-          </Grid>
+          )}
 
           {/* Travel Preferences */}
           <Grid item xs={12}>
