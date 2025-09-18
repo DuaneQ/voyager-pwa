@@ -112,6 +112,56 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     }
   };
 
+  // Helpers for rendering hotel cards
+  const PLACEHOLDER_IMAGE = '/DEFAULT_AVATAR.png';
+
+  const getImageUrl = (item: any): string => {
+    // Try common fields in order of likelihood
+    if (!item) return PLACEHOLDER_IMAGE;
+    if (Array.isArray(item.photos) && item.photos.length > 0) {
+      // accommodations may already contain full URLs
+      const first = item.photos[0];
+      if (typeof first === 'string') {
+        // Accept relative (local) or absolute URLs
+        if (first.startsWith('http') || first.startsWith('/')) return first;
+        return PLACEHOLDER_IMAGE;
+      }
+      if (first.photo_reference) {
+        // We don't expose the Places API key to the client here; return placeholder.
+        return PLACEHOLDER_IMAGE;
+      }
+    }
+    // vendorRaw may contain provider photos (for externalData entries)
+    if (item.vendorRaw && Array.isArray(item.vendorRaw.photos) && item.vendorRaw.photos.length > 0) {
+      const p = item.vendorRaw.photos[0];
+      if (p.photo_reference) {
+        // prefer a proxy if you add one; otherwise use placeholder to avoid broken backgrounds
+        return PLACEHOLDER_IMAGE;
+      }
+    }
+    // fallback
+    return PLACEHOLDER_IMAGE;
+  };
+
+  const formatPrice = (item: any): string => {
+    // accommodation shape may include pricePerNight { amount, currency } or price { amount }
+    const amt = item?.pricePerNight?.amount ?? item?.price?.amount ?? item?.priceAmount;
+    const cur = item?.pricePerNight?.currency ?? item?.price?.currency ?? 'USD';
+    if (typeof amt === 'number') {
+      try {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amt);
+      } catch (e) {
+        return `${cur} ${amt}`;
+      }
+    }
+    // If provider only has a coarse price level, show that
+    if (item?.price_level || item?.priceLevel) {
+      const lvl = item.price_level ?? item.priceLevel;
+      return `${'$'.repeat(Math.max(1, Math.min(4, Number(lvl) || 1)))}`;
+    }
+    return 'Price unknown';
+  };
+
   return (
     <Box sx={{ color: 'white' }}>
       {/* Header */}
@@ -443,279 +493,99 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Grid container spacing={2}>
-              {recommendations.accommodations.filter(accommodation => accommodation).map((accommodation, accommodationIndex) => (
-                <Grid item xs={12} sm={6} key={`accommodation-${accommodationIndex}-${accommodation.id}`}>
-                  <Card variant="outlined" sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                          {accommodation.name || 'Accommodation'}
+              {recommendations.accommodations.filter(accommodation => accommodation).map((accommodation, accommodationIndex) => {
+                const acc: any = accommodation;
+                const img = getImageUrl(acc);
+                const hotelName = acc.name || acc.vendorRaw?.name || (acc.location && acc.location.name) || 'Unknown Hotel';
+                const priceLabel = formatPrice(acc);
+                // Determine booking/website link
+                const bookingLink = acc.bookingUrl || acc.website || acc.vendorRaw?.website || (acc.placeId ? `https://www.google.com/maps/place/?q=place_id:${acc.placeId}` : null);
+
+                return (
+                  <Grid item xs={12} md={6} key={acc.placeId || acc.id || accommodationIndex}>
+                    <Card
+                      sx={{
+                        position: 'relative',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        // Increase card height (keep visual balance) using padding-top trick (3:2)
+                        width: '100%',
+                        '&:before': {
+                          content: "''",
+                          display: 'block',
+                          paddingTop: '95%' // further increased to ensure title is not clipped
+                        },
+                        backgroundColor: '#111',
+                      }}
+                    >
+                      <Box sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: `url(${img})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }} />
+
+                      {/* Overlay content anchored at bottom */}
+                      <Box sx={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        pt: 3,
+                        pb: 3,
+                        px: 2,
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0.08))',
+                        color: 'white',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1
+                      }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            color: 'white',
+                            fontWeight: 900,
+                            fontSize: '1.22rem',
+                            lineHeight: 1.08,
+                            whiteSpace: 'normal',
+                            overflowWrap: 'break-word',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                            // clamp to 2 lines to prevent overflow and clipping
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            mt: 1,
+                            mb: 0.25,
+                            transform: 'translateY(4px)'
+                          }}
+                        >
+                          {hotelName}
                         </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Star sx={{ color: '#FFD700', fontSize: 16 }} />
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            {accommodation.rating || 'N/A'}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Chip 
-                        label={accommodation.type || 'Accommodation'} 
-                        size="small" 
-                        sx={{ 
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          color: 'white',
-                          mb: 1
-                        }}
-                      />
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                        <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {accommodation.location?.name || 'Location not specified'}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
-                        <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          ${accommodation.pricePerNight?.amount || 'Price TBD'}/night
-                        </Typography>
-                      </Box>
-
-                      {/* Website link for accommodation */}
-                      {accommodation.website && (
-                        <Box sx={{ mb: 2 }}>
-                          <Button
-                            href={accommodation.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            size="small"
-                            startIcon={<Link sx={{ fontSize: 16 }} />}
-                            sx={{ 
-                              color: 'rgba(255, 255, 255, 0.8)',
-                              border: '1px solid rgba(255, 255, 255, 0.3)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                border: '1px solid rgba(255, 255, 255, 0.5)'
-                              }
-                            }}
-                          >
-                            Book Now
-                          </Button>
-                        </Box>
-                      )}
-
-                      {/* Amenities */}
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'white' }}>Amenities:</Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                          {accommodation.amenities && Array.isArray(accommodation.amenities) && accommodation.amenities.slice(0, 3).map((amenity, idx) => (
-                            <Chip 
-                              key={idx} 
-                              label={amenity} 
-                              size="small" 
-                              sx={{ 
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                                color: 'white' 
-                              }} 
-                            />
-                          ))}
-                          {accommodation.amenities && accommodation.amenities.length > 3 && (
-                            <Chip 
-                              label={`+${accommodation.amenities.length - 3} more`} 
-                              size="small" 
-                              variant="outlined" 
-                              sx={{ 
-                                borderColor: 'rgba(255, 255, 255, 0.3)', 
-                                color: 'white' 
-                              }} 
-                            />
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* Pros and Cons */}
-                      <Grid container spacing={1}>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#81C784' }}>
-                            <TrendingUp sx={{ fontSize: 16 }} /> Pros
-                          </Typography>
-                          {accommodation.pros && Array.isArray(accommodation.pros) && accommodation.pros.slice(0, 2).map((pro, proIndex) => (
-                            <Typography key={`accommodation-${accommodationIndex}-pro-${proIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              • {pro}
-                            </Typography>
-                          ))}
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#FFB74D' }}>
-                            <TrendingDown sx={{ fontSize: 16 }} /> Cons
-                          </Typography>
-                          {accommodation.cons && Array.isArray(accommodation.cons) && accommodation.cons.slice(0, 2).map((con, conIndex) => (
-                            <Typography key={`accommodation-${accommodationIndex}-con-${conIndex}`} variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              • {con}
-                            </Typography>
-                          ))}
-                        </Grid>
-                      </Grid>
-
-                      {/* Accommodation Website/Booking Links */}
-                      {(accommodation.website || accommodation.bookingUrl) && (
-                        <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {accommodation.website && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              href={accommodation.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              sx={{ 
-                                borderColor: 'rgba(255, 255, 255, 0.3)', 
-                                color: 'white',
-                                '&:hover': { borderColor: 'white' }
-                              }}
-                            >
-                              🌐 Website
-                            </Button>
-                          )}
-                          {accommodation.bookingUrl && (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              href={accommodation.bookingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              color="primary"
-                            >
-                              📅 Book Now
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>{acc.address || acc.formatted_address || (acc.location && acc.location.address)}</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
+                          <Chip label={`⭐ ${acc.rating ?? acc.starRating ?? 'N/A'}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
+                          <Chip label={`${acc.userRatingsTotal ?? acc.user_ratings_total ?? 0} reviews`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
+                          <Chip label={priceLabel} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
+                          {bookingLink && (
+                            <Button size="small" variant="contained" href={bookingLink} target="_blank" rel="noopener noreferrer" sx={{ ml: 'auto', backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}>
+                              Book
                             </Button>
                           )}
                         </Box>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
+                      </Box>
+                    </Card>
+                  </Grid>
+                );
+              })}
             </Grid>
           </AccordionDetails>
         </Accordion>
       )}
 
-      {/* Hotel Recommendations Section */}
-      {itineraryData.externalData?.hotelRecommendations && Array.isArray(itineraryData.externalData.hotelRecommendations) && itineraryData.externalData.hotelRecommendations.length > 0 && (
-        <Accordion sx={{ 
-          mb: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:before': { display: 'none' }
-        }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="h6" sx={{ color: 'white' }}>🏨 Hotel Recommendations</Typography>
-              <Chip 
-                label={`${itineraryData.externalData.hotelRecommendations.length} hotels`} 
-                size="small" 
-                color="primary" 
-                variant="outlined"
-                sx={{ 
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  color: 'white'
-                }}
-              />
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {itineraryData.externalData.hotelRecommendations.filter(hotel => hotel).map((hotel: any, index: number) => (
-                <Card key={hotel.id || index} variant="outlined" sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Box>
-                        <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                          {hotel.name || 'Hotel'}
-                        </Typography>
-                        <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'rgba(255, 255, 255, 0.7)' }}>
-                          <LocationOn fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
-                          {hotel.address || 'Address not available'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="h6" color="primary">
-                          ${hotel.pricePerNight || 'Price TBD'}/night
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Star fontSize="small" sx={{ color: '#FFD700' }} />
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            {hotel.rating || 'N/A'} {hotel.reviewCount ? `(${hotel.reviewCount} reviews)` : ''}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                    
-                    {hotel.amenities && Array.isArray(hotel.amenities) && hotel.amenities.length > 0 && (
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                        {hotel.amenities.slice(0, 4).map((amenity: string, amenityIndex: number) => (
-                          <Chip key={amenityIndex} 
-                                label={amenity} 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }} />
-                        ))}
-                        {hotel.amenities.length > 4 && (
-                          <Chip label={`+${hotel.amenities.length - 4} more`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                      </Box>
-                    )}
-
-                    {/* Hotel Website/Booking Links */}
-                    {(hotel.website || hotel.bookingUrl) && (
-                      <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {hotel.website && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            href={hotel.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ 
-                              borderColor: 'rgba(255, 255, 255, 0.3)', 
-                              color: 'white',
-                              '&:hover': { borderColor: 'white' }
-                            }}
-                          >
-                            🌐 Hotel Website
-                          </Button>
-                        )}
-                        {hotel.bookingUrl && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            href={hotel.bookingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            color="primary"
-                          >
-                            📅 Book Now
-                          </Button>
-                        )}
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      )}
+  {/* NOTE: Removed duplicate 'Hotel Recommendations' accordion to avoid showing identical data twice. */}
 
       {/* Daily Itinerary */}
       <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>

@@ -1,16 +1,10 @@
 import { useState, useCallback, useContext } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
 import { AIGenerationRequest } from '../types/AIGeneration';
 import { AirlineCodeConverter } from '../utils/airlineMapping';
-
-interface FlightSearchResult {
-  flights: any[];
-  searchId: string;
-  message?: string;
-}
 
 interface ItineraryResult {
   id: string;
@@ -36,8 +30,9 @@ export const useAIGeneration = () => {
 
       const functions = getFunctions();
       const searchFlights = httpsCallable(functions, 'searchFlights');
+      const searchAccommodations = httpsCallable(functions, 'searchAccommodations');
       
-      // Convert airline names to IATA codes for API compatibility
+  // Convert airline names to IATA codes for API compatibility
       const preferredAirlineCodes = request.flightPreferences?.preferredAirlines 
         ? AirlineCodeConverter.convertNamesToCodes(request.flightPreferences.preferredAirlines)
         : [];
@@ -45,18 +40,118 @@ export const useAIGeneration = () => {
       console.log('🔍 [useAIGeneration] Original airline names:', request.flightPreferences?.preferredAirlines);
       console.log('🔍 [useAIGeneration] Converted airline codes:', preferredAirlineCodes);
       
-      const flightResult = await searchFlights({
-        departureAirportCode: request.departureAirportCode,
-        destinationAirportCode: request.destinationAirportCode,
-        departureDate: request.startDate,
-        returnDate: request.endDate,
-        cabinClass: request.flightPreferences?.class?.toUpperCase() || 'ECONOMY',
-        stopPreference: request.flightPreferences?.stopPreference === 'non-stop' ? 'NONSTOP' : 
-                       request.flightPreferences?.stopPreference === 'one-stop' ? 'ONE_OR_FEWER' : 'ANY',
-        preferredAirlines: preferredAirlineCodes
+    // Determine whether we should search for flights: use transport dropdown value (primaryMode === 'airplane')
+    // or allow a request-level override.
+    const profile = (request as any).preferenceProfile;
+    const includeFlights = Boolean(
+      (request as any).includeFlights === true ||
+      (profile && String(profile.transportation?.primaryMode || '').toLowerCase() === 'airplane')
+    );
+
+      // Only prepare a flight call when flights are requested
+      let flightCall: Promise<any> | null = null;
+      if (includeFlights) {
+        flightCall = searchFlights({
+          departureAirportCode: request.departureAirportCode,
+          destinationAirportCode: request.destinationAirportCode,
+          departureDate: request.startDate,
+          returnDate: request.endDate,
+          cabinClass: request.flightPreferences?.class?.toUpperCase() || 'ECONOMY',
+          stopPreference: request.flightPreferences?.stopPreference === 'non-stop' ? 'NONSTOP' : 
+                         request.flightPreferences?.stopPreference === 'one-stop' ? 'ONE_OR_FEWER' : 'ANY',
+          preferredAirlines: preferredAirlineCodes
+        });
+      }
+
+      // derive accommodation search params from provided preference profile (if any)
+      let accommodationParams: any = {};
+      try {
+        const profile = (request as any)?.preferenceProfile;
+        console.log('[useAIGeneration] Full profile received:', JSON.stringify(profile, null, 2));
+        if (profile && profile.accommodation) {
+          console.log('[useAIGeneration] Accommodation preferences:', profile.accommodation);
+          const starRating = profile.accommodation.starRating;
+          const minUserRating = profile.accommodation.minUserRating ?? 3.5;
+          console.log('[useAIGeneration] Using explicit starRating and minUserRating from profile:', { starRating, minUserRating });
+          accommodationParams.starRating = Math.max(1, Math.min(5, Math.round(starRating || 3)));
+          accommodationParams.minUserRating = Math.max(1, Math.min(5, Number(minUserRating)));
+        } else {
+          console.log('[useAIGeneration] No accommodation preferences found in profile');
+        }
+        // map accessibility flags if present on profile
+        if (profile && profile.accessibility) {
+          // pass a simple hint; server may use this to favor accessible results
+          accommodationParams.accessibility = {
+            mobilityNeeds: !!profile.accessibility.mobilityNeeds,
+            hearingNeeds: !!profile.accessibility.hearingNeeds,
+            visualNeeds: !!profile.accessibility.visualNeeds,
+          };
+        }
+      } catch (e) {
+        // ignore and fall back to default empty params
+      }
+
+      const accommodationsCall = searchAccommodations({
+        destination: request.destination,
+        destinationLatLng: (request as any).destinationLatLng || undefined,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        accommodationType: (request as any).accommodationType || 'any',
+        maxResults: 8,
+        ...accommodationParams
       });
 
-      console.log('✅ [useAIGeneration] Flight search successful:', flightResult.data);
+      console.log('[useAIGeneration] Calling searchAccommodations with params:', {
+        destination: request.destination,
+        destinationLatLng: (request as any).destinationLatLng || undefined,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        accommodationType: (request as any).accommodationType || 'any',
+        maxResults: 8,
+        ...accommodationParams
+      });
+
+  // Await the two promises, passing a placeholder for flightCall when null
+  const settledPromises = [flightCall ? flightCall : Promise.resolve(null), accommodationsCall];
+  const [flightSettled, accSettled] = await Promise.allSettled(settledPromises as any[]);
+
+      // Handle flight result
+      let flightResultData: any = null;
+      if (includeFlights) {
+        if (flightSettled.status === 'fulfilled') {
+          flightResultData = (flightSettled.value as any).data;
+          console.log('✅ [useAIGeneration] Flight search successful:', flightResultData);
+        } else {
+          console.warn('⚠️ [useAIGeneration] Flight search failed:', flightSettled.reason);
+        }
+      }
+
+      // Handle accommodations result defensively
+      let accommodations: any[] = [];
+      if (accSettled.status === 'fulfilled') {
+        try {
+          const accResult = accSettled.value as any;
+          const accDataAny: any = accResult?.data || accResult || {};
+
+          // Try common locations for hotels array in a defensive way
+          if (Array.isArray(accDataAny.hotels)) accommodations = accDataAny.hotels;
+          else if (accDataAny?.result?.data && Array.isArray(accDataAny.result.data.hotels)) accommodations = accDataAny.result.data.hotels;
+          else if (accDataAny?.data && Array.isArray(accDataAny.data.hotels)) accommodations = accDataAny.data.hotels;
+          else if (accDataAny?.result && Array.isArray(accDataAny.result.hotels)) accommodations = accDataAny.result.hotels;
+
+          // If accommodations is still not found, attempt a shallow scan for the first array of objects
+          if ((!Array.isArray(accommodations) || accommodations.length === 0) && typeof accDataAny === 'object') {
+            const maybeHotels = Object.values(accDataAny).find((v: any) => Array.isArray(v) && v.length > 0 && typeof v[0] === 'object');
+            if (Array.isArray(maybeHotels)) accommodations = maybeHotels as any[];
+          }
+
+          console.log('✅ [useAIGeneration] Accommodations search successful, found', accommodations.length);
+        } catch (accErr) {
+          console.warn('⚠️ [useAIGeneration] Failed to parse accommodations response:', accErr);
+        }
+      } else {
+        console.warn('⚠️ [useAIGeneration] Accommodations search failed:', accSettled.reason);
+      }
 
       // Create a single ID for the generation
       const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -90,7 +185,11 @@ export const useAIGeneration = () => {
         // AI Generation specific fields
         aiGenerated: true,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        // Attach externalData for hotels so UI can read itineraryData.externalData.hotelRecommendations
+        externalData: {
+          hotelRecommendations: accommodations
+        }
       };
 
       // Save only to ai_generations collection
@@ -107,7 +206,8 @@ export const useAIGeneration = () => {
           data: {
             itinerary: itineraryData,
             recommendations: {
-              flights: (flightResult.data as FlightSearchResult)?.flights || []
+              flights: flightResultData?.flights || [],
+              accommodations: accommodations
             },
             metadata: {
               generationId: generationId,

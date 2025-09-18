@@ -104,9 +104,9 @@ describe('TravelPreferencesTab - First Time User Experience', () => {
 
   it('allows travel style changes for first-time users', async () => {
     render(withUserProfileProvider(<TravelPreferencesTab />));
-    // Find and click the travel style dropdown
-    const travelStyleSelect = screen.getByRole('combobox');
-    await userEvent.click(travelStyleSelect);
+  // Find and click the travel style dropdown by its label
+  const travelStyleSelect = screen.getByLabelText('Style');
+  await userEvent.click(travelStyleSelect);
     // Should be able to see and select different options
     await waitFor(() => {
       expect(screen.getByText('💰 Budget Traval')).toBeInTheDocument();

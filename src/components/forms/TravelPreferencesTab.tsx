@@ -145,8 +145,9 @@ export const TravelPreferencesTab: React.FC = () => {
           foodBudgetLevel: 'medium'
         },
         accommodation: {
-          type: 'hotel',
-          starRating: 3
+        	  type: 'hotel',
+        	  starRating: 3,
+        	  minUserRating: 3.5
         },
         transportation: {
           primaryMode: 'mixed',
@@ -223,11 +224,12 @@ export const TravelPreferencesTab: React.FC = () => {
     },
     accommodation: {
       type: 'hotel',
-      starRating: 3
+      starRating: 3,
+      minUserRating: 3.5
     },
     transportation: {
       primaryMode: 'mixed',
-      maxWalkingDistance: 15
+  maxWalkingDistance: 15
     },
     groupSize: {
       preferred: 2,
@@ -372,11 +374,18 @@ export const TravelPreferencesTab: React.FC = () => {
 
   // Helper function to update transportation preferences
   const updateTransportation = (updates: Partial<typeof currentPreferences.transportation>) => {
+    // If the incoming update sets primaryMode to 'airplane', ensure we also set includeFlights
+    const merged = {
+      ...currentPreferences.transportation,
+      ...updates
+    } as any;
+
+    if (merged.primaryMode === 'airplane') {
+      merged.includeFlights = true;
+    }
+
     updateLocalPreferences({
-      transportation: {
-        ...currentPreferences.transportation,
-        ...updates
-      }
+      transportation: merged
     });
   };
 
@@ -825,8 +834,11 @@ export const TravelPreferencesTab: React.FC = () => {
           🎯 Traval Style
         </Typography>
         <FormControl fullWidth>
-          <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Style</InputLabel>
+          <InputLabel id="travel-style-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Style</InputLabel>
           <Select
+            labelId="travel-style-label"
+            id="travel-style-select"
+            label="Style"
             value={currentPreferences.travelStyle}
             onChange={(e) => handleTravelStyleChange(e.target.value as TravelPreferenceProfile['travelStyle'])}
             sx={{
@@ -1018,8 +1030,42 @@ export const TravelPreferencesTab: React.FC = () => {
           </Box>
         </AccordionDetails>
       </Accordion>
-
-      {/* Accommodation & Transportation Accordion */}
+        {/* Transportation Type Selector (styled like Travel Style) */}
+        <Card sx={{
+          p: { xs: 1.5, sm: 2 },
+          mb: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }}>
+          <Typography variant="h6" sx={{ color: 'white',  mb: 2, fontSize: { xs: '1rem', sm: '1.1rem' }, textAlign: 'left' }}>
+            🚍 Transport Type
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Type</InputLabel>
+            <Select
+              value={currentPreferences.transportation?.primaryMode || 'mixed'}
+              onChange={(e) => updateTransportation({ primaryMode: e.target.value as TravelPreferenceProfile['transportation']['primaryMode'] })}
+              sx={{
+                color: 'white',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '& .MuiSvgIcon-root': {
+                  color: 'white',
+                },
+              }}
+            >
+              <MenuItem value="walking">🚶 Walking</MenuItem>
+              <MenuItem value="rental">🚗 Driving (rental)</MenuItem>
+              <MenuItem value="train">🚄 Train</MenuItem>
+              <MenuItem value="bus">🚌 Bus</MenuItem>
+              <MenuItem value="airplane">✈️ Flights</MenuItem>
+              <MenuItem value="public">🚇 Public Transit</MenuItem>
+            </Select>
+          </FormControl>
+        </Card>
+      {/* Accommodations Accordion */}
       <Accordion sx={{
         mb: 2,
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -1032,38 +1078,13 @@ export const TravelPreferencesTab: React.FC = () => {
           sx={{ color: 'white' }}
         >
           <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-            🏨 Accommodation & Transportation
+            🏨 Accommodations
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                Accommodation Type
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={currentPreferences.accommodation?.type || 'hotel'}
-                  onChange={(e) => updateAccommodation({
-                    type: e.target.value as TravelPreferenceProfile['accommodation']['type']
-                  })}
-                  sx={{
-                    color: 'white',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '& .MuiSvgIcon-root': {
-                      color: 'white',
-                    },
-                  }}
-                >
-                  <MenuItem value="hotel">🏨 Hotel</MenuItem>
-                  <MenuItem value="hostel">🛏️ Hostel</MenuItem>
-                  <MenuItem value="airbnb">🏠 Airbnb</MenuItem>
-                  <MenuItem value="resort">🏖️ Resort</MenuItem>
-                  <MenuItem value="any">🔄 Any</MenuItem>
-                </Select>
-              </FormControl>
+              {/* Accommodation type preference removed: Places API cannot reliably enforce subtype filtering. */}
               
               <Typography variant="subtitle2" sx={{ color: 'white', mt: 2, mb: 1 }}>
                 Star Rating Preference
@@ -1090,39 +1111,34 @@ export const TravelPreferencesTab: React.FC = () => {
                 }}
                 valueLabelDisplay="auto"
               />
+              <Typography variant="subtitle2" sx={{ color: 'white', mt: 2, mb: 1 }}>
+                Minimum user rating
+              </Typography>
+              <Slider
+                value={currentPreferences.accommodation?.minUserRating ?? 3.5}
+                onChange={(_, value) => updateAccommodation({
+                  minUserRating: value as number
+                })}
+                min={1}
+                max={5}
+                step={0.5}
+                marks={[
+                  { value: 1, label: '1.0' },
+                  { value: 3.5, label: '3.5' },
+                  { value: 5, label: '5.0' }
+                ]}
+                sx={{
+                  color: 'white',
+                  '& .MuiSlider-markLabel': {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: '0.6rem'
+                  }
+                }}
+                valueLabelDisplay="auto"
+              />
             </Grid>
             
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                Transportation Mode
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={currentPreferences.transportation.primaryMode}
-                  onChange={(e) => updateTransportation({
-                    primaryMode: e.target.value as TravelPreferenceProfile['transportation']['primaryMode']
-                  })}
-                  sx={{
-                    color: 'white',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '& .MuiSvgIcon-root': {
-                      color: 'white',
-                    },
-                  }}
-                >
-                  <MenuItem value="walking">🚶 Walking</MenuItem>
-                  <MenuItem value="public">🚌 Public Transport</MenuItem>
-                  <MenuItem value="taxi">🚖 Taxi/Rideshare</MenuItem>
-                  <MenuItem value="rental">🚗 Rental Car</MenuItem>
-                  <MenuItem value="airplane">✈️ Airplane</MenuItem>
-                  <MenuItem value="bus">🚌 Bus</MenuItem>
-                  <MenuItem value="train">🚄 Train</MenuItem>
-                  <MenuItem value="mixed">🔄 Mixed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+            {/* Transportation Mode and Include Flights removed — transportation.primaryMode should be managed elsewhere */}
           </Grid>
         </AccordionDetails>
       </Accordion>

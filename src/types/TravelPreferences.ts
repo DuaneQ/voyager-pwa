@@ -36,12 +36,15 @@ export interface TravelPreferenceProfile {
   accommodation: {
     type: 'hotel' | 'hostel' | 'airbnb' | 'resort' | 'any';
     starRating: number; // 1-5
+  minUserRating?: number; // 1.0-5.0 (user review rating)
   };
   
   // Transportation Preferences
   transportation: {
-    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train' | 'mixed';
-    maxWalkingDistance: number; // in minutes
+  primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train' | 'mixed';
+  maxWalkingDistance: number; // in minutes
+  // Whether this profile intends to include flight booking/search results
+  includeFlights?: boolean;
   };
   
   // Group Preferences

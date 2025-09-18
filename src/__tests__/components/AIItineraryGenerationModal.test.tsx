@@ -184,12 +184,9 @@ describe('AIItineraryGenerationModal', () => {
       isGenerating: false,
       progress: null,
       error: null,
-      result: null,
       resetGeneration: mockResetGeneration,
       cancelGeneration: mockCancelGeneration,
-      estimateCost: jest.fn(),
-      checkGenerationStatus: jest.fn()
-    });
+    } as any);
 
     mockUseTravelPreferences.mockReturnValue({
       preferences: mockTravelPreferences,
@@ -407,5 +404,226 @@ describe('AIItineraryGenerationModal', () => {
         expect(generateButton).toBeInTheDocument();
       }
     });
+  });
+
+  it('shows flight section and AirportSelector when profile primaryMode is airplane', async () => {
+    const airplaneProfile = {
+      ...mockTravelPreferences.profiles[0],
+      transportation: { primaryMode: 'airplane' as const, maxWalkingDistance: 10, includeFlights: true }
+    };
+    const prefs = { ...mockTravelPreferences, profiles: [airplaneProfile], defaultProfileId: airplaneProfile.id };
+
+    mockUseTravelPreferences.mockReturnValue({
+      preferences: prefs,
+      loading: false,
+      error: null,
+      createProfile: jest.fn(),
+      updateProfile: jest.fn(),
+      deleteProfile: jest.fn(),
+      duplicateProfile: jest.fn(),
+      setDefaultProfile: jest.fn(),
+      loadPreferences: jest.fn(),
+      savePreferences: jest.fn(),
+      recordPreferenceSignal: jest.fn(),
+      getDefaultProfile: jest.fn().mockReturnValue(prefs.profiles[0]),
+      getProfileById: jest.fn().mockImplementation((id: string) => prefs.profiles.find(p => p.id === id)),
+      resetError: jest.fn()
+    });
+
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+
+    // Wait for modal to initialize
+    await screen.findByRole('heading', { name: /Trip Details/i });
+
+    // Flight preferences header should be present
+    expect(screen.getByRole('heading', { name: /Flight Preferences/i })).toBeInTheDocument();
+
+    // Simulate choosing a departure location and ensure the Google Places input updates
+    const departureInput = screen.getByPlaceholderText('Where are you flying from? (for flight pricing)');
+    await act(async () => {
+      fireEvent.change(departureInput, { target: { value: 'Portland' } });
+    });
+    expect((departureInput as HTMLInputElement).value).toBe('Portland');
+  });
+
+  it('hides flight section and AirportSelector when profile does not support flights', async () => {
+    const nonFlightProfile = {
+      ...mockTravelPreferences.profiles[0],
+      transportation: { primaryMode: 'walking' as const, maxWalkingDistance: 30 }
+    };
+    const prefs = { ...mockTravelPreferences, profiles: [nonFlightProfile], defaultProfileId: nonFlightProfile.id };
+
+    mockUseTravelPreferences.mockReturnValue({
+      preferences: prefs,
+      loading: false,
+      error: null,
+      createProfile: jest.fn(),
+      updateProfile: jest.fn(),
+      deleteProfile: jest.fn(),
+      duplicateProfile: jest.fn(),
+      setDefaultProfile: jest.fn(),
+      loadPreferences: jest.fn(),
+      savePreferences: jest.fn(),
+      recordPreferenceSignal: jest.fn(),
+      getDefaultProfile: jest.fn().mockReturnValue(prefs.profiles[0]),
+      getProfileById: jest.fn().mockImplementation((id: string) => prefs.profiles.find(p => p.id === id)),
+      resetError: jest.fn()
+    });
+
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+
+    // Wait for modal to initialize
+    await screen.findByRole('heading', { name: /Trip Details/i });
+
+    // Flight preferences header should not be present
+    expect(screen.queryByRole('heading', { name: /Flight Preferences/i })).not.toBeInTheDocument();
+
+    // Simulate choosing a departure location - ensure Google Places input updates and flight UI absent
+    const departureInput = screen.getByPlaceholderText('Where are you flying from? (for flight pricing)');
+    await act(async () => {
+      fireEvent.change(departureInput, { target: { value: 'Portland' } });
+    });
+    expect((departureInput as HTMLInputElement).value).toBe('Portland');
+    // Ensure flight UI is not present
+    expect(screen.queryByRole('heading', { name: /Flight Preferences/i })).not.toBeInTheDocument();
+  });
+
+  it('respects includeFlights flag even when primaryMode is not airplane', async () => {
+    const includeFlightsProfile = {
+      ...mockTravelPreferences.profiles[0],
+      transportation: { primaryMode: 'mixed' as const, maxWalkingDistance: 20, includeFlights: true }
+    };
+    const prefs = { ...mockTravelPreferences, profiles: [includeFlightsProfile], defaultProfileId: includeFlightsProfile.id };
+
+    mockUseTravelPreferences.mockReturnValue({
+      preferences: prefs,
+      loading: false,
+      error: null,
+      createProfile: jest.fn(),
+      updateProfile: jest.fn(),
+      deleteProfile: jest.fn(),
+      duplicateProfile: jest.fn(),
+      setDefaultProfile: jest.fn(),
+      loadPreferences: jest.fn(),
+      savePreferences: jest.fn(),
+      recordPreferenceSignal: jest.fn(),
+      getDefaultProfile: jest.fn().mockReturnValue(prefs.profiles[0]),
+      getProfileById: jest.fn().mockImplementation((id: string) => prefs.profiles.find(p => p.id === id)),
+      resetError: jest.fn()
+    });
+
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+
+    // Wait for modal to initialize
+    await screen.findByRole('heading', { name: /Trip Details/i });
+
+    // Flight preferences header should be present due to includeFlights flag
+    expect(screen.getByRole('heading', { name: /Flight Preferences/i })).toBeInTheDocument();
+
+    // Simulate entering a departure to ensure the Google Places input updates
+    const departureInput = screen.getByPlaceholderText('Where are you flying from? (for flight pricing)');
+    await act(async () => {
+      fireEvent.change(departureInput, { target: { value: 'Seattle' } });
+    });
+    expect((departureInput as HTMLInputElement).value).toBe('Seattle');
+  });
+
+  it('clears airport selectors when switching from flight-enabled to non-flight profile', async () => {
+    const flightProfile = {
+      id: 'profile-air',
+      name: 'Flyer',
+      isDefault: true,
+      travelStyle: 'mid-range' as const,
+      budgetRange: { min: 500, max: 4000, currency: 'USD' as const },
+      activities: mockTravelPreferences.profiles[0].activities,
+      foodPreferences: mockTravelPreferences.profiles[0].foodPreferences,
+      accommodation: mockTravelPreferences.profiles[0].accommodation,
+      transportation: { primaryMode: 'airplane' as const, maxWalkingDistance: 10, includeFlights: true },
+      groupSize: mockTravelPreferences.profiles[0].groupSize,
+      accessibility: mockTravelPreferences.profiles[0].accessibility,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const nonFlightProfile = {
+      id: 'profile-noair',
+      name: 'Walker',
+      isDefault: false,
+      travelStyle: 'budget' as const,
+      budgetRange: { min: 50, max: 500, currency: 'USD' as const },
+      activities: mockTravelPreferences.profiles[0].activities,
+      foodPreferences: mockTravelPreferences.profiles[0].foodPreferences,
+      accommodation: mockTravelPreferences.profiles[0].accommodation,
+      transportation: { primaryMode: 'walking' as const, maxWalkingDistance: 60 },
+      groupSize: mockTravelPreferences.profiles[0].groupSize,
+      accessibility: mockTravelPreferences.profiles[0].accessibility,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const prefs = { ...mockTravelPreferences, profiles: [flightProfile, nonFlightProfile], defaultProfileId: flightProfile.id };
+
+    mockUseTravelPreferences.mockReturnValue({
+      preferences: prefs,
+      loading: false,
+      error: null,
+      createProfile: jest.fn(),
+      updateProfile: jest.fn(),
+      deleteProfile: jest.fn(),
+      duplicateProfile: jest.fn(),
+      setDefaultProfile: jest.fn(),
+      loadPreferences: jest.fn(),
+      savePreferences: jest.fn(),
+      recordPreferenceSignal: jest.fn(),
+      getDefaultProfile: jest.fn().mockReturnValue(prefs.profiles[0]),
+      getProfileById: jest.fn().mockImplementation((id: string) => prefs.profiles.find(p => p.id === id)),
+      resetError: jest.fn()
+    });
+
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+
+    // Wait for modal to initialize
+    await screen.findByRole('heading', { name: /Trip Details/i });
+
+    // Initially flight UI should be present
+    expect(screen.getByRole('heading', { name: /Flight Preferences/i })).toBeInTheDocument();
+
+    // Enter a departure (ensure the Google Places input updates)
+    const departureInput = screen.getByPlaceholderText('Where are you flying from? (for flight pricing)');
+    await act(async () => {
+      fireEvent.change(departureInput, { target: { value: 'Paris' } });
+    });
+    expect((departureInput as HTMLInputElement).value).toBe('Paris');
+
+    // Now switch profile to non-flight profile using MUI select interactions
+    const profileSelect = screen.getByLabelText(/Travel Preference Profile/i);
+    // Open the select menu
+    await act(async () => {
+      fireEvent.mouseDown(profileSelect);
+    });
+    // Wait for listbox and select the option by visible name
+    const option = await screen.findByRole('option', { name: new RegExp(nonFlightProfile.name) });
+    await act(async () => {
+      fireEvent.click(option);
+    });
+
+    // Flight preferences should now be hidden
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /Flight Preferences/i })).not.toBeInTheDocument());
   });
 });

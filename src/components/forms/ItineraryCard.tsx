@@ -26,6 +26,8 @@ export interface ItineraryCardProps {
   onEdit?: (itinerary: Itinerary) => void;
   onDelete?: (itinerary: Itinerary) => void;
   showEditDelete?: boolean;
+  // Flag to indicate this is an illustrative/example card
+  isExample?: boolean;
 }
 
 const ItineraryCard: React.FC<ItineraryCardProps> = ({
@@ -35,6 +37,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   onEdit,
   onDelete,
   showEditDelete = false,
+  isExample = false,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
   // Returns the profile slot photo
@@ -145,6 +148,11 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               }}>
               {itinerary.description || "No description provided."}
             </Typography>
+            {isExample && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Example itinerary — no matches were found but when you have a match it will appear in this card with the user's details. Use the ✖️ button to reject or the ✈️ button to attempt a match. If the other user also likes this itinerary you can start chatting on the Chat page.
+              </Typography>
+            )}
           </Box>
           {itinerary.activities && itinerary.activities.length > 0 && (
             <Box mt={2} sx={{ textAlign: "center" }}>
