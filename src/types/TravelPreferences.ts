@@ -13,17 +13,8 @@ export interface TravelPreferenceProfile {
     currency: 'USD';
   };
   
-  // Activity Preferences (0-10 scale)
-  activities: {
-    cultural: number;      // Museums, historical sites
-    adventure: number;     // Hiking, extreme sports
-    relaxation: number;    // Spa, beaches
-    nightlife: number;     // Bars, clubs
-    shopping: number;      // Markets, malls
-    food: number;          // Restaurants, food tours
-    nature: number;        // Parks, wildlife
-    photography: number;   // Scenic spots
-  };
+  // Activity Preferences: selected activity keys (e.g. ['food','nature'])
+  activities: string[];
   
   // Food Preferences
   foodPreferences: {
@@ -73,16 +64,11 @@ export interface InferredTravelPreferenceProfile {
   basedOnProfileId: string; // Links to explicit profile
   
   // Same structure as TravelPreferenceProfile but with confidence scores
-  activities: {
-    cultural: { value: number; confidence: number; };
-    adventure: { value: number; confidence: number; };
-    relaxation: { value: number; confidence: number; };
-    nightlife: { value: number; confidence: number; };
-    shopping: { value: number; confidence: number; };
-    food: { value: number; confidence: number; };
-    nature: { value: number; confidence: number; };
-    photography: { value: number; confidence: number; };
-  };
+  // For inferred profiles we store selected activities with confidence
+  activities: Array<{
+    key: string; // activity key, e.g. 'food'
+    confidence: number; // 0-1
+  }>;
   
   // Inferred budget preferences
   budgetRange: {

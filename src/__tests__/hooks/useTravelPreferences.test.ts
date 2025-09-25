@@ -39,7 +39,7 @@ describe('useTravelPreferences Hook', () => {
   const mockUpdateUserProfile = jest.fn();
   
   // Test wrapper that provides UserProfileContext
-  const createWrapper = (initialUserProfile = null) => {    
+  const createWrapper = (initialUserProfile: any) => {    
     const TestWrapper = ({ children }: { children: React.ReactNode }) => {
       const [userProfile, setUserProfile] = React.useState(initialUserProfile);
       
@@ -75,16 +75,7 @@ describe('useTravelPreferences Hook', () => {
       max: 5000,
       currency: 'USD'
     },
-    activities: {
-      cultural: 7,
-      adventure: 5,
-      relaxation: 6,
-      nightlife: 3,
-      shopping: 4,
-      food: 8,
-      nature: 7,
-      photography: 6
-    },
+    activities: ['cultural','food','nature'],
     foodPreferences: {
       dietaryRestrictions: ['vegetarian'],
       cuisineTypes: ['italian', 'local'],

@@ -54,7 +54,7 @@ export const testTravelPreferencesWrite = async (userId: string) => {
         isDefault: true,
         travelStyle: 'mid-range',
         budgetRange: { min: 1000, max: 5000, currency: 'USD' },
-        activities: { cultural: 5, adventure: 5, relaxation: 5, nightlife: 5, shopping: 5, food: 5, nature: 5, photography: 5 },
+  activities: [],
         foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
         accommodation: { type: 'hotel', starRating: 3 },
         transportation: { primaryMode: 'mixed', maxWalkingDistance: 15 },

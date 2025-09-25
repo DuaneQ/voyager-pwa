@@ -61,7 +61,7 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
     const defaultProfile = {
       id: 'p1', name: 'Default', isDefault: true, travelStyle: 'mid-range',
       budgetRange: { min: 1000, max: 5000, currency: 'USD' },
-      activities: { cultural: 5, adventure: 5, relaxation: 5, nightlife: 5, shopping: 5, food: 5, nature: 5, photography: 5 },
+  activities: [],
       foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
       accommodation: { type: 'hotel', starRating: 3, minUserRating: 3.5 },
       transportation: { primaryMode: 'mixed', maxWalkingDistance: 15 },
@@ -128,7 +128,7 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
       id: 'p1', name: 'Default', isDefault: true,
       travelStyle: 'mid-range',
       budgetRange: { min: 500, max: 2000, currency: 'USD' },
-      activities: { cultural: 5, adventure: 5, relaxation: 5, nightlife: 5, shopping: 5, food: 5, nature: 5, photography: 5 },
+  activities: [],
       foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
       accommodation: { type: 'hotel', starRating: 3, minUserRating: 3.5 },
       transportation: { primaryMode: 'walking', maxWalkingDistance: 10 },
@@ -221,8 +221,10 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
   // Open the select; userEvent.click is more robust for MUI selects in tests
   await act(async () => userEvent.click(combobox));
   // The options may render in a portal; look for the visible option text
-  await waitFor(async () => expect(screen.getByText('Paris')).toBeInTheDocument());
-  const option = screen.getByText('Paris');
+  // Use role-based lookup to avoid matching other DOM nodes that also contain the city name
+  await waitFor(() => expect(screen.queryAllByRole('option').length).toBeGreaterThan(0));
+  const optionByRole = screen.getAllByRole('option').find(opt => (opt.textContent || '').includes('Paris'));
+  const option = optionByRole || screen.getAllByText('Paris')[0];
   await act(async () => userEvent.click(option));
 
     // Expect the hook that fetches the selected itinerary to be called

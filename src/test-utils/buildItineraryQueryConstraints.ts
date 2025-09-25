@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { where, orderBy, limit, QueryConstraint } from "firebase/firestore";
 import { Itinerary } from "../types/Itinerary";
 

@@ -116,7 +116,7 @@ const result = await generateItinerary({
     recommendations: {
       accommodations: Hotel[],
       transportation: Flight[],
-      alternativeActivities: Attraction[]
+      alternativeActivities: Attraction[] // If no enriched activities are available, this will fall back to all activities present in the response, even if not enriched. This ensures the array is never empty if activities exist, but may contain less-enriched items if Place Details enrichment fails or is unavailable.
     }
   }
 }

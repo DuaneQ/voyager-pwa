@@ -253,10 +253,17 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
         throw TravelPreferencesErrors.duplicateProfileName(newProfile.name);
       }
 
+      // Ensure defaultProfileId points to an existing profile. If the stored defaultProfileId
+      // references a profile that was deleted directly in the DB, fall back to the new profileId.
+      const hasValidDefault = currentPrefs.defaultProfileId
+        ? currentPrefs.profiles.some(p => p.id === currentPrefs.defaultProfileId)
+        : false;
+      const effectiveDefaultId = hasValidDefault ? currentPrefs.defaultProfileId : profileId;
+
       const updatedPrefs: UserTravelPreferences = {
         ...currentPrefs,
         profiles: [...currentPrefs.profiles, newProfile],
-        defaultProfileId: currentPrefs.defaultProfileId || profileId
+        defaultProfileId: effectiveDefaultId
       };
 
       // Validate the complete preferences structure before saving
@@ -334,16 +341,7 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
           isDefault: currentPrefs.profiles.length === 0, // First profile is default
           travelStyle: updates.travelStyle || 'mid-range',
           budgetRange: updates.budgetRange || { min: 1000, max: 5000, currency: 'USD' },
-          activities: updates.activities || {
-            cultural: 5,
-            adventure: 5,
-            relaxation: 5,
-            nightlife: 5,
-            shopping: 5,
-            food: 5,
-            nature: 5,
-            photography: 5
-          },
+          activities: updates.activities || [],
           foodPreferences: updates.foodPreferences || {
             dietaryRestrictions: [],
             cuisineTypes: [],

@@ -123,25 +123,36 @@ export function validateTravelPreferenceProfile(
     }
   }
 
-  // Activities validation
+  // Activities validation (now an array of activity keys)
   if (!isPartialUpdate || profile.activities !== undefined) {
     const activities = profile.activities;
-    if (activities) {
-      const requiredActivities = [
-        'cultural', 'adventure', 'relaxation', 'nightlife', 
+    if (activities !== undefined && activities !== null) {
+      if (!Array.isArray(activities)) {
+        throw TravelPreferencesErrors.invalidProfileData(
+          'activities',
+          'Activities must be an array of activity keys'
+        );
+      }
+
+      const allowedActivities = new Set([
+        'cultural', 'adventure', 'relaxation', 'nightlife',
         'shopping', 'food', 'nature', 'photography'
-      ];
-      
-      for (const activity of requiredActivities) {
-        const value = activities[activity as keyof typeof activities];
-        if (typeof value !== 'number' || 
-            value < VALIDATION_RULES.profile.activities.min || 
-            value > VALIDATION_RULES.profile.activities.max) {
+      ]);
+
+      for (const a of activities) {
+        if (typeof a !== 'string' || !allowedActivities.has(a)) {
           throw TravelPreferencesErrors.invalidProfileData(
-            `activities.${activity}`, 
-            `Activity score must be between ${VALIDATION_RULES.profile.activities.min} and ${VALIDATION_RULES.profile.activities.max}`
+            'activities',
+            `Invalid activity: ${String(a)}`
           );
         }
+      }
+
+  if (activities.length > allowedActivities.size) {
+        throw TravelPreferencesErrors.invalidProfileData(
+          'activities',
+          `Too many activities selected; maximum is ${allowedActivities.size}`
+        );
       }
     }
   }
