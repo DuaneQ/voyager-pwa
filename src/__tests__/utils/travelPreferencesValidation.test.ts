@@ -14,16 +14,7 @@ const mockProfile: TravelPreferenceProfile = {
   isDefault: true,
   travelStyle: 'mid-range',
   budgetRange: { min: 1000, max: 5000, currency: 'USD' },
-  activities: {
-    cultural: 5,
-    adventure: 3,
-    relaxation: 7,
-    nightlife: 4,
-    shopping: 6,
-    food: 8,
-    nature: 9,
-    photography: 7
-  },
+  activities: [],
   foodPreferences: {
     dietaryRestrictions: [],
     cuisineTypes: ['italian', 'japanese'],
@@ -130,40 +121,24 @@ describe('travelPreferencesValidation', () => {
     });
 
     describe('activities validation', () => {
-      it('accepts valid activity scores', () => {
-        const validActivities = {
-          cultural: 0,
-          adventure: 5,
-          relaxation: 10,
-          nightlife: 3,
-          shopping: 7,
-          food: 8,
-          nature: 2,
-          photography: 9
-        };
+      it('accepts valid activities array', () => {
+        const validActivities = ['cultural', 'adventure', 'relaxation', 'nightlife', 'shopping', 'food', 'nature', 'photography'];
         expect(() => validateTravelPreferenceProfile({
           ...mockProfile,
           activities: validActivities
         }, false)).not.toThrow();
       });
 
-      it('rejects activity scores outside valid range', () => {
+      it('rejects invalid activities array', () => {
         expect(() => validateTravelPreferenceProfile({
           ...mockProfile,
-          activities: { ...mockProfile.activities, cultural: -1 }
-        }, false)).toThrow('Activity score must be between 0 and 10');
+          activities: ['invalid']
+        }, false)).toThrow('Invalid activity: invalid');
 
         expect(() => validateTravelPreferenceProfile({
           ...mockProfile,
-          activities: { ...mockProfile.activities, adventure: 11 }
-        }, false)).toThrow('Activity score must be between 0 and 10');
-      });
-
-      it('rejects non-numeric activity scores', () => {
-        expect(() => validateTravelPreferenceProfile({
-          ...mockProfile,
-          activities: { ...mockProfile.activities, cultural: 'high' as any }
-        }, false)).toThrow('Activity score must be between 0 and 10');
+          activities: Array(9).fill('cultural')
+        }, false)).toThrow('Too many activities selected');
       });
     });
 

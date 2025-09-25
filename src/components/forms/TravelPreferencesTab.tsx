@@ -129,16 +129,7 @@ export const TravelPreferencesTab: React.FC = () => {
           max: 5000,
           currency: 'USD'
         },
-        activities: {
-          cultural: 5,
-          adventure: 5,
-          relaxation: 5,
-          nightlife: 5,
-          shopping: 5,
-          food: 5,
-          nature: 5,
-          photography: 5
-        },
+  activities: [],
         foodPreferences: {
           dietaryRestrictions: [],
           cuisineTypes: [],
@@ -207,16 +198,7 @@ export const TravelPreferencesTab: React.FC = () => {
       max: 5000,
       currency: 'USD'
     },
-    activities: {
-      cultural: 5,
-      adventure: 5,
-      relaxation: 5,
-      nightlife: 5,
-      shopping: 5,
-      food: 5,
-      nature: 5,
-      photography: 5
-    },
+  activities: [],
     foodPreferences: {
       dietaryRestrictions: [],
       cuisineTypes: [],
@@ -251,33 +233,35 @@ export const TravelPreferencesTab: React.FC = () => {
       return;
     }
     
-    try {
+  try {
       // If this is a temporary profile (first-time user), create it as a new profile
       if (editingPreferences.id === 'temp-default' && createProfile) {
         const { id, ...profileData } = editingPreferences;
-        const newProfileId = await createProfile({
+        const payload = {
           ...profileData,
           isDefault: true
-        });
-        
-        // Update the editing preferences with the new ID
+        } as any;
+        console.log('Saving new profile (createProfile) payload:', payload);
+        const newProfileId = await createProfile(payload);
+
+        // Update the editing preferences with the new ID and activities passed through unchanged
         setEditingPreferences({
           ...editingPreferences,
-          id: newProfileId
+          id: newProfileId,
+          activities: (profileData as any).activities
         });
         setSelectedProfileId(newProfileId);
         setHasUnsavedChanges(false);
-        console.log('First travel profile created successfully with ID:', newProfileId);
-        
+
         // Reload preferences to update the UI and show the profile selector
         if (loadPreferences) {
           await loadPreferences();
         }
       } else if (updateProfile) {
-        // Update existing profile
-        await updateProfile(editingPreferences.id, editingPreferences);
+        // Update existing profile, pass editingPreferences through
+        console.log('Updating profile (updateProfile) payload:', editingPreferences);
+        await updateProfile(editingPreferences.id, editingPreferences as any);
         setHasUnsavedChanges(false);
-        console.log('Travel preferences saved successfully!');
       } else {
         console.error('No updateProfile function available');
       }
@@ -300,13 +284,23 @@ export const TravelPreferencesTab: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
-  const handleActivityChange = (activity: keyof typeof currentPreferences.activities, value: number) => {
-    updateLocalPreferences({
-      activities: {
-        ...currentPreferences.activities,
-        [activity]: value
-      }
-    });
+  const handleActivityChange = (activityKey: string) => {
+    const base = editingPreferences || currentPreferences;
+    // Coerce legacy object form into string[] if necessary
+    const baseActivities = Array.isArray(base.activities)
+      ? base.activities
+      : (base.activities && typeof base.activities === 'object')
+        ? Object.keys(base.activities).filter(k => {
+            const v: any = (base.activities as any)[k];
+            // treat truthy or numeric > 0 as selected
+            return v === true || (typeof v === 'number' && v > 0) || (typeof v === 'string' && v.length > 0);
+          })
+        : [];
+
+    const exists = baseActivities.includes(activityKey);
+    const updated = exists ? baseActivities.filter(a => a !== activityKey) : [...baseActivities, activityKey];
+
+    updateLocalPreferences({ activities: updated });
   };
 
   const handleBudgetChange = (event: Event, newValue: number | number[]) => {
@@ -585,50 +579,51 @@ export const TravelPreferencesTab: React.FC = () => {
     }
   };
 
-  const ActivitySlider = ({ 
+  const ActivityChip = ({ 
     label, 
-    activity, 
+    activityKey, 
     icon,
     description
   }: { 
     label: string; 
-    activity: keyof typeof currentPreferences.activities;
+    activityKey: string;
     icon: string;
     description: string;
-  }) => (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="body2" sx={{ color: 'white', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-        {icon} {label}
-      </Typography>
-      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1, display: 'block', fontSize: '0.7rem' }}>
-        {description}
-      </Typography>
-      <Slider
-        value={currentPreferences.activities[activity]}
-        onChange={(_, value) => handleActivityChange(activity, value as number)}
-        min={0}
-        max={10}
-        step={1}
-        marks={[
-          { value: 0, label: 'Never' },
-          { value: 5, label: 'Sometimes' },
-          { value: 10, label: 'Always' }
-        ]}
-        sx={{
-          color: 'white',
-          '& .MuiSlider-markLabel': {
-            color: 'rgba(255, 255, 255, 0.6)',
-            fontSize: '0.6rem'
-          },
-          '& .MuiSlider-valueLabel': {
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            color: 'black'
-          }
-        }}
-        valueLabelDisplay="auto"
-      />
-    </Box>
-  );
+  }) => {
+    // Defensive: support both new string[] shape and legacy object shape
+    const current = Array.isArray(currentPreferences.activities)
+      ? currentPreferences.activities
+      : (currentPreferences.activities && typeof currentPreferences.activities === 'object')
+        ? Object.keys(currentPreferences.activities).filter(k => {
+            const v: any = (currentPreferences.activities as any)[k];
+            return v === true || (typeof v === 'number' && v > 0) || (typeof v === 'string' && v.length > 0);
+          })
+        : [];
+
+    const active = current.includes(activityKey);
+
+    const toggle = () => {
+      handleActivityChange(activityKey);
+    };
+
+    return (
+      <Box sx={{ mb: 1 }}>
+        <Chip
+          label={active ? `${icon} ${label} ✓` : `${icon} ${label}`}
+          clickable
+          onClick={toggle}
+          aria-label={description}
+          sx={{
+            backgroundColor: active ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+            color: 'white',
+            fontSize: '0.875rem',
+            px: 1.5,
+            py: 0.5
+          }}
+        />
+      </Box>
+    );
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -877,53 +872,53 @@ export const TravelPreferencesTab: React.FC = () => {
         <AccordionDetails>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <ActivitySlider 
+              <ActivityChip 
                 label="Cultural Sites" 
-                activity="cultural" 
+                activityKey="cultural"
                 icon="🏛️" 
                 description="Museums, historical sites, heritage"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Adventure" 
-                activity="adventure" 
+                activityKey="adventure"
                 icon="🚵" 
                 description="Hiking, extreme sports, thrills"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Relaxation" 
-                activity="relaxation" 
+                activityKey="relaxation"
                 icon="🧘" 
                 description="Spa, beaches, wellness"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Nightlife" 
-                activity="nightlife" 
+                activityKey="nightlife"
                 icon="🌃" 
                 description="Bars, clubs, entertainment"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <ActivitySlider 
+              <ActivityChip 
                 label="Shopping" 
-                activity="shopping" 
+                activityKey="shopping"
                 icon="🛍️" 
                 description="Markets, malls, boutiques"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Food & Dining" 
-                activity="food" 
+                activityKey="food"
                 icon="🍽️" 
                 description="Restaurants, food tours, cuisine"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Nature" 
-                activity="nature" 
+                activityKey="nature"
                 icon="🌲" 
                 description="Parks, wildlife, outdoors"
               />
-              <ActivitySlider 
+              <ActivityChip 
                 label="Photography" 
-                activity="photography" 
+                activityKey="photography"
                 icon="📸" 
                 description="Scenic spots, landmarks"
               />
@@ -1477,8 +1472,8 @@ export const TravelPreferencesTab: React.FC = () => {
               </Card>
             )}
 
-            {/* Display Selected AI Itinerary */}
-            {selectedAIItinerary && (
+            {/* Display AI Itinerary - Only show when we have itineraries */}
+            {!aiLoading && aiItineraries.length > 0 && (
               <AIItineraryDisplay itinerary={selectedAIItinerary} />
             )}
           </Box>

@@ -6,6 +6,25 @@ import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { UserProfileContext } from '../../Context/UserProfileContext';
 import { AlertContext } from '../../Context/AlertContext';
 
+// Provide a guarded localStorage polyfill for JSDOM opaque origins
+if (typeof window !== 'undefined' && typeof (window as any).localStorage === 'undefined') {
+  const _store: Record<string, string> = {};
+  try {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      enumerable: true,
+      value: {
+        getItem: (key: string) => (_store.hasOwnProperty(key) ? _store[key] : null),
+        setItem: (key: string, value: string) => { _store[key] = String(value); },
+        removeItem: (key: string) => { delete _store[key]; },
+        clear: () => { Object.keys(_store).forEach(k => delete _store[k]); }
+      }
+    });
+  } catch (e) {
+    // ignore if environment forbids defining localStorage
+  }
+}
+
 // Mock the hook
 jest.mock('../../hooks/useTravelPreferences');
 const mockUseTravelPreferences = useTravelPreferences as jest.MockedFunction<typeof useTravelPreferences>;
@@ -153,9 +172,10 @@ describe('TravelPreferencesTab - First Time User Experience', () => {
     const activityAccordion = screen.getByText('🎯 Activity Preferences');
     await userEvent.click(activityAccordion);
     await waitFor(() => {
-      // Find activity sliders
-      const sliders = screen.getAllByRole('slider');
-      expect(sliders.length).toBeGreaterThan(1);
+  // Find activity chips (replaced sliders with chips)
+  const matches = screen.getAllByText(/Cultural Sites/);
+  const chip = matches.find(el => el.className && String(el.className).includes('MuiChip-label'));
+  expect(chip).toBeTruthy();
     });
   });
 

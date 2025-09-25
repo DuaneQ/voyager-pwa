@@ -337,8 +337,10 @@ describe('AIItineraryGenerationModal', () => {
     );
     
   // Updated to match current modal loading text and button state
-  expect(screen.getByText(/Searching for flights/i)).toBeInTheDocument();
-  expect(screen.getByText(/Please wait while we find the best flight options for your trip/i)).toBeInTheDocument();
+  // When the progress.stage is numeric/unmapped the component shows a generic header
+  expect(screen.getByText(/Working\.\.\./i)).toBeInTheDocument();
+  // The progress message provided includes 'Finding activities...' which should be visible
+  expect(screen.getByText(/Finding activities/i)).toBeInTheDocument();
   const generatingButton = screen.getByRole('button', { name: /Generating/i });
   expect(generatingButton).toBeDisabled();
   // Reset the mock

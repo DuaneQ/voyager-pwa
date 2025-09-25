@@ -69,6 +69,103 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 - **GitHub Actions**: CI/CD pipeline
 - **ESLint/Prettier**: Code quality and formatting
 
+## 🧰 Developer Tools & Agentic Workflows
+
+### Simple Browser (preview local pages / emulators)
+
+You can preview locally-hosted pages or emulator UIs directly inside Visual Studio Code using the built-in Simple Browser. This is especially handy for verifying the Firebase Emulator UI or a local dev server without leaving the editor.
+
+- Open Simple Browser from the command palette or run the `open_simple_browser` helper in the editor.
+- Example URLs to preview:
+  - Firebase Emulator UI: `http://localhost:4000` (default - check your emulator output for the actual port)
+  - Functions emulator HTTP endpoint: `http://localhost:5001/<PROJECT_ID>/us-central1/<FUNCTION_NAME>`
+  - Local web app (React dev server): `http://localhost:3000`
+
+Usage notes:
+- The Simple Browser is read-only for many developer tasks; use it for quick previews, not full-featured debugging.
+- If a page requires auth or special headers (for example callable functions), use a normal browser or Postman for full request control.
+
+### Planning Mode — Agentic Development Workflow
+
+Planning Mode helps you work with an agent (local or remote) to drive development tasks in small, verifiable steps. Use this lightweight process when pairing with an automated assistant or when you want to keep changes traceable and safe.
+
+1. Create a short task statement describing the goal and acceptance criteria.
+2. Break the goal into a small checklist of concrete steps (3–6 items). Keep one item "in-progress" at a time.
+3. For each step:
+   - Make minimal, well-scoped edits.
+   - Run quick validation (lint, build, or run a focused unit test).
+   - Commit the change with a descriptive message.
+4. After completing the checklist, run a smoke test (start the dev server or emulator) and validate end-to-end behaviour.
+5. If anything fails, revert the last change or open a targeted follow-up task to fix it.
+
+Best practices:
+- Prefer small, reversible changes. Keep pull requests focused on a single intent.
+- Use environment variables or secrets for API keys; never commit long-lived credentials.
+- Add a short note in the PR description about which steps from the checklist were executed and the verification commands that were run.
+
+When pairing with an automated agent:
+- Share the current task checklist and allow the agent to operate one step at a time.
+- Require the agent to run tests or run the emulator for any change that touches runtime behaviour.
+- Ask the agent to summarize changes and next steps after every 3–5 edits.
+
+These practices keep development predictable, auditable, and safe while enabling fast, iterative progress.
+
+#### Step-by-step: Using Planning Mode (practical)
+
+Follow this concise workflow when pairing with an agent or working alone using the Planning Mode guidance above.
+
+1. Create a short task card (one-paragraph) with acceptance criteria. Example:
+
+  "Fix `searchAccommodations` emulator test: ensure Google Places key is read from env and emulator returns mapped hotels. Acceptance: callable function returns success:true and >0 hotels for Cancun test."
+
+2. Break the task into a checklist of small steps (3–6 items). Example checklist:
+
+  - [ ] Add environment config fallback in `functions/src/searchAccommodations.ts`
+  - [ ] Update local `.env` or functions config with a valid Places API key
+  - [ ] Restart Firebase emulator and run a sample POST via curl/Postman
+  - [ ] Confirm logs and response shape; update mapping if required
+  - [ ] Commit & push with descriptive message and attach logs
+
+3. Mark the first checklist item as "in-progress" and perform the change. Keep commits atomic.
+
+4. Run quick validation for that step (lint or targeted test). Example commands:
+
+  ```bash
+  # Start functions emulator only
+  npx firebase emulators:start --only functions
+
+  # Test callable function via curl (emulator)
+  curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"destination":"Cancún, Mexico","startDate":"2025-11-10","endDate":"2025-11-15"}}' \
+    "http://localhost:5001/<PROJECT_ID>/us-central1/searchAccommodations" | jq
+  ```
+
+5. If validation passes, mark the item completed and move to the next item. If it fails, capture logs and create a sub-task with the failing step and error output.
+
+6. After all checklist items are completed, run a smoke test: start the full dev server and emulator(s) and exercise the end-to-end flow described in the acceptance criteria.
+
+7. Prepare a short PR description listing:
+  - The task statement and acceptance criteria
+  - The executed checklist and verification commands
+  - Any remaining TODOs or follow-ups
+
+Templates
+- Quick checklist template (copy into PR body):
+
+  Task: <one-line task statement>
+  Acceptance: <pass/fail criteria>
+
+  Checklist:
+  - [ ] Step 1: <short description>
+  - [ ] Step 2: <short description>
+  - [ ] Step 3: <short description>
+
+  Validation commands used:
+  - `npx firebase emulators:start --only functions`
+  - `curl ...` (see above)
+
+This step-by-step section gives contributors a reproducible pattern for safely working with agents and for maintaining clear audit trails for changes.
 ## 📦 Installation
 
 ### Prerequisites

@@ -101,7 +101,7 @@ export const PhotoGrid = () => {
           <Grid item xs={6} key={slot} display="flex" justifyContent="center">
             <img
               src={userProfile?.photos?.[slot] ? userProfile.photos[slot] : profilePlaceholder}
-              alt={`Profile Placeholder ${index + 1}`}
+              alt={userProfile?.photos?.[slot] ? slot : "Profile Placeholder"}
               loading="lazy"
               style={{
                 width: IMAGE_SIZE,
@@ -181,7 +181,7 @@ export const PhotoGrid = () => {
           {enlargedPhoto && (
             <img
               src={enlargedPhoto}
-              alt="Enlarged Photo"
+              alt="enlarged"
               style={{
                 maxWidth: "90vw",
                 maxHeight: "90vh",

@@ -52,7 +52,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     generateItinerary, 
     isGenerating, 
     progress, 
-    error, 
     resetGeneration,
     cancelGeneration 
   } = useAIGeneration();
@@ -129,7 +128,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       // Modal just closed
       setWasOpen(false);
     }
-  }, [open, wasOpen, initialDestination, initialDates, preferences]);
+  }, [open, wasOpen, initialDestination, initialDates, preferences]); 
 
     // Handle form field changes
   const handleFieldChange = useCallback((field: string, value: any) => {
@@ -344,7 +343,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         handleFieldChange('destinationAirportCode', '');
       }
     }
-  }, [showFlightSection, handleFieldChange, formData.departureAirportCode, formData.destinationAirportCode]);
+  }, [showFlightSection, handleFieldChange, formData.departureAirportCode, formData.destinationAirportCode]); // All dependencies used
 
   return (
     <Dialog 
@@ -376,14 +375,28 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           </Alert>
         )}
 
-        {/* Simple Loading State */}
+        {/* Simple Loading State updated to reflect progress stages */}
         {isGenerating && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Searching for flights...
+              {(() => {
+                if (!progress) return 'Starting generation...';
+                switch (progress.stage) {
+                  case 'searching':
+                    return 'Searching for flights and accommodations...';
+                  case 'activities':
+                    return 'Searching for activities and restaurants...';
+                  case 'ai_generation':
+                    return 'Generating itinerary with AI...';
+                  case 'done':
+                    return 'Finalizing...';
+                  default:
+                    return 'Working...';
+                }
+              })()}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Please wait while we find the best flight options for your trip.
+              {progress?.message || 'Please wait while we find the best options for your trip.'}
             </Typography>
           </Box>
         )}
@@ -888,6 +901,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         )}
       </DialogContent>
 
+      {/* Determine button label based on progress stage */}
+      {/** Generate button shows stage-aware label when generating */}
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button 
           onClick={handleClose} 
@@ -903,7 +918,22 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           startIcon={<AIIcon />}
           sx={{ ml: 1 }}
         >
-          {isGenerating ? 'Generating...' : preferencesLoading ? 'Loading Preferences...' : 'Generate Itinerary'}
+          {(() => {
+            if (!isGenerating) return preferencesLoading ? 'Loading Preferences...' : 'Generate Itinerary';
+            // when generating, reflect detailed stage
+            switch (progress?.stage) {
+              case 'searching':
+                return 'Searching…';
+              case 'activities':
+                return 'Finding activities…';
+              case 'ai_generation':
+                return 'Generating…';
+              case 'done':
+                return 'Finalizing…';
+              default:
+                return 'Generating...';
+            }
+          })()}
         </Button>
       </DialogActions>
     </Dialog>

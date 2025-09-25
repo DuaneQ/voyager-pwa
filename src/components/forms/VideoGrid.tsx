@@ -1,9 +1,8 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useCallback } from "react";
 import { Grid, CircularProgress, Alert, Modal, Box, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import { UserProfileContext } from "../../Context/UserProfileContext";
 import { Video, VideoUploadData } from "../../types/Video";
 import { collection, query, where, orderBy, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
@@ -14,8 +13,7 @@ import { VideoUploadModal } from "../modals/VideoUploadModal";
 const VIDEO_SIZE = 120; // px
 
 export const VideoGrid = () => {
-  const { uploadVideo, isUploading, uploadProgress, processingStatus } = useVideoUpload();
-  const { userProfile } = useContext(UserProfileContext);
+  const { uploadVideo, isUploading, uploadProgress } = useVideoUpload();
   const [error, setError] = useState<string | null>(null);
   const [enlargedVideo, setEnlargedVideo] = useState<Video | null>(null);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
@@ -28,9 +26,8 @@ export const VideoGrid = () => {
   const currentUserId = auth.currentUser?.uid;
 
   // Load user's videos
-  const loadUserVideos = async () => {
+  const loadUserVideos = useCallback(async () => {
     if (!currentUserId) return;
-    
     setLoadingVideos(true);
     try {
       const videosQuery = query(
@@ -39,17 +36,14 @@ export const VideoGrid = () => {
         orderBy('createdAt', 'desc'),
         limit(50) // Increased limit for more videos
       );
-      
       const videosSnapshot = await getDocs(videosQuery);
       const videos: Video[] = [];
-      
       videosSnapshot.forEach((doc) => {
         videos.push({
           id: doc.id,
           ...doc.data()
         } as Video);
       });
-      
       setUserVideos(videos);
     } catch (error) {
       console.error('Error loading user videos:', error);
@@ -58,12 +52,12 @@ export const VideoGrid = () => {
     } finally {
       setLoadingVideos(false);
     }
-  };
+  }, [currentUserId]);
 
   // Load videos on component mount
   useEffect(() => {
     loadUserVideos();
-  }, [currentUserId]);
+  }, [currentUserId, loadUserVideos]);
 
   function handleUploadVideo() {
     if (isUploading || loadingVideos) return;
@@ -86,10 +80,6 @@ export const VideoGrid = () => {
     if (!loadingVideos) {
       setEnlargedVideo(video);
     }
-  };
-
-  const handlePlayVideo = (video: Video) => {
-    setEnlargedVideo(video);
   };
 
   const handleCloseVideoModal = () => {

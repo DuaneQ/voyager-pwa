@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -9,7 +9,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Button,
+  Button
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { 
@@ -30,22 +30,70 @@ import {
 } from '@mui/icons-material';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 
+import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
+
 interface AIItineraryDisplayProps {
-  itinerary: AIGeneratedItinerary;
+  itinerary?: AIGeneratedItinerary | null;
 }
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
-  const itineraryData = itinerary.response?.data?.itinerary;
-  const costBreakdown = itinerary.response?.data?.costBreakdown;
-  const metadata = itinerary.response?.data?.metadata;
-  const recommendations = itinerary.response?.data?.recommendations;
+  const { itineraries } = useAIGeneratedItineraries();
+  const [selectedId, setSelectedId] = useState<string | null>(itinerary?.id || null);
+  const [selectedItinerary, setSelectedItinerary] = useState<AIGeneratedItinerary | null>(itinerary || null);
 
+  useEffect(() => {
+    // Always update when the prop changes - parent controls the selection
+    if (itinerary) {
+      setSelectedId(itinerary.id);
+      setSelectedItinerary(itinerary);
+    } else {
+      // If prop becomes null, clear selection
+      setSelectedId(null);
+      setSelectedItinerary(null);
+    }
+  }, [itinerary]);
+
+  useEffect(() => {
+    if (selectedId && itineraries && itineraries.length > 0) {
+      const found = itineraries.find(i => i.id === selectedId);
+      if (found) setSelectedItinerary(found);
+    } else if (!selectedId && itineraries && itineraries.length > 0) {
+      // Auto-select the first itinerary if none is selected
+      const firstItinerary = itineraries[0];
+      setSelectedId(firstItinerary.id);
+      setSelectedItinerary(firstItinerary);
+    }
+  }, [selectedId, itineraries]);
+
+  const itineraryData = selectedItinerary?.response?.data?.itinerary;
+  const costBreakdown = selectedItinerary?.response?.data?.costBreakdown;
+  const metadata = selectedItinerary?.response?.data?.metadata;
+  const recommendations = selectedItinerary?.response?.data?.recommendations;
+  
+
+  
+  // Prefer provider results attached to itinerary (top-level) but fall back to recommendations
+  const itineraryProvider = itineraryData || {};
+
+
+
+  // Early return if no itineraries AND no selected itinerary - parent should handle no-data case
+  // Allow rendering when a selected itinerary prop was provided (useful in tests and direct displays)
+  if ((!itineraries || itineraries.length === 0) && !selectedItinerary) {
+    return null;
+  }
+
+  // If we have itineraries but no selected itinerary data to display
   if (!itineraryData) {
     return (
-      <Card>
+      <Card sx={{
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+      }}>
         <CardContent>
-          <Typography color="error">
-            No itinerary data available
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            Select an itinerary from the dropdown above to view its details.
           </Typography>
         </CardContent>
       </Card>
@@ -161,6 +209,31 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     }
     return 'Price unknown';
   };
+
+  const formatActivityPrice = (activity: any): string => {
+    // Prefer structured estimatedCost { amount, currency }
+    const amt = activity?.estimatedCost?.amount ?? activity?.estimatedCost?.price ?? activity?.price?.amount ?? activity?.priceAmount;
+    const cur = activity?.estimatedCost?.currency ?? activity?.price?.currency ?? 'USD';
+    if (typeof amt === 'number') {
+      try {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amt);
+      } catch (e) {
+        return `${cur} ${amt}`;
+      }
+    }
+    // If provider only has a coarse price level, show dollar signs
+    const lvl = activity?.price_level ?? activity?.priceLevel ?? activity?.estimatedCost?.price_level;
+    if (lvl !== undefined && lvl !== null) {
+      const v = Number(lvl) || 1;
+      return `${'$'.repeat(Math.max(1, Math.min(4, v)))}`;
+    }
+    return 'Price TBD';
+  };
+
+  // At this point we know we have itineraryData, render the main component
+  if (!itineraryData) {
+    return null; // This should never happen but satisfies TypeScript
+  }
 
   return (
     <Box sx={{ color: 'white' }}>
@@ -329,8 +402,8 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       )}
 
       {/* Flight Prices Section - Support both legacy and new flight data structures */}
-      {((recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0) || 
-        ((itineraryData as any)?.flights && Array.isArray((itineraryData as any).flights) && (itineraryData as any).flights.length > 0)) && (
+      {(((itineraryProvider as any)?.flights && Array.isArray((itineraryProvider as any).flights) && (itineraryProvider as any).flights.length > 0) ||
+        (recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0)) && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -342,7 +415,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
               <Chip 
-                label={`${(recommendations?.flights || (itineraryData as any)?.flights || []).length} options`} 
+                label={`${((itineraryProvider as any)?.flights || recommendations?.flights || []).length} options`} 
                 size="small" 
                 color="primary" 
                 variant="outlined"
@@ -355,7 +428,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           </AccordionSummary>
           <AccordionDetails>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(recommendations?.flights || (itineraryData as any)?.flights || []).filter((flight: any) => flight).map((flight: any, index: number) => (
+              {(((itineraryProvider as any)?.flights || recommendations?.flights || [])).filter((flight: any) => flight).map((flight: any, index: number) => (
                 <Card key={flight.id || index} variant="outlined" sx={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -675,7 +748,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              Price TBD
+                              {formatActivityPrice(activity)}
                             </Typography>
                           </Box>
                         </Box>
@@ -927,7 +1000,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         <Box sx={{ mt: 3 }}>
 
           {/* Alternative Activities */}
-          {recommendations.alternativeActivities && Array.isArray(recommendations.alternativeActivities) && recommendations.alternativeActivities.length > 0 && (
+          {(recommendations.alternativeActivities && Array.isArray(recommendations.alternativeActivities) && recommendations.alternativeActivities.length > 0) && (
             <Accordion sx={{
               mb: 2,
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -945,7 +1018,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  {recommendations.alternativeActivities.filter((activity: any) => activity).map((activity, activityIndex) => (
+                  {recommendations.alternativeActivities.filter((activity: any) => activity).map((activity: any, activityIndex: number) => (
                     <Grid item xs={12} sm={6} key={`alt-activity-${activityIndex}-${activity.id || activityIndex}`}>
                       <Card variant="outlined" sx={{
                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -984,7 +1057,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
                               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                Price TBD
+                                {formatActivityPrice(activity)}
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -999,6 +1072,113 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                                 <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                                   {activity.rating}
                                 </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {/* Alternative Restaurants */}
+          {(recommendations.alternativeRestaurants && Array.isArray(recommendations.alternativeRestaurants) && recommendations.alternativeRestaurants.length > 0) && (
+            <Accordion sx={{
+              mb: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              '&:before': { display: 'none' }
+            }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Restaurant sx={{ color: 'white' }} />
+                  <Typography variant="h6" sx={{ color: 'white' }}>
+                    Alternative Restaurants ({recommendations.alternativeRestaurants.length})
+                  </Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  {recommendations.alternativeRestaurants.filter((restaurant: any) => restaurant).map((restaurant: any, restaurantIndex: number) => (
+                    <Grid item xs={12} sm={6} key={`alt-restaurant-${restaurantIndex}-${restaurant.id || restaurantIndex}`}>
+                      <Card variant="outlined" sx={{
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        border: '1px solid rgba(255, 193, 7, 0.3)'
+                      }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
+                              {restaurant.name}
+                            </Typography>
+                            <Chip 
+                              label={restaurant.category || 'restaurant'} 
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: 'rgba(255, 193, 7, 0.2)', 
+                                color: 'white',
+                                borderColor: 'rgba(255, 193, 7, 0.5)'
+                              }}
+                              variant="outlined" 
+                            />
+                          </Box>
+
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} paragraph>
+                            {restaurant.description}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                {typeof restaurant.location === 'string' 
+                                  ? restaurant.location 
+                                  : (restaurant.location as any)?.name || 'Location not specified'}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                {formatActivityPrice(restaurant)}
+                              </Typography>
+                            </Box>
+                            {restaurant.rating && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Star sx={{ color: '#FFD700', fontSize: 16 }} />
+                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                  {restaurant.rating}
+                                </Typography>
+                              </Box>
+                            )}
+                            {(restaurant.phone || restaurant.website) && (
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1, width: '100%' }}>
+                                {restaurant.phone && (
+                                  <Button
+                                    size="small"
+                                    startIcon={<Phone />}
+                                    href={`tel:${restaurant.phone}`}
+                                    sx={{ color: 'white', borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                                    variant="outlined"
+                                  >
+                                    Call
+                                  </Button>
+                                )}
+                                {restaurant.website && (
+                                  <Button
+                                    size="small"
+                                    startIcon={<Language />}
+                                    href={restaurant.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{ color: 'white', borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                                    variant="outlined"
+                                  >
+                                    Website
+                                  </Button>
+                                )}
                               </Box>
                             )}
                           </Box>

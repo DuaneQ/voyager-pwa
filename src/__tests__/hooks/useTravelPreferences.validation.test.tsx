@@ -33,16 +33,18 @@ describe('Travel Preferences Validation', () => {
       max: 5000,
       currency: 'USD'
     },
-    activities: {
-      cultural: 6,
-      adventure: 8,
-      relaxation: 4,
-      nightlife: 2,
-      shopping: 1,
-      food: 7,
-      nature: 9,
-      photography: 5
-    },
+    // Updated shape: array of activity keys (validation expects an array of activity keys)
+    // Order doesn't matter; include the full allowed set to represent a complete profile
+    activities: [
+      'cultural',
+      'adventure',
+      'relaxation',
+      'nightlife',
+      'shopping',
+      'food',
+      'nature',
+      'photography'
+    ],
     foodPreferences: {
       dietaryRestrictions: ['vegetarian'],
       cuisineTypes: ['italian', 'asian'],

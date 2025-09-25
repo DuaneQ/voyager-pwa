@@ -192,6 +192,23 @@ export interface AIGeneratedItinerary {
           duration: number;
           rating?: number;
         }>;
+        alternativeRestaurants: Array<{
+          id: string;
+          name: string;
+          category: string;
+          description: string;
+          location: {
+            name: string;
+            coordinates: { lat: number; lng: number };
+          };
+          estimatedCost: {
+            amount: number;
+            currency: string;
+          };
+          rating?: number;
+          phone?: string;
+          website?: string;
+        }>;
       };
     };
     error?: {

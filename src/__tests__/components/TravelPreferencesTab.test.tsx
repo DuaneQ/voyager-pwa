@@ -61,10 +61,7 @@ describe('TravelPreferencesTab', () => {
     isDefault: true,
     travelStyle: 'mid-range',
     budgetRange: { min: 1000, max: 5000, currency: 'USD' },
-    activities: {
-      cultural: 7, adventure: 5, relaxation: 6, nightlife: 3,
-      shopping: 4, food: 8, nature: 7, photography: 6
-    },
+  activities: ['cultural','relaxation','food','nature','photography'],
     foodPreferences: {
       dietaryRestrictions: ['vegetarian'],
       cuisineTypes: ['italian', 'local'],
@@ -84,10 +81,7 @@ describe('TravelPreferencesTab', () => {
     isDefault: false,
     travelStyle: 'backpacker',
     budgetRange: { min: 500, max: 2000, currency: 'USD' },
-    activities: {
-      cultural: 4, adventure: 9, relaxation: 3, nightlife: 2,
-      shopping: 2, food: 5, nature: 8, photography: 7
-    },
+  activities: ['adventure','nature','photography','food'],
     foodPreferences: {
       dietaryRestrictions: [],
       cuisineTypes: ['local', 'street-food'],

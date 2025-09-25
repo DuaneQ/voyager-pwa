@@ -161,7 +161,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       }
     };
     checkConnection();
-  }, [open, currentUserId, userId]);
+  }, [open, currentUserId, userId]); // All dependencies used
 
   useEffect(() => {
     if (!open) {
@@ -193,12 +193,11 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setVideosError(null);
       setHasAttemptedVideoLoad(false);
     };
-  }, [open, userId]);
+  }, [open, userId]); // All dependencies used
 
   // Function to load user's videos
   const loadUserVideos = useCallback(async () => {
     if (!userId) return;
-    
     setLoadingVideos(true);
     setVideosError(null);
     setHasAttemptedVideoLoad(true);
@@ -209,17 +208,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         orderBy('createdAt', 'desc'),
         limit(20) // Load recent videos
       );
-      
       const videosSnapshot = await getDocs(videosQuery);
       const videos: Video[] = [];
-      
       videosSnapshot.forEach((doc) => {
         videos.push({
           id: doc.id,
           ...doc.data()
         } as Video);
       });
-      
       setUserVideos(videos);
     } catch (error) {
       console.error('Error loading user videos:', error);
@@ -228,14 +224,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     } finally {
       setLoadingVideos(false);
     }
-  }, [userId]);
+  }, [userId]); // Only userId is needed as dependency
 
   // Load videos only when Videos tab is selected
   useEffect(() => {
     if (currentTab === 2 && userId && !loadingVideos && userVideos.length === 0 && !videosError && !hasAttemptedVideoLoad) {
       loadUserVideos();
     }
-  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, hasAttemptedVideoLoad, loadUserVideos]);
+  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, hasAttemptedVideoLoad, loadUserVideos]); // All dependencies used
 
   useEffect(() => {
     if (profile?.ratings?.ratedBy && currentUserId) {
@@ -245,7 +241,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setNewRating(existingRating);
       setNewComment(existingComment);
     }
-  }, [profile, currentUserId]);
+  }, [profile, currentUserId]); // All dependencies used
 
   // Filter out null/empty photos
   // Use new slot-based photo object

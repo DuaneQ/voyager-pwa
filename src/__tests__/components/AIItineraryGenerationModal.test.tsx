@@ -115,16 +115,8 @@ const mockTravelPreferences = {
       isDefault: true,
       travelStyle: 'mid-range' as const,
       budgetRange: { min: 1000, max: 5000, currency: 'USD' as const },
-      activities: {
-        cultural: 7,
-        adventure: 3,
-        relaxation: 5,
-        nightlife: 2,
-        shopping: 4,
-        food: 8,
-        nature: 6,
-        photography: 5
-      },
+  // Current code expects activities as a string[] of selected activity keys
+  activities: ['cultural', 'food', 'nature'],
       foodPreferences: {
         dietaryRestrictions: [],
         cuisineTypes: ['local'],
@@ -352,9 +344,9 @@ describe('AIItineraryGenerationModal', () => {
       </TestWrapper>
     );
 
-  // Updated: check for loading text and disabled button
-  expect(screen.getByText(/Searching for flights/i)).toBeInTheDocument();
-  expect(screen.getByText(/Please wait while we find the best flight options for your trip/i)).toBeInTheDocument();
+  // Updated: check for loading text and disabled button (when progress is null the modal shows a generic starting state)
+  expect(screen.getByText(/Starting generation/i)).toBeInTheDocument();
+  expect(screen.getByText(/Please wait while we find the best options for your trip/i)).toBeInTheDocument();
   const generatingButton = screen.getByRole('button', { name: /Generating/i });
   expect(generatingButton).toBeDisabled();
   });

@@ -61,6 +61,47 @@ export interface Activity {
   };
 }
 
+export interface ItineraryDay {
+  day: number;
+  date: string;
+  activities?: Activity[];
+  meals?: any[];
+  transportation?: any[];
+  notes?: string;
+}
+
+export interface Itinerary extends ItineraryExtras {
+  id: string;
+  destination: string;
+  departure?: string;
+  startDate: string;
+  endDate: string;
+  description?: string;
+  aiGenerated?: boolean;
+  days?: ItineraryDay[];
+  // provider-level top-level fields for UI consumption
+  activities?: Activity[];
+  flights?: any[];
+  accommodations?: AccommodationRecommendation[];
+  externalData?: { hotelRecommendations?: any[] };
+  userInfo?: any;
+}
+
+// Additional flexible fields used by the generator
+export interface ItineraryExtras {
+  gender?: string;
+  sexualOrientation?: string;
+  status?: string;
+  startDay?: number;
+  endDay?: number;
+  lowerRange?: number;
+  upperRange?: number;
+  likes?: any[];
+  aiGenerated?: boolean;
+  userInfo?: any;
+  externalData?: { hotelRecommendations?: any[] };
+}
+
 export interface AccommodationRecommendation {
   id: string;
   name: string;
@@ -85,7 +126,7 @@ export interface AccommodationRecommendation {
 export interface AIGenerationResponse {
   id: string;
   request: AIGenerationRequest;
-  itinerary?: any; // Will be defined later when backend is implemented
+  itinerary?: Itinerary; // canonical itinerary shape saved by generation
   recommendations?: {
     flights?: any[]; // Flight options with pricing and details
     accommodations: AccommodationRecommendation[];

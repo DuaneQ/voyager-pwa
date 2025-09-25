@@ -13,16 +13,7 @@ describe('TravelPreferences Types', () => {
           max: 5000,
           currency: 'USD'
         },
-        activities: {
-          cultural: 7,
-          adventure: 5,
-          relaxation: 6,
-          nightlife: 3,
-          shopping: 4,
-          food: 8,
-          nature: 7,
-          photography: 6
-        },
+        activities: ['cultural','food','nature'],
         foodPreferences: {
           dietaryRestrictions: ['vegetarian'],
           cuisineTypes: ['italian', 'local'],
@@ -57,7 +48,7 @@ describe('TravelPreferences Types', () => {
       expect(validProfile.budgetRange.min).toBe(1000);
       expect(validProfile.budgetRange.max).toBe(5000);
       expect(validProfile.budgetRange.currency).toBe('USD');
-      expect(validProfile.activities.cultural).toBe(7);
+  expect(validProfile.activities).toContain('cultural');
       expect(validProfile.foodPreferences.foodBudgetLevel).toBe('medium');
       expect(validProfile.accommodation.type).toBe('hotel');
       expect(validProfile.transportation.primaryMode).toBe('mixed');
