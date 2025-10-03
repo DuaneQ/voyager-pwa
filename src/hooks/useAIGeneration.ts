@@ -7,6 +7,8 @@ import { AIGenerationRequest } from '../types/AIGeneration';
 import { AirlineCodeConverter } from '../utils/airlineMapping';
 import { ACTIVITY_KEYWORD_MAP } from '../utils/activityKeywords';
 
+import { extractJSONFromString, parseAssistantJSON } from '../utils/ai/parsers';
+
 interface ItineraryResult {
   id: string | null;
   success: boolean;
@@ -40,17 +42,29 @@ export const useAIGeneration = () => {
         ? AirlineCodeConverter.convertNamesToCodes(request.flightPreferences.preferredAirlines)
         : [];
       
-    // Determine whether we should search for flights: use transport dropdown value (primaryMode === 'airplane')
-    // or allow a request-level override.
-    const profile = (request as any).preferenceProfile;
-    const includeFlights = Boolean(
-      (request as any).includeFlights === true ||
-      (profile && String(profile.transportation?.primaryMode || '').toLowerCase() === 'airplane')
-    );
+  // Determine transport type from explicit request or preferenceProfile.
+    // Only treat as a flight request when the transport type is explicitly airplane/flight/air.
+  const profile = (request as any).preferenceProfile;
+  // Prefer the user's selected transport mode from their profile when present.
+  // Only fall back to an explicit request.transportType if the profile has no selection.
+  const transportTypeRaw = profile?.transportation?.primaryMode ?? (request as any).transportType ?? '';
+    const transportType = String(transportTypeRaw || '').toLowerCase();
+    const includeFlights = transportType === 'airplane' || transportType === 'flight' || transportType === 'air';
+ 
+  // Create a generationId early so we can include it in parallel calls (AI callable)
+  const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Only prepare a flight call when flights are requested
+      // Only prepare a flight call when transport type is airplane/flight
       let flightCall: Promise<any> | null = null;
       if (includeFlights) {
+        console.log('[useAIGeneration] includeFlights=true, preparing to call searchFlights with:', {
+          departureAirportCode: request.departureAirportCode,
+          destinationAirportCode: request.destinationAirportCode,
+          departureDate: request.startDate,
+          returnDate: request.endDate,
+          cabinClass: request.flightPreferences?.class?.toUpperCase() || 'ECONOMY',
+          preferredAirlines: preferredAirlineCodes
+        });
         flightCall = searchFlights({
           departureAirportCode: request.departureAirportCode,
           destinationAirportCode: request.destinationAirportCode,
@@ -62,6 +76,9 @@ export const useAIGeneration = () => {
           preferredAirlines: preferredAirlineCodes
         });
       }
+  // Prepare variable for aiCall. We'll create the actual promise below so
+  // it can include the generationId and run in parallel.
+  let aiCall: Promise<any> | null = null;
 
       // derive accommodation search params from provided preference profile (if any)
       let accommodationParams: any = {};
@@ -165,8 +182,65 @@ export const useAIGeneration = () => {
   // Update progress: activities started
   setProgress({ stage: 'activities', percent: 35, message: 'Searching for activities and restaurants...' });
 
-  const settledAll = await Promise.allSettled([flightCall ? flightCall : Promise.resolve(null), accommodationsCall, activitiesCall]);
-  const [flightSettled, accSettled, activitiesSettled] = settledAll as any[];
+  // If this is a non-air flow, initiate the server AI callable now so it runs in parallel
+  if (!includeFlights) {
+    console.log('[useAIGeneration] includeFlights=false, initiating server AI callable now');
+    try {
+      // Include origin and transportType so the server receives the same
+      // high-level inputs that were used to decide to skip flight searches.
+      // Fall back to airport codes if a free-form departure string isn't present.
+      const originCandidate = (request as any).departure || (request as any).origin || (request as any).departureAirportCode || null;
+      const destinationAirportCodeCandidate = (request as any).destinationAirportCode || null;
+      console.log('[useAIGeneration] Calling generateItineraryWithAI with originCandidate=', originCandidate, 'destinationAirportCode=', destinationAirportCodeCandidate, 'transportType=', transportType);
+      aiCall = generateItineraryWithAI({
+        destination: request.destination,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        origin: originCandidate,
+        originAirportCode: (request as any).departureAirportCode || null,
+        destinationAirportCode: destinationAirportCodeCandidate,
+        transportType: transportType || null,
+        preferenceProfile: (request as any)?.preferenceProfile || null,
+        generationId
+      });
+    } catch (e) {
+      // keep aiCall as null if the call cannot be constructed
+      aiCall = null;
+    }
+  }
+
+  // Build a labeled list of promises so we only wait on calls that were actually
+  // initiated. This avoids misleading 'fulfilled' statuses from Promise.resolve
+  // placeholders when a call was intentionally skipped.
+  const promiseList: Promise<any>[] = [];
+  const promiseKeys: string[] = [];
+  if (flightCall) { promiseList.push(flightCall); promiseKeys.push('flight'); }
+  promiseList.push(accommodationsCall); promiseKeys.push('accommodations');
+  promiseList.push(activitiesCall); promiseKeys.push('activities');
+  if (aiCall) { promiseList.push(aiCall); promiseKeys.push('ai'); }
+
+  const settledAll = await Promise.allSettled(promiseList);
+  // Map settled results back to named slots so the rest of the code can remain
+  // mostly unchanged.
+  let flightSettled: any = null, accSettled: any = null, activitiesSettled: any = null, aiSettled: any = null;
+  settledAll.forEach((res, idx) => {
+    const key = promiseKeys[idx];
+    if (key === 'flight') flightSettled = res;
+    else if (key === 'accommodations') accSettled = res;
+    else if (key === 'activities') activitiesSettled = res;
+    else if (key === 'ai') aiSettled = res;
+  });
+  // Diagnostic: show promise settlement statuses to trace which calls resolved/failed
+  try {
+    console.log('[useAIGeneration] settled statuses:', {
+      flight: flightSettled ? flightSettled.status : 'skipped',
+      accommodations: accSettled ? accSettled.status : 'unknown',
+      activities: activitiesSettled ? activitiesSettled.status : 'unknown',
+      ai: aiSettled ? aiSettled.status : 'skipped'
+    });
+  } catch (e) {
+    // no-op
+  }
 
       // Handle flight result
       let flightResultData: any = null;
@@ -350,8 +424,98 @@ export const useAIGeneration = () => {
 
 
 
-    // Create a single ID for the generation (client-side temporary id)
-    const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // generationId was created earlier
+
+  // Generate a rich description from daily activities and restaurants
+  const generateDescriptionFromDailyPlans = (dailyPlans: any[], destination: string): string => {
+    if (!dailyPlans || dailyPlans.length === 0) {
+      return `AI-generated itinerary for ${destination}`;
+    }
+
+    const activities: string[] = [];
+    const restaurants: string[] = [];
+    
+    dailyPlans.forEach((day, index) => {
+      // Extract activity names
+      if (day.activities && day.activities.length > 0) {
+        const activity = day.activities[0];
+        if (activity.name && activity.name !== 'Explore Local Area') {
+          activities.push(activity.name);
+        }
+      }
+      
+      // Extract restaurant names  
+      if (day.meals && day.meals.length > 0) {
+        const meal = day.meals[0];
+        if (meal.restaurant && meal.restaurant.name && meal.restaurant.name !== 'Local Restaurant') {
+          restaurants.push(meal.restaurant.name);
+        }
+      }
+    });
+
+    // Build description
+    let description = `AI-generated ${dailyPlans.length}-day itinerary for ${destination}.`;
+    
+    if (activities.length > 0) {
+      const activityList = activities.slice(0, 3).join(', '); // Show up to 3 activities
+      const moreActivities = activities.length > 3 ? ` and ${activities.length - 3} more` : '';
+      description += ` Experience ${activityList}${moreActivities}.`;
+    }
+    
+    if (restaurants.length > 0) {
+      const restaurantList = restaurants.slice(0, 2).join(', '); // Show up to 2 restaurants
+      const moreRestaurants = restaurants.length > 2 ? ` and ${restaurants.length - 2} more` : '';
+      description += ` Dine at ${restaurantList}${moreRestaurants}.`;
+    }
+
+    return description;
+  };
+
+  // Extract activities for the activities field (used by search and UI)
+  const extractActivitiesFromDailyPlans = (dailyPlans: any[]): string[] => {
+    const activities: string[] = [];
+    
+    // Generic terms to filter out from activities
+    const genericTermsToFilter = [
+      'point_of_interest',
+      'tourist_attraction', 
+      'establishment',
+      'place_of_worship',
+      'store',
+      'food',
+      'meal_takeaway',
+      'restaurant',
+      'lodging'
+    ];
+    
+    dailyPlans.forEach(day => {
+      if (day.activities && day.activities.length > 0) {
+        day.activities.forEach((activity: any) => {
+          if (activity.name && activity.name !== 'Explore Local Area') {
+            activities.push(activity.name);
+          }
+          // Add category for better search matching, but filter out generic terms
+          if (activity.category && 
+              !activities.includes(activity.category) &&
+              !genericTermsToFilter.includes(activity.category.toLowerCase())) {
+            activities.push(activity.category);
+          }
+        });
+      }
+      
+      // Add restaurant names to activities for better searchability
+      if (day.meals && day.meals.length > 0) {
+        day.meals.forEach((meal: any) => {
+          if (meal.restaurant && meal.restaurant.name && meal.restaurant.name !== 'Local Restaurant') {
+            activities.push(meal.restaurant.name);
+          }
+        });
+      }
+    });
+    
+    // Remove duplicates and return
+    return Array.from(new Set(activities));
+  };
 
   let itineraryData: any = {
       id: generationId,
@@ -359,11 +523,6 @@ export const useAIGeneration = () => {
       departure: request.departure || '',
       startDate: request.startDate,
       endDate: request.endDate,
-      description: `AI-generated itinerary for ${request.destination}`,
-      // Search functionality fields
-      gender: 'Any',
-      sexualOrientation: 'Any',
-      status: 'Any',
       startDay: new Date(request.startDate).getTime(),
       endDay: new Date(request.endDate).getTime(),
       lowerRange: 18,
@@ -380,7 +539,7 @@ export const useAIGeneration = () => {
         blocked: userProfile?.blocked || []
       },
       // AI Generation specific fields
-      aiGenerated: true,
+      ai_status: "completed",
       // Add daily plans with enriched activities
       dailyPlans: dailyPlans,
       days: dailyPlans, // Also add as 'days' for compatibility with AIItineraryDisplay
@@ -391,57 +550,100 @@ export const useAIGeneration = () => {
   };
 
   // Normalize flightResultData into an array we'll store on itineraryData.flights
+  // Normalize flightResultData only when a flight search was requested.
   let normalizedFlights: any[] = [];
-  try {
-    if (flightResultData && typeof flightResultData === 'object' && Array.isArray((flightResultData as any).flights)) {
-      normalizedFlights = (flightResultData as any).flights;
-    } else if (Array.isArray(flightResultData)) {
-      normalizedFlights = flightResultData;
-    } else if (flightResultData) {
-      normalizedFlights = [flightResultData];
+  if (includeFlights) {
+    try {
+      if (flightResultData && typeof flightResultData === 'object' && Array.isArray((flightResultData as any).flights)) {
+        normalizedFlights = (flightResultData as any).flights;
+      } else if (Array.isArray(flightResultData)) {
+        normalizedFlights = flightResultData;
+      } else if (flightResultData) {
+        normalizedFlights = [flightResultData];
+      }
+    } catch (e) {
+      normalizedFlights = [];
     }
-  } catch (e) {
-    normalizedFlights = [];
   }
 
   try {
-    (itineraryData as any).flights = normalizedFlights;
+    // Always attach accommodations. Only attach flights when includeFlights is true.
+    (itineraryData as any).flights = includeFlights ? normalizedFlights : [];
     (itineraryData as any).accommodations = accommodations;
   } catch (e) {
     console.warn('[useAIGeneration] Failed to attach flights/accommodations to itineraryData', e);
   }
 
-
-    // Send the full itinerary data (including flights, accommodations, activities, restaurants, userInfo)
-    // so the server has the original payload shape the frontend expects.
-    
-    // Use the restaurants array that searchActivities returned (this was the missing piece!)
-  // const restaurants = restaurantsFromActivitiesSearch || [];
-    
-
-
-  // Server handles Place Details enrichment and itinerary creation.
-  // Request the canonical, enriched itinerary from the server AI function.
+  // Server handles Place Details enrichment and itinerary creation. We already
+  // invoked the server AI (if applicable) as part of the settled promises above.
   setProgress({ stage: 'ai_generation', percent: 60, message: 'Requesting server-side itinerary generation...' });
 
   let toSave: any = null;
   let serverToSave: any = null;
+  // parsedTransportation declared in outer scope so we can merge it into toSave later
+  let parsedTransportation: any = null;
+
+  // Extract AI result from the settled promises (if any) and parse server output
+  let aiData: any = null;
   try {
-    const aiResp = await generateItineraryWithAI({
-      requestPayload: {
-        destination: request.destination,
-        startDate: request.startDate,
-        endDate: request.endDate,
-        profile: (request as any)?.preferenceProfile || null,
-        generationId
+    if (aiSettled) {
+      if (aiSettled.status === 'fulfilled') {
+        // Unwrap callable return shapes: firebase callable returns { data: <returnValue> }
+        aiData = (aiSettled.value && (aiSettled.value.data || aiSettled.value)) || null;
+        // If the callable returned a wrapper { success, data }, prefer the inner data
+        const aiPayload = aiData && (aiData.success === true || aiData.data) ? (aiData.data || aiData) : aiData;
+        console.log('✅ [useAIGeneration] Server-side AI generation successful; aiData summary=', {
+          hasAiData: !!aiData,
+          keys: aiPayload && typeof aiPayload === 'object' ? Object.keys(aiPayload).slice(0,10) : null
+        });
+        // Replace aiData with the unwrapped payload for downstream parsing convenience
+        aiData = aiPayload;
+      } else {
+        console.warn('[useAIGeneration] Server-side AI generation failed:', aiSettled.reason);
       }
-    });
-    const aiData = aiResp?.data || aiResp || null;
+    }
+
+      // Attempt to parse assistant text from aiData (string or object)
+      let assistantTextCandidate: string | null = null;
+      if (aiData && typeof aiData === 'string') {
+        assistantTextCandidate = aiData as string;
+      } else if (aiData && typeof aiData === 'object') {
+        assistantTextCandidate = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
+      }
+      if (assistantTextCandidate && typeof assistantTextCandidate === 'string') {
+        console.log('[useAIGeneration] Found assistantTextCandidate (preview):', assistantTextCandidate.slice(0, 400));
+        const parsed = parseAssistantJSON(assistantTextCandidate);
+        console.log('[useAIGeneration] parseAssistantJSON (global) result keys:', parsed ? Object.keys(parsed).slice(0,10) : null);
+        if (parsed && parsed.transportation) {
+          parsedTransportation = parsed.transportation;
+          console.log('[useAIGeneration] parsedTransportation extracted (global) keys:', Object.keys(parsedTransportation).slice(0,10));
+        }
+      }
+
+    // parsedTransportation holds a structured transportation recommendation when the
+    // server returns assistant text (JSON) containing a transportation object.
     if (aiData && typeof aiData === 'object') {
-      // If the server returned an already-shaped document, use it (preserve server canonical fields)
+      // If server returned a simple transportation object (common test shape), capture it
+      if ((aiData as any).transportation) parsedTransportation = (aiData as any).transportation;
+
+      // aiData may be the unwrapped payload; server callables sometimes return
+      // { success: true, data: {...} } so we normalized above. Check common
+      // canonical shapes in the unwrapped aiData.
       if ((aiData as any).id || (aiData as any).response) {
         serverToSave = aiData;
-      } else if ((aiData as any).itinerary || (aiData as any).response?.data?.itinerary) {
+        // Try to parse assistant text included by server to extract a transportation object
+        const assistantText = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
+        if (assistantText && typeof assistantText === 'string') {
+          try {
+            console.log('[useAIGeneration] Attempting to parse assistantText (preview):', assistantText.slice(0, 400));
+            const maybe = parseAssistantJSON(assistantText);
+            console.log('[useAIGeneration] parseAssistantJSON result keys:', maybe ? Object.keys(maybe).slice(0,10) : null);
+            if (maybe && maybe.transportation) parsedTransportation = maybe.transportation;
+          } catch (e) {
+            console.warn('[useAIGeneration] parseAssistantJSON failed:', e);
+          }
+        }
+      } else if ((aiData as any).itinerary || (aiData as any).response?.data?.itinerary || (aiData as any).data?.itinerary) {
         serverToSave = {
           id: generationId,
           userId: auth.currentUser?.uid || null,
@@ -451,6 +653,9 @@ export const useAIGeneration = () => {
           destination: request.destination,
           startDate: request.startDate,
           endDate: request.endDate,
+          lowerRange: 18,
+          upperRange: 110,
+          ai_status: "completed",
           userInfo: {
             username: userProfile?.username || 'Anonymous',
             gender: userProfile?.gender || 'Any',
@@ -470,58 +675,163 @@ export const useAIGeneration = () => {
             }
           }
         };
-      }
-    }
-  } catch (e) {
-    console.warn('[useAIGeneration] Server-side AI generation failed; falling back to client-side minimal payload', e);
-  }
-
-  // Fallback: if server did not return a toSave payload, build a minimal document similar to previous behavior
-  const clientGenerationId = generationId;
-  if (!serverToSave) {
-    const fallbackToSave = {
-      id: clientGenerationId,
-      userId: auth.currentUser?.uid || null,
-      status: 'completed',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      destination: request.destination,
-      startDate: request.startDate,
-      endDate: request.endDate,
-      userInfo: {
-        username: userProfile?.username || 'Anonymous',
-        gender: userProfile?.gender || 'Any',
-        dob: userProfile?.dob || '',
-        uid: auth.currentUser?.uid || '',
-        email: userProfile?.email || auth.currentUser?.email || '',
-        status: userProfile?.status || 'Any',
-        sexualOrientation: userProfile?.sexualOrientation || 'Any',
-        blocked: userProfile?.blocked || []
-      },
-      response: {
-        success: true,
-        data: {
-          itinerary: itineraryData,
-          metadata: {
-            generationId: clientGenerationId,
-            confidence: 1.0,
-            processingTime: Date.now() - Date.now(),
-            aiModel: 'client-side-fallback',
-            model: 'client-side-fallback',
-            version: '1.0.0'
-          },
-          recommendations: {
-            alternativeActivities: alternativeActivities,
-            alternativeRestaurants: alternativeRestaurants,
-            flights: (itineraryData as any).flights || [],
-            accommodations: accommodations
+        // Attempt to parse assistant output to extract transportation
+        const assistantText = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
+        if (assistantText && typeof assistantText === 'string') {
+          try {
+            console.log('[useAIGeneration] Attempting to parse assistantText for itinerary (preview):', assistantText.slice(0, 400));
+            const maybe = parseAssistantJSON(assistantText);
+            console.log('[useAIGeneration] parseAssistantJSON (itinerary) result keys:', maybe ? Object.keys(maybe).slice(0,10) : null);
+            if (maybe && maybe.transportation) parsedTransportation = maybe.transportation;
+          } catch (e) {
+            console.warn('[useAIGeneration] parseAssistantJSON (itinerary) failed:', e);
           }
         }
       }
-  };
-  toSave = fallbackToSave;
+    }
+  } catch (e) {
+    // Do NOT fall back to client-side generated payloads. These are unreliable
+    // and caused production issues (missing required top-level fields). Abort
+    // the generation and surface an error so the caller/UI can retry or report.
+    console.warn('[useAIGeneration] Server-side AI generation failed; aborting generation', e);
+  }
+
+  if (!serverToSave) {
+    if (includeFlights) {
+      // Build a minimal canonical payload based on client-side data for airplane flows
+      toSave = {
+        id: generationId,
+        userId: auth.currentUser?.uid || null,
+        status: 'completed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: generateDescriptionFromDailyPlans(dailyPlans, request.destination),
+        activities: extractActivitiesFromDailyPlans(dailyPlans),
+        destination: request.destination,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        startDay: new Date(request.startDate).getTime(), 
+        endDay: new Date(request.endDate).getTime(), 
+        gender: 'No Preference',
+        sexualOrientation: 'No Preference',
+        lowerRange: 18,
+        upperRange: 110,
+        ai_status: "completed",
+        likes: [],
+        userInfo: {
+          username: userProfile?.username || 'Anonymous',
+          gender: userProfile?.gender || 'Any',
+          dob: userProfile?.dob || '',
+          uid: auth.currentUser?.uid || '',
+          email: userProfile?.email || auth.currentUser?.email || '',
+          status: userProfile?.status || 'Any',
+          sexualOrientation: userProfile?.sexualOrientation || 'Any',
+          blocked: userProfile?.blocked || []
+        },
+        response: {
+          success: true,
+          data: {
+            itinerary: itineraryData,
+            metadata: { generationId },
+            recommendations: {
+              alternativeActivities: alternativeActivities,
+              alternativeRestaurants: alternativeRestaurants,
+              flights: (itineraryData as any).flights || [],
+              accommodations: accommodations
+            }
+          }
+        }
+      };
+    } else {
+      // If server didn't return a full canonical payload, but DID return a
+      // transportation object we parsed from assistant output, accept that and
+      // save a client-side itinerary merged with the parsed transportation.
+      if (parsedTransportation) {
+        console.warn('[useAIGeneration] Server did not return full canonical payload, but parsed transportation present; saving client-side itinerary with transportation');
+        toSave = {
+          id: generationId,
+          userId: auth.currentUser?.uid || null,
+          status: 'completed',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          destination: request.destination,
+          description: generateDescriptionFromDailyPlans(dailyPlans, request.destination),
+          activities: extractActivitiesFromDailyPlans(dailyPlans),
+          startDate: request.startDate,
+          startDay: new Date(request.startDate).getTime(), 
+          endDay: new Date(request.endDate).getTime(), 
+          endDate: request.endDate,
+          gender: 'No Preference',
+          sexualOrientation: 'No Preference',
+          likes: [],
+          userInfo: {
+            username: userProfile?.username || 'Anonymous',
+            gender: userProfile?.gender || 'Any',
+            dob: userProfile?.dob || '',
+            uid: auth.currentUser?.uid || '',
+            email: userProfile?.email || auth.currentUser?.email || '',
+            status: userProfile?.status || 'Any',
+            sexualOrientation: userProfile?.sexualOrientation || 'Any',
+            blocked: userProfile?.blocked || []
+          },
+          response: {
+            success: true,
+            data: {
+              itinerary: itineraryData,
+              metadata: { generationId },
+              recommendations: {
+          alternativeActivities: alternativeActivities,
+          alternativeRestaurants: alternativeRestaurants,
+          accommodations: accommodations,
+          transportation: parsedTransportation
+              }
+            }
+          }
+        };
+      } else {
+        // Before aborting, log a small, sanitized summary of what the server
+        // actually returned so the developer can diagnose why a canonical
+        // payload wasn't present. Avoid printing user PII — only show top-level
+        // keys and a short preview of assistant text (if present).
+        try {
+          const preview: any = { keys: null, assistantPreview: null };
+          if (aiData && typeof aiData === 'object') {
+            preview.keys = Object.keys(aiData).slice(0, 20);
+            const assistantText = (aiData as any).assistant || (aiData as any).response?.data?.assistant || null;
+            if (assistantText && typeof assistantText === 'string') {
+              preview.assistantPreview = assistantText.slice(0, 500);
+            }
+          }
+          console.error('[useAIGeneration] Aborting non-air generation. Server aiData preview:', preview);
+        } catch (logErr) {
+          // ignore logging failures
+        }
+        const msg = '[useAIGeneration] Server did not return a canonical payload for non-air flow; aborting save';
+        console.error(msg);
+        setError('Server-side generation failed. Please try again.');
+        throw new Error(msg);
+      }
+    }
   } else {
     toSave = serverToSave;
+  }
+
+  const clientGenerationId = (toSave && (toSave.id || toSave.documentId)) ? (toSave.id || toSave.documentId) : generationId;
+
+  // If we parsed a transportation object from the assistant output, merge it into
+  // the canonical toSave under response.data.transportation and
+  // response.data.recommendations.transportation. Do NOT touch flights.
+  try {
+    if (parsedTransportation) {
+      toSave = toSave || {};
+      toSave.response = toSave.response || { success: true, data: { recommendations: {} } };
+      toSave.response.data = toSave.response.data || {};
+      toSave.response.data.recommendations = toSave.response.data.recommendations || {};
+      // Only set transportation here; do NOT modify flights.
+  toSave.response.data.recommendations.transportation = parsedTransportation;
+    }
+  } catch (e) {
+    // ignore merge errors; do not block saving
   }
 
 
@@ -530,15 +840,16 @@ export const useAIGeneration = () => {
   // Save the raw flightResultData under recommendations.flights where
   // the UI (`AIItineraryDisplay`) expects it. Avoid duplicating flights at top-level.
 
-    // Save to Firestore
+    // Save to Firestore - AI generations go to 'itineraries' collection
     try {
       // Log arguments to doc and setDoc for troubleshooting
-      console.log('[useAIGeneration] Firestore doc args:', db, 'ai_generations', clientGenerationId);
-      const docRef = doc(db, 'ai_generations', clientGenerationId);
+      console.log('[useAIGeneration] Firestore doc args:', db, 'itineraries', clientGenerationId);
+      const docRef = doc(db, 'itineraries', clientGenerationId);
       // Firestore rejects undefined values. Convert any undefined fields to null
       // using a JSON replacer so nested undefineds are handled without adding a
       // larger utility function.
       // Log payload shapes to help debug Firestore 'undefined' errors. Keep logs small to avoid PII.
+      const sanitized = JSON.parse(JSON.stringify(toSave, (_k, v) => v === undefined ? null : v));
       try {
         console.log('[useAIGeneration] Saving ai_generation document id=', clientGenerationId, 'summary=', {
           destination: toSave.destination,
@@ -549,19 +860,13 @@ export const useAIGeneration = () => {
           alternativeRestaurantsCount: (toSave.response?.data?.recommendations?.alternativeRestaurants?.length) ?? 0,
           flightsCount: (toSave.response?.data?.recommendations?.flights?.length) ?? 0
         });
-      } catch (logErr) {
-        console.warn('[useAIGeneration] Failed to log toSave summary', logErr);
-      }
-
-      const sanitized = JSON.parse(JSON.stringify(toSave, (_k, v) => v === undefined ? null : v));
-      try {
         console.log('[useAIGeneration] Sanitized payload preview:', {
           id: sanitized.id,
           itineraryDays: (sanitized.response?.data?.itinerary?.days?.length) ?? 0,
           metadata: sanitized.response?.data?.metadata
         });
       } catch (logErr) {
-        console.warn('[useAIGeneration] Failed to log sanitized preview', logErr);
+        console.warn('[useAIGeneration] Failed to log toSave or sanitized preview', logErr);
       }
       console.log('[useAIGeneration] setDoc args:', docRef, sanitized);
       await setDoc(docRef, sanitized);

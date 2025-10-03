@@ -161,7 +161,7 @@ export interface AIGeneratedItinerary {
           pros: string[];
           cons: string[];
         }>;
-        transportation: Array<{
+        transportation?: Array<{
           mode: string;
           provider: string;
           estimatedCost: {
@@ -210,6 +210,7 @@ export interface AIGeneratedItinerary {
           website?: string;
         }>;
       };
+      transportation?: any;
     };
     error?: {
       code: string;
@@ -225,7 +226,6 @@ export const useAIGeneratedItineraries = () => {
 
   const fetchAIItineraries = async () => {
     if (!auth.currentUser) {
-      console.log('fetchAIItineraries: User not authenticated');
       setError('User not authenticated');
       return;
     }
@@ -233,42 +233,47 @@ export const useAIGeneratedItineraries = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      console.log('fetchAIItineraries: Starting fetch for user', auth.currentUser.uid);
-      
+    try {      
       // Get today's date in YYYY-MM-DD format for comparison
       const today = new Date().toISOString().split('T')[0];
 
       const q = query(
-        collection(db, 'ai_generations'),
+        collection(db, 'itineraries'),
         where('userId', '==', auth.currentUser.uid),
-        where('status', '==', 'completed'),
+        where('ai_status', '==', 'completed'),
         orderBy('createdAt', 'desc')
       );
 
       const querySnapshot = await getDocs(q);
       const fetchedItineraries: AIGeneratedItinerary[] = [];
       
-      console.log('fetchAIItineraries: Found', querySnapshot.size, 'total documents');
-
+      console.log('fetchAIItineraries: Found', querySnapshot.size, 'AI-generated itineraries');
+      
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('fetchAIItineraries: Processing doc', doc.id, 'with data:', data);
         
-        // Check if itinerary has not expired (endDate >= today)
-        const itineraryEndDate = data.response?.data?.itinerary?.endDate;
-        if (itineraryEndDate && itineraryEndDate >= today) {
-          fetchedItineraries.push({
-            id: doc.id,
-            ...data
-          } as AIGeneratedItinerary);
-          console.log('fetchAIItineraries: Added non-expired itinerary:', doc.id, 'endDate:', itineraryEndDate);
-        } else {
-          console.log('fetchAIItineraries: Skipped expired itinerary:', doc.id, 'endDate:', itineraryEndDate, 'vs today:', today);
+        // Check if itinerary has expired based on end date
+        const itineraryEndDate = data.endDate || data.response?.data?.itinerary?.endDate;
+        
+        if (itineraryEndDate) {
+          const endDate = new Date(itineraryEndDate);
+          const currentDate = new Date();
+          
+          // Skip expired itineraries (end date has passed)
+          if (endDate < currentDate) {
+            console.log('fetchAIItineraries: Skipping expired itinerary:', doc.id, 'ended:', itineraryEndDate);
+            return;
+          }
         }
+        
+        fetchedItineraries.push({
+          id: doc.id,
+          ...data
+        } as AIGeneratedItinerary);
       });
 
-      console.log('fetchAIItineraries: Final filtered itineraries count:', fetchedItineraries.length);
+      console.log('fetchAIItineraries: Final active itineraries count:', fetchedItineraries.length);
+
       setItineraries(fetchedItineraries);
     } catch (err: any) {
       console.error('Error fetching AI itineraries:', err);
@@ -282,7 +287,7 @@ export const useAIGeneratedItineraries = () => {
     if (!auth.currentUser) return null;
 
     try {
-      const docRef = doc(db, 'ai_generations', id);
+      const docRef = doc(db, 'itineraries', id);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {

@@ -60,6 +60,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     preferences, 
     loading: preferencesLoading, 
     getProfileById
+    , loadPreferences
   } = useTravelPreferences();
 
   // Form state
@@ -83,13 +84,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [modalKey, setModalKey] = useState(0);
+  const [wasOpen, setWasOpen] = useState(false);
   const [mustIncludeInput, setMustIncludeInput] = useState('');
   const [mustAvoidInput, setMustAvoidInput] = useState('');
   const [showSuccessState, setShowSuccessState] = useState(false);
-  const [modalKey, setModalKey] = useState(0); // Key to force re-render of Google Places components
-
-  // Track if modal was previously closed to detect new opens
-  const [wasOpen, setWasOpen] = useState(false);
 
   // Reset form and increment key when modal opens to force Google Places to re-initialize
   useEffect(() => {
@@ -119,18 +118,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           preferredAirlines: [],
         },
       });
-      
-      setFormErrors({});
-      setMustIncludeInput('');
-      setMustAvoidInput('');
-      setShowSuccessState(false);
-    } else if (!open && wasOpen) {
-      // Modal just closed
-      setWasOpen(false);
     }
-  }, [open, wasOpen, initialDestination, initialDates, preferences]); 
+  }, [open, wasOpen, initialDestination, initialDates, preferences]);
 
-    // Handle form field changes
+  // Handle form field changes
   const handleFieldChange = useCallback((field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -161,14 +152,27 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       errors.destination = 'Destination is required';
     }
 
-    // Validate departure airport code if departure location is provided
-    if (formData.departure && !formData.departureAirportCode) {
-      errors.departure = 'Please select a departure airport for flight pricing';
-    }
+    // Determine flight visibility based on the selected profile at validation time
+    const selectedProfileForValidation = typeof getProfileById === 'function'
+      ? getProfileById(formData.preferenceProfileId)
+      : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
+    const profileTransportationForValidation = selectedProfileForValidation?.transportation;
+    const flightSectionVisibleForValidation = !!(
+      profileTransportationForValidation && (
+        profileTransportationForValidation.includeFlights === true ||
+        String(profileTransportationForValidation.primaryMode).toLowerCase() === 'airplane' ||
+        String(profileTransportationForValidation.primaryMode).toLowerCase() === 'flights'
+      )
+    );
 
-    // Validate destination airport code if destination is provided
-    if (formData.destination && !formData.destinationAirportCode) {
-      errors.destination = errors.destination || 'Please select a destination airport for flight pricing';
+    // Only require airport codes if flight section is shown for the selected profile
+    if (flightSectionVisibleForValidation) {
+      if (formData.departure && !formData.departureAirportCode) {
+        errors.departureAirportCode = 'Departure airport is required.';
+      }
+      if (formData.destination && !formData.destinationAirportCode) {
+        errors.destinationAirportCode = 'Destination airport is required.';
+      }
     }
 
     // Always validate start date
@@ -210,7 +214,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [formData]);
+  }, [formData, getProfileById, preferences]);
 
   // Handle generation
   const handleGenerate = useCallback(async () => {
@@ -222,6 +226,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({ general: 'Preferences are still loading, please wait.' });
       return;
     }
+    // Refresh preferences to ensure we have the latest saved profile values
+    if (typeof loadPreferences === 'function') {
+      try {
+        await loadPreferences();
+      } catch (e) {
+        // If refresh fails, continue with whatever we have locally but log for diagnosis
+        console.warn('[AIItineraryGenerationModal] loadPreferences failed, proceeding with cached preferences', e);
+      }
+    }
+
     const selectedProfile = typeof getProfileById === 'function'
       ? getProfileById(formData.preferenceProfileId)
       : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
@@ -283,14 +297,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         preferredAirlines: [],
       },
     });
-    
-    // Reset tag inputs
-    setMustIncludeInput('');
-    setMustAvoidInput('');
-    
-    // Clear any form errors
-    setFormErrors({});
-    
+    // Notify parent that modal should close
     onClose();
   }, [isGenerating, cancelGeneration, resetGeneration, onClose, preferences]);
 
@@ -315,6 +322,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   }, [formData, handleFieldChange]);
 
   // Get available preference profiles
+  // Force modal UI refresh when profile changes
+  useEffect(() => {
+    setModalKey(prev => prev + 1);
+  }, [formData.preferenceProfileId]);
   const availableProfiles = preferences?.profiles || [];
 
   // Determine whether to show the flight section based on the currently-selected profile's transportation
@@ -328,9 +339,26 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const showFlightSection = !!(
     profileTransportation && (
       profileTransportation.includeFlights === true ||
-      String(profileTransportation.primaryMode).toLowerCase() === 'airplane'
+      String(profileTransportation.primaryMode).toLowerCase() === 'airplane' ||
+      String(profileTransportation.primaryMode).toLowerCase() === 'flights'
     )
   );
+
+  // Always reset flight fields when toggling between profiles with/without flights
+  useEffect(() => {
+    if (!showFlightSection) {
+      setFormData(prev => ({
+        ...prev,
+        departureAirportCode: '',
+        destinationAirportCode: '',
+        flightPreferences: {
+          class: 'economy',
+          stopPreference: 'any',
+          preferredAirlines: [],
+        },
+      }));
+    }
+  }, [showFlightSection, formData.preferenceProfileId]);
 
   // If the selected profile does not support flights, clear any selected airport codes
   // so the AirportSelector doesn't show stale values or trigger the popup.
@@ -470,43 +498,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                         borderColor: '#1976d2',
                       },
                     }),
-                    menu: (provided: any) => ({
-                      ...provided,
-                      backgroundColor: '#ffffff',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      zIndex: 9999,
-                      position: 'absolute',
-                    }),
-                    menuList: (provided: any) => ({
-                      ...provided,
-                      backgroundColor: '#ffffff',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                    }),
-                    option: (provided: any, state: any) => ({
-                      ...provided,
-                      backgroundColor: state.isSelected 
-                        ? '#1976d2' 
-                        : state.isFocused 
-                        ? '#f5f5f5' 
-                        : '#ffffff',
-                      color: state.isSelected ? '#ffffff' : '#000000',
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: state.isSelected ? '#1976d2' : '#f5f5f5',
-                      },
-                    }),
-                    singleValue: (provided: any) => ({
-                      ...provided,
-                      color: '#000000',
-                    }),
-                    placeholder: (provided: any) => ({
-                      ...provided,
-                      color: '#999999',
-                    }),
                   },
                 }}
                 autocompletionRequest={{
@@ -528,6 +519,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 onAirportSelect={handleDepartureAirportSelect}
                 onClear={handleDepartureAirportClear}
               />
+              {formErrors.departureAirportCode && (
+                <FormHelperText error>{formErrors.departureAirportCode}</FormHelperText>
+              )}
             </Grid>
           )}
 
@@ -622,6 +616,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 onAirportSelect={handleDestinationAirportSelect}
                 onClear={handleDestinationAirportClear}
               />
+              {formErrors.destinationAirportCode && (
+                <FormHelperText error>{formErrors.destinationAirportCode}</FormHelperText>
+              )}
             </Grid>
           )}
 

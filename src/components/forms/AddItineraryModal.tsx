@@ -222,7 +222,15 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     console.log(`=== END DATE CHANGE DEBUG (${type}) ===`);
   };
 
+
+
   const handleEditItinerary = (itinerary: Itinerary) => {
+    // Don't allow editing AI-generated itineraries in this modal
+    if ((itinerary as any).ai_status === 'completed' || (itinerary as any).aiGenerated) {
+      alert('AI-generated itineraries cannot be edited in this modal. Please use the AI Itinerary Display to edit AI itineraries.');
+      return;
+    }
+    
     console.log('=== EDIT ITINERARY DEBUG ===');
     console.log('Raw itinerary object:', itinerary);
     console.log('Original startDate:', itinerary.startDate, 'Type:', typeof itinerary.startDate);

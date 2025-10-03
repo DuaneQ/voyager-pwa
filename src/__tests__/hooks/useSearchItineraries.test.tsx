@@ -267,7 +267,8 @@ describe("useSearchItineraries", () => {
         await result.current.loadMoreMatches();
       });
 
-      expect(mockGetDocs).toHaveBeenCalledTimes(2);
+  // We call getDocs once per fetch (itineraries only)
+  expect(mockGetDocs).toHaveBeenCalledTimes(2);
       // Should have combined results from both batches
       expect(result.current.matchingItineraries.length).toBeGreaterThan(0);
     });
@@ -302,8 +303,9 @@ describe("useSearchItineraries", () => {
         result.current.checkForMoreMatches(17, 3); // 17th item of 20, with buffer of 3
       });
 
-      // Should have triggered an auto-load
-      expect(mockGetDocs).toHaveBeenCalledTimes(2);
+    // Should have triggered an auto-load
+  // We call getDocs once per fetch (itineraries only)
+  expect(mockGetDocs).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -454,7 +456,8 @@ describe("useSearchItineraries", () => {
       expect(mockSearchCache.get).toHaveBeenCalledWith('test-cache-key');
 
       // Verify: Firestore WAS called (cache miss)
-      expect(mockGetDocs).toHaveBeenCalledTimes(1);
+  // We call getDocs once per fetch (itineraries only)
+  expect(mockGetDocs).toHaveBeenCalledTimes(1);
 
       // Verify: Results were cached for next time
       expect(mockSearchCache.set).toHaveBeenCalledWith('test-cache-key', [mockItineraries[0]]);
@@ -511,9 +514,9 @@ describe("useSearchItineraries", () => {
               status: 'single',
             },
           };
-          // @ts-ignore
+          // Cast to any to satisfy partial test itinerary shape
           await act(async () => {
-            await result.current.searchItineraries(itinerary, currentUserId);
+            await result.current.searchItineraries(itinerary as any, currentUserId);
           });
           expect(where).toHaveBeenCalledWith('userInfo.gender', '==', 'Female');
           expect(where).toHaveBeenCalledWith('userInfo.status', '==', 'single');
@@ -532,9 +535,9 @@ describe("useSearchItineraries", () => {
               status: 'No Preference',
             },
           };
-          // @ts-ignore
+          // Cast to any to satisfy partial test itinerary shape
           await act(async () => {
-            await result.current.searchItineraries(itinerary, currentUserId);
+            await result.current.searchItineraries(itinerary as any, currentUserId);
           });
           expect(where).not.toHaveBeenCalledWith('userInfo.gender', '==', 'No Preference');
           expect(where).not.toHaveBeenCalledWith('userInfo.status', '==', 'No Preference');

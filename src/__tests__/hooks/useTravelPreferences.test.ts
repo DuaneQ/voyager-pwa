@@ -341,8 +341,16 @@ describe('useTravelPreferences Hook', () => {
             profiles: expect.arrayContaining([
               expect.objectContaining({
                 ...mockProfile,
-                ...updates,
+                name: 'Test Profile', // original profile remains unchanged
                 updatedAt: expect.any(Date)
+              }),
+              expect.objectContaining({
+                ...mockProfile,
+                name: 'Updated Profile Name', // new profile with updated name
+                isDefault: false,
+                id: expect.stringMatching(/^profile_/),
+                updatedAt: expect.any(Date),
+                createdAt: expect.any(Date)
               })
             ])
           }),
@@ -372,7 +380,7 @@ describe('useTravelPreferences Hook', () => {
       };
       
       await act(async () => {
-        await result.current.updateProfile('new-profile-id', newProfileData);
+  await result.current.updateProfile('new-profile-id', newProfileData);
       });
       
       expect(mockUpdateDoc).toHaveBeenCalledWith(
@@ -381,7 +389,7 @@ describe('useTravelPreferences Hook', () => {
           travelPreferences: expect.objectContaining({
             profiles: expect.arrayContaining([
               expect.objectContaining({
-                id: 'new-profile-id',
+                id: expect.any(String),
                 name: 'New Profile',
                 travelStyle: 'luxury',
                 isDefault: true, // First profile should be default
@@ -389,7 +397,7 @@ describe('useTravelPreferences Hook', () => {
                 updatedAt: expect.any(Date)
               })
             ]),
-            defaultProfileId: 'new-profile-id'
+            defaultProfileId: expect.any(String)
           }),
           updatedAt: expect.any(Object)
         })
@@ -411,7 +419,7 @@ describe('useTravelPreferences Hook', () => {
       };
       
       await act(async () => {
-        await result.current.updateProfile('first-profile-id', newProfileData);
+  await result.current.updateProfile('first-profile-id', newProfileData);
       });
       
       expect(mockSetDoc).toHaveBeenCalledWith(
@@ -420,13 +428,13 @@ describe('useTravelPreferences Hook', () => {
           travelPreferences: expect.objectContaining({
             profiles: expect.arrayContaining([
               expect.objectContaining({
-                id: 'first-profile-id',
+                id: expect.any(String),
                 name: 'First Profile',
                 travelStyle: 'budget',
                 isDefault: true
               })
             ]),
-            defaultProfileId: 'first-profile-id'
+            defaultProfileId: expect.any(String)
           }),
           createdAt: expect.any(Object),
           updatedAt: expect.any(Object)

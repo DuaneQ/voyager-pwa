@@ -26,8 +26,6 @@ export interface ItineraryCardProps {
   onEdit?: (itinerary: Itinerary) => void;
   onDelete?: (itinerary: Itinerary) => void;
   showEditDelete?: boolean;
-  // Flag to indicate this is an illustrative/example card
-  isExample?: boolean;
 }
 
 const ItineraryCard: React.FC<ItineraryCardProps> = ({
@@ -37,7 +35,6 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   onEdit,
   onDelete,
   showEditDelete = false,
-  isExample = false,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
   // Returns the profile slot photo
@@ -52,30 +49,59 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
     ? new Date(itinerary.endDate + "T12:00:00.000Z").toLocaleDateString()
     : "N/A";
 
-  // Debug logging for date display
-  console.log('=== ITINERARY CARD DISPLAY DEBUG ===');
-  console.log('Itinerary ID:', itinerary.id);
-  console.log('Raw startDate from itinerary:', itinerary.startDate, 'Type:', typeof itinerary.startDate);
-  console.log('Raw endDate from itinerary:', itinerary.endDate, 'Type:', typeof itinerary.endDate);
-  console.log('Displayed startDate:', startDate);
-  console.log('Displayed endDate:', endDate);
-  console.log('startDay timestamp:', itinerary.startDay);
-  console.log('endDay timestamp:', itinerary.endDay);
-  console.log('=== END ITINERARY CARD DISPLAY DEBUG ===');
+  // Get activities - for AI itineraries, extract from nested structure
+  const getActivities = (): string[] => {
+    const extendedItinerary = itinerary as any;
+    
+    // Check if this is an AI-generated itinerary
+    if (extendedItinerary.ai_status === 'completed' || extendedItinerary.aiGenerated) {
+      // Try to extract from response.data.itinerary.days or dailyPlans
+      const aiData = extendedItinerary.response?.data?.itinerary;
+      const dailyData = aiData?.days || aiData?.dailyPlans;
+      
+      if (dailyData && Array.isArray(dailyData) && dailyData.length > 0) {
+        const activities: string[] = [];
+        dailyData.forEach((day: any) => {
+          if (day.activities && Array.isArray(day.activities)) {
+            day.activities.forEach((activity: any) => {
+              const activityName = activity.name || activity.title || '';
+              if (activityName.trim()) {
+                activities.push(activityName);
+              }
+            });
+          }
+        });
+        return activities;
+      }
+    }
+    
+    // Fall back to regular activities array for non-AI itineraries
+    return itinerary.activities || [];
+  };
+
+  const activities = getActivities();
 
   return (
     <>
       <Card
         sx={{
-          margin: { xs: "16px auto", sm: "30px auto" },
-          maxWidth: { xs: 320, sm: 400 },
+          margin: { xs: "8px auto", sm: "16px auto" },
+          maxWidth: { xs: 300, sm: 400 },
+          maxHeight: { xs: "50vh", sm: "60vh" },
           boxShadow: 3,
           borderRadius: 2,
-          padding: { xs: 1, sm: 2 },
+          padding: { xs: 0.5, sm: 1.5 },
           backgroundColor: "#f5f5f5",
           position: "relative",
+          display: "flex",
+          flexDirection: "column",
         }}>
-        <CardContent>
+        <CardContent
+          sx={{
+            paddingBottom: { xs: 0.5, sm: 1 },
+            paddingTop: { xs: 1, sm: 1.5 },
+            paddingX: { xs: 1, sm: 2 },
+          }}>
           {/* Profile photo and username */}
           <Box
             sx={{
@@ -139,51 +165,59 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             }}>
             End Date: {endDate}
           </Typography>
-          <Box mt={2} sx={{ textAlign: "center" }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontStyle: "italic",
-                fontSize: { xs: "0.95rem", sm: "1rem" },
-              }}>
-              {itinerary.description || "No description provided."}
-            </Typography>
-            {isExample && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                Example itinerary — no matches were found but when you have a match it will appear in this card with the user's details. Use the ✖️ button to reject or the ✈️ button to attempt a match. If the other user also likes this itinerary you can start chatting on the Chat page.
-              </Typography>
-            )}
-          </Box>
-          {itinerary.activities && itinerary.activities.length > 0 && (
-            <Box mt={2} sx={{ textAlign: "center" }}>
+          {/* Scrollable content area for description and activities */}
+          <Box
+            sx={{
+              maxHeight: { xs: "15vh", sm: "20vh" },
+              overflow: "auto",
+              mt: 1,
+              pr: 1, // padding for scrollbar
+            }}>
+            <Box sx={{ textAlign: "left" }}>
               <Typography
                 variant="body2"
-                fontWeight="bold"
                 sx={{
-                  marginBottom: { xs: "6px", sm: "10px" },
+                  fontStyle: "italic",
                   fontSize: { xs: "0.95rem", sm: "1rem" },
+                  mb: 2,
                 }}>
-                Activities:
+                {itinerary.description || "No description provided."}
               </Typography>
-              <ul
-                style={{
-                  listStyleType: "circle",
-                  paddingLeft: "20px",
-                  fontSize: "0.95rem",
-                }}>
-                {itinerary.activities.map((activity, index) => (
-                  <li key={index}>{activity}</li>
-                ))}
-              </ul>
             </Box>
-          )}
+            {activities && activities.length > 0 && (
+              <Box sx={{ textAlign: "left" }}>
+                <Typography
+                  variant="body2"
+                  fontWeight="bold"
+                  sx={{
+                    marginBottom: { xs: "6px", sm: "10px" },
+                    fontSize: { xs: "0.95rem", sm: "1rem" },
+                  }}>
+                  Activities:
+                </Typography>
+                <ul
+                  style={{
+                    listStyleType: "circle",
+                    paddingLeft: "20px",
+                    fontSize: "0.95rem",
+                    margin: 0,
+                  }}>
+                  {activities.map((activity, index) => (
+                    <li key={index}>{activity}</li>
+                  ))}
+                </ul>
+              </Box>
+            )}
+          </Box>
         </CardContent>
         <CardActions
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "10px",
+            padding: { xs: "6px", sm: "10px" },
+            flexShrink: 0,
+            minHeight: { xs: "48px", sm: "56px" },
           }}>
           {showEditDelete && currentUserId === itinerary.userInfo?.uid ? (
             // Show edit/delete buttons for user's own itineraries
