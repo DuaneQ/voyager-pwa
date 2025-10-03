@@ -367,19 +367,13 @@ export const TravelPreferencesTab: React.FC = () => {
   };
 
   // Helper function to update transportation preferences
-  const updateTransportation = (updates: Partial<typeof currentPreferences.transportation>) => {
-    // If the incoming update sets primaryMode to 'airplane', ensure we also set includeFlights
-    const merged = {
-      ...currentPreferences.transportation,
-      ...updates
-    } as any;
-
-    if (merged.primaryMode === 'airplane') {
-      merged.includeFlights = true;
-    }
-
+  // Only set primaryMode as a string, not an object
+  const updateTransportation = (primaryMode: string) => {
     updateLocalPreferences({
-      transportation: merged
+      transportation: {
+        primaryMode: primaryMode as TravelPreferenceProfile['transportation']['primaryMode'],
+        maxWalkingDistance: currentPreferences.transportation?.maxWalkingDistance ?? 15
+      }
     });
   };
 
@@ -1040,7 +1034,7 @@ export const TravelPreferencesTab: React.FC = () => {
             <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Type</InputLabel>
             <Select
               value={currentPreferences.transportation?.primaryMode || 'mixed'}
-              onChange={(e) => updateTransportation({ primaryMode: e.target.value as TravelPreferenceProfile['transportation']['primaryMode'] })}
+               onChange={(e) => updateTransportation(e.target.value as TravelPreferenceProfile['transportation']['primaryMode'])}
               sx={{
                 color: 'white',
                 '& .MuiOutlinedInput-notchedOutline': {

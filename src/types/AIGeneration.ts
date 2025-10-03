@@ -127,10 +127,11 @@ export interface AIGenerationResponse {
   id: string;
   request: AIGenerationRequest;
   itinerary?: Itinerary; // canonical itinerary shape saved by generation
+  transportation?: any; // Top-level transportation recommendations (object, not array)
   recommendations?: {
     flights?: any[]; // Flight options with pricing and details
     accommodations: AccommodationRecommendation[];
-    transportation: any[];
+    transportation?: any[]; // legacy/array support
     alternativeActivities: Activity[];
   };
   costBreakdown?: {

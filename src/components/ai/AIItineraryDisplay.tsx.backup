@@ -1,34 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Card, 
-  CardContent, 
-  Button,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Grid,
-  Chip,
-  TextField
-} from '@mui/material';
-import { 
-  Delete, 
-  ExpandMore, 
-  Edit, 
-  AttachMoney,
-  Hotel,
-  Restaurant,
-  LocalActivity,
-  CheckCircle,
-  AccessTime,
-  LocationOn,
-  Language,
-  Book,
-  Link,
-  Star,
-  Phone
-} from '@mui/icons-material';
+import { Box, Typography, Card, CardContent, Button } from '@mui/material';
+import { Delete } from '@mui/icons-material';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { getFirestore, doc, updateDoc } from 'firebase/firestore';
@@ -36,13 +8,16 @@ import { app } from '../../environments/firebaseConfig';
 
 // Import refactored sections
 import { AIItineraryHeader } from './sections/AIItineraryHeader';
+import { CostBreakdownSection } from './sections/CostBreakdownSection';
+import { FlightOptionsSection } from './sections/FlightOptionsSection';
+import { DailyItinerarySection } from './sections/DailyItinerarySection';
 
 interface AIItineraryDisplayProps {
   itinerary?: AIGeneratedItinerary | null;
 }
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
-  const { itineraries, refreshItineraries, fetchAIItineraries } = useAIGeneratedItineraries();
+  const { itineraries, refreshItineraries } = useAIGeneratedItineraries();
   const [selectedId, setSelectedId] = useState<string | null>(itinerary?.id || null);
   const [selectedItinerary, setSelectedItinerary] = useState<AIGeneratedItinerary | null>(itinerary || null);
   
@@ -497,6 +472,48 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             </Box>
           )}
 
+          <Typography color="rgba(255, 255, 255, 0.7)" gutterBottom>
+            {formatDate(itineraryData.startDate)} - {formatDate(itineraryData.endDate)}
+          </Typography>
+
+          {/* AI-Generated Description */}
+          {itineraryData.description && (
+            <Typography variant="body1" paragraph sx={{ mt: 2, fontStyle: 'italic', color: 'white' }}>
+              "{itineraryData.description}"
+            </Typography>
+          )}
+          
+          {/* Metadata */}
+          {metadata && (
+            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {metadata.confidence !== undefined && metadata.confidence !== null && !isNaN(metadata.confidence) && (
+                <Chip 
+                  label={`Confidence: ${Math.round(metadata.confidence * 100)}%`} 
+                  size="small" 
+                  color="primary" 
+                />
+              )}
+              {metadata.aiModel && (
+                <Chip 
+                  label={`${metadata.aiModel}`} 
+                  size="small" 
+                  variant="outlined" 
+                />
+              )}
+              {metadata.processingTime !== undefined && metadata.processingTime !== null && !isNaN(metadata.processingTime) && (
+                <Chip 
+                  label={`Generated in ${Math.round(metadata.processingTime / 1000)}s`} 
+                  size="small" 
+                  variant="outlined" 
+                />
+              )}
+            </Box>
+          )}
+
+
+        </CardContent>
+      </Card>
+
       {/* Cost Breakdown Accordion */}
       {costBreakdown && costBreakdown.total && (
         <Accordion sx={{ 
@@ -506,7 +523,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           border: '1px solid rgba(255, 255, 255, 0.1)',
           '&:before': { display: 'none' }
         }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <AttachMoney sx={{ color: 'white' }} />
               <Typography variant="h6" sx={{ color: 'white' }}>
@@ -623,7 +640,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           border: '1px solid rgba(255, 255, 255, 0.1)',
           '&:before': { display: 'none' }
         }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="travel-recommendations-header">
               <Typography variant="h6" sx={{ color: 'white' }}>
                 Travel Recommendations
@@ -716,7 +733,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           border: '1px solid rgba(255, 255, 255, 0.1)',
           '&:before': { display: 'none' }
         }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }} data-testid="flight-options-header">
               <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
               <Chip 
@@ -895,7 +912,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           border: '1px solid rgba(255, 255, 255, 0.1)',
           '&:before': { display: 'none' }
         }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Hotel sx={{ color: 'white' }} />
               <Typography variant="h6" sx={{ color: 'white' }}>
@@ -1051,7 +1068,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               border: '1px solid rgba(255, 255, 255, 0.1)',
               '&:before': { display: 'none' }
             }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Typography variant="h6" sx={{ color: 'white' }}>
                     Day {day.day || (index + 1)}
@@ -1726,7 +1743,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               border: '1px solid rgba(255, 255, 255, 0.1)',
               '&:before': { display: 'none' }
             }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <LocalActivity sx={{ color: 'white' }} />
                   <Typography variant="h6" sx={{ color: 'white' }}>
@@ -1811,7 +1828,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               border: '1px solid rgba(255, 255, 255, 0.1)',
               '&:before': { display: 'none' }
             }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Restaurant sx={{ color: 'white' }} />
                   <Typography variant="h6" sx={{ color: 'white' }}>

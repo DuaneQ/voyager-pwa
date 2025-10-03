@@ -1,4 +1,5 @@
 import React from 'react';
+import { TravelPreferenceProfile } from '../../types/TravelPreferences';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import AIItineraryGenerationModal from '../../components/modals/AIItineraryGenerationModal';
 import { AlertContext } from '../../Context/AlertContext';
@@ -25,20 +26,36 @@ jest.mock('../../hooks/useAIGeneration', () => ({
 const mockUseTravelPreferences = {
   preferences: {
     profiles: [
-      { 
-        id: 'profile-1', 
-        name: 'Default', 
+      {
+        id: 'profile-1',
+        name: 'Default',
         isDefault: true,
-        budgetRange: { min: 1000, max: 3000, currency: 'USD' as const },
-        groupSize: { preferred: 2, sizes: [1, 2, 4] }
-      },
-      { 
-        id: 'profile-2', 
-        name: 'Adventure', 
+        travelStyle: 'mid-range',
+        budgetRange: { min: 1000, max: 3000, currency: 'USD' },
+        activities: [],
+        foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
+        accommodation: { type: 'hotel', starRating: 4 },
+        transportation: { primaryMode: 'public', maxWalkingDistance: 20 },
+        groupSize: { preferred: 2, sizes: [1, 2, 4] },
+        accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as TravelPreferenceProfile,
+      {
+        id: 'profile-2',
+        name: 'Adventure',
         isDefault: false,
-        budgetRange: { min: 800, max: 2500, currency: 'USD' as const },
-        groupSize: { preferred: 4, sizes: [2, 4, 6] }
-      }
+        travelStyle: 'budget',
+        budgetRange: { min: 800, max: 2500, currency: 'USD' },
+        activities: [],
+        foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'low' },
+        accommodation: { type: 'hostel', starRating: 3 },
+        transportation: { primaryMode: 'walking', maxWalkingDistance: 60 },
+        groupSize: { preferred: 4, sizes: [2, 4, 6] },
+        accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as TravelPreferenceProfile
     ]
   },
   loading: false,
@@ -50,23 +67,7 @@ const mockUseTravelPreferences = {
     groupSize: { preferred: 2, sizes: [1, 2, 4] }
   }),
   getProfileById: (id: string) => {
-    const profiles = [
-      { 
-        id: 'profile-1', 
-        name: 'Default', 
-        isDefault: true,
-        budgetRange: { min: 1000, max: 3000, currency: 'USD' as const },
-        groupSize: { preferred: 2, sizes: [1, 2, 4] }
-      },
-      { 
-        id: 'profile-2', 
-        name: 'Adventure', 
-        isDefault: false,
-        budgetRange: { min: 800, max: 2500, currency: 'USD' as const },
-        groupSize: { preferred: 4, sizes: [2, 4, 6] }
-      }
-    ];
-    return profiles.find(p => p.id === id) || null;
+    return mockUseTravelPreferences.preferences.profiles.find((p: any) => p.id === id) || null;
   }
 };
 
@@ -77,10 +78,12 @@ jest.mock('../../hooks/useTravelPreferences', () => ({
 // Mock Google Places Autocomplete
 jest.mock('react-google-places-autocomplete', () => {
   return function GooglePlacesAutocomplete({ selectProps, ...props }: any) {
+    const placeholder = selectProps?.placeholder || props.apiOptions?.placeholder || '';
+    const testId = /from|departure/i.test(placeholder) ? 'departure-input' : 'destination-input';
     return (
       <input
-        data-testid="destination-input"
-        placeholder={props.apiOptions?.placeholder || 'Where would you like to go?'}
+        data-testid={testId}
+        placeholder={placeholder || 'Where would you like to go?'}
         value={selectProps?.value?.label || ''}
         onChange={(e) => selectProps?.onChange && selectProps.onChange({ label: e.target.value, value: { place_id: 'test-place-id' } })}
       />
@@ -110,6 +113,208 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 describe('AIItineraryGenerationModal', () => {
+  beforeEach(() => {
+    // Reset mock profiles before each test
+    mockUseTravelPreferences.preferences.profiles = [
+      {
+        id: 'profile-1',
+        name: 'Default',
+        isDefault: true,
+        travelStyle: 'mid-range',
+        budgetRange: { min: 1000, max: 3000, currency: 'USD' },
+        activities: [],
+        foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
+        accommodation: { type: 'hotel', starRating: 4 },
+        transportation: { primaryMode: 'public', maxWalkingDistance: 20 },
+        groupSize: { preferred: 2, sizes: [1, 2, 4] },
+        accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 'profile-2',
+        name: 'Adventure',
+        isDefault: false,
+        travelStyle: 'budget',
+        budgetRange: { min: 800, max: 2500, currency: 'USD' },
+        activities: [],
+        foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'low' },
+        accommodation: { type: 'hostel', starRating: 3 },
+        transportation: { primaryMode: 'walking', maxWalkingDistance: 60 },
+        groupSize: { preferred: 4, sizes: [2, 4, 6] },
+        accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+  });
+
+  it('shows flight fields only for profiles with flights enabled', async () => {
+    // Add a profile with flights enabled before rendering
+    mockUseTravelPreferences.preferences.profiles.push({
+      id: 'profile-flights',
+      name: 'Flights Profile',
+      isDefault: false,
+      travelStyle: 'luxury',
+      activities: [],
+      foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
+      accommodation: { type: 'hotel', starRating: 5 },
+      transportation: { primaryMode: 'airplane', maxWalkingDistance: 10, includeFlights: true },
+      budgetRange: { min: 1200, max: 4000, currency: 'USD' },
+      groupSize: { preferred: 2, sizes: [1, 2, 4] },
+      accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+    // Select the flights-enabled profile
+    const profileSelect = screen.getByRole('combobox', { name: /Travel Preference Profile/i });
+    fireEvent.mouseDown(profileSelect);
+    const flightsOption = await screen.findByRole('option', { name: /Flights Profile/ });
+    fireEvent.click(flightsOption);
+    await waitFor(() => {
+      expect(screen.getByText('Flights Profile')).toBeInTheDocument();
+    });
+  // Fill both departure and destination places so flight fields render properly
+  fireEvent.change(screen.getByTestId('departure-input'), { target: { value: 'New York' } });
+  fireEvent.change(screen.getAllByTestId('destination-input')[0], { target: { value: 'Paris' } });
+    await waitFor(() => {
+      // Check for the flight preferences section and the helper caption that appears when airports
+      // haven't had codes selected yet. This is more stable than matching the label text exactly.
+      expect(screen.getByText(/Flight Preferences/)).toBeInTheDocument();
+      expect(screen.getByText(/Select airports above to see your route/)).toBeInTheDocument();
+    });
+  });
+
+  it('hides flight fields for profiles without flights enabled', async () => {
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+    // Select a profile without flights
+    const profileSelect = screen.getByRole('combobox', { name: /Travel Preference Profile/i });
+    fireEvent.mouseDown(profileSelect);
+    const adventureOption = await screen.findByRole('option', { name: /Adventure/ });
+    fireEvent.click(adventureOption);
+    await waitFor(() => {
+      expect(screen.queryByText('Departure Airport')).not.toBeInTheDocument();
+      expect(screen.queryByText('Destination Airport')).not.toBeInTheDocument();
+      expect(screen.queryByText('Flight Preferences')).not.toBeInTheDocument();
+    });
+  });
+
+  it('refreshes flight fields when toggling between profiles with and without flights', async () => {
+    // Add a profile with flights enabled
+    mockUseTravelPreferences.preferences.profiles.push({
+      id: 'profile-flights',
+      name: 'Flights Profile',
+      isDefault: false,
+      travelStyle: 'luxury',
+      activities: [],
+      foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
+      accommodation: { type: 'hotel', starRating: 5 },
+      transportation: { primaryMode: 'airplane', maxWalkingDistance: 10, includeFlights: true },
+      budgetRange: { min: 1200, max: 4000, currency: 'USD' },
+      groupSize: { preferred: 2, sizes: [1, 2, 4] },
+      accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+  const profileSelect = screen.getByRole('combobox', { name: /Travel Preference Profile/i });
+
+  // Open select and choose the flights-enabled profile (MUI menu interactions)
+  fireEvent.mouseDown(profileSelect);
+  const flightsOption = await screen.findByRole('option', { name: /Flights Profile/ });
+  fireEvent.click(flightsOption);
+  // Fill both departure and destination places so airport selectors render
+  fireEvent.change(screen.getByTestId('departure-input'), { target: { value: 'New York' } });
+  fireEvent.change(screen.getAllByTestId('destination-input')[0], { target: { value: 'Paris' } });
+
+  await waitFor(() => {
+    expect(screen.getByText(/Flight Preferences/)).toBeInTheDocument();
+  });
+
+  // Switch to profile without flights using menu interactions
+  fireEvent.mouseDown(profileSelect);
+  const adventureOption = await screen.findByRole('option', { name: /Adventure/ });
+  fireEvent.click(adventureOption);
+
+  await waitFor(() => {
+    expect(screen.queryByText(/Flight Preferences/)).not.toBeInTheDocument();
+  });
+
+  // Switch back to flights-enabled profile using menu interactions
+  fireEvent.mouseDown(profileSelect);
+  const flightsOptionAgain = await screen.findByRole('option', { name: /Flights Profile/ });
+  fireEvent.click(flightsOptionAgain);
+
+    // Ensure the departure input returns when the flights profile is selected
+    await waitFor(() => {
+      expect(screen.getByTestId('departure-input')).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  it('requires airport codes only when flights are enabled', async () => {
+    // Add a profile with flights enabled
+    mockUseTravelPreferences.preferences.profiles.push({
+      id: 'profile-flights',
+      name: 'Flights Profile',
+      isDefault: false,
+      travelStyle: 'luxury',
+      activities: [],
+      foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
+      accommodation: { type: 'hotel', starRating: 5 },
+      transportation: { primaryMode: 'airplane', maxWalkingDistance: 10, includeFlights: true },
+      budgetRange: { min: 1200, max: 4000, currency: 'USD' },
+      groupSize: { preferred: 2, sizes: [1, 2, 4] },
+      accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    render(
+      <TestWrapper>
+        <AIItineraryGenerationModal {...defaultProps} />
+      </TestWrapper>
+    );
+    // Select flights-enabled profile
+    const profileSelect = screen.getByRole('combobox', { name: /Travel Preference Profile/i });
+    fireEvent.mouseDown(profileSelect);
+    const flightsOption = await screen.findByRole('option', { name: /Flights Profile/ });
+    fireEvent.click(flightsOption);
+    await waitFor(() => {
+      expect(screen.getByText('Flights Profile')).toBeInTheDocument();
+    });
+  // Fill both departure and destination to trigger airport validations
+  fireEvent.change(screen.getByTestId('departure-input'), { target: { value: 'New York' } });
+  fireEvent.change(screen.getAllByTestId('destination-input')[0], { target: { value: 'Paris' } });
+    fireEvent.click(screen.getByText('Generate Itinerary'));
+    await waitFor(() => {
+      expect(screen.getByText('Departure airport is required.')).toBeInTheDocument();
+      expect(screen.getByText('Destination airport is required.')).toBeInTheDocument();
+    });
+    // Switch to profile without flights
+    fireEvent.mouseDown(profileSelect);
+    const adventureOption = await screen.findByRole('option', { name: /Adventure/ });
+    fireEvent.click(adventureOption);
+    await waitFor(() => {
+      expect(screen.getByText('Adventure')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Generate Itinerary'));
+    await waitFor(() => {
+      expect(screen.queryByText('Departure airport is required.')).not.toBeInTheDocument();
+      expect(screen.queryByText('Destination airport is required.')).not.toBeInTheDocument();
+    });
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset mock state
@@ -276,7 +481,7 @@ describe('AIItineraryGenerationModal', () => {
     });
     
     // Check that destination is populated
-    const destinationInput = screen.getByTestId('destination-input');
+  const destinationInput = screen.getAllByTestId('destination-input')[0];
     expect(destinationInput).toHaveValue('Paris');
     
     // Wait for the useEffect to trigger cost estimation with longer timeout
@@ -308,8 +513,9 @@ describe('AIItineraryGenerationModal', () => {
       </TestWrapper>
     );
     
-    const closeButton = screen.getByTestId('CloseIcon');
-    fireEvent.click(closeButton);
+  const closeIcon = screen.getByTestId('CloseIcon');
+  const closeButton = closeIcon.closest('button') as HTMLElement;
+  fireEvent.click(closeButton);
     
     expect(onClose).toHaveBeenCalledTimes(1);
   });

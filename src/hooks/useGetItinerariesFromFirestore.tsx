@@ -19,6 +19,7 @@ const useGetItinerariesFromFirestore = () => {
     setError(null);
     const userCredentials = localStorage.getItem("USER_CREDENTIALS");
     let userUid = userCredentials ? JSON.parse(userCredentials).user.uid : null;
+
     if (!userUid) {
       const auth = getAuth();
       userUid = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;

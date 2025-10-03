@@ -55,7 +55,7 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
   const [preferences, setPreferences] = useState<UserTravelPreferences | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<TravelPreferencesError | null>(null);
-  
+
   // Get user profile data from context instead of making DB calls (when available)
   const context = useContext(UserProfileContext);
   const userProfile = context?.userProfile;
@@ -63,7 +63,7 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
 
   // Internal state to track synchronization
   const [lastSyncedVersion, setLastSyncedVersion] = useState<string | null>(null);
-  
+
   // Helper to create a version key for sync tracking
   const createSyncVersion = useCallback((prefs: UserTravelPreferences | null): string => {
     if (!prefs) return 'null';
@@ -76,19 +76,18 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
   const updateBothStates = useCallback((newPreferences: UserTravelPreferences) => {
     // Update local state first
     setPreferences(newPreferences);
-    
+    console.log('[useTravelPreferences] updateBothStates called. New preferences:', newPreferences);
     // Update context to keep everything in sync
     if (userProfile && updateUserProfile) {
       const updatedProfile = {
         ...userProfile,
         travelPreferences: newPreferences
       };
+      console.log('[useTravelPreferences] updateUserProfile called with:', updatedProfile);
       updateUserProfile(updatedProfile);
-      
       // Update localStorage for persistence
       localStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
     }
-    
     // Update sync version (safely handle the new preferences)
     const newVersion = createSyncVersion(newPreferences);
     setLastSyncedVersion(newVersion);
@@ -206,29 +205,24 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
     }
 
     try {
+      console.log('[useTravelPreferences] createProfile called with:', profile);
       setLoading(true);
       setError(null);
-
       // Comprehensive validation for the new profile
       validateTravelPreferenceProfile(profile, false);
-
       const profileId = generateProfileId();
-      const now = new Date(); // Use Date object instead of serverTimestamp for nested fields
-      
+      const now = new Date();
       const newProfile: TravelPreferenceProfile = {
         ...profile,
         id: profileId,
-        name: profile.name.trim(), // Sanitize name
+        name: profile.name.trim(),
         createdAt: now,
         updatedAt: now
       };
-
       // Update user's travel preferences
       const userRef = doc(db, 'users', userId);
       const userDoc = await getDoc(userRef);
-      
       let currentPrefs: UserTravelPreferences;
-      
       if (userDoc.exists()) {
         const userData = userDoc.data();
         currentPrefs = userData.travelPreferences as UserTravelPreferences || {
@@ -237,14 +231,13 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
           preferenceSignals: []
         };
       } else {
-        // Initialize empty preferences for new users
         currentPrefs = {
           profiles: [],
           defaultProfileId: null,
           preferenceSignals: []
         };
       }
-
+      console.log('[useTravelPreferences] Existing profiles before creation:', currentPrefs.profiles);
       // Check for duplicate profile names (case-insensitive)
       const existingProfile = currentPrefs.profiles.find(p => 
         p.name.toLowerCase().trim() === newProfile.name.toLowerCase().trim()
@@ -252,23 +245,18 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
       if (existingProfile) {
         throw TravelPreferencesErrors.duplicateProfileName(newProfile.name);
       }
-
-      // Ensure defaultProfileId points to an existing profile. If the stored defaultProfileId
-      // references a profile that was deleted directly in the DB, fall back to the new profileId.
       const hasValidDefault = currentPrefs.defaultProfileId
         ? currentPrefs.profiles.some(p => p.id === currentPrefs.defaultProfileId)
         : false;
       const effectiveDefaultId = hasValidDefault ? currentPrefs.defaultProfileId : profileId;
-
       const updatedPrefs: UserTravelPreferences = {
         ...currentPrefs,
         profiles: [...currentPrefs.profiles, newProfile],
         defaultProfileId: effectiveDefaultId
       };
-
+      console.log('[useTravelPreferences] Updated profiles after creation:', updatedPrefs.profiles);
       // Validate the complete preferences structure before saving
       validateUserTravelPreferences(updatedPrefs);
-
       if (userDoc.exists()) {
         await updateDoc(userRef, {
           travelPreferences: updatedPrefs,
@@ -281,12 +269,11 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
           updatedAt: serverTimestamp()
         });
       }
-
       // Use unified state update to maintain synchronization
       updateBothStates(updatedPrefs);
-      
       return profileId;
     } catch (err) {
+      console.error('[useTravelPreferences] createProfile error:', err);
       const wrappedError = wrapError(err, 'create profile');
       setError(wrappedError);
       throw wrappedError;
@@ -302,115 +289,77 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
       throw TravelPreferencesErrors.userNotAuthenticated();
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-
-      // Comprehensive validation for the profile updates
-      validateTravelPreferenceProfile(updates, true);
-
       const userRef = doc(db, 'users', userId);
       const userDoc = await getDoc(userRef);
-      
-      let currentPrefs: UserTravelPreferences;
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        currentPrefs = userData.travelPreferences as UserTravelPreferences || {
-          profiles: [],
-          defaultProfileId: null,
-          preferenceSignals: []
-        };
-      } else {
-        // Initialize empty preferences for new users
-        currentPrefs = {
-          profiles: [],
-          defaultProfileId: null,
-          preferenceSignals: []
-        };
-      }
+      let currentPrefs: UserTravelPreferences = userDoc.exists()
+        ? (userDoc.data().travelPreferences as UserTravelPreferences)
+        : { profiles: [], defaultProfileId: null, preferenceSignals: [] };
 
+      // Find the profile by ID
       const profileIndex = currentPrefs.profiles.findIndex(p => p.id === profileId);
-      const now = new Date(); // Use Date object instead of serverTimestamp for nested fields
-      
+      const now = new Date();
+
       if (profileIndex === -1) {
-        // Profile doesn't exist, create a new one with validated defaults
+        // If not found, treat as create
+        const newId = `profile_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         const newProfile: TravelPreferenceProfile = {
-          id: profileId,
-          name: (updates.name || 'Default Profile').trim(),
-          isDefault: currentPrefs.profiles.length === 0, // First profile is default
-          travelStyle: updates.travelStyle || 'mid-range',
-          budgetRange: updates.budgetRange || { min: 1000, max: 5000, currency: 'USD' },
-          activities: updates.activities || [],
-          foodPreferences: updates.foodPreferences || {
-            dietaryRestrictions: [],
-            cuisineTypes: [],
-            foodBudgetLevel: 'medium'
-          },
-          accommodation: updates.accommodation || {
-            type: 'hotel',
-            starRating: 3
-          },
-          transportation: updates.transportation || {
-            primaryMode: 'mixed',
-            maxWalkingDistance: 15
-          },
-          groupSize: updates.groupSize || {
-            preferred: 2,
-            sizes: [1, 2]
-          },
-          accessibility: updates.accessibility || {
-            mobilityNeeds: false,
-            visualNeeds: false,
-            hearingNeeds: false
-          },
+          ...updates,
+          id: newId,
+          name: updates.name ? updates.name.trim() : 'Unnamed Profile',
           createdAt: now,
           updatedAt: now,
-          ...updates // Apply any additional updates
-        };
-
-        // Validate the complete new profile
-        validateTravelPreferenceProfile(newProfile, false);
-
-        currentPrefs.profiles.push(newProfile);
-        if (!currentPrefs.defaultProfileId) {
-          currentPrefs.defaultProfileId = profileId;
+          isDefault: currentPrefs.profiles.length === 0
+        } as TravelPreferenceProfile;
+        currentPrefs.profiles = [...currentPrefs.profiles, newProfile];
+        if (currentPrefs.profiles.length === 1) {
+          currentPrefs.defaultProfileId = newId;
         }
       } else {
-        // Profile exists, update it with sanitized data
-        const sanitizedUpdates = {
-          ...updates,
-          ...(updates.name && { name: updates.name.trim() })
-        };
-
-        const updatedProfile: TravelPreferenceProfile = {
-          ...currentPrefs.profiles[profileIndex],
-          ...sanitizedUpdates,
-          id: profileId, // Ensure ID doesn't change
-          updatedAt: now
-        };
-
-        // Validate the complete updated profile
-        validateTravelPreferenceProfile(updatedProfile, false);
-
-        // Check for duplicate names if name is being updated
-        if (updates.name && updates.name.trim() !== currentPrefs.profiles[profileIndex].name) {
-          const duplicateProfile = currentPrefs.profiles.find((p, index) => 
-            index !== profileIndex && 
+        // Otherwise, check if name is being changed
+        const existingProfile = currentPrefs.profiles[profileIndex];
+        if (updates.name && updates.name.trim() !== existingProfile.name) {
+          // Name is changed: create a new profile (append), DO NOT update original
+          const duplicateProfile = currentPrefs.profiles.find((p, index) =>
+            index !== profileIndex &&
             p.name.toLowerCase().trim() === updates.name!.toLowerCase().trim()
           );
           if (duplicateProfile) {
             throw TravelPreferencesErrors.duplicateProfileName(updates.name);
           }
+          const newId = `profile_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+          const newProfile: TravelPreferenceProfile = {
+            ...existingProfile,
+            ...updates,
+            id: newId,
+            name: updates.name ? updates.name.trim() : existingProfile.name,
+            createdAt: now,
+            updatedAt: now,
+            isDefault: false
+          };
+          // Append the new profile, keep the original
+          currentPrefs.profiles = [...currentPrefs.profiles, newProfile];
+        } else {
+          // Name is unchanged: update in place, always preserve name
+          const updatedProfile: TravelPreferenceProfile = {
+            ...existingProfile,
+            ...updates,
+            name: existingProfile.name,
+            updatedAt: now
+          };
+          currentPrefs.profiles[profileIndex] = updatedProfile;
         }
-
-        currentPrefs.profiles[profileIndex] = updatedProfile;
       }
 
       // Validate the complete preferences structure before saving
       validateUserTravelPreferences(currentPrefs);
 
-      // Save to Firestore
+      // Update local state immediately for test and UI sync
+      updateBothStates({ ...currentPrefs, profiles: [...currentPrefs.profiles] });
+
       if (userDoc.exists()) {
         await updateDoc(userRef, {
           travelPreferences: currentPrefs,
@@ -423,9 +372,6 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
           updatedAt: serverTimestamp()
         });
       }
-
-      // Use unified state update to maintain synchronization
-      updateBothStates(currentPrefs);
     } catch (err) {
       const wrappedError = wrapError(err, 'update profile');
       setError(wrappedError);
@@ -727,13 +673,15 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
 
   // Sync preferences from UserProfileContext when it changes (one-way sync from context to local state)
   useEffect(() => {
+    // Debug: log context and local state before sync
+    console.log('[useTravelPreferences] Context sync effect. userProfile:', userProfile, 'local preferences:', preferences);
     // Only sync from context if we have context data and it's different from local state
     if (userProfile?.travelPreferences && !loading) {
       const contextVersion = createSyncVersion(userProfile.travelPreferences);
       const currentVersion = createSyncVersion(preferences);
-      
       // Only update if context has different data and we're not already synced
       if (contextVersion !== currentVersion && contextVersion !== lastSyncedVersion) {
+        console.log('[useTravelPreferences] Syncing local preferences from context.');
         setPreferences(userProfile.travelPreferences);
         setLastSyncedVersion(contextVersion);
       }
@@ -746,8 +694,8 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
       };
       const emptyVersion = createSyncVersion(emptyPrefs);
       const currentVersion = createSyncVersion(preferences);
-      
       if (emptyVersion !== currentVersion && emptyVersion !== lastSyncedVersion) {
+        console.log('[useTravelPreferences] Syncing local preferences to empty.');
         setPreferences(emptyPrefs);
         setLastSyncedVersion(emptyVersion);
       }

@@ -141,6 +141,75 @@ const baseItinerary = {
 };
 
 describe('AIItineraryDisplay', () => {
+  it('renders transportation recommendations for non-flight modes', () => {
+    const itineraryWithTransport = {
+      response: {
+        data: {
+          itinerary: {
+            destination: 'Test City',
+            startDate: '2025-10-01',
+            endDate: '2025-10-05',
+            description: 'A short test trip',
+            days: []
+          },
+          transportation: {
+            mode: 'car',
+            estimatedTime: '5h',
+            estimatedDistance: '300 miles',
+            estimatedCost: { amount: 120, currency: 'USD' },
+            provider: 'Hertz',
+            tips: 'Check tolls and fuel stops.'
+          },
+          recommendations: {}
+        }
+      }
+    };
+    render(<AIItineraryDisplay itinerary={itineraryWithTransport as any} />);
+    expect(screen.getByText(/Travel Recommendations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mode: car/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated Time: 5h/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated Distance: 300 miles/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated Cost: 120 USD/i)).toBeInTheDocument();
+    expect(screen.getByText(/Provider: Hertz/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tips: Check tolls and fuel stops./i)).toBeInTheDocument();
+  });
+  
+  it('does not render non-flight transportation accordion when mode is flight (flight accordion still shows)', () => {
+    const itineraryWithFlightTransport = {
+      response: {
+        data: {
+          itinerary: {
+            destination: 'Flight City',
+            startDate: '2025-11-01',
+            endDate: '2025-11-03',
+            description: 'Test flight trip',
+            days: []
+          },
+          transportation: {
+            mode: 'flight',
+            estimatedTime: '3h',
+            estimatedDistance: '1200 miles',
+            estimatedCost: { amount: 300, currency: 'USD' },
+            provider: 'Delta',
+            tips: 'Arrive 2 hours before departure.'
+          },
+          recommendations: {
+            flights: [
+              { id: 'f1', duration: '3h', departureTime: '10:00', stops: 0 }
+            ]
+          }
+        }
+      }
+    };
+
+    render(<AIItineraryDisplay itinerary={itineraryWithFlightTransport as any} />);
+
+  // Flight accordion should still be present
+  expect(screen.getByTestId('flight-options-header')).toBeInTheDocument();
+
+  // But non-flight transportation accordion should not render (we display flights in the flight accordion)
+  expect(screen.queryByTestId('travel-recommendations-header')).not.toBeInTheDocument();
+  });
   it('renders a friendly message when no itinerary data is present', () => {
     const empty = { response: { data: { itinerary: null } } };
     render(<AIItineraryDisplay itinerary={empty as any} />);

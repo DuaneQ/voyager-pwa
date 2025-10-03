@@ -77,6 +77,7 @@ const useSearchItineraries = () => {
   // Apply client-side filters
   const applyClientSideFilters = (results: Itinerary[], params: SearchParams): Itinerary[] => {
     const { currentUserItinerary, currentUserId } = params;
+    console.log('currentUserItinerary', currentUserItinerary)
     const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
     const userEndDay = new Date(currentUserItinerary.endDate!).getTime();
     const viewedItineraries = getViewedItineraries();
@@ -122,25 +123,26 @@ const useSearchItineraries = () => {
   };
 
   // Fetch from Firestore with pagination
-   const fetchFromFirestore = async (params: SearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
+  const fetchFromFirestore = async (params: SearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
     const { currentUserItinerary } = params;
     const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
 
+    const PAGE_SIZE = 2;
     // Build query constraints with proper typing, skip filters if 'No Preference' or empty
     const constraints: QueryConstraint[] = [
       where("destination", "==", currentUserItinerary.destination),
       ...(currentUserItinerary.gender && currentUserItinerary.gender !== "No Preference"
         ? [where("userInfo.gender", "==", currentUserItinerary.gender)]
         : []),
-      ...(currentUserItinerary.userInfo?.status && currentUserItinerary.userInfo.status !== "No Preference"
-        ? [where("userInfo.status", "==", currentUserItinerary.userInfo.status)]
+      ...(currentUserItinerary?.status && currentUserItinerary?.status !== "No Preference"
+        ? [where("userInfo.status", "==", currentUserItinerary?.status)]
         : []),
       ...(currentUserItinerary.sexualOrientation && currentUserItinerary.sexualOrientation !== "No Preference"
         ? [where("userInfo.sexualOrientation", "==", currentUserItinerary.sexualOrientation)]
         : []),
       where("endDay", ">=", userStartDay),
       orderBy("endDay"),
-      limit(20) // Fetch 20 at a time
+      limit(PAGE_SIZE) // Fetch 2 at a time to reduce Firestore reads/costs
     ];
 
     // Add pagination cursor for subsequent requests
@@ -151,23 +153,41 @@ const useSearchItineraries = () => {
     const db = getFirestore(app);
     const itinerariesQuery = query(collection(db, "itineraries"), ...constraints);
     const snapshot = await getDocs(itinerariesQuery);
+
+    // Debug: log results from Firestore query (counts + ids)
+    try {
+      const itinIds = (snapshot?.docs || []).map((d: any) => d.id);
+    } catch (e) {
+      // defensive
+    }
     
     // Update pagination state
-    if (snapshot.docs.length > 0) {
+    if (snapshot.docs && snapshot.docs.length > 0) {
       setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(snapshot.docs.length === 20); // Has more if we got a full page
-    } else {
-      setHasMore(false);
     }
+  // If the itineraries collection returned at least a full page, indicate there may be more
+  setHasMore((snapshot.docs && snapshot.docs.length >= PAGE_SIZE));
 
-    return snapshot.docs.map((doc) => ({
+    const regularItineraries: Itinerary[] = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as Itinerary[];
-  };
 
+    // Dedupe just in case and preserve order
+    const seen = new Set<string>();
+    const unique: Itinerary[] = [];
+    for (const it of regularItineraries) {
+      if (!it || !it.id) continue;
+      if (seen.has(it.id)) continue;
+      seen.add(it.id);
+      unique.push(it);
+    }
+
+    return unique;
+  };
   // Main search function
   const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {    
+
     // ✅ Reset cache flag at start of new search
     setIsFromCache(false);
     
@@ -260,7 +280,6 @@ const useSearchItineraries = () => {
     }
     
     if (remainingMatches <= bufferSize && hasMore && !loading && !isFromCache) {
-      console.log(`🔄 Auto-loading more matches. Remaining: ${remainingMatches}`);
       loadMoreMatches();
     }
   };
