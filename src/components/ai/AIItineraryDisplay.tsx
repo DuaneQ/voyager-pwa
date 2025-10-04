@@ -264,7 +264,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       const lvl = item.price_level ?? item.priceLevel;
       return `${'$'.repeat(Math.max(1, Math.min(4, Number(lvl) || 1)))}`;
     }
-    return 'Price unknown';
+    return '';
   };
 
   const formatActivityPrice = (activity: any): string => {
@@ -629,7 +629,94 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
       {/* Travel Recommendations Section - For non-flight transportation */}
       {(() => {
-        const transport = currentItinerary?.response?.data?.recommendations?.transportation as any;
+        // Transportation may be stored directly under response.data.transportation (preferred)
+        // or under response.data.recommendations.transportation (older payloads). Check both.
+        const rawTransport = (currentItinerary?.response?.data?.transportation ?? currentItinerary?.response?.data?.recommendations?.transportation) as any;
+        // Normalize multiple possible shapes so tests and UI can rely on a single shape
+        const transport = rawTransport ? {
+          mode: rawTransport.mode,
+          // Accept either a pre-formatted string ("5h") or numeric hours (5)
+          estimatedTime: rawTransport.estimatedTime ?? (rawTransport.estimated_duration_hours ? `${rawTransport.estimated_duration_hours}h` : null),
+          estimatedDistance: rawTransport.estimatedDistance ?? (rawTransport.estimated_distance_miles ? `${rawTransport.estimated_distance_miles} miles` : null),
+          // Accept either a simple number/string (estimated_cost_usd) or an object { amount, currency }
+          estimatedCost: rawTransport.estimated_cost_usd ? (typeof rawTransport.estimated_cost_usd === 'number' ? `${rawTransport.estimated_cost_usd} USD` : String(rawTransport.estimated_cost_usd))
+                         : (rawTransport.estimatedCost && typeof rawTransport.estimatedCost === 'object' ? `${rawTransport.estimatedCost.amount} ${rawTransport.estimatedCost.currency || 'USD'}` : (rawTransport.estimatedCost ? String(rawTransport.estimatedCost) : null)),
+          // Providers may be a single provider string or an array of provider objects
+          providers: rawTransport.providers && Array.isArray(rawTransport.providers) ? rawTransport.providers : (rawTransport.provider ? [{ name: rawTransport.provider }] : []),
+          // Steps (ordered guidance) may be provided on transport
+          steps: rawTransport.steps ? (Array.isArray(rawTransport.steps) ? rawTransport.steps : [String(rawTransport.steps)]) : [],
+          // Tips may be a string or an array
+          tips: rawTransport.tips ? (Array.isArray(rawTransport.tips) ? rawTransport.tips : [String(rawTransport.tips)]) : []
+        } : null;
+
+        // Also read any raw assumptions saved on the itinerary. We will only surface
+        // these when transport recommendations exist (per product decision).
+        const assumptions = (currentItinerary as any)?.response?.data?.assumptions as any;
+
+        // Combine providers from transport and assumptions (dedupe by url/name)
+        const combinedProviders: any[] = (() => {
+          const list: any[] = [];
+          if (transport?.providers && Array.isArray(transport.providers)) list.push(...transport.providers);
+          if (assumptions?.providers && Array.isArray(assumptions.providers)) list.push(...assumptions.providers);
+          // Normalize provider URL fields (some providers use website, url, link, href, etc.)
+          const normalizeUrl = (p: any) => p?.url || p?.website || p?.link || p?.href || p?.site || null;
+          const seen = new Set<string>();
+          const out: any[] = [];
+          for (const p of list) {
+            const url = normalizeUrl(p);
+            const key = url || p?.name || JSON.stringify(p);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const clone = { ...p, _normalizedUrl: url };
+            out.push(clone);
+          }
+          // If multiple providers share the same normalized URL, remove the URL
+          // for those duplicates so the UI doesn't show multiple links to the
+          // same place (avoids confusion). Keep links only when unique.
+          const urlCounts = out.reduce((acc: any, p: any) => {
+            const u = p._normalizedUrl || null;
+            if (!u) return acc;
+            acc[u] = (acc[u] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          if (Object.keys(urlCounts).length > 0) {
+            for (const p of out) {
+              if (p._normalizedUrl && urlCounts[p._normalizedUrl] > 1) {
+                p._normalizedUrl = null;
+              }
+            }
+          }
+          return out;
+        })();
+
+        // Dev helper: log the combined providers so you can inspect raw objects
+        // and confirm which URL fields were used. This only logs in non-production
+        // builds to avoid noisy logs in production.
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.log('AIItineraryDisplay: combinedProviders', combinedProviders);
+        }
+
+        const combinedTips: string[] = (() => {
+          const t: string[] = [];
+          if (transport?.tips && Array.isArray(transport.tips)) t.push(...transport.tips.map(String));
+          if (assumptions?.tips) {
+            if (Array.isArray(assumptions.tips)) t.push(...assumptions.tips.map(String));
+            else t.push(String(assumptions.tips));
+          }
+          return t;
+        })();
+
+        // Combine ordered steps from transport and assumptions as well (transport steps first)
+        const combinedSteps: string[] | null = (() => {
+          const s: string[] = [];
+          if (transport?.steps && Array.isArray(transport.steps)) s.push(...transport.steps.map(String));
+          if (assumptions?.steps && Array.isArray(assumptions.steps)) s.push(...assumptions.steps.map(String));
+          // dedupe identical step strings
+          const uniq = Array.from(new Set(s));
+          return uniq.length > 0 ? uniq : null;
+        })();
+
         return transport && transport.mode !== 'flight' && (
         <Accordion sx={{ 
           mb: 2,
@@ -665,9 +752,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     }}
                   />
                   
-                  {transport.estimated_duration_hours && (
+                  {transport.estimatedTime && (
                     <Chip 
-                      label={`Estimated Time: ${transport.estimated_duration_hours} hours`}
+                      label={`Estimated Time: ${transport.estimatedTime}`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -675,10 +762,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       }}
                     />
                   )}
-                  
-                  {transport.estimated_distance_miles && (
+
+                  {transport.estimatedDistance && (
                     <Chip 
-                      label={`Estimated Distance: ${transport.estimated_distance_miles} miles`}
+                      label={`Estimated Distance: ${transport.estimatedDistance}`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -686,10 +773,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       }}
                     />
                   )}
-                  
-                  {transport.estimated_cost_usd && (
+
+                  {transport.estimatedCost && (
                     <Chip 
-                      label={`Estimated Cost: ${transport.estimated_cost_usd}`}
+                      label={`Estimated Cost: ${transport.estimatedCost}`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -697,29 +784,47 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       }}
                     />
                   )}
-                  
-                  {transport.providers && transport.providers.length > 0 && (
-                    <Chip 
-                      label={`Providers: ${transport.providers.map((p: any) => p.name).join(', ')}`}
-                      size="small" 
-                      sx={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white'
-                      }}
-                    />
-                  )}
+
+                  {/* Note: provider summary removed per UX — providers are shown below as clickable links */}
                 </Box>
-                
-                {transport.tips && Array.isArray(transport.tips) && transport.tips.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>💡 Tips:</Typography>
-                    {transport.tips.map((tip: string, index: number) => (
-                      <Typography key={index} variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 0.5 }}>
-                        • {tip}
+                  {combinedTips && combinedTips.length > 0 && (
+                    <Box sx={{ mt: 2, textAlign: 'left' }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 0.5, textAlign: 'left' }}>
+                        Tips: {combinedTips.join(' ')}
                       </Typography>
-                    ))}
-                  </Box>
-                )}
+                    </Box>
+                  )}
+
+                  {/* Provider buttons, steps, and tips from assumptions (rendered when transport exists) */}
+                  {combinedProviders && combinedProviders.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ color: 'white', mb: 0.5 }}>Providers:</Typography>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {combinedProviders.map((p: any, i: number) => (
+                          <Box key={`provider-${i}`}>
+                            {/* Render as a clear link so users recognize clickability */}
+                            <a
+                              href={p._normalizedUrl || undefined}
+                              target={p._normalizedUrl ? '_blank' : undefined}
+                              rel={p._normalizedUrl ? 'noopener noreferrer' : undefined}
+                              style={{ color: 'white', textDecoration: 'underline', cursor: p._normalizedUrl ? 'pointer' : 'default', fontSize: '0.95rem' }}
+                            >
+                              {p.name || p._normalizedUrl || 'Provider'}
+                            </a>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {combinedSteps && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ color: 'white', mb: 0.5 }}>Steps:</Typography>
+                      <ol style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 16, textAlign: 'left', paddingLeft: 18 }}>
+                        {combinedSteps.map((s: string, idx: number) => <li key={`step-${idx}`} style={{ marginBottom: 6 }}>{s}</li>)}
+                      </ol>
+                    </Box>
+                  )}
               </CardContent>
             </Card>
           </AccordionDetails>
@@ -1009,7 +1114,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
                           <Chip label={`⭐ ${acc.rating ?? acc.starRating ?? 'N/A'}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
                           <Chip label={`${acc.userRatingsTotal ?? acc.user_ratings_total ?? 0} reviews`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
-                          <Chip label={priceLabel} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
+                          {priceLabel ? <Chip label={priceLabel} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} /> : null}
                           {bookingLink && (
                             <Button size="small" variant="contained" href={bookingLink} target="_blank" rel="noopener noreferrer" sx={{ ml: 'auto', backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}>
                               Book

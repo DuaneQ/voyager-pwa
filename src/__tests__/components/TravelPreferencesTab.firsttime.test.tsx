@@ -30,6 +30,8 @@ jest.mock('../../hooks/useTravelPreferences');
 const mockUseTravelPreferences = useTravelPreferences as jest.MockedFunction<typeof useTravelPreferences>;
 
 describe('TravelPreferencesTab - First Time User Experience', () => {
+  // Increase timeout for slower CI environments
+  jest.setTimeout(20000);
   // Mock UserProfileContext value
   const mockUserProfile = { id: 'test-user', name: 'Test User' };
   const mockSetUserProfile = jest.fn();

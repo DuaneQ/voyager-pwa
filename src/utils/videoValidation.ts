@@ -35,15 +35,17 @@ export const validateVideoFile = async (file: File): Promise<VideoValidationResu
     errors.push(`File size too large (${fileSizeMB.toFixed(1)}MB). Maximum size: ${maxSizeMB}MB`);
   }
 
-  // Check video duration with timeout and better error handling
-  try {
-    const duration = await getVideoDuration(file);
-    if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
-      errors.push(`Video too long (${Math.round(duration)}s). Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`);
+  // Only check video duration if other validations pass to avoid timeouts
+  if (errors.length === 0) {
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
+        errors.push(`Video too long (${Math.round(duration)}s). Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error reading video duration';
+      errors.push(`Unable to read video duration: ${errorMessage}`);
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error reading video duration';
-    errors.push(`Unable to read video duration: ${errorMessage}`);
   }
 
   return {

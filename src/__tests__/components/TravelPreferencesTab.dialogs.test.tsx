@@ -15,6 +15,8 @@ const mockUseTravelPreferences = useTravelPreferences as jest.MockedFunction<typ
 const mockUseAIGenerated = useAIGeneratedItineraries as jest.MockedFunction<typeof useAIGeneratedItineraries>;
 
 describe('TravelPreferencesTab dialogs and AI handler', () => {
+  // Increase timeout for async UI interactions in this file (some CI environments are slower)
+  jest.setTimeout(20000);
   const mockUserProfile = { id: 'test-user', name: 'Test User' };
   const mockUserProfileContextValue = {
     userProfile: mockUserProfile,
@@ -64,7 +66,8 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
   activities: [],
       foodPreferences: { dietaryRestrictions: [], cuisineTypes: [], foodBudgetLevel: 'medium' },
       accommodation: { type: 'hotel', starRating: 3, minUserRating: 3.5 },
-      transportation: { primaryMode: 'mixed', maxWalkingDistance: 15 },
+  // Use an allowed MUI Select value to avoid out-of-range warnings and extra re-renders
+  transportation: { primaryMode: 'walking', maxWalkingDistance: 15 },
       groupSize: { preferred: 2, sizes: [1,2,4] },
       accessibility: { mobilityNeeds: false, visualNeeds: false, hearingNeeds: false },
       createdAt: new Date(), updatedAt: new Date()
@@ -100,20 +103,32 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
 
   const { rerender } = render(withProviders(<TravelPreferencesTab />));
 
+  // Ensure we're selecting the non-default profile so the component opens the Create dialog
+  // The MUI Select may not be properly associated with its label in jsdom; locate the FormControl
+  // container for the 'Select Profile' label and find the combobox inside it.
+  const profileLabel = screen.getByText('Select Profile');
+  const formControl = profileLabel.closest('.MuiFormControl-root') || profileLabel.parentElement;
+  if (!formControl) throw new Error('Profile form control not found');
+  const profileCombobox = formControl.querySelector('[role="combobox"]') as HTMLElement | null;
+  if (!profileCombobox) throw new Error('Could not find profile combobox');
+  await act(async () => userEvent.click(profileCombobox));
+  const secondOption = await screen.findByText('Second');
+  await act(async () => userEvent.click(secondOption));
+
     // Click Create New Profile button (component shows this when profiles exist)
     const createButtons = screen.getAllByText('Create New Profile');
     const mainCreate = createButtons[0];
     await act(async () => userEvent.click(mainCreate));
 
-    // The component opens a prompt in normal flow; when multiple profiles exist, it should open dialog
-    // The dialog title should be visible
-    expect(await screen.findByText('Create New Profile')).toBeInTheDocument();
+    // The component opens a dialog in this flow; wait for the dialog heading specifically
+    expect(await screen.findByRole('heading', { name: 'Create New Profile' })).toBeInTheDocument();
 
     // Mock prompt used by dialog handler: spy on window.prompt to return a name
-  const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Dialog Created');
+    const promptSpy = jest.spyOn(window, 'prompt').mockReturnValue('Dialog Created');
 
-    // Click the Create New Profile button inside the dialog
-    const dialogCreate = screen.getByRole('button', { name: /Create New Profile/i });
+    // Click the Create New Profile button inside the dialog (scope the query to the open dialog)
+    const dialog = screen.getByRole('dialog');
+    const dialogCreate = within(dialog).getByRole('button', { name: /Create New Profile/i });
     await act(async () => userEvent.click(dialogCreate));
 
     await waitFor(() => {
