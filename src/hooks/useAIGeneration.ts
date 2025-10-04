@@ -623,8 +623,13 @@ export const useAIGeneration = () => {
     // parsedTransportation holds a structured transportation recommendation when the
     // server returns assistant text (JSON) containing a transportation object.
     if (aiData && typeof aiData === 'object') {
+      console.log('🤖 [useAIGeneration] AI Data received, keys:', Object.keys(aiData));
+      
       // If server returned a simple transportation object (common test shape), capture it
-      if ((aiData as any).transportation) parsedTransportation = (aiData as any).transportation;
+      if ((aiData as any).transportation) {
+        parsedTransportation = (aiData as any).transportation;
+        console.log('🚗 [useAIGeneration] Found transportation in direct aiData:', parsedTransportation);
+      }
 
       // aiData may be the unwrapped payload; server callables sometimes return
       // { success: true, data: {...} } so we normalized above. Check common
@@ -823,14 +828,23 @@ export const useAIGeneration = () => {
   // response.data.recommendations.transportation. Do NOT touch flights.
   try {
     if (parsedTransportation) {
+      console.log('🚗 [useAIGeneration] MERGING TRANSPORTATION DATA:', JSON.stringify(parsedTransportation, null, 2));
       toSave = toSave || {};
       toSave.response = toSave.response || { success: true, data: { recommendations: {} } };
       toSave.response.data = toSave.response.data || {};
       toSave.response.data.recommendations = toSave.response.data.recommendations || {};
-      // Only set transportation here; do NOT modify flights.
-  toSave.response.data.recommendations.transportation = parsedTransportation;
+      
+      // CRITICAL FIX: UI looks for transportation at response.data.transportation, not recommendations.transportation
+      toSave.response.data.transportation = parsedTransportation;
+      toSave.response.data.recommendations.transportation = parsedTransportation;
+      
+      console.log('🚗 [useAIGeneration] Transportation merged to BOTH locations successfully');
+      console.log('toSave.response.data.transportation exists:', !!toSave.response.data.transportation);
+    } else {
+      console.log('❌ [useAIGeneration] NO TRANSPORTATION DATA TO MERGE - parsedTransportation is null/undefined');
     }
   } catch (e) {
+    console.error('❌ [useAIGeneration] Transportation merge failed:', e);
     // ignore merge errors; do not block saving
   }
 

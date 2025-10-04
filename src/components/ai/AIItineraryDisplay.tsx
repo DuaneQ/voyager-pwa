@@ -36,13 +36,14 @@ import { app } from '../../environments/firebaseConfig';
 
 // Import refactored sections
 import { AIItineraryHeader } from './sections/AIItineraryHeader';
+import ShareAIItineraryModal from '../modals/ShareAIItineraryModal';
 
 interface AIItineraryDisplayProps {
   itinerary?: AIGeneratedItinerary | null;
 }
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
-  const { itineraries, refreshItineraries, fetchAIItineraries } = useAIGeneratedItineraries();
+  const { itineraries, refreshItineraries } = useAIGeneratedItineraries();
   const [selectedId, setSelectedId] = useState<string | null>(itinerary?.id || null);
   const [selectedItinerary, setSelectedItinerary] = useState<AIGeneratedItinerary | null>(itinerary || null);
   
@@ -54,6 +55,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   // Basic editing state
   const [isEditing, setIsEditing] = useState(false);
   const [editingData, setEditingData] = useState<AIGeneratedItinerary | null>(null);
+  
+  // Share modal state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Selection handlers
   const toggleFlightSelection = (flightIndex: number) => {
@@ -328,6 +332,14 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     setEditingData(null);
   };
 
+  const handleShare = () => {
+    setShareModalOpen(true);
+  };
+
+  const handleShareClose = () => {
+    setShareModalOpen(false);
+  };
+
   return (
     <Box sx={{ color: 'white' }}>
       {/* Header Section */}
@@ -338,6 +350,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         onEditStart={handleEditStart}
         onSave={handleSave}
         onCancel={handleCancel}
+        onShare={handleShare}
       />
 
           {/* Batch Delete Controls - Show only in edit mode */}
@@ -615,7 +628,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       )}
 
       {/* Travel Recommendations Section - For non-flight transportation */}
-      {currentItinerary?.response?.data?.transportation && currentItinerary.response.data.transportation.mode !== 'flight' && (
+      {(() => {
+        const transport = currentItinerary?.response?.data?.recommendations?.transportation as any;
+        return transport && transport.mode !== 'flight' && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -642,7 +657,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                 
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
                   <Chip 
-                    label={`Mode: ${currentItinerary.response.data.transportation.mode}`}
+                    label={`Mode: ${transport.mode}`}
                     size="small" 
                     sx={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -650,9 +665,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     }}
                   />
                   
-                  {currentItinerary.response.data.transportation.estimatedTime && (
+                  {transport.estimated_duration_hours && (
                     <Chip 
-                      label={`Estimated Time: ${currentItinerary.response.data.transportation.estimatedTime}`}
+                      label={`Estimated Time: ${transport.estimated_duration_hours} hours`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -661,9 +676,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     />
                   )}
                   
-                  {currentItinerary.response.data.transportation.estimatedDistance && (
+                  {transport.estimated_distance_miles && (
                     <Chip 
-                      label={`Estimated Distance: ${currentItinerary.response.data.transportation.estimatedDistance}`}
+                      label={`Estimated Distance: ${transport.estimated_distance_miles} miles`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -672,9 +687,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     />
                   )}
                   
-                  {currentItinerary.response.data.transportation.estimatedCost && (
+                  {transport.estimated_cost_usd && (
                     <Chip 
-                      label={`Estimated Cost: ${currentItinerary.response.data.transportation.estimatedCost.amount} ${currentItinerary.response.data.transportation.estimatedCost.currency}`}
+                      label={`Estimated Cost: ${transport.estimated_cost_usd}`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -683,9 +698,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     />
                   )}
                   
-                  {currentItinerary.response.data.transportation.provider && (
+                  {transport.providers && transport.providers.length > 0 && (
                     <Chip 
-                      label={`Provider: ${currentItinerary.response.data.transportation.provider}`}
+                      label={`Providers: ${transport.providers.map((p: any) => p.name).join(', ')}`}
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -695,16 +710,22 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   )}
                 </Box>
                 
-                {currentItinerary.response.data.transportation.tips && (
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mt: 2 }}>
-                    {`Tips: ${currentItinerary.response.data.transportation.tips}`}
-                  </Typography>
+                {transport.tips && Array.isArray(transport.tips) && transport.tips.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>💡 Tips:</Typography>
+                    {transport.tips.map((tip: string, index: number) => (
+                      <Typography key={index} variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 0.5 }}>
+                        • {tip}
+                      </Typography>
+                    ))}
+                  </Box>
                 )}
               </CardContent>
             </Card>
           </AccordionDetails>
         </Accordion>
-      )}
+        );
+      })()}
 
       {/* Flight Prices Section - Support both legacy and new flight data structures */}
       {(((itineraryProvider as any)?.flights && Array.isArray((itineraryProvider as any).flights) && (itineraryProvider as any).flights.length > 0) ||
@@ -1909,6 +1930,15 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             </Accordion>
           )}
         </Box>
+      )}
+      
+      {/* Share Modal */}
+      {selectedItinerary && (
+        <ShareAIItineraryModal
+          open={shareModalOpen}
+          onClose={handleShareClose}
+          itinerary={selectedItinerary}
+        />
       )}
     </Box>
   );
