@@ -7,7 +7,7 @@ import { AIGenerationRequest } from '../types/AIGeneration';
 import { AirlineCodeConverter } from '../utils/airlineMapping';
 import { ACTIVITY_KEYWORD_MAP } from '../utils/activityKeywords';
 
-import { extractJSONFromString, parseAssistantJSON } from '../utils/ai/parsers';
+import { parseAssistantJSON } from '../utils/ai/parsers';
 
 interface ItineraryResult {
   id: string | null;
@@ -854,11 +854,11 @@ export const useAIGeneration = () => {
   // Save the raw flightResultData under recommendations.flights where
   // the UI (`AIItineraryDisplay`) expects it. Avoid duplicating flights at top-level.
 
-    // Save to Firestore - AI generations go to 'itineraries' collection
+    // Save to Firestore - AI generations go to 'ai_generations' collection
     try {
       // Log arguments to doc and setDoc for troubleshooting
-      console.log('[useAIGeneration] Firestore doc args:', db, 'itineraries', clientGenerationId);
-      const docRef = doc(db, 'itineraries', clientGenerationId);
+      console.log('[useAIGeneration] Firestore doc args:', db, 'ai_generations', clientGenerationId);
+      const docRef = doc(db, 'ai_generations', clientGenerationId);
       // Firestore rejects undefined values. Convert any undefined fields to null
       // using a JSON replacer so nested undefineds are handled without adding a
       // larger utility function.

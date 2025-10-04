@@ -234,9 +234,6 @@ export const useAIGeneratedItineraries = () => {
     setError(null);
 
     try {      
-      // Get today's date in YYYY-MM-DD format for comparison
-      const today = new Date().toISOString().split('T')[0];
-
       const q = query(
         collection(db, 'itineraries'),
         where('userId', '==', auth.currentUser.uid),
@@ -305,7 +302,7 @@ export const useAIGeneratedItineraries = () => {
 
   useEffect(() => {
     fetchAIItineraries();
-  }, [auth.currentUser]);
+  }, []);
 
   return {
     itineraries,

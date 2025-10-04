@@ -81,9 +81,10 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
           }}>
             {/* Share Button - Always visible */}
             {onShare && (
-              <IconButton
-                onClick={onShare}
-                size="small"
+        <IconButton
+          onClick={onShare}
+          size="small"
+          disableRipple
                 sx={{ 
                   color: 'white',
                   backgroundColor: 'rgba(33, 150, 243, 0.2)',
@@ -104,6 +105,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                 onClick={onEditStart}
                 size="small"
                 variant="outlined"
+                disableRipple
                 sx={{ 
                   color: 'white',
                   borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -124,6 +126,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                   size="small"
                   variant="contained"
                   color="primary"
+                  disableRipple
                   sx={{ 
                     color: 'white',
                     fontSize: '0.7rem',
@@ -138,6 +141,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                   onClick={onCancel}
                   size="small"
                   variant="outlined"
+                  disableRipple
                   sx={{ 
                     color: 'white',
                     borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -164,7 +168,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
         {/* AI-Generated Description */}
         {itineraryData.description && (
           <Typography variant="body1" paragraph sx={{ mt: 2, fontStyle: 'italic', color: 'white' }}>
-            "{itineraryData.description}"
+            {String(itineraryData.description).replace(/\s+/g, ' ').trim()}
           </Typography>
         )}
         

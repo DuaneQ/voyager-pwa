@@ -34,5 +34,4 @@ try {
   });
 }
 
-// Increase Jest timeout for integration tests
-jest.setTimeout(30000);
+// Default Jest timeout (5000ms) is sufficient for most tests

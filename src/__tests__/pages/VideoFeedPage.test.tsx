@@ -1034,11 +1034,10 @@ describe('VideoFeedPage', () => {
         } as any);
 
       render(<VideoFeedPage />);
-      
-      await waitFor(() => {
-        const videoPlayer = screen.getByTestId('video-player');
-        expect(videoPlayer).toBeInTheDocument();
-      });
+
+      // Wait for loading to finish and the video player to render
+      await waitFor(() => expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId('video-player')).toBeInTheDocument());
 
       // Simulate video ending
       const videoPlayer = screen.getByTestId('video-player');

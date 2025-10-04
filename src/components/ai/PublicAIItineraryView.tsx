@@ -9,9 +9,6 @@ import {
   AccordionDetails,
   Chip,
   Grid,
-
-  useTheme,
-  useMediaQuery
 } from '@mui/material';
 import {
   ExpandMore,
@@ -28,8 +25,6 @@ interface PublicAIItineraryViewProps {
 }
 
 export const PublicAIItineraryView: React.FC<PublicAIItineraryViewProps> = ({ itinerary }) => {
-  const theme = useTheme();
-  
   const itineraryData = itinerary?.response?.data?.itinerary;
   const costBreakdown = itinerary?.response?.data?.costBreakdown;
   const metadata = itinerary?.response?.data?.metadata;
@@ -126,7 +121,7 @@ export const PublicAIItineraryView: React.FC<PublicAIItineraryViewProps> = ({ it
           fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
           mb: 1
         }}>
-          🌍 TravalPass
+          🌍 TravalPass.com
         </Typography>
         <Typography variant="subtitle1" sx={{ 
           color: 'rgba(255, 255, 255, 0.8)',
