@@ -33,8 +33,7 @@ graph TB
     
     subgraph "Firebase Firestore"
         Users[(users collection)]
-        Generations[(ai_generations collection)]
-        Itineraries[(itineraries collection)]
+        Itineraries[(itineraries collection<br/>ai_status: "completed")]
     end
     
     UI --> Hook
@@ -51,8 +50,7 @@ graph TB
     Generate --> AI
     AI --> Storage
     Storage --> Itineraries
-    Generate --> Generations
-    Generations --> Progress
+    Generate --> Progress
     Progress --> UI
 ```
 
@@ -144,8 +142,7 @@ sequenceDiagram
     Func->>Func: calculateAgeRanges()
     Func->>Func: extractActivityCategories()
     
-    Func->>FS: Save to itineraries collection
-    Func->>FS: Complete ai_generations document
+    Func->>FS: Save to itineraries collection with ai_status: "completed"
     
     Note over Func: Progress: 100% - Complete
     Func-->>Hook: Return complete result
@@ -162,8 +159,8 @@ sequenceDiagram
     participant FS as Firestore
     participant Func as generateItinerary
     
-    Note over Hook: Real-time Listener Setup
-    Hook->>FS: onSnapshot(ai_generations/generationId)
+    Note over Hook: Real-time Progress Updates
+    Hook->>FS: Track progress via itinerary document
     
     loop Progress Updates
         Func->>FS: Update progress document

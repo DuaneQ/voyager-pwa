@@ -29,6 +29,7 @@ export GOOGLE_MAPS_API_KEY="your-google-maps-api-key"
 **Description**: Generate complete AI itineraries for premium users
 **Required**: Premium subscription
 **Rate Limit**: 10 requests per hour
+**Storage**: Saves to `itineraries` collection with `ai_status: "completed"`
 
 **Usage**:
 ```javascript
@@ -234,6 +235,24 @@ Daily analytics for monitoring system performance
 - **Premium Users**: 10 AI generations per hour
 - **Free Users**: 1 cost estimation per week
 - **Cost Estimation**: More lenient limits for quick estimates
+
+## Recent Updates (October 2025)
+
+### ✅ Frontend Component Refactoring
+- **AIItineraryDisplay**: Refactored 2051-line monolithic component into focused sections
+- **AIItineraryHeader**: Extracted as reusable component (187 lines)
+- **Data Consistency**: Fixed query mismatch - all AI itineraries now display correctly
+- **UI Cleanup**: Removed duplicate dropdown elements for better UX
+
+### ✅ Data Model Standardization
+- **Storage Field**: AI itineraries consistently use `ai_status: "completed"`
+- **Query Field**: `useAIGeneratedItineraries` queries correct field
+- **Result**: All user AI itineraries appear in dropdown (was showing only 1 of 3)
+
+### 📁 Updated Documentation
+- `AI_ITINERARY_DISPLAY_REFACTORING.md` - Detailed refactoring documentation
+- `FRONTEND_TECHNICAL_STORIES.md` - Updated implementation phases
+- `AI_GENERATION_COMPLETE_STATUS.md` - Current system status
 
 ## Testing
 

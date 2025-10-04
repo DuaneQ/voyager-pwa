@@ -53,7 +53,7 @@ interface Flight {
 }
 
 // SerpApi configuration (embedded key per project constraint). Replace with your SerpApi key.
-const SERPAPI_KEY = '';
+const SERPAPI_KEY = 'ce5b4e8807322f3dc0dd0589d3f7ef803c250e8b280b4219bff390607daba598';
 const SERPAPI_BASE = 'https://serpapi.com/search.json';
 
 // Helper: format minutes to Hh Mm string
@@ -142,6 +142,9 @@ function mapItineraryToFlight(item: any): Flight | null {
     return null;
   }
 }
+
+// Export helpers for unit tests
+export { formatDurationMinutes, mapItineraryToFlight };
 
 export const searchFlights = functions.https.onCall(async (data, context) => {
   try {

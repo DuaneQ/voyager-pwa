@@ -36,6 +36,7 @@ import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { app } from "./environments/firebaseConfig";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { SimpleTermsGuard } from "./components/auth/SimpleTermsGuard";
+import { PublicAIItineraryPage } from "./components/pages/PublicAIItineraryPage";
 
 // AnalyticsTracker logs a page_view event on every route change
 function AnalyticsTracker() {
@@ -153,6 +154,7 @@ function App() {
                     }
                   />
                   <Route path="/Reset" element={<Reset />} />
+                  <Route path="/share-itinerary/:itineraryId" element={<PublicAIItineraryPage />} />
                 </Routes>
               </Suspense>
             </div>

@@ -5,9 +5,10 @@ import {
   Card,
   CardContent,
   Chip,
-  Button
+  Button,
+  IconButton
 } from '@mui/material';
-import { Edit, Save, Cancel } from '@mui/icons-material';
+import { Edit, Save, Cancel, Share } from '@mui/icons-material';
 
 interface AIItineraryHeaderProps {
   itineraryData: any;
@@ -16,6 +17,7 @@ interface AIItineraryHeaderProps {
   onEditStart: () => void;
   onSave: () => Promise<void>;
   onCancel: () => void;
+  onShare?: () => void;
 }
 
 const formatDate = (dateString: string | null | undefined) => {
@@ -42,7 +44,8 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
   isEditing,
   onEditStart,
   onSave,
-  onCancel
+  onCancel,
+  onShare
 }) => {
   return (
     <Card sx={{ 
@@ -68,7 +71,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
             {itineraryData.destination}
           </Typography>
           
-          {/* Edit Controls */}
+          {/* Share and Edit Controls */}
           <Box sx={{ 
             display: 'flex', 
             gap: 0.5,
@@ -76,6 +79,25 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
             alignSelf: { xs: 'center', sm: 'flex-start' },
             justifyContent: 'center'
           }}>
+            {/* Share Button - Always visible */}
+            {onShare && (
+              <IconButton
+                onClick={onShare}
+                size="small"
+                sx={{ 
+                  color: 'white',
+                  backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                  border: '1px solid rgba(33, 150, 243, 0.3)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(33, 150, 243, 0.3)',
+                    borderColor: 'rgba(33, 150, 243, 0.5)'
+                  }
+                }}
+                title="Share Itinerary"
+              >
+                <Share fontSize="small" />
+              </IconButton>
+            )}
             {!isEditing ? (
               <Button
                 startIcon={<Edit />}
