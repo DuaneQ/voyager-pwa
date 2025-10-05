@@ -5,11 +5,17 @@ import userEvent from '@testing-library/user-event';
 let TravelPreferencesTab: any;
 import { UserProfileContext } from '../../Context/UserProfileContext';
 import { AlertContext } from '../../Context/AlertContext';
-import { useTravelPreferences } from '../../hooks/useTravelPreferences';
-import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 
+// Mock hooks and external modules before importing them so the real implementations
+// (which may load browser globals like the Google script) don't run in tests.
 jest.mock('../../hooks/useTravelPreferences');
 jest.mock('../../hooks/useAIGeneratedItineraries');
+// Use the local manual mock for react-google-places-autocomplete to avoid loading the Google script in tests
+jest.mock('react-google-places-autocomplete');
+
+// Require the mocked hooks after calling jest.mock so the mocks are returned.
+const { useTravelPreferences } = require('../../hooks/useTravelPreferences');
+const { useAIGeneratedItineraries } = require('../../hooks/useAIGeneratedItineraries');
 
 const mockUseTravelPreferences = useTravelPreferences as jest.MockedFunction<typeof useTravelPreferences>;
 const mockUseAIGenerated = useAIGeneratedItineraries as jest.MockedFunction<typeof useAIGeneratedItineraries>;
