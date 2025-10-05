@@ -10,22 +10,16 @@ import {
   AccordionDetails,
   Grid,
   Chip,
-  TextField
 } from '@mui/material';
 import { 
   Delete, 
   ExpandMore, 
-  Edit, 
   AttachMoney,
-  Hotel,
   Restaurant,
   LocalActivity,
-  CheckCircle,
   AccessTime,
   LocationOn,
   Language,
-  Book,
-  Link,
   Star,
   Phone
 } from '@mui/icons-material';
@@ -36,7 +30,13 @@ import { app } from '../../environments/firebaseConfig';
 
 // Import refactored sections
 import { AIItineraryHeader } from './sections/AIItineraryHeader';
+import { CostBreakdownSection } from './sections/CostBreakdownSection';
+import FlightOptionsSection from './sections/FlightOptionsSection';
+import { DailyItinerarySection } from './sections/DailyItinerarySection';
 import ShareAIItineraryModal from '../modals/ShareAIItineraryModal';
+import AccommodationsSection from './sections/AccommodationsSection';
+import AlternativeActivitiesSection from './sections/AlternativeActivitiesSection';
+import AlternativeRestaurantsSection from './sections/AlternativeRestaurantsSection';
 
 interface AIItineraryDisplayProps {
   itinerary?: AIGeneratedItinerary | null;
@@ -121,6 +121,33 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const costBreakdown = currentItinerary?.response?.data?.costBreakdown;
   const metadata = currentItinerary?.response?.data?.metadata;
   const recommendations = currentItinerary?.response?.data?.recommendations;
+
+  // Flight data source (UI prefers itinerary.flights first, then recommendations.flights)
+  const flightSource: any[] = (() => {
+    if (isEditing && editingData) {
+      return (editingData.response?.data?.itinerary as any)?.flights || editingData.response?.data?.recommendations?.flights || [];
+    }
+    return (itineraryData as any)?.flights || recommendations?.flights || [];
+  })();
+
+  const handleBatchDeleteFlights = () => {
+    if (!editingData) return;
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const sortedIndices = Array.from(selectedFlights).sort((a, b) => b - a);
+    const itineraryFlights = updatedData.response?.data?.itinerary?.flights;
+    const recommendationFlights = updatedData.response?.data?.recommendations?.flights;
+    if (itineraryFlights && Array.isArray(itineraryFlights)) {
+      sortedIndices.forEach(index => {
+        updatedData.response.data.itinerary.flights.splice(index, 1);
+      });
+    } else if (recommendationFlights && Array.isArray(recommendationFlights)) {
+      sortedIndices.forEach(index => {
+        updatedData.response.data.recommendations.flights.splice(index, 1);
+      });
+    }
+    setEditingData(updatedData);
+    setSelectedFlights(new Set());
+  };
   
 
   
@@ -401,7 +428,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       color: 'white',
                       fontWeight: 'bold'
                     }}
-                  >
+                    >
                     Delete {selectedFlights.size} Flight{selectedFlights.size > 1 ? 's' : ''}
                   </Button>
                 )}
@@ -512,119 +539,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
       {/* Cost Breakdown Accordion */}
       {costBreakdown && costBreakdown.total && (
-        <Accordion sx={{ 
-          mb: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:before': { display: 'none' }
-        }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <AttachMoney sx={{ color: 'white' }} />
-              <Typography variant="h6" sx={{ color: 'white' }}>
-                Cost Breakdown - ${costBreakdown.total.toFixed(2)} Total
-              </Typography>
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  Total Cost
-                </Typography>
-                <Typography variant="h6" sx={{ color: 'white' }}>
-                  ${costBreakdown.total ? costBreakdown.total.toFixed(2) : '0.00'}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  Per Person
-                </Typography>
-                <Typography variant="h6" sx={{ color: 'white' }}>
-                  ${costBreakdown.perPerson ? costBreakdown.perPerson.toFixed(2) : '0.00'}
-                </Typography>
-              </Grid>
-            </Grid>
-            
-            {/* Category Breakdown */}
-            {costBreakdown.byCategory && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ color: 'white' }}>
-                  By Category
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  {Object.entries(costBreakdown.byCategory).map(([category, amount]) => (
-                    <Chip
-                      key={category}
-                      label={`${category}: $${(amount as number).toFixed(0)}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ 
-                        borderColor: 'rgba(255, 255, 255, 0.3)',
-                        color: 'white'
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* Daily Cost Breakdown */}
-            {costBreakdown.byDay && Array.isArray(costBreakdown.byDay) && costBreakdown.byDay.length > 0 && (
-              <Box>
-                <Typography variant="subtitle1" gutterBottom sx={{ color: 'white' }}>
-                  Daily Cost Breakdown
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {costBreakdown.byDay.map((dayCost, index) => (
-                    <Card key={index} variant="outlined" sx={{ 
-                      p: 2,
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="body1" fontWeight="bold" sx={{ color: 'white' }}>
-                          Day {dayCost.day} ({new Date(dayCost.date).toLocaleDateString()})
-                        </Typography>
-                        <Typography variant="body1" fontWeight="bold" color="primary">
-                          ${dayCost.total.toFixed(2)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {dayCost.accommodation > 0 && (
-                          <Chip label={`🏨 Accommodation: $${dayCost.accommodation.toFixed(0)}`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                        {dayCost.food > 0 && (
-                          <Chip label={`🍽️ Food: $${dayCost.food.toFixed(0)}`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                        {dayCost.activities > 0 && (
-                          <Chip label={`🎯 Activities: $${dayCost.activities.toFixed(0)}`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                        {dayCost.transportation > 0 && (
-                          <Chip label={`🚗 Transport: $${dayCost.transportation.toFixed(0)}`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                        {dayCost.misc > 0 && (
-                          <Chip label={`💼 Miscellaneous: $${dayCost.misc.toFixed(0)}`} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                        )}
-                      </Box>
-                    </Card>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </AccordionDetails>
-        </Accordion>
+        <CostBreakdownSection costBreakdown={costBreakdown} />
       )}
 
       {/* Travel Recommendations Section - For non-flight transportation */}
@@ -649,9 +564,19 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           tips: rawTransport.tips ? (Array.isArray(rawTransport.tips) ? rawTransport.tips : [String(rawTransport.tips)]) : []
         } : null;
 
-        // Also read any raw assumptions saved on the itinerary. We will only surface
-        // these when transport recommendations exist (per product decision).
+        // Also read any raw assumptions saved on the itinerary. Surface these
+        // when either transport recommendations exist or assumptions are present
+        // (tests expect assumptions-only itineraries to render this section).
         const assumptions = (currentItinerary as any)?.response?.data?.assumptions as any;
+
+        const shouldShowRecommendations = Boolean(
+          (transport && transport.mode !== 'flight') ||
+          (assumptions && (
+            (assumptions.providers && assumptions.providers.length > 0) ||
+            (assumptions.steps && assumptions.steps.length > 0) ||
+            (assumptions.tips && assumptions.tips.length > 0)
+          ))
+        );
 
         // Combine providers from transport and assumptions (dedupe by url/name)
         const combinedProviders: any[] = (() => {
@@ -717,7 +642,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           return uniq.length > 0 ? uniq : null;
         })();
 
-        return transport && transport.mode !== 'flight' && (
+  return shouldShowRecommendations && (
         <Accordion sx={{ 
           mb: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -744,7 +669,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                 
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
                   <Chip 
-                    label={`Mode: ${transport.mode}`}
+                    label={`Mode: ${transport?.mode}`}
                     size="small" 
                     sx={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -752,7 +677,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     }}
                   />
                   
-                  {transport.estimatedTime && (
+                  {transport?.estimatedTime && (
                     <Chip 
                       label={`Estimated Time: ${transport.estimatedTime}`}
                       size="small" 
@@ -763,7 +688,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     />
                   )}
 
-                  {transport.estimatedDistance && (
+                  {transport?.estimatedDistance && (
                     <Chip 
                       label={`Estimated Distance: ${transport.estimatedDistance}`}
                       size="small" 
@@ -774,7 +699,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     />
                   )}
 
-                  {transport.estimatedCost && (
+                  {transport?.estimatedCost && (
                     <Chip 
                       label={`Estimated Cost: ${transport.estimatedCost}`}
                       size="small" 
@@ -817,6 +742,15 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     </Box>
                   )}
 
+                  {/* For older payloads where a single provider string is present at transport.provider */}
+                  {rawTransport && rawTransport.provider && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                        Provider: {rawTransport.provider}
+                      </Typography>
+                    </Box>
+                  )}
+
                   {combinedSteps && (
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle2" sx={{ color: 'white', mb: 0.5 }}>Steps:</Typography>
@@ -833,1207 +767,48 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       })()}
 
       {/* Flight Prices Section - Support both legacy and new flight data structures */}
-      {(((itineraryProvider as any)?.flights && Array.isArray((itineraryProvider as any).flights) && (itineraryProvider as any).flights.length > 0) ||
-        (recommendations?.flights && Array.isArray(recommendations.flights) && recommendations.flights.length > 0)) && (
-        <Accordion sx={{ 
-          mb: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:before': { display: 'none' }
-        }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }} data-testid="flight-options-header">
-              <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
-              <Chip 
-                label={`${(() => {
-                  const flightSource = isEditing && editingData 
-                    ? ((editingData.response?.data?.itinerary as any)?.flights || editingData.response?.data?.recommendations?.flights || [])
-                    : ((itineraryProvider as any)?.flights || recommendations?.flights || []);
-                  return flightSource.length;
-                })()} options`} 
-                size="small" 
-                color="primary" 
-                variant="outlined"
-                sx={{ 
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  color: 'white'
-                }}
-              />
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(() => {
-                // In edit mode, use editing data. Otherwise use current data.
-                const flightSource = isEditing && editingData 
-                  ? ((editingData.response?.data?.itinerary as any)?.flights || editingData.response?.data?.recommendations?.flights || [])
-                  : ((itineraryProvider as any)?.flights || recommendations?.flights || []);
-                return flightSource.filter((flight: any) => flight).map((flight: any, index: number) => (
-                  <Card key={flight.id || index} variant="outlined" sx={{
-                    backgroundColor: selectedFlights.has(index) ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                    border: selectedFlights.has(index) ? '2px solid #f44336' : '1px solid rgba(255, 255, 255, 0.1)',
-                    cursor: isEditing ? 'pointer' : 'default'
-                  }}
-                  onClick={isEditing ? () => toggleFlightSelection(index) : undefined}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Box>
-                        <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                          {flight.airline} {flight.flightNumber}
-                        </Typography>
-                        <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {flight.route}
-                        </Typography>
-                        {flight.departure && flight.departure.date && flight.departure.time && (
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 0.5 }}>
-                            Departure: {formatFlightDateTime(flight.departure.date, flight.departure.time)}
-                          </Typography>
-                        )}
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="h6" sx={{ color: 'white' }}>
-                          ${flight.price?.amount || 'Price TBD'}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {flight.cabin || flight.class}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                      <Chip icon={<AccessTime sx={{ color: 'white' }} />} 
-                            label={flight.duration} 
-                            size="small" 
-                            sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                      <Chip label={flight.departureTime || flight.departure?.time} 
-                            size="small" 
-                            variant="outlined"
-                            sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }} />
-                      {flight.stops === 0 ? (
-                        <Chip label="Direct" 
-                              size="small" 
-                              sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
-                      ) : (
-                        <Chip label={flight.stops === undefined ? "undefined stop" : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`} 
-                              size="small" 
-                              sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                      )}
-                      {flight.tripType && (
-                        <Chip label={flight.tripType} 
-                              size="small" 
-                              sx={{ backgroundColor: 'rgba(156, 39, 176, 0.3)', color: 'white' }} />
-                      )}
-                    </Box>
+      <FlightOptionsSection
+        flights={flightSource}
+        isEditing={isEditing}
+        selectedFlights={selectedFlights}
+        onToggleSelection={toggleFlightSelection}
+        onBatchDelete={handleBatchDeleteFlights}
+        showBatchDelete={false}
+      />
 
-                    {/* Return flight info for round-trip */}
-                    {flight.return && (
-                      <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1 }}>
-                          Return Flight
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Box>
-                            <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                              {flight.return.airline || flight.airline} {flight.return.flightNumber || flight.flightNumber}
-                            </Typography>
-                            <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {flight.return.route || `${flight.return.departure?.iata || ''} → ${flight.return.arrival?.iata || ''}`}
-                            </Typography>
-                            {flight.return.departure && flight.return.departure.date && flight.return.departure.time && (
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 0.5 }}>
-                                Departure: {formatFlightDateTime(flight.return.departure.date, flight.return.departure.time)}
-                              </Typography>
-                            )}
-                          </Box>
-                          <Box sx={{ textAlign: 'right' }}>
-                            <Typography variant="h6" sx={{ color: 'white' }}>
-                              ${flight.price?.amount || 'Price TBD'}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {flight.cabin || flight.class}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                          <Chip icon={<AccessTime sx={{ color: 'white' }} />} 
-                                label={flight.return.duration || 'Duration TBD'} 
-                                size="small" 
-                                sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                          <Chip label={flight.return.departure?.time || 'Time TBD'} 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }} />
-                          {flight.return.stops === 0 ? (
-                            <Chip label="Direct" 
-                                  size="small" 
-                                  sx={{ backgroundColor: 'rgba(76, 175, 80, 0.3)', color: 'white' }} />
-                          ) : flight.return.stops === undefined ? (
-                            <Chip label="TBD stops" 
-                                  size="small" 
-                                  sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                          ) : (
-                            <Chip label={`${flight.return.stops} stop${flight.return.stops > 1 ? 's' : ''}`} 
-                                  size="small" 
-                                  sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: 'white' }} />
-                          )}
-                        </Box>
-                      </Box>
-                    )}
-
-                    {/* Selection indicator in edit mode */}
-                    {isEditing && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2, p: 1, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                          ✈️ Click to select for deletion
-                        </Typography>
-                        {selectedFlights.has(index) && (
-                          <Chip 
-                            icon={<CheckCircle sx={{ color: 'white !important' }} />}
-                            label="Selected"
-                            size="small"
-                            sx={{ 
-                              backgroundColor: '#f44336',
-                              color: 'white',
-                              fontWeight: 'bold'
-                            }}
-                          />
-                        )}
-                      </Box>
-                    )}
-
-                  </CardContent>
-                </Card>
-                ));
-              })()}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      {/* Accommodation Recommendations - Moved from AI Recommendations section */}
-      {recommendations?.accommodations && Array.isArray(recommendations.accommodations) && recommendations.accommodations.length > 0 && (
-        <Accordion sx={{
-          mb: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:before': { display: 'none' }
-        }}>
-          <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Hotel sx={{ color: 'white' }} />
-              <Typography variant="h6" sx={{ color: 'white' }}>
-                Accommodation Recommendations ({recommendations.accommodations.length})
-              </Typography>
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={2}>
-              {(() => {
-                // In edit mode, use editing data. Otherwise use current data.
-                const accommodationSource = isEditing && editingData 
-                  ? (editingData.response?.data?.recommendations?.accommodations || [])
-                  : (recommendations?.accommodations || []);
-                return accommodationSource.filter(accommodation => accommodation).map((accommodation, accommodationIndex) => {
-                const acc: any = accommodation;
-                const img = getImageUrl(acc);
-                const hotelName = acc.name || acc.vendorRaw?.name || (acc.location && acc.location.name) || 'Unknown Hotel';
-                const priceLabel = formatPrice(acc);
-                // Determine booking/website link
-                const bookingLink = acc.bookingUrl || acc.website || acc.vendorRaw?.website || (acc.placeId ? `https://www.google.com/maps/place/?q=place_id:${acc.placeId}` : null);
-
-                return (
-                  <Grid item xs={12} md={6} key={acc.placeId || acc.id || accommodationIndex}>
-                    <Card
-                      sx={{
-                        position: 'relative',
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        // Increase card height (keep visual balance) using padding-top trick (3:2)
-                        width: '100%',
-                        '&:before': {
-                          content: "''",
-                          display: 'block',
-                          paddingTop: '95%' // further increased to ensure title is not clipped
-                        },
-                        backgroundColor: selectedAccommodations.has(accommodationIndex) ? 'rgba(244, 67, 54, 0.2)' : '#111',
-                        border: selectedAccommodations.has(accommodationIndex) ? '3px solid #f44336' : 'none',
-                        cursor: isEditing ? 'pointer' : 'default'
-                      }}
-                      onClick={isEditing ? () => toggleAccommodationSelection(accommodationIndex) : undefined}
-                    >
-                      <Box sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundImage: `url(${img})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center'
-                      }} />
-
-                      {/* Overlay content anchored at bottom */}
-                      <Box sx={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        pt: 3,
-                        pb: 3,
-                        px: 2,
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0.08))',
-                        color: 'white',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1
-                      }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            color: 'white',
-                            fontWeight: 900,
-                            fontSize: '1.22rem',
-                            lineHeight: 1.08,
-                            whiteSpace: 'normal',
-                            overflowWrap: 'break-word',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-                            // clamp to 2 lines to prevent overflow and clipping
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            mt: 1,
-                            mb: 0.25,
-                            transform: 'translateY(4px)'
-                          }}
-                        >
-                          {hotelName}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>{acc.address || acc.formatted_address || (acc.location && acc.location.address)}</Typography>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
-                          <Chip label={`⭐ ${acc.rating ?? acc.starRating ?? 'N/A'}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
-                          <Chip label={`${acc.userRatingsTotal ?? acc.user_ratings_total ?? 0} reviews`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} />
-                          {priceLabel ? <Chip label={priceLabel} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }} /> : null}
-                          {bookingLink && (
-                            <Button size="small" variant="contained" href={bookingLink} target="_blank" rel="noopener noreferrer" sx={{ ml: 'auto', backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}>
-                              Book
-                            </Button>
-                          )}
-                        </Box>
-                        
-                        {/* Selection indicator in edit mode */}
-                        {isEditing && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1, p: 1, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 1 }}>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                              🏨 Click to select for deletion
-                            </Typography>
-                            {selectedAccommodations.has(accommodationIndex) && (
-                              <Chip 
-                                icon={<CheckCircle sx={{ color: 'white !important' }} />}
-                                label="Selected"
-                                size="small"
-                                sx={{ 
-                                  backgroundColor: '#f44336',
-                                  color: 'white',
-                                  fontWeight: 'bold'
-                                }}
-                              />
-                            )}
-                          </Box>
-                        )}
-                      </Box>
-                    </Card>
-                  </Grid>
-                );
-                });
-              })()}
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-      )}
+      {/* Accommodation Recommendations */}
+      <AccommodationsSection
+        accommodations={(() => {
+          return isEditing && editingData ? (editingData.response?.data?.recommendations?.accommodations || []) : (recommendations?.accommodations || []);
+        })()}
+        isEditing={isEditing}
+        selectedAccommodations={selectedAccommodations}
+        onToggleAccommodationSelection={toggleAccommodationSelection}
+      />
 
   {/* NOTE: Removed duplicate 'Hotel Recommendations' accordion to avoid showing identical data twice. */}
 
       {/* Daily Itinerary */}
-      <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-        Daily Itinerary
-      </Typography>
-      
-      {/* Check for both days and dailyPlans data structures */}
-      {(() => {
-        // In edit mode, use editing data. Otherwise use current data.
-        const sourceData = isEditing && editingData 
-          ? editingData.response?.data?.itinerary 
-          : itineraryData;
-        const dailyData = sourceData?.days || sourceData?.dailyPlans;
-        
-        if (dailyData && Array.isArray(dailyData) && dailyData.length > 0) {
-          return dailyData.map((day: any, index: number) => (
-            <Accordion key={index} defaultExpanded={index === 0} sx={{
-              mb: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '&:before': { display: 'none' }
-            }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Day {day.day || (index + 1)}
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    {formatDate(day.date)}
-                  </Typography>
-                  <Chip 
-                    label={`${(day.activities?.length || 0) + (day.meals?.length || 0)} items`} 
-                    size="small" 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                      color: 'white'
-                    }}
-                  />
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {/* Display Activities */}
-                  {day.activities && Array.isArray(day.activities) && day.activities.filter((activity: any) => activity).map((activity: any, activityIndex: number) => (
-                    <Card key={`day-${index}-activity-${activityIndex}-${activity.id || activityIndex}`} variant="outlined" sx={{
-                      backgroundColor: selectedActivities.has(`${index}-${activityIndex}`) ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                      border: selectedActivities.has(`${index}-${activityIndex}`) ? '2px solid #f44336' : '1px solid rgba(255, 255, 255, 0.1)',
-                      cursor: isEditing ? 'pointer' : 'default'
-                    }}
-                    onClick={isEditing ? () => toggleActivitySelection(index, activityIndex) : undefined}>
-                      <CardContent>
-                        {/* Activity Header with Edit Mode Indicator */}
-                        {isEditing && (
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 2,
-                            p: 1.5,
-                            backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                            borderRadius: 1,
-                            border: '2px solid rgba(76, 175, 80, 0.5)'
-                          }}>
-                            <Edit sx={{ fontSize: 18, color: '#4caf50' }} />
-                            <Typography variant="body2" sx={{ 
-                              color: 'white', 
-                              fontWeight: 'bold',
-                              textShadow: '1px 1px 2px rgba(0,0,0,0.7)'
-                            }}>
-                              ✏️ EDIT MODE: Click on text to modify
-                            </Typography>
-                          </Box>
-                        )}
-                        
-                        {/* Activity Title and Category */}
-                        <Box sx={{ 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          gap: 1,
-                          mb: 2
-                        }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            {isEditing ? (
-                              <Box sx={{ flex: 1, mr: 2 }}>
-                                <TextField
-                                  value={activity.name || 'Activity'}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    if (!editingData) return;
-                                    const updatedData = JSON.parse(JSON.stringify(editingData));
-                                    const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                    if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                      dailyData[index].activities[activityIndex].name = e.target.value;
-                                      setEditingData(updatedData);
-                                    }
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  variant="standard"
-                                  fullWidth
-                                  sx={{
-                                    '& .MuiInputBase-input': {
-                                      color: 'white',
-                                      fontSize: '1.25rem',
-                                      fontWeight: 600,
-                                      padding: '4px 0',
-                                      backgroundColor: 'transparent'
-                                    },
-                                    '& .MuiInput-underline:before': {
-                                      borderBottomColor: 'transparent'
-                                    },
-                                    '& .MuiInput-underline:hover:before': {
-                                      borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                    },
-                                    '& .MuiInput-underline:after': {
-                                      borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                    }
-                                  }}
-                                />
-                              </Box>
-                            ) : (
-                              <Typography variant="h6" component="h3" sx={{ 
-                                color: 'white',
-                                flex: 1
-                              }}>
-                                {activity.name || 'Activity'}
-                              </Typography>
-                            )}
-                            
-                            <Chip 
-                              label={activity.category || 'Activity'} 
-                              size="small" 
-                              color="primary" 
-                              variant="outlined"
-                              sx={{ 
-                                borderColor: 'rgba(255, 255, 255, 0.3)',
-                                color: 'white',
-                                flexShrink: 0
-                              }}
-                            />
-                          </Box>
-                        </Box>
-                        
-                        {/* Description Field */}
-                        {isEditing ? (
-                          <TextField
-                            value={activity.description || 'No description available'}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                              if (!editingData) return;
-                              const updatedData = JSON.parse(JSON.stringify(editingData));
-                              const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                              if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                dailyData[index].activities[activityIndex].description = e.target.value;
-                                setEditingData(updatedData);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            multiline
-                            rows={2}
-                            variant="standard"
-                            fullWidth
-                            sx={{
-                              mb: 2,
-                              '& .MuiInputBase-input': {
-                                color: 'rgba(255, 255, 255, 0.8)',
-                                fontSize: '1rem',
-                                backgroundColor: 'transparent'
-                              },
-                              '& .MuiInput-underline:before': {
-                                borderBottomColor: 'transparent'
-                              },
-                              '& .MuiInput-underline:hover:before': {
-                                borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                              },
-                              '& .MuiInput-underline:after': {
-                                borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                              }
-                            }}
-                          />
-                        ) : (
-                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }} paragraph>
-                            {activity.description || 'No description available'}
-                          </Typography>
-                        )}
-                        
-                        {/* Activity Details */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {(activity.timing || isEditing) && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              {isEditing ? (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <TextField
-                                    value={activity.timing?.startTime || activity.startTime || ''}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      if (!editingData) return;
-                                      const updatedData = JSON.parse(JSON.stringify(editingData));
-                                      const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                      if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                        if (!dailyData[index].activities[activityIndex].timing) {
-                                          dailyData[index].activities[activityIndex].timing = {};
-                                        }
-                                        dailyData[index].activities[activityIndex].timing.startTime = e.target.value;
-                                        setEditingData(updatedData);
-                                      }
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    placeholder="Start time"
-                                    variant="standard"
-                                    size="small"
-                                    sx={{
-                                      width: 80,
-                                      '& .MuiInputBase-input': {
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        fontSize: '0.875rem',
-                                        backgroundColor: 'transparent'
-                                      },
-                                      '& .MuiInput-underline:before': {
-                                        borderBottomColor: 'transparent'
-                                      },
-                                      '& .MuiInput-underline:hover:before': {
-                                        borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                      },
-                                      '& .MuiInput-underline:after': {
-                                        borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                      }
-                                    }}
-                                  />
-                                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>-</Typography>
-                                  <TextField
-                                    value={activity.timing?.endTime || activity.endTime || ''}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      if (!editingData) return;
-                                      const updatedData = JSON.parse(JSON.stringify(editingData));
-                                      const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                      if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                        if (!dailyData[index].activities[activityIndex].timing) {
-                                          dailyData[index].activities[activityIndex].timing = {};
-                                        }
-                                        dailyData[index].activities[activityIndex].timing.endTime = e.target.value;
-                                        setEditingData(updatedData);
-                                      }
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    placeholder="End time"
-                                    variant="standard"
-                                    size="small"
-                                    sx={{
-                                      width: 80,
-                                      '& .MuiInputBase-input': {
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        fontSize: '0.875rem',
-                                        backgroundColor: 'transparent'
-                                      },
-                                      '& .MuiInput-underline:before': {
-                                        borderBottomColor: 'transparent'
-                                      },
-                                      '& .MuiInput-underline:hover:before': {
-                                        borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                      },
-                                      '& .MuiInput-underline:after': {
-                                        borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                      }
-                                    }}
-                                  />
-                                  </Box>
-                                ) : (
-                                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                    {activity.timing?.startTime || activity.startTime || 'Time'} - {activity.timing?.endTime || activity.endTime || 'TBD'}
-                                  </Typography>
-                                )}
-                            </Box>
-                          )}
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            {isEditing ? (
-                              <TextField
-                                value={typeof activity.location === 'string' 
-                                  ? activity.location 
-                                  : (activity.location as any)?.name || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  if (!editingData) return;
-                                  const updatedData = JSON.parse(JSON.stringify(editingData));
-                                  const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                  if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                    dailyData[index].activities[activityIndex].location = e.target.value;
-                                    setEditingData(updatedData);
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Location"
-                                variant="standard"
-                                size="small"
-                                sx={{
-                                  width: 200,
-                                  '& .MuiInputBase-input': {
-                                    color: 'rgba(255, 255, 255, 0.7)',
-                                    fontSize: '0.875rem',
-                                    backgroundColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:before': {
-                                    borderBottomColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:hover:before': {
-                                    borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                  },
-                                  '& .MuiInput-underline:after': {
-                                    borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {typeof activity.location === 'string' 
-                                  ? activity.location 
-                                  : (activity.location as any)?.name || 'Location not specified'}
-                              </Typography>
-                            )}
-                          </Box>
-                          
-                          {/* Cost Section */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {(() => {
-                                if (activity.cost && typeof activity.cost === 'string') return activity.cost;
-                                if (activity.price && typeof activity.price === 'string') return activity.price;
-                                if (activity.estimatedCost) {
-                                  if (typeof activity.estimatedCost === 'string') return activity.estimatedCost;
-                                  if (typeof activity.estimatedCost === 'number') return `$${activity.estimatedCost}`;
-                                  if (activity.estimatedCost.amount) return `$${activity.estimatedCost.amount}`;
-                                  return '$TBD';
-                                }
-                                return '$TBD';
-                              })()}
-                            </Typography>
-                          </Box>
-                          
-                          {/* Website Section - Edit Mode */}
-                          {isEditing && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Language sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <TextField
-                                value={activity.website || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  if (!editingData) return;
-                                  const updatedData = JSON.parse(JSON.stringify(editingData));
-                                  const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                  if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                    dailyData[index].activities[activityIndex].website = e.target.value;
-                                    setEditingData(updatedData);
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Website URL (https://...)"
-                                variant="standard"
-                                size="small"
-                                sx={{
-                                  width: 200,
-                                  '& .MuiInputBase-input': {
-                                    color: 'rgba(255, 255, 255, 0.7)',
-                                    fontSize: '0.875rem',
-                                    backgroundColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:before': {
-                                    borderBottomColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:hover:before': {
-                                    borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                  },
-                                  '& .MuiInput-underline:after': {
-                                    borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                  }
-                                }}
-                              />
-                            </Box>
-                          )}
-                          
-                          {/* Booking URL Section - Edit Mode */}
-                          {isEditing && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Book sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <TextField
-                                value={activity.bookingUrl || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  if (!editingData) return;
-                                  const updatedData = JSON.parse(JSON.stringify(editingData));
-                                  const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
-                                  if (dailyData && dailyData[index] && dailyData[index].activities[activityIndex]) {
-                                    dailyData[index].activities[activityIndex].bookingUrl = e.target.value;
-                                    setEditingData(updatedData);
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Booking URL (https://...)"
-                                variant="standard"
-                                size="small"
-                                sx={{
-                                  width: 200,
-                                  '& .MuiInputBase-input': {
-                                    color: 'rgba(255, 255, 255, 0.7)',
-                                    fontSize: '0.875rem',
-                                    backgroundColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:before': {
-                                    borderBottomColor: 'transparent'
-                                  },
-                                  '& .MuiInput-underline:hover:before': {
-                                    borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                                  },
-                                  '& .MuiInput-underline:after': {
-                                    borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                                  }
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
-                        </Box>
-                        
-                        {/* Website and booking links */}
-                        <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                          {activity.website && (
-                            <Button
-                              href={activity.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              size="small"
-                              startIcon={<Link sx={{ fontSize: 16 }} />}
-                              sx={{ 
-                                color: 'rgba(255, 255, 255, 0.8)',
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  border: '1px solid rgba(255, 255, 255, 0.5)'
-                                }
-                              }}
-                            >
-                              Visit Website
-                            </Button>
-                          )}
-                          
-                          {activity.bookingUrl && (
-                            <Button
-                              href={activity.bookingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              size="small"
-                              startIcon={<Book sx={{ fontSize: 16 }} />}
-                              sx={{ 
-                                color: 'rgba(255, 255, 255, 0.8)',
-                                border: '1px solid rgba(33, 150, 243, 0.5)',
-                                backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                                  border: '1px solid rgba(33, 150, 243, 0.7)'
-                                }
-                              }}
-                            >
-                              Book Now
-                            </Button>
-                          )}
-                        </Box>
-
-                        {/* Display tips if available */}
-                        {activity.tips && Array.isArray(activity.tips) && activity.tips.length > 0 && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1, color: 'white' }}>Tips:</Typography>
-                            {activity.tips.map((tip: string, tipIndex: number) => (
-                              <Typography key={`day-${index}-activity-${activityIndex}-tip-${tipIndex}`} variant="caption" display="block" sx={{ ml: 1, mb: 0.5, color: 'rgba(255, 255, 255, 0.7)' }}>
-                                • {tip}
-                              </Typography>
-                            ))}
-                          </Box>
-                        )}
-
-                        {/* Selection indicator in edit mode */}
-                        {isEditing && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2, p: 1, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              🎯 Click to select for deletion
-                            </Typography>
-                            {selectedActivities.has(`${index}-${activityIndex}`) && (
-                              <Chip 
-                                icon={<CheckCircle sx={{ color: 'white !important' }} />}
-                                label="Selected"
-                                size="small"
-                                sx={{ 
-                                  backgroundColor: '#f44336',
-                                  color: 'white',
-                                  fontWeight: 'bold'
-                                }}
-                              />
-                            )}
-                          </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {/* Display Meals */}
-                  {day.meals && Array.isArray(day.meals) && day.meals.filter((meal: any) => meal).map((meal: any, mealIndex: number) => (
-                    <Card key={`day-${index}-meal-${mealIndex}-${meal.id || mealIndex}`} variant="outlined" sx={{ 
-                      backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                      border: '1px solid rgba(255, 193, 7, 0.3)'
-                    }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                            🍽️ {meal.name || 'Meal'}
-                          </Typography>
-                          <Chip 
-                            label={meal.type || 'meal'} 
-                            size="small" 
-                            sx={{ 
-                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                              color: 'white'
-                            }}
-                          />
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mt: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {meal.timing?.time || meal.time || 'Time TBD'}
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {meal.restaurant?.name || 'Restaurant not specified'}
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              ${meal.cost?.amount?.toFixed(2) || 'Price TBD'} {meal.cost?.currency || ''}
-                            </Typography>
-                          </Box>
-
-                          {meal.restaurant?.rating && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Star sx={{ color: '#FFD700', fontSize: 16 }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {meal.restaurant.rating}
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-
-                        {meal.restaurant?.cuisine && (
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-                            Cuisine: {meal.restaurant.cuisine}
-                          </Typography>
-                        )}
-
-                        {/* Booking Information */}
-                        {(meal.restaurant?.phone || meal.restaurant?.website || meal.restaurant?.bookingUrl || meal.bookingInfo) && (
-                          <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {(meal.restaurant?.phone || meal.bookingInfo?.phone) && (
-                              <Button
-                                size="small"
-                                startIcon={<Phone />}
-                                href={`tel:${meal.restaurant?.phone || meal.bookingInfo?.phone}`}
-                                sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                                variant="outlined"
-                              >
-                                Call
-                              </Button>
-                            )}
-                            {(meal.restaurant?.website || meal.bookingInfo?.website) && (
-                              <Button
-                                size="small"
-                                startIcon={<Language />}
-                                href={meal.restaurant?.website || meal.bookingInfo?.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                                variant="outlined"
-                              >
-                                Website
-                              </Button>
-                            )}
-                            {(meal.restaurant?.bookingUrl || meal.bookingInfo?.reservationUrl) && (
-                              <Button
-                                size="small"
-                                startIcon={<Restaurant />}
-                                href={meal.restaurant?.bookingUrl || meal.bookingInfo?.reservationUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ 
-                                  color: 'rgba(255, 255, 255, 0.9)', 
-                                  borderColor: 'rgba(76, 175, 80, 0.5)',
-                                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                                  }
-                                }}
-                                variant="outlined"
-                              >
-                                Make Reservation
-                              </Button>
-                            )}
-                          </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {/* Display Transportation */}
-                  {day.transportation && Array.isArray(day.transportation) && day.transportation.filter((transport: any) => transport).map((transport: any, transportIndex: number) => (
-                    <Card key={`day-${index}-transport-${transportIndex}-${transport.id || transportIndex}`} variant="outlined" sx={{ 
-                      backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                      border: '1px solid rgba(33, 150, 243, 0.3)'
-                    }}>
-                      <CardContent>
-                        <Typography variant="h6" component="h3" sx={{ mb: 1, color: 'white' }}>
-                          🚗 {transport.mode} - {transport.from?.name} to {transport.to?.name}
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              {transport.duration} min
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                              ${transport.cost?.amount?.toFixed(2) || 'Price TBD'} {transport.cost?.currency || ''}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        {transport.notes && (
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-                            Note: {transport.notes}
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {/* Display day notes if available */}
-                  {day.notes && (
-                    <Card variant="outlined" sx={{ 
-                      backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                      border: '1px solid rgba(76, 175, 80, 0.3)'
-                    }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'white' }}>📝 Day Notes:</Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                          {day.notes}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  )}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          ));
-        } else {
-          return (
-            <Card sx={{
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-            }}>
-              <CardContent>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  No daily itinerary data available
-                </Typography>
-              </CardContent>
-            </Card>
-          );
-        }
-      })()}
-
+      <DailyItinerarySection
+        dailyData={(() => {
+          const sourceData = isEditing && editingData ? editingData.response?.data?.itinerary : itineraryData;
+          return sourceData?.days || sourceData?.dailyPlans || [];
+        })()}
+        isEditing={isEditing}
+        editingData={editingData}
+        selectedActivities={selectedActivities}
+        onToggleActivitySelection={(dayIndex: number, activityIndex: number) => toggleActivitySelection(dayIndex, activityIndex)}
+        onUpdateEditingData={(updatedData: any) => setEditingData(updatedData)}
+      />
       {/* Recommendations Section */}
       {recommendations && (
         <Box sx={{ mt: 3 }}>
 
-          {/* Alternative Activities */}
-          {(recommendations.alternativeActivities && Array.isArray(recommendations.alternativeActivities) && recommendations.alternativeActivities.length > 0) && (
-            <Accordion sx={{
-              mb: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '&:before': { display: 'none' }
-            }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LocalActivity sx={{ color: 'white' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Alternative Activities ({recommendations.alternativeActivities.length})
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  {recommendations.alternativeActivities.filter((activity: any) => activity).map((activity: any, activityIndex: number) => (
-                    <Grid item xs={12} sm={6} key={`alt-activity-${activityIndex}-${activity.id || activityIndex}`}>
-                      <Card variant="outlined" sx={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}>
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                              {activity.name}
-                            </Typography>
-                            <Chip 
-                              label={activity.category} 
-                              size="small" 
-                              sx={{ 
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                                color: 'white',
-                                borderColor: 'rgba(255, 255, 255, 0.3)'
-                              }}
-                              variant="outlined" 
-                            />
-                          </Box>
+          {/* Alternative Activities (centralized component) */}
+          <AlternativeActivitiesSection activities={recommendations.alternativeActivities || []} />
 
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} paragraph>
-                            {activity.description}
-                          </Typography>
-
-                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {typeof activity.location === 'string' 
-                                  ? activity.location 
-                                  : (activity.location as any)?.name || 'Location not specified'}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {formatActivityPrice(activity)}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AccessTime sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {activity.duration ? Math.round(activity.duration / 60) : 0}h
-                              </Typography>
-                            </Box>
-                            {activity.rating && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Star sx={{ color: '#FFD700', fontSize: 16 }} />
-                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                  {activity.rating}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          )}
-
-          {/* Alternative Restaurants */}
-          {(recommendations.alternativeRestaurants && Array.isArray(recommendations.alternativeRestaurants) && recommendations.alternativeRestaurants.length > 0) && (
-            <Accordion sx={{
-              mb: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '&:before': { display: 'none' }
-            }}>
-              <AccordionSummary expandIcon={<ExpandMore sx={{ color: 'white' }} />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Restaurant sx={{ color: 'white' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Alternative Restaurants ({recommendations.alternativeRestaurants.length})
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  {recommendations.alternativeRestaurants.filter((restaurant: any) => restaurant).map((restaurant: any, restaurantIndex: number) => (
-                    <Grid item xs={12} sm={6} key={`alt-restaurant-${restaurantIndex}-${restaurant.id || restaurantIndex}`}>
-                      <Card variant="outlined" sx={{
-                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                        border: '1px solid rgba(255, 193, 7, 0.3)'
-                      }}>
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-                              {restaurant.name}
-                            </Typography>
-                            <Chip 
-                              label={restaurant.category || 'restaurant'} 
-                              size="small" 
-                              sx={{ 
-                                backgroundColor: 'rgba(255, 193, 7, 0.2)', 
-                                color: 'white',
-                                borderColor: 'rgba(255, 193, 7, 0.5)'
-                              }}
-                              variant="outlined" 
-                            />
-                          </Box>
-
-                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} paragraph>
-                            {restaurant.description}
-                          </Typography>
-
-                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {typeof restaurant.location === 'string' 
-                                  ? restaurant.location 
-                                  : (restaurant.location as any)?.name || 'Location not specified'}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                {formatActivityPrice(restaurant)}
-                              </Typography>
-                            </Box>
-                            {restaurant.rating && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Star sx={{ color: '#FFD700', fontSize: 16 }} />
-                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                  {restaurant.rating}
-                                </Typography>
-                              </Box>
-                            )}
-                            {(restaurant.phone || restaurant.website) && (
-                              <Box sx={{ display: 'flex', gap: 1, mt: 1, width: '100%' }}>
-                                {restaurant.phone && (
-                                  <Button
-                                    size="small"
-                                    startIcon={<Phone />}
-                                    href={`tel:${restaurant.phone}`}
-                                    sx={{ color: 'white', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                                    variant="outlined"
-                                  >
-                                    Call
-                                  </Button>
-                                )}
-                                {restaurant.website && (
-                                  <Button
-                                    size="small"
-                                    startIcon={<Language />}
-                                    href={restaurant.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    sx={{ color: 'white', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                                    variant="outlined"
-                                  >
-                                    Website
-                                  </Button>
-                                )}
-                              </Box>
-                            )}
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          )}
+          {/* Alternative Restaurants (centralized component) */}
+          <AlternativeRestaurantsSection restaurants={recommendations.alternativeRestaurants || []} />
         </Box>
       )}
       

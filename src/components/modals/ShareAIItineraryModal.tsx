@@ -37,11 +37,13 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [copySuccess, setCopySuccess] = useState('');
 
-  // Generate shareable URL. Prefer the current origin (used by production frontend/share tests),
-  // fall back to the cloud function URL for developer environments.
-  // Always use the cloud function base URL for shared itineraries
+  // Generate shareable URL. Prefer the current origin when available (tests and
+  // production frontend expect a user-facing domain), fall back to the cloud
+  // function URL for developer environments.
   const cloudFunctionBase = 'https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare';
-  const shareUrl = `${cloudFunctionBase}/share-itinerary/${itinerary.id}`;
+  const originBase = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : null;
+  const baseUrl = originBase || cloudFunctionBase;
+  const shareUrl = `${baseUrl}/share-itinerary/${itinerary.id}`;
   
   // Generate share text
   const destination = itinerary.response?.data?.itinerary?.destination || itinerary.destination;
