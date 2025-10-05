@@ -72,6 +72,19 @@ const formatDate = (dateString: string | null | undefined) => {
   });
 };
 
+// Normalize a user-provided URL for use in an href. Do NOT mutate the stored value.
+// If the value already has a scheme (http, https, mailto, tel) we return it as-is.
+// Otherwise prefix with https:// so the browser treats it as an absolute URL.
+const normalizeExternalUrl = (u?: string | null) => {
+  if (!u) return undefined;
+  const val = String(u).trim();
+  if (!val) return undefined;
+  // If it already contains a scheme, return as-is
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(val)) return val;
+  // Otherwise assume https
+  return `https://${val}`;
+};
+
 export const DailyItinerarySection: React.FC<DailyItinerarySectionProps> = ({
   dailyData,
   isEditing,
@@ -120,6 +133,37 @@ export const DailyItinerarySection: React.FC<DailyItinerarySectionProps> = ({
         activity[field] = value;
       }
       
+      onUpdateEditingData(updatedData);
+    }
+  };
+
+  const handleMealFieldUpdate = (
+    dayIndex: number,
+    mealIndex: number,
+    field: string,
+    value: string,
+    subField?: string
+  ) => {
+    if (!editingData) return;
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const dailyDataPath = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
+
+    if (dailyDataPath && dailyDataPath[dayIndex] && Array.isArray(dailyDataPath[dayIndex].meals) && dailyDataPath[dayIndex].meals[mealIndex]) {
+      const meal = dailyDataPath[dayIndex].meals[mealIndex];
+
+      if (subField) {
+        if (!meal[field]) meal[field] = {};
+        // If cost amount, try to coerce to number when appropriate
+        if (field === 'cost' && subField === 'amount') {
+          const n = Number(value);
+          meal[field][subField] = Number.isNaN(n) ? value : n;
+        } else {
+          meal[field][subField] = value;
+        }
+      } else {
+        meal[field] = value;
+      }
+
       onUpdateEditingData(updatedData);
     }
   };
@@ -182,6 +226,10 @@ export const DailyItinerarySection: React.FC<DailyItinerarySectionProps> = ({
                   <MealCard
                     key={`day-${dayIndex}-meal-${mealIndex}-${meal.id || mealIndex}`}
                     meal={meal}
+                    dayIndex={dayIndex}
+                    mealIndex={mealIndex}
+                    isEditing={isEditing}
+                    onMealFieldUpdate={handleMealFieldUpdate}
                   />
                 ))}
 
@@ -230,10 +278,8 @@ const ActivityCard: React.FC<{
   return (
     <Card variant="outlined" sx={{
       backgroundColor: isSelected ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-      border: isSelected ? '2px solid #f44336' : '1px solid rgba(255, 255, 255, 0.1)',
-      cursor: isEditing ? 'pointer' : 'default'
-    }}
-    onClick={isEditing ? onToggleSelection : undefined}>
+      border: isSelected ? '2px solid #f44336' : '1px solid rgba(255, 255, 255, 0.1)'
+    }}>
       <CardContent>
         {/* Activity Header with Edit Mode Indicator */}
         {isEditing && (
@@ -397,6 +443,9 @@ const ActivityDetails: React.FC<{
   isEditing: boolean;
   onFieldUpdate: (dayIndex: number, activityIndex: number, field: string, value: string, subField?: string) => void;
 }> = ({ activity, dayIndex, activityIndex, isEditing, onFieldUpdate }) => {
+  const websiteHref = normalizeExternalUrl(activity.website);
+  const bookingHref = normalizeExternalUrl(activity.bookingUrl);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -410,11 +459,11 @@ const ActivityDetails: React.FC<{
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     onFieldUpdate(dayIndex, activityIndex, 'timing', e.target.value, 'startTime');
                   }}
-                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   placeholder="Start time"
                   variant="standard"
                   size="small"
-                  sx={{ width: 80, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem' } }}
+                  sx={{ width: 80, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem', backgroundColor: 'transparent' } }}
                 />
                 <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>-</Typography>
                 <TextField
@@ -422,11 +471,11 @@ const ActivityDetails: React.FC<{
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     onFieldUpdate(dayIndex, activityIndex, 'timing', e.target.value, 'endTime');
                   }}
-                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   placeholder="End time"
                   variant="standard"
                   size="small"
-                  sx={{ width: 80, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem' } }}
+                  sx={{ width: 80, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem', backgroundColor: 'transparent' } }}
                 />
               </Box>
             ) : (
@@ -447,11 +496,11 @@ const ActivityDetails: React.FC<{
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 onFieldUpdate(dayIndex, activityIndex, 'location', e.target.value);
               }}
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               placeholder="Location"
               variant="standard"
               size="small"
-              sx={{ width: 200, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem' } }}
+              sx={{ width: 200, '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem', backgroundColor: 'transparent' } }}
             />
           ) : (
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
@@ -483,45 +532,70 @@ const ActivityDetails: React.FC<{
       
       {/* Website and booking links */}
       <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-        {activity.website && (
-          <Button
-            href={activity.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="small"
-            startIcon={<Link sx={{ fontSize: 16 }} />}
-            sx={{ 
-              color: 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.5)'
-              }
-            }}
-          >
-            Visit Website
-          </Button>
-        )}
-        
-        {activity.bookingUrl && (
-          <Button
-            href={activity.bookingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="small"
-            startIcon={<Book sx={{ fontSize: 16 }} />}
-            sx={{ 
-              color: 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(33, 150, 243, 0.5)',
-              backgroundColor: 'rgba(33, 150, 243, 0.1)',
-              '&:hover': {
-                backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                border: '1px solid rgba(33, 150, 243, 0.7)'
-              }
-            }}
-          >
-            Book Now
-          </Button>
+        {isEditing ? (
+          <>
+            <TextField
+              value={activity.website || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onFieldUpdate(dayIndex, activityIndex, 'website', e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Website"
+              variant="standard"
+              size="small"
+              sx={{ '& .MuiInputBase-input': { color: 'rgba(255,255,255,0.85)', backgroundColor: 'transparent' }, width: 260 }}
+            />
+            <TextField
+              value={activity.bookingUrl || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onFieldUpdate(dayIndex, activityIndex, 'bookingUrl', e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Booking URL"
+              variant="standard"
+              size="small"
+              sx={{ '& .MuiInputBase-input': { color: 'rgba(255,255,255,0.85)', backgroundColor: 'transparent' }, width: 260 }}
+            />
+          </>
+        ) : (
+          <>
+            {websiteHref && (
+              <Button
+                href={websiteHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                startIcon={<Link sx={{ fontSize: 16 }} />}
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.5)'
+                  }
+                }}
+              >
+                Visit Website
+              </Button>
+            )}
+
+            {bookingHref && (
+              <Button
+                href={bookingHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                startIcon={<Book sx={{ fontSize: 16 }} />}
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  border: '1px solid rgba(33, 150, 243, 0.5)',
+                  backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                    border: '1px solid rgba(33, 150, 243, 0.7)'
+                  }
+                }}
+              >
+                Book Now
+              </Button>
+            )}
+          </>
         )}
       </Box>
 
@@ -541,7 +615,10 @@ const ActivityDetails: React.FC<{
 };
 
 // Meal Card Component
-const MealCard: React.FC<{ meal: any }> = ({ meal }) => {
+const MealCard: React.FC<{ meal: any; dayIndex: number; mealIndex: number; isEditing: boolean; onMealFieldUpdate: (dayIndex: number, mealIndex: number, field: string, value: string, subField?: string) => void }> = ({ meal, dayIndex, mealIndex, isEditing, onMealFieldUpdate }) => {
+  const mealWebsiteHref = normalizeExternalUrl(meal.restaurant?.website || meal.bookingInfo?.website);
+  const mealBookingHref = normalizeExternalUrl(meal.restaurant?.bookingUrl || meal.bookingInfo?.reservationUrl);
+
   return (
     <Card variant="outlined" sx={{ 
       backgroundColor: 'rgba(255, 193, 7, 0.1)',
@@ -549,9 +626,21 @@ const MealCard: React.FC<{ meal: any }> = ({ meal }) => {
     }}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-          <Typography variant="h6" component="h3" sx={{ color: 'white' }}>
-            🍽️ {meal.name || 'Meal'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+            <Typography sx={{ color: 'white', fontSize: '1.25rem' }}>🍽️</Typography>
+            {isEditing ? (
+              <TextField
+                value={meal.name || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'name', e.target.value)}
+                onMouseDown={(e) => e.stopPropagation()}
+                variant="standard"
+                fullWidth
+                sx={{ '& .MuiInputBase-input': { color: 'white', fontSize: '1.25rem', fontWeight: 600, backgroundColor: 'transparent' } }}
+              />
+            ) : (
+              <Typography variant="h6" component="h3" sx={{ color: 'white' }}>{meal.name || 'Meal'}</Typography>
+            )}
+          </Box>
           <Chip 
             label={meal.type || 'meal'} 
             size="small" 
@@ -572,80 +661,95 @@ const MealCard: React.FC<{ meal: any }> = ({ meal }) => {
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <LocationOn sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              {meal.restaurant?.name || 'Restaurant not specified'}
-            </Typography>
+            {isEditing ? (
+              <TextField
+                value={meal.restaurant?.name || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'restaurant', e.target.value, 'name')}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder="Restaurant name"
+                variant="standard"
+                size="small"
+                sx={{ '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', backgroundColor: 'transparent' }, width: 200 }}
+              />
+            ) : (
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{meal.restaurant?.name || 'Restaurant not specified'}</Typography>
+            )}
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <AttachMoney sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.7)' }} />
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              ${meal.cost?.amount?.toFixed(2) || 'Price TBD'} {meal.cost?.currency || ''}
-            </Typography>
+            {isEditing ? (
+              <TextField
+                value={meal.cost?.amount !== undefined ? String(meal.cost.amount) : ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'cost', e.target.value, 'amount')}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder="Cost"
+                variant="standard"
+                size="small"
+                sx={{ '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.7)', backgroundColor: 'transparent' }, width: 120 }}
+              />
+            ) : (
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>${meal.cost?.amount?.toFixed(2) || 'Price TBD'} {meal.cost?.currency || ''}</Typography>
+            )}
           </Box>
 
           {meal.restaurant?.rating && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Star sx={{ color: '#FFD700', fontSize: 16 }} />
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                {meal.restaurant.rating}
-              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{meal.restaurant.rating}</Typography>
             </Box>
           )}
         </Box>
 
         {meal.restaurant?.cuisine && (
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-            Cuisine: {meal.restaurant.cuisine}
-          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>Cuisine: {meal.restaurant.cuisine}</Typography>
         )}
 
         {/* Booking Information */}
         {(meal.restaurant?.phone || meal.restaurant?.website || meal.restaurant?.bookingUrl || meal.bookingInfo) && (
           <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {(meal.restaurant?.phone || meal.bookingInfo?.phone) && (
-              <Button
-                size="small"
-                startIcon={<Phone />}
-                href={`tel:${meal.restaurant?.phone || meal.bookingInfo?.phone}`}
-                sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                variant="outlined"
-              >
-                Call
-              </Button>
-            )}
-            {(meal.restaurant?.website || meal.bookingInfo?.website) && (
-              <Button
-                size="small"
-                startIcon={<Language />}
-                href={meal.restaurant?.website || meal.bookingInfo?.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                variant="outlined"
-              >
-                Website
-              </Button>
-            )}
-            {(meal.restaurant?.bookingUrl || meal.bookingInfo?.reservationUrl) && (
-              <Button
-                size="small"
-                startIcon={<Restaurant />}
-                href={meal.restaurant?.bookingUrl || meal.bookingInfo?.reservationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ 
-                  color: 'rgba(255, 255, 255, 0.9)', 
-                  borderColor: 'rgba(76, 175, 80, 0.5)',
-                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                  }
-                }}
-                variant="outlined"
-              >
-                Make Reservation
-              </Button>
+            {isEditing ? (
+              <>
+                <TextField
+                  value={meal.restaurant?.phone || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'restaurant', e.target.value, 'phone')}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  placeholder="Phone"
+                  variant="standard"
+                  size="small"
+                  sx={{ '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.85)', backgroundColor: 'transparent' }, width: 160 }}
+                />
+                <TextField
+                  value={meal.restaurant?.website || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'restaurant', e.target.value, 'website')}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  placeholder="Website"
+                  variant="standard"
+                  size="small"
+                  sx={{ '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.85)', backgroundColor: 'transparent' }, width: 260 }}
+                />
+                <TextField
+                  value={meal.restaurant?.bookingUrl || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onMealFieldUpdate(dayIndex, mealIndex, 'restaurant', e.target.value, 'bookingUrl')}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  placeholder="Booking URL"
+                  variant="standard"
+                  size="small"
+                  sx={{ '& .MuiInputBase-input': { color: 'rgba(255, 255, 255, 0.85)', backgroundColor: 'transparent' }, width: 260 }}
+                />
+              </>
+            ) : (
+              <>
+                {(meal.restaurant?.phone || meal.bookingInfo?.phone) && (
+                  <Button size="small" startIcon={<Phone />} href={`tel:${meal.restaurant?.phone || meal.bookingInfo?.phone}`} sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }} variant="outlined">Call</Button>
+                )}
+                {mealWebsiteHref && (
+                  <Button size="small" startIcon={<Language />} href={mealWebsiteHref} target="_blank" rel="noopener noreferrer" sx={{ color: 'rgba(255, 255, 255, 0.8)', borderColor: 'rgba(255, 255, 255, 0.3)' }} variant="outlined">Website</Button>
+                )}
+                {mealBookingHref && (
+                  <Button size="small" startIcon={<Restaurant />} href={mealBookingHref} target="_blank" rel="noopener noreferrer" sx={{ color: 'rgba(255, 255, 255, 0.9)', borderColor: 'rgba(76, 175, 80, 0.5)', backgroundColor: 'rgba(76, 175, 80, 0.1)', '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.2)' } }} variant="outlined">Make Reservation</Button>
+                )}
+              </>
             )}
           </Box>
         )}

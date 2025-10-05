@@ -205,8 +205,11 @@ describe('TravelPreferencesTab dialogs and AI handler', () => {
       refreshItineraries
     } as any);
 
-    // Rerender so the component picks up the updated hook return
-    rerender(withProviders(<TravelPreferencesTab />));
+    // Rerender so the component picks up the updated hook return. Wrap in act to
+    // ensure any resulting state updates or effects are properly flushed.
+    await act(async () => {
+      rerender(withProviders(<TravelPreferencesTab />));
+    });
 
     // Switch to AI tab by clicking the tab label
     const aiTab = screen.getByText('AI Itineraries');

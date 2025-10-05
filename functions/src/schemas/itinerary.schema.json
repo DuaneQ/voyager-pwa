@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ItineraryGeneration",
+  "type": "object",
+  "properties": {
+    "days": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "startTime": { "type": ["string", "null"], "format": "date-time" },
+                "endTime": { "type": ["string", "null"], "format": "date-time" },
+                "type": { "type": "string" },
+                "description": { "type": ["string", "null"] },
+                "price": { "type": ["object", "null"] },
+                "priceEstimate": { "type": ["object", "null"] },
+                "place": { "type": ["object", "null"] }
+              },
+              "required": ["id", "name", "type"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["date", "items"],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["days"],
+  "additionalProperties": true
+}

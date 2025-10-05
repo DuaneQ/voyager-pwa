@@ -43,6 +43,7 @@ interface FlightOptionsSectionProps {
   selectedFlights: Set<number>;
   onToggleSelection: (index: number) => void;
   onBatchDelete: () => void;
+  showBatchDelete?: boolean;
 }
 
 const formatFlightDateTime = (dateString: string, timeString: string) => {
@@ -88,7 +89,8 @@ export const FlightOptionsSection: React.FC<FlightOptionsSectionProps> = ({
   isEditing,
   selectedFlights,
   onToggleSelection,
-  onBatchDelete
+  onBatchDelete,
+  showBatchDelete = true
 }) => {
   if (!flights || flights.length === 0) {
     return null;
@@ -115,27 +117,31 @@ export const FlightOptionsSection: React.FC<FlightOptionsSectionProps> = ({
               color: 'white'
             }}
           />
-          {isEditing && selectedFlights.size > 0 && (
-            <Button
-              startIcon={<Delete />}
-              onClick={onBatchDelete}
-              size="small"
-              variant="contained"
-              color="error"
-              sx={{ 
-                backgroundColor: '#d32f2f',
-                color: 'white',
-                fontWeight: 'bold'
-              }}
-            >
-              Delete {selectedFlights.size} Flight{selectedFlights.size > 1 ? 's' : ''}
-            </Button>
-          )}
         </Box>
       </AccordionSummary>
       <AccordionDetails>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {flights.map((flight, index) => (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Batch delete button (kept here for backward compatibility with tests that render this section directly) */}
+            {showBatchDelete && isEditing && selectedFlights.size > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Button
+                  startIcon={<Delete />}
+                  onClick={onBatchDelete}
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  sx={{
+                    backgroundColor: '#d32f2f',
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Delete {selectedFlights.size} Flight{selectedFlights.size > 1 ? 's' : ''}
+                </Button>
+              </Box>
+            )}
+
+            {flights.map((flight, index) => (
             <Card key={flight.id || index} variant="outlined" sx={{
               backgroundColor: selectedFlights.has(index) ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)',
               border: selectedFlights.has(index) ? '2px solid #f44336' : '1px solid rgba(255, 255, 255, 0.1)',
