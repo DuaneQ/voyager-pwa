@@ -42,39 +42,10 @@ const useGetItinerariesFromFirestore = () => {
         ...doc.data(),
       })) as Itinerary[];
 
-      // Also attempt to fetch AI-generated itineraries saved in `ai_generations`.
-      // These documents store the generated itinerary inside response.data.itinerary
-      try {
-        const aiQuery = query(
-          collection(db, `ai_generations`),
-          where('userId', '==', userUid)
-        );
-        const aiSnapshot = await getDocs(aiQuery);
-        const aiItineraries = aiSnapshot.docs
-          .map((d) => {
-            try {
-              const data = d.data() as any;
-              const resp = data.response || data.response?.data || null;
-              const itinerary = resp?.data?.itinerary || resp?.itinerary || data?.itinerary || null;
-              if (itinerary) return { id: itinerary.id || d.id, ...itinerary } as Itinerary;
-            } catch (e) {
-              return null;
-            }
-            return null;
-          })
-          .filter(Boolean) as Itinerary[];
-
-        // Merge AI itineraries with normal itineraries, avoiding duplicates by id
-        const combined = [...fetchedItineraries];
-        for (const aiIt of aiItineraries) {
-          if (!combined.find((it) => it.id === aiIt.id)) combined.push(aiIt);
-        }
-
-        return combined as Itinerary[];
-      } catch (e) {
-        // If ai_generations query fails, return the normal itineraries
-        return fetchedItineraries;
-      }
+      // We only read from the canonical `itineraries` collection. AI generation
+      // writes should save final itineraries into `itineraries` so the UI can
+      // rely on a single authoritative source.
+      return fetchedItineraries as Itinerary[];
     } catch (err) {
       console.error("Error fetching itineraries:", err);
       setError("Failed to fetch itineraries. Please try again later.");

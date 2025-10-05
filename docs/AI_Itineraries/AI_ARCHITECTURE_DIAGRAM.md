@@ -41,7 +41,7 @@ graph TB
     %% Data Storage
     subgraph "Firebase Firestore"
         UserPrefs[(User Preferences)]
-        Generations[(AI Generations)]
+    Generations[(Itineraries)]
         Analytics[(AI Analytics)]
         UserProfiles[(User Profiles)]
     end
@@ -66,7 +66,7 @@ graph TB
     AIService --> Weather
     AIService --> UserPrefs
     AIService --> UserProfiles
-    
+           Itineraries[(ITINERARIES)]
     %% Processing & Optimization
     OpenAI --> Optimizer
     Optimizer --> AIService
@@ -81,7 +81,7 @@ graph TB
     %% Cost Estimation Flow
     User --> CostAPI
     CostAPI --> AIService
-    
+        ITINERARIES {
     %% Status Checking
     User --> StatusAPI
     StatusAPI --> Generations
@@ -117,7 +117,7 @@ sequenceDiagram
     U->>UI: Fill trip details & preferences
     UI->>H: generateItinerary(request)
     H->>A: Call Firebase Function
-
+        ITINERARIES ||--o| ITINERARIES : generates
     %% Authentication & Validation
     A->>A: Validate premium user
     A->>A: Check rate limits
@@ -319,7 +319,7 @@ erDiagram
         timestamp lastUpdated
     }
 
-    AI_GENERATIONS {
+    ITINERARIES {
         string id PK
         string userId FK
         string status
@@ -353,9 +353,9 @@ erDiagram
     }
 
     USERS ||--o{ USER_PREFERENCES : has
-    USERS ||--o{ AI_GENERATIONS : creates
+    USERS ||--o{ ITINERARIES : creates
     USERS ||--o{ ITINERARIES : owns
-    AI_GENERATIONS ||--o| ITINERARIES : generates
+    ITINERARIES ||--o| ITINERARIES : generates
 ```
 
 # Performance & Cost Optimization

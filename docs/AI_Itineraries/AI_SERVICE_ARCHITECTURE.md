@@ -51,7 +51,7 @@ graph TD
     Z -.->|Timeout/Error| CC[📋 Fallback Cost Data]
     
     %% Database Operations
-    I --> DD[(🔥 Firestore: ai_generations)]
+  I --> DD[(🔥 Firestore: itineraries)]
     J --> EE[(🔥 Firestore: user_preferences)]
     K --> FF[(🔥 Firestore: itineraries)]
     T --> DD
@@ -255,15 +255,17 @@ private static async fetchWithTimeout(
 
 #### Firestore Collections
 
-**`ai_generations`**
+**`itineraries`**
 ```typescript
 {
   id: string;
   userId: string;
-  status: 'processing' | 'completed' | 'failed';
+  ai_status: 'pending' | 'processing' | 'completed' | 'failed';
   request: AIGenerationRequest;
+  progress?: { stage?: string; totalStages?: number; percent?: number; message?: string };
   response?: AIGenerationResponse;
-  processingTimeMs: number;
+  generationMetadata?: { generationId?: string; promptVersion?: string; model?: string; rawModelResponse?: any };
+  processingTimeMs?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   errorDetails?: {

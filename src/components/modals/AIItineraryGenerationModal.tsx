@@ -29,6 +29,11 @@ import { format, addDays, isAfter, isBefore } from 'date-fns';
 // ...existing code...
 import { AirportSelector } from '../common/AirportSelector';
 
+// Input limits
+const MAX_TAGS = 10; // max items for mustInclude / mustAvoid
+const MAX_TAG_LENGTH = 80; // max length of each tag
+const MAX_SPECIAL_REQUESTS_LENGTH = 500; // max length for specialRequests
+
 interface AIItineraryGenerationModalProps {
   open: boolean;
   onClose: () => void;
@@ -212,6 +217,29 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       errors.preferenceProfileId = 'Please select a travel preference profile';
     }
 
+    // Validate special requests length
+    if (formData.specialRequests && formData.specialRequests.length > MAX_SPECIAL_REQUESTS_LENGTH) {
+      errors.specialRequests = `Special requests must be at most ${MAX_SPECIAL_REQUESTS_LENGTH} characters.`;
+    }
+
+    // Validate tag counts and lengths
+    if (formData.mustInclude && formData.mustInclude.length > MAX_TAGS) {
+      errors.mustInclude = `You can add up to ${MAX_TAGS} items.`;
+    }
+    if (formData.mustAvoid && formData.mustAvoid.length > MAX_TAGS) {
+      errors.mustAvoid = `You can add up to ${MAX_TAGS} items.`;
+    }
+    (formData.mustInclude || []).forEach((t) => {
+      if (t && t.length > MAX_TAG_LENGTH) {
+        errors.mustInclude = `Each item must be at most ${MAX_TAG_LENGTH} characters.`;
+      }
+    });
+    (formData.mustAvoid || []).forEach((t) => {
+      if (t && t.length > MAX_TAG_LENGTH) {
+        errors.mustAvoid = `Each item must be at most ${MAX_TAG_LENGTH} characters.`;
+      }
+    });
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [formData, getProfileById, preferences]);
@@ -247,6 +275,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   // Include the selected preference profile in the generation request so the hook
   // can map accommodation preferences -> search params (starRating, accessibility, etc.)
   const requestWithProfile = { ...formData, preferenceProfile: selectedProfile } as any;
+  console.log('request with profile', requestWithProfile);
   const result = await generateItinerary(requestWithProfile);
 
       console.log('🎉 [MODAL] Generation successful, result:', result);
@@ -305,10 +334,33 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const handleTagAdd = useCallback((type: 'mustInclude' | 'mustAvoid', value: string) => {
     const trimmedValue = value.trim();
     const currentArray = formData[type] || [];
-    if (trimmedValue && !currentArray.includes(trimmedValue)) {
-      handleFieldChange(type, [...currentArray, trimmedValue]);
+
+    // Basic client-side validation & limits
+    if (!trimmedValue) return;
+    if (trimmedValue.length > MAX_TAG_LENGTH) {
+      setFormErrors(prev => ({ ...prev, [type]: `Each item must be at most ${MAX_TAG_LENGTH} characters.` }));
+      return;
     }
-    
+    if (currentArray.includes(trimmedValue)) {
+      // no-op for duplicates
+      if (type === 'mustInclude') setMustIncludeInput('');
+      else setMustAvoidInput('');
+      return;
+    }
+    if (currentArray.length >= MAX_TAGS) {
+      setFormErrors(prev => ({ ...prev, [type]: `You can add up to ${MAX_TAGS} items.` }));
+      return;
+    }
+
+    // Clear any previous errors for this field
+    setFormErrors(prev => {
+      const copy = { ...prev };
+      delete copy[type];
+      return copy;
+    });
+
+    handleFieldChange(type, [...currentArray, trimmedValue]);
+
     if (type === 'mustInclude') {
       setMustIncludeInput('');
     } else {
@@ -890,9 +942,27 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               multiline
               rows={3}
               value={formData.specialRequests}
-              onChange={(e) => handleFieldChange('specialRequests', e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value || '';
+                if (v.length > MAX_SPECIAL_REQUESTS_LENGTH) {
+                  setFormErrors(prev => ({ ...prev, specialRequests: `Special requests must be at most ${MAX_SPECIAL_REQUESTS_LENGTH} characters.` }));
+                  // still store truncated value
+                  handleFieldChange('specialRequests', v.slice(0, MAX_SPECIAL_REQUESTS_LENGTH));
+                } else {
+                  // clear error if present
+                  setFormErrors(prev => {
+                    const copy = { ...prev };
+                    delete copy.specialRequests;
+                    return copy;
+                  });
+                  handleFieldChange('specialRequests', v);
+                }
+              }}
               placeholder="Any special requirements, accessibility needs, or preferences..."
             />
+            {formErrors.specialRequests && (
+              <FormHelperText error>{formErrors.specialRequests}</FormHelperText>
+            )}
           </Grid>
         </Grid>
         )}

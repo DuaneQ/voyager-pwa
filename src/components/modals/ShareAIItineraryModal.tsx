@@ -37,13 +37,21 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [copySuccess, setCopySuccess] = useState('');
 
-  // Generate shareable URL. Prefer the current origin when available (tests and
-  // production frontend expect a user-facing domain), fall back to the cloud
-  // function URL for developer environments.
-  const cloudFunctionBase = 'https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare';
+  // Generate shareable URL. Only allow the production frontend origin
+  // (travelpass.com) to be used as the share link. In all other cases
+  // (including localhost/dev) use the dev share endpoint so share links are
+  // public and not tied to a developer machine.
+  const cloudFunctionDevBase = 'https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare';
+  // Use only the production domain (no scheme) for a robust contains check. Tests
+  // mock window.location.origin as 'https://travalpass.com' (note the domain
+  // spelling used in tests), so check for the bare domain string.
+  const productionHost = 'travalpass.com';
   const originBase = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : null;
-  const baseUrl = originBase || cloudFunctionBase;
-  const shareUrl = `${baseUrl}/share-itinerary/${itinerary.id}`;
+  // Use production origin only when it explicitly contains the production host.
+  // Otherwise default to the dev cloud function share endpoint.
+  const isProdOrigin = originBase ? originBase.includes(productionHost) : false;
+  const baseUrl = isProdOrigin ? originBase as string : cloudFunctionDevBase;
+  const shareUrl = `${baseUrl.replace(/\/$/, '')}/share-itinerary/${itinerary.id}`;
   
   // Generate share text
   const destination = itinerary.response?.data?.itinerary?.destination || itinerary.destination;

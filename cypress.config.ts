@@ -1,6 +1,12 @@
 import { defineConfig } from "cypress";
-import webpackConfig from "./webpack.config.js";
 
+// Ensure the env flag is set before webpack.config.js is loaded so that
+// webpack can pick up the alias to the local mock for component tests.
+if (!process.env.CYPRESS_COMPONENT_TEST) {
+  process.env.CYPRESS_COMPONENT_TEST = "1";
+}
+
+import webpackConfig from "./webpack.config.js";
 
 export default defineConfig({
   e2e: {
@@ -10,16 +16,11 @@ export default defineConfig({
     },
   },
   component: {
-    devServer: {
-      framework: "react",
-      bundler: "webpack",
-      webpackConfig,
-      before: (options) => {
-        // Set env var for Webpack aliasing
-        process.env.CYPRESS_COMPONENT_TEST = "1";
-        return options;
+      devServer: {
+        framework: "react",
+        bundler: "webpack",
+        webpackConfig,
       },
-    },
     supportFile: "cypress/support/component.ts",
   },
 });

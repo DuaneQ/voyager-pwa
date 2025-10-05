@@ -1,6 +1,6 @@
 # AI Progress Tracking Flow Analysis
 
-> **NOTE**: This document is primarily historical analysis of past issues. Current status: All progress tracking works correctly. See `docs/AI_GENERATION_COMPLETE_STATUS.md` for current working state.
+For a consolidated backend reference (function contracts, flow, and deployment notes) see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md).
 
 ## Overview
 This document maps the complete flow of progress tracking in the AI Itinerary Generation Modal to identify what changes broke the flight and hotel data retrieval.
@@ -77,8 +77,8 @@ Progress Bar Updates in Modal
            ├── Total timeout: 30s
            └── Deduplicate and transform
 
-// Progress updates after each stage:
-await db.collection('ai_generations').doc(generationId).update({
+// Progress updates after each stage (updated to use itineraries):
+await db.collection('itineraries').doc(itineraryId).update({
   progress: { stage: X, totalStages: 5, message: "..." },
   percent: Y,
   updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -156,9 +156,9 @@ data.percent         // ✓ Works (after fix)
 The backend now writes progress updates more frequently. Each Firestore write operation might be adding latency:
 
 ```typescript
-// Before: Minimal progress updates
+// Before: Minimal progress updates (updated to use itineraries)
 // After: Progress update after EVERY stage (5 total writes)
-await db.collection('ai_generations').doc(generationId).update({...});
+await db.collection('itineraries').doc(itineraryId).update({...});
 ```
 
 #### Theory 2: Function Execution Context Changes
@@ -184,9 +184,9 @@ The background function `processItineraryGeneration()` now runs differently:
 ### 1. Check Firestore Write Performance
 ```typescript
 // Add timing logs around each progress update
-const startTime = Date.now();
-await db.collection('ai_generations').doc(generationId).update({...});
-console.log(`Firestore write took: ${Date.now() - startTime}ms`);
+const startTime = Date.now(); // Timing for Firestore write
+await db.collection('itineraries').doc(itineraryId).update({...});
+console.log(`Firestore write took: ${Date.now() - startTime}ms`); // Log timing
 ```
 
 ### 2. Test API Calls Independently
@@ -221,9 +221,9 @@ Remove intermediate progress updates and only update at major milestones:
 ### Option 2: Defer Progress Updates
 Use setTimeout to avoid blocking API calls:
 ```typescript
-setTimeout(() => {
-  db.collection('ai_generations').doc(generationId).update({...});
-}, 0);
+setTimeout(() => { // Delay Firestore update
+  db.collection('itineraries').doc(itineraryId).update({...});
+}, 0); // Use setTimeout to avoid blocking
 ```
 
 ### Option 3: Batch Progress Updates

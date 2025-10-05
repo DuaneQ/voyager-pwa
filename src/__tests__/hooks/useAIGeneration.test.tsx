@@ -251,8 +251,7 @@ describe('useAIGeneration hook', () => {
     // Ensure we attempted to write to Firestore
     const mockDoc = mockedFirestore.doc as jest.Mock;
     const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
-    // Actual usage: doc(db, 'ai_generations', clientGenerationId)
-    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'ai_generations', expect.any(String));
+    expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'itineraries', expect.any(String));
     expect(mockSetDoc).toHaveBeenCalled();
     const savedArg = mockSetDoc.mock.calls[0][1];
     expect(Array.isArray(savedArg.response.data.recommendations.alternativeActivities)).toBe(true);

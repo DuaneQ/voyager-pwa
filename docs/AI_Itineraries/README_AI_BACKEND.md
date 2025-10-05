@@ -177,19 +177,21 @@ interface AIGenerationResponse {
 
 ## Database Collections
 
-### ai_generations
-Stores all AI generation requests and responses
+### itineraries
+Stores AI-generated itineraries and their generation progress. This is the canonical collection for AI-generated content and includes request, progress, response, and generationMetadata for debugging (redact secrets when present or apply TTL to raw traces).
 ```
-/ai_generations/{generationId}
+/itineraries/{id}
 {
   id: string;
   userId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  ai_status: 'pending' | 'processing' | 'completed' | 'failed';
   request: AIGenerationRequest;
+  progress?: { stage: string; percent?: number; message?: string };
   response?: AIGenerationResponse;
+  generationMetadata?: { generationId?: string; promptVersion?: string; model?: string; rawModelResponse?: any };
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  processingTimeMs: number;
+  processingTimeMs?: number;
   errorDetails?: any;
 }
 ```

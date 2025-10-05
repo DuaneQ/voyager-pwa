@@ -1,5 +1,7 @@
 # AI Itinerary Generation - Complete Status Summary
 
+For a consolidated backend reference (function contracts, flow, and deployment notes) see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md).
+
 ## Date: October 3, 2025
 ## Status: ✅ **ALL ISSUES RESOLVED**
 

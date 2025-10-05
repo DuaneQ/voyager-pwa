@@ -2,8 +2,8 @@
 
 This document describes the end-to-end design and implementation story for using OpenAI to construct daily itineraries for `AIItineraryDisplay`. It covers the runtime data flow, system+user prompt drafts, a strict JSON output schema, integration notes for frontend/backend, acceptance criteria, and example tests.
 
----
 
+For a consolidated backend reference (function contracts, flow, and deployment notes) see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md).
 ## 1) Narrative: end-to-end flow
 
 1. Inputs collected by the app
@@ -31,15 +31,15 @@ This document describes the end-to-end design and implementation story for using
 4. Post-processing and validation (backend)
   - Validate every placeId included by the model against Places API (lightweight fetch) to ensure the place is valid and get canonical coordinates and URL.
   - Enforce schedule constraints (no overlap) and normalize times to the user's timezone.
-  - Return the result to `useAIgeneration.ts` along with metadata: prompt, model, searchKeywords, placesUsed, and confidence hints.
+  - Return the result to the caller along with metadata: prompt, model, searchKeywords, placesUsed, and confidence hints. Persist the validated result to Firestore under `/itineraries/{id}` (the canonical itinerary document) which should include `request`, `progress`, `response`, and `generationMetadata` for debugging (rawModelResponse should be redacted or TTL-limited).
 
 5. Display
-  - `AIItineraryDisplay` reads the saved generation and renders each day with activities and meals.
-  - Offer edit controls to the user; edits should persist back to the saved generation.
+  - `AIItineraryDisplay` reads the saved itinerary document and renders each day with activities and meals.
+  - Offer edit controls to the user; edits should persist back to the saved itinerary document.
 
 6. Observability
   - Log input keywords, places counts, and the model’s raw text response plus parsed JSON.
-  - Save trace metadata: generationId, model name, prompt version, and selected placeIds.
+  - Save trace metadata: generationId, model name, prompt version, and selected placeIds (store under the itinerary's `generationMetadata`).
 
 ---
 
@@ -141,11 +141,11 @@ Post-processing (server)
 - Validate the returned JSON against schema (strict). If invalid, retry with sanitized instructions or return a clear error for debugging.
 - For each placeId returned, re-query Places API for authoritative opening_hours and website (to detect reservation info). If a place is no longer valid, mark it in `metadata.fallbackReasons` and remove/replace in the itinerary.
 - Normalize times into the user's timezone.
-- The useAIGeneration will send the intial request to the searchActivities.ts.  When the useAIGeneration receives the activities and restaurant response it will send that payload to the AI Model.  After the AI Model contructs the AI Itinerary it will send the results back to the useAIGeneration that will persist to Firestore `ai_generations` collection with fields: requestPayload, parsedResponse, rawModelResponse, metadata (promptVersion, model, placesUsed).
+- The useAIGeneration will send the initial request to the searchActivities.ts. When the useAIGeneration receives the activities and restaurant response it will send that payload to the AI Model. After the AI Model constructs the AI Itinerary, persist the validated result to Firestore at `/itineraries/{id}` with fields like: `request` (or `requestPayload`), `response` (parsedResponse), and `generationMetadata` (promptVersion, model, placesUsed, rawModelResponse with redaction/TTL as needed).
 
 Frontend integration
-- `useAIGeneration` should: 1) call function to generate itinerary, 2) wait for response and store generationId, 3) show progress UI while generation runs, 4) once saved, open `AIItineraryDisplay` which reads `ai_generations/{generationId}` and renders days in addition to the already existing flight and accomodations.
-- Provide the user ability to edit items; edits should patch the stored generation document.
+- `useAIGeneration` should: 1) call function to generate itinerary, 2) wait for response and store the saved itinerary id, 3) show progress UI while generation runs, 4) once saved, open `AIItineraryDisplay` which reads `/itineraries/{id}` and renders days in addition to the already existing flight and accommodations.
+- Provide the user ability to edit items; edits should patch the stored itinerary document.
 
 Logging & troubleshooting
 - Log: input keywords, counts, shortened place lists, model name, promptVersion, time-to-generate, and selected placeIds. Keep rawModelResponse in Firestore for debugging for a limited TTL.
@@ -166,7 +166,7 @@ Acceptance criteria (high level)
 Unit/Integration tests (examples)
 - Unit: Given a small mock `rawPlaces` set (3 activities, 4 restaurants) and a 2-day trip, assert that parser + schema validation accepts the model output and `days` covers two dates.
 - Integration: With mocked OpenAI model (fixture response) and mocked Places re-validation, call `generateItineraryWithAI` and assert:
-  - `ai_generations/{generationId}` saved
+  - `/itineraries/{generationId}` saved
   - activities ≤2 per day
   - restaurants assigned to meal slots
   - no overlapping times
@@ -194,7 +194,7 @@ Minimal payload to server function (example):
 
 System prompt (short):
 ```
-You are an itinerary planning assistant. Produce only JSON that matches the provided schema. Use the places arrays to choose up to 2 activities per day and one restaurant per meal slot. Do not invent places. Respect opening_hours and preferences.
+You are an itinerary planning assistant. Produce only JSON that matches the provided schema. Use the places arrays to choose up to 2 activities per day and one restaurant per each meal slot. Do not invent places. Respect opening_hours and preferences.
 ```
 
 User prompt (short):
@@ -211,7 +211,7 @@ Create a playful but concise day-by-day itinerary for the user. Make sure restau
 
 For questions #9 and #13 (guidance):
 - #9: If Places results are sparse, do not invent items; expand radius, relax filters, or mark the day flexible with suggested activities derived from place types (e.g., "visit a local park" if only parks exist). Provide fallbackReasons in metadata.
-- #13: The model output should be saved to `ai_generations` exactly as the validated JSON. The `useAIGeneration` hook should call the server function, receive the `generationId`, and then render `AIItineraryDisplay` reading from that document. Save rawModelResponse to Firestore for debug traces (TTL-limited).
+- #13: The model output should be saved to `/itineraries/{id}` (validated and normalized). The `useAIGeneration` hook should call the server function, receive the saved itinerary id, and then render `AIItineraryDisplay` reading from that document. Save rawModelResponse to the itinerary's `generationMetadata.rawModelResponse` field for debug traces with a TTL or redaction policy.
 
 ---
 

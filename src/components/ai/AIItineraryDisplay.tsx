@@ -119,7 +119,11 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const currentItinerary = isEditing && editingData ? editingData : selectedItinerary;
   const itineraryData = currentItinerary?.response?.data?.itinerary;
   const costBreakdown = currentItinerary?.response?.data?.costBreakdown;
-  const metadata = currentItinerary?.response?.data?.metadata;
+  // Canonical source: `response.data.metadata`.
+  // The `useAIGeneration` hook and `searchActivities` return and persist
+  // filtering metadata under `response.data.metadata.filtering`. Read only
+  // from that location to avoid hiding issues where metadata was not saved.
+  const metadata = currentItinerary?.response?.data?.metadata as any;
   const recommendations = currentItinerary?.response?.data?.recommendations;
 
   // Flight data source (UI prefers itinerary.flights first, then recommendations.flights)
