@@ -174,6 +174,7 @@ export const TRIP_TYPES = [
   { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', description: 'Family-friendly activities and venues.  Amusement parks and kid friendly events.' },
   { value: 'bachelor', label: 'Bachelor Party', icon: '🎉', description: 'Bachelor party, group celebration, nightlife and fun' },
   { value: 'bachelorette', label: 'Bachelorette Party', icon: '👰‍♀️', description: 'Bachelorette party, group celebration, pampering and fun' },
+  { value: 'spiritual', label: 'Spiritual', icon: '🕊️', description: 'Spiritual retreats, temples, meditation and wellness' },
 ];
 
 export const FLIGHT_CLASSES = [

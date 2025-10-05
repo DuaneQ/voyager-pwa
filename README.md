@@ -498,9 +498,11 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     
-    // AI generations are private to each user
-    match /ai_generations/{generationId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // AI-generated itineraries are stored in `/itineraries` and are readable by authenticated users.
+    // Writes are allowed by the owner or service account (functions) according to server-side rules.
+    match /itineraries/{itineraryId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && (request.auth.uid == request.resource.data.userId || request.auth.token.admin == true);
     }
     
     // User preferences are private

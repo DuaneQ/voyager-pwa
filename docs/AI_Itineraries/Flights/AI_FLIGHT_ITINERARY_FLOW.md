@@ -26,7 +26,7 @@ This document provides a complete reference for the AI-powered flight itinerary 
 - **OpenAI GPT-4o-mini**: AI itinerary generation
 
 ### **Firestore Collections**
-- **ai_generations**: Stores requests, progress, and results
+-- **itineraries**: Stores requests, progress, and results. Use `/itineraries/{id}` as the canonical document for generation progress and final itinerary data.
 - **user_preferences**: Stores user travel profiles
 - **ai_analytics**: Daily analytics and monitoring
 
@@ -107,7 +107,7 @@ interface AIGenerationResponse {
 ### **Backend**
 1. `generateItinerary` validates user (premium, rate limits), fetches user info and preferences.
 2. Orchestrates parallel API calls: Amadeus (flights), Google Places (hotels/attractions), OpenAI (AI itinerary).
-3. Progress tracked in Firestore (`ai_generations`), with granular updates (15%, 30%, 45%, 65%, 85%, 100%).
+3. Progress tracked in Firestore (`/itineraries/{id}`), with granular updates (15%, 30%, 45%, 65%, 85%, 100%). The itinerary document's `progress` field should be updated at each stage so frontends can listen to progress via a single document snapshot.
 4. Final result mapped to platform format and stored.
 5. Errors handled with structured codes and real-time feedback.
 

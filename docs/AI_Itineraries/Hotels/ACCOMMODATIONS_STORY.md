@@ -6,7 +6,7 @@ Last updated: September 1, 2025
 As a traveler using Voyager's AI itinerary generator, I want the system to include recommended accommodations that match my travel preferences (especially star rating and user ratings), so that the AI-generated itinerary includes suitable hotel options alongside flights.
 
 ## Summary
-Implement a single Firebase Callable function `searchAccommodations` that queries Google Places (via the existing `placesClient`) for hotels, applies filters derived from `TravelPreferenceProfile` (focus: `accommodation.starRating` and user ratings), and returns a normalized list of hotel recommendations. Update the frontend `useAIGeneration` hook to call this function alongside `searchFlights` and wait for both results before writing the `ai_generations` document so `response.recommendations` includes both `flights` and `hotels`.
+Implement a single Firebase Callable function `searchAccommodations` that queries Google Places (via the existing `placesClient`) for hotels, applies filters derived from `TravelPreferenceProfile` (focus: `accommodation.starRating` and user ratings), and returns a normalized list of hotel recommendations. Update the frontend `useAIGeneration` hook to call this function alongside `searchFlights` and wait for both results before writing the canonical itinerary document at `/itineraries/{id}` so `response.recommendations` includes both `flights` and `hotels`.
 
 ## Checklist of requirements
 - New callable Cloud Function `searchAccommodations` using `placesClient`.
@@ -88,11 +88,11 @@ Errors: standard `error: { code, message, details }` on failure.
       searchAccommodations(hotelPayload)
     ]);
   - Extract `flights` and `hotels` from fulfilled results. If a promise was rejected, record the error into `response.error` and set `status: 'partial'`.
-  - Only after both settle, call `setDoc(doc(db,'ai_generations', generationId), { ... response: { recommendations: { flights, hotels } }})`.
+  - Only after both settle, call `setDoc(doc(db,'itineraries', itineraryId), { ... response: { recommendations: { flights, hotels } }})`.
 
 - Keep the rest of the hook minimal; do not perform heavy transformations on the frontend.
 
-## Firestore shape example (`ai_generations`)
+## Firestore shape example (`itineraries`)
 ```js
 {
   id: 'gen_...',
@@ -118,7 +118,7 @@ Errors: standard `error: { code, message, details }` on failure.
 
 ## Acceptance criteria
 1. New callable `searchAccommodations` exists and returns normalized hotel objects.
-2. `useAIGeneration` calls both `searchFlights` and `searchAccommodations`, waits for both to settle, and writes a single `ai_generations` document containing both `flights` and `hotels` arrays.
+2. `useAIGeneration` calls both `searchFlights` and `searchAccommodations`, waits for both to settle, and writes a single itinerary document at `/itineraries/{id}` containing both `flights` and `hotels` arrays.
 3. Hotels respect `accommodation.starRating` and a default user rating threshold.
 4. Partial failures still write a document with available data and record errors.
 5. Functions and provider are unit-tested.
@@ -138,7 +138,7 @@ Errors: standard `error: { code, message, details }` on failure.
 - Unit tests for `placesClient.findHotels` (mock Places responses).
 - Unit tests for `searchAccommodations` (mock `placesClient`).
 - Hook tests for `useAIGeneration` to ensure `setDoc` is called with `flights` and `hotels` (mock callables).
-- Partial failure test: one callable rejects, `ai_generations` doc includes the available data and error details.
+- Partial failure test: one callable rejects, the `/itineraries/{id}` doc includes the available data and error details.
 
 ---
 

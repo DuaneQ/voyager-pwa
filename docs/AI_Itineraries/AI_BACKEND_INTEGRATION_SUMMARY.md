@@ -1,5 +1,15 @@
 # AI Itinerary Backend Integration - Simplified Implementation
 
+This document is part of the AI backend reference. The canonical, up-to-date AI backend reference is
+`AI_BACKEND_OVERVIEW.md` — consult it first for function contracts and deployment notes.
+
+Key invariant (authoritative): Final, user-visible itineraries and any generation progress are stored in
+`/itineraries/{id}`. The itinerary document contains fields for request, progress, and final response
+(for example: `request`, `progress`, `response`, `ai_status`, and `generationMetadata`). UI consumers must
+read from `/itineraries` for displayed itineraries.
+
+For full function contracts, flow, and deployment notes see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md).
+
 ## Overview
 Successfully implemented a single, streamlined AI itinerary generation function that handles everything from validation to final itinerary creation. The system eliminates unnecessary complexity by having one callable function orchestrate the entire process.
 
@@ -70,7 +80,7 @@ export const generateItinerary = functions.runWith({
 - **OpenAI GPT-4**: Comprehensive itinerary generation with detailed prompts
 
 ### Progress Tracking
-- **Real-time Updates**: Progress stored in `ai_generations` collection
+**Real-time Updates**: Progress stored in the `itineraries` collection on the saved itinerary document (`/itineraries/{id}`)
 - **Frontend Integration**: Existing `useAIGeneration` hook works seamlessly
 - **Status Stages**: `finding_flights` → `finding_hotels` → `gathering_pois` → `generating_itinerary` → `finalizing`
 

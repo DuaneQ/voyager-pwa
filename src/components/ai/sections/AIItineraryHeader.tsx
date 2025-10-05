@@ -196,6 +196,33 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                 variant="outlined" 
               />
             )}
+            {/* Filtering metadata (optional) - shows when server/search returned filtering hints */}
+            {metadata.filtering && (typeof metadata.filtering === 'object') && (
+              <>
+                {metadata.filtering.mustAvoidFilteredCount > 0 && (
+                  <Chip
+                    label={`Filtered ${metadata.filtering.mustAvoidFilteredCount} items (must avoid)`}
+                    size="small"
+                    color="warning"
+                  />
+                )}
+                {metadata.filtering.mustIncludeMatchesCount > 0 && (
+                  <Chip
+                    label={`${metadata.filtering.mustIncludeMatchesCount} must-include matches`}
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                  />
+                )}
+                {metadata.filtering.specialRequestsUsed && (
+                  <Chip
+                    label={`Special requests used`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </>
+            )}
           </Box>
         )}
       </CardContent>

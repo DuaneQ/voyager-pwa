@@ -1,5 +1,7 @@
 # AI Itinerary Generation - End-to-End Architecture
 
+For a consolidated backend reference (function contracts, flow, and deployment notes) see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md).
+
 ## System Overview
 
 ```mermaid

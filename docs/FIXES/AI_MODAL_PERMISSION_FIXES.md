@@ -5,17 +5,23 @@
 ## Update: August 24, 2025 - Success modal issue was separate bug (see AI_GENERATION_SUCCESS_MODAL_FIX.md)
 
 ## Problem Summary
-Firebase Cloud Functions were unable to write to the `ai_generations` Firestore collection due to security rules blocking the service account.
+Firebase Cloud Functions were unable to write to the `itineraries` Firestore collection due to security rules blocking the service account.
 
 ## Root Cause
 Firestore security rules were preventing Cloud Functions from writing progress updates and results.
 
 ## Solution Applied
-Updated `firestore.rules` to allow Cloud Function service account access:
+Updated `firestore.rules` to allow Cloud Function service account access for generation writes to the `itineraries` collection. Ensure rules are scoped to the functions service account or use a robust conditional that checks `request.auth.token`/service account identity rather than blanket allow.
+
+Example (do not use blanket allow in production):
 
 ```javascript
-// Updated firestore.rules
-allow create, update, delete: if true;
+// Scoped rule example (illustrative)
+match /databases/{database}/documents {
+	match /itineraries/{itineraryId} {
+		allow create, update: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+	}
+}
 ```
 
 ## Files Modified

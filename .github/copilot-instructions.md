@@ -35,6 +35,10 @@ const { generateItinerary, progress } = useAIGeneration();
 - Backend: `functions/src/generateItineraryWithAI.ts`
 - Types: `src/types/AIGeneration.ts`
 
+IMPORTANT: Canonical metadata location
+- The filtering/metadata returned by server hooks (`searchActivities`, `generateItineraryWithAI`) MUST be persisted under the itinerary document's `response.data.metadata` object (i.e. `itineraryDoc.response.data.metadata.filtering`).
+- UI components should read only from `response.data.metadata` and should not attempt to coalesce or read from multiple ad-hoc locations. If migration is needed, update the server hook to write to the canonical location and add a migration script—do NOT rely on UI-side coalescing hacks.
+
 ### 3. Firebase Function Calling Pattern
 **Pattern**: All functions use `httpsCallable` with `{ data: payload }` wrapper
 ```typescript
@@ -101,13 +105,13 @@ npm run build  # Includes version injection and build time
 ```
 User Action → Usage Check → Firebase Function → Cache Update → UI Refresh
 Search Request → Cache Check → (Cache Miss) → Firestore → Cache Store
-AI Generation → Multi-stage Progress → Save to ai_generations → Display
+AI Generation → Multi-stage Progress → Save to itineraries → Display
 ```
 
 ### 3. Firebase Collections Schema
 - `users`: Profile data, usage tracking, premium status
 - `itineraries`: User-created travel plans (searchable by all authenticated users)
-- `ai_generations`: Premium AI-generated itineraries (private to user)
+- `itineraries`: Premium AI-generated itineraries (private to user)
 - `connections`: User matches with chat messages subcollection
 - `feedback`: User feedback with auto-email triggers
 
