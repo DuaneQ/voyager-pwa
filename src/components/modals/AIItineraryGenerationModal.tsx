@@ -22,6 +22,7 @@ import {
   CalendarMonth as CalendarIcon,
 } from '@mui/icons-material';
 import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
+import { Link as RouterLink } from 'react-router-dom';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import logger from '../../utils/logger';
@@ -276,8 +277,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
     // AI usage limit check (client-side)
     if (hasReachedAILimit && hasReachedAILimit()) {
-      const freeLimit = hasPremium() ? '20' : '5';
-      setFormErrors({ general: `You have reached your daily AI generation limit. You get ${freeLimit} AI Generated Itineraries per day.` });
+      // Set a sentinel so the UI can show a linked message to /search
+      setFormErrors({ general: 'AI_LIMIT' });
       return;
     }
 
@@ -468,9 +469,15 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       <DialogContent dividers>
         {/* Error Alert - always show if error exists */}
         {formErrors.general && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormErrors({})}>
-            {formErrors.general}
-          </Alert>
+          formErrors.general === 'AI_LIMIT' ? (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormErrors({})}>
+              You have reached your daily AI generation limit of 5. To purchase the Premium package (20 AI Itineraries per day), go to <RouterLink to="/search">Search</RouterLink> and click UPGRADE.
+            </Alert>
+          ) : (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormErrors({})}>
+              {formErrors.general}
+            </Alert>
+          )
         )}
 
         {/* Simple Loading State updated to reflect progress stages */}
@@ -986,8 +993,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         )}
       </DialogContent>
 
-      {/* Determine button label based on progress stage */}
-      {/** Generate button shows stage-aware label when generating */}
+      {/* Determine button label based on progress stage. Do NOT show Generate when showing success. */}
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button 
           onClick={handleClose} 
@@ -996,30 +1002,34 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         >
           {isGenerating ? 'Cancel' : 'Close'}
         </Button>
-        <Button 
-          onClick={handleGenerate}
-          disabled={isGenerating || preferencesLoading}
-          variant="contained"
-          startIcon={<AIIcon />}
-          sx={{ ml: 1 }}
-        >
-          {(() => {
-            if (!isGenerating) return preferencesLoading ? 'Loading Preferences...' : 'Generate Itinerary';
-            // when generating, reflect detailed stage
-            switch (progress?.stage) {
-              case 'searching':
-                return 'Searching…';
-              case 'activities':
-                return 'Finding activities…';
-              case 'ai_generation':
-                return 'Generating…';
-              case 'done':
-                return 'Finalizing…';
-              default:
-                return 'Generating...';
-            }
-          })()}
-        </Button>
+
+        {/* Only render the Generate button when not in the success state */}
+        {!showSuccessState && (
+          <Button 
+            onClick={handleGenerate}
+            disabled={isGenerating || preferencesLoading}
+            variant="contained"
+            startIcon={<AIIcon />}
+            sx={{ ml: 1 }}
+          >
+            {(() => {
+              if (!isGenerating) return preferencesLoading ? 'Loading Preferences...' : 'Generate Itinerary';
+              // when generating, reflect detailed stage
+              switch (progress?.stage) {
+                case 'searching':
+                  return 'Searching…';
+                case 'activities':
+                  return 'Finding activities…';
+                case 'ai_generation':
+                  return 'Generating…';
+                case 'done':
+                  return 'Finalizing…';
+                default:
+                  return 'Generating...';
+              }
+            })()}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
