@@ -385,9 +385,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
               borderRadius: 1,
               border: '1px solid rgba(33, 150, 243, 0.3)'
             }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
-                💡 <strong>Edit Mode:</strong> Click on flights ✈️, hotels 🏨, and activities � to select them for deletion. Use batch delete buttons above to remove selected items.
-              </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
+                  💡 <strong>Edit Mode:</strong> Click on flights ✈️, hotels 🏨, and activities � to select them for deletion. Use batch delete buttons above to remove selected items.
+                </Typography>
             </Box>
           )}
 
@@ -491,6 +491,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   return shouldShowRecommendations && (
         <Accordion sx={{ 
           mb: 2,
+                  transform: { xs: 'translateX(-6%)', sm: 'translateX(-6%)', md: 'translateX(-3%)', lg: 'translateX(-2%)' },
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',

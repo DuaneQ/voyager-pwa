@@ -107,7 +107,7 @@ export const FlightOptionsSection: React.FC<FlightOptionsSectionProps> = ({
       }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }} data-testid="flight-options-header">
-          <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
+            <Typography variant="h6" sx={{ color: 'white' }}>✈️ Flight Options</Typography>
           <Chip 
             label={`${flights.length} options`} 
             size="small" 
@@ -258,9 +258,9 @@ export const FlightOptionsSection: React.FC<FlightOptionsSectionProps> = ({
               {/* Selection indicator in edit mode */}
               {isEditing && (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2, p: 1, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    ✈️ Click to select for deletion
-                  </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            ✈️ Click to select for deletion
+          </Typography>
                   {selectedFlights.has(index) && (
                     <Chip 
                       icon={<CheckCircle sx={{ color: 'white !important' }} />}

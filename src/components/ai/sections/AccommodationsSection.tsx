@@ -10,7 +10,7 @@ interface AccommodationsSectionProps {
   onToggleAccommodationSelection: (index: number) => void;
 }
 
-const PLACEHOLDER_IMAGE = '/DEFAULT_AVATAR.png';
+const PLACEHOLDER_IMAGE = '/beach.png';
 
 const getImageUrl = (item: any): string => {
   if (!item) return PLACEHOLDER_IMAGE;

@@ -22,6 +22,10 @@ jest.mock('../../../../src/hooks/useTravelPreferences', () => ({
   })
 }));
 
+// Ensure we use the manual mock (in __mocks__) to prevent the real package from trying
+// to load the Google Places script during Jest runs.
+jest.mock('react-google-places-autocomplete');
+
 // Minimal environment to render the modal
 describe('AIItineraryGenerationModal input limits', () => {
   test('prevents adding more than MAX_TAGS mustInclude items and caps tag length', () => {
