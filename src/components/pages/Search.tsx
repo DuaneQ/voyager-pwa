@@ -259,11 +259,14 @@ export const Search = React.memo(() => {
   };
 
   // Sort itineraries by startDate ascending (oldest first)
-  const sortedItineraries = [...itineraries].sort(
-    (a, b) =>
-      new Date(a.startDate ?? "").getTime() -
-      new Date(b.startDate ?? "").getTime()
-  );
+  // Use a safe parser that falls back to +Infinity when a date is missing or invalid
+  const parseTime = (s?: string | null) => {
+    if (!s) return Number.POSITIVE_INFINITY;
+    const t = Date.parse(String(s));
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+  };
+
+  const sortedItineraries = [...itineraries].sort((a, b) => parseTime(a.startDate) - parseTime(b.startDate));
 
   // Get current match or show example when no matches found
   const realMatch = matchingItineraries[currentMatchIndex];

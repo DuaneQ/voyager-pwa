@@ -47,9 +47,19 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
   onCancel,
   onShare
 }) => {
+  // Helper to get a readable label for user-provided terms.
+  const extractLabel = (term: any) => {
+    if (!term && term !== 0) return '';
+    if (typeof term === 'string') return term;
+    if (typeof term === 'object') {
+      return term.name || term.term || term.value || term.label || JSON.stringify(term);
+    }
+    return String(term);
+  };
   return (
     <Card sx={{ 
       mb: 2,
+      transform: { xs: 'translateX(-6%)', sm: 'translateX(-6%)', md: 'translateX(-3%)', lg: 'translateX(-2%)' },
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -199,19 +209,30 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
             {/* Filtering metadata (optional) - shows when server/search returned filtering hints */}
             {metadata.filtering && (typeof metadata.filtering === 'object') && (
               <>
-                {metadata.filtering.mustAvoidFilteredCount > 0 && (
+                {/* Only show count summaries when explicit arrays of terms are not available */}
+                {(!Array.isArray(metadata.filtering.userMustAvoid) || metadata.filtering.userMustAvoid.length === 0) && metadata.filtering.mustAvoidFilteredCount > 0 && (
                   <Chip
                     label={`Filtered ${metadata.filtering.mustAvoidFilteredCount} items (must avoid)`}
                     size="small"
                     color="warning"
+                    sx={{
+                      color: 'white',
+                      backgroundColor: 'rgba(255, 152, 0, 0.12)',
+                      borderColor: 'rgba(255, 152, 0, 0.25)'
+                    }}
                   />
                 )}
-                {metadata.filtering.mustIncludeMatchesCount > 0 && (
+                {(!Array.isArray(metadata.filtering.userMustInclude) || metadata.filtering.userMustInclude.length === 0) && metadata.filtering.mustIncludeMatchesCount > 0 && (
                   <Chip
                     label={`${metadata.filtering.mustIncludeMatchesCount} must-include matches`}
                     size="small"
                     color="success"
                     variant="outlined"
+                    sx={{
+                      color: 'white',
+                      backgroundColor: 'rgba(76, 175, 80, 0.12)',
+                      borderColor: 'rgba(76, 175, 80, 0.25)'
+                    }}
                   />
                 )}
                 {metadata.filtering.specialRequestsUsed && (
@@ -219,7 +240,39 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                     label={`Special requests used`}
                     size="small"
                     variant="outlined"
+                    sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
                   />
+                )}
+                {/* Render explicit user-provided include/avoid terms when present */}
+                {Array.isArray(metadata.filtering.userMustInclude) && metadata.filtering.userMustInclude.length > 0 && (
+                  <>
+                    {metadata.filtering.userMustInclude.slice(0, 3).map((t: any, i: number) => (
+                      <Chip
+                        key={`must-include-${i}`}
+                        label={extractLabel(t)}
+                        size="small"
+                        sx={{ color: 'white', backgroundColor: 'rgba(76, 175, 80, 0.14)', borderColor: 'rgba(76,175,80,0.18)' }}
+                      />
+                    ))}
+                    {metadata.filtering.userMustInclude.length > 3 && (
+                      <Chip label={`+${metadata.filtering.userMustInclude.length - 3} more`} size="small" sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.04)' }} />
+                    )}
+                  </>
+                )}
+                {Array.isArray(metadata.filtering.userMustAvoid) && metadata.filtering.userMustAvoid.length > 0 && (
+                  <>
+                    {metadata.filtering.userMustAvoid.slice(0, 3).map((t: any, i: number) => (
+                      <Chip
+                        key={`must-avoid-${i}`}
+                        label={extractLabel(t)}
+                        size="small"
+                        sx={{ color: 'white', backgroundColor: 'rgba(244, 67, 54, 0.12)', borderColor: 'rgba(244,67,54,0.18)' }}
+                      />
+                    ))}
+                    {metadata.filtering.userMustAvoid.length > 3 && (
+                      <Chip label={`+${metadata.filtering.userMustAvoid.length - 3} more`} size="small" sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.04)' }} />
+                    )}
+                  </>
                 )}
               </>
             )}

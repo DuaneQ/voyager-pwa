@@ -13,7 +13,8 @@ import {
   Alert,
   Snackbar,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Chip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -74,6 +75,23 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
   const shareTitle = `My AI Travel Itinerary: ${destination}`;
   const shareText = `Check out my AI-generated travel itinerary for ${destination} (${formatShareDate(startDate)} - ${formatShareDate(endDate)})! 🌍✈️`;
 
+  // Extract filtering terms (if present) and build short summaries for share text and preview chips
+  const filtering = (itinerary.response?.data?.metadata as any)?.filtering || {};
+  const userMustInclude = Array.isArray(filtering.userMustInclude) ? filtering.userMustInclude : [];
+  const userMustAvoid = Array.isArray(filtering.userMustAvoid) ? filtering.userMustAvoid : [];
+
+  const extractLabel = (term: any) => {
+    if (!term && term !== 0) return '';
+    if (typeof term === 'string') return term;
+    if (typeof term === 'object') return term.name || term.term || term.value || term.label || JSON.stringify(term);
+    return String(term);
+  };
+
+  const includePreviewText = userMustInclude.length > 0 ? ` Includes: ${userMustInclude.slice(0,3).map(extractLabel).join(', ')}${userMustInclude.length > 3 ? ` +${userMustInclude.length - 3} more` : ''}.` : '';
+  const avoidPreviewText = userMustAvoid.length > 0 ? ` Avoids: ${userMustAvoid.slice(0,3).map(extractLabel).join(', ')}${userMustAvoid.length > 3 ? ` +${userMustAvoid.length - 3} more` : ''}.` : '';
+
+  const shareTextWithFilters = `${shareText}${includePreviewText}${avoidPreviewText}`;
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -95,7 +113,7 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
       try {
         await navigator.share({
           title: shareTitle,
-          text: shareText,
+          text: shareTextWithFilters,
           url: shareUrl,
         });
       } catch (error) {
@@ -175,6 +193,20 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
                 </Typography>
               );
             })()}
+            {/* Show explicit include/avoid chips in the preview when present */}
+            {(userMustInclude.length > 0 || userMustAvoid.length > 0) && (
+              <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {userMustInclude.slice(0,3).map((t: any, i: number) => (
+                  <Chip key={`share-include-${i}`} label={extractLabel(t)} size="small" sx={{ color: 'white', backgroundColor: 'rgba(76, 175, 80, 0.14)', borderColor: 'rgba(76,175,80,0.18)' }} />
+                ))}
+                {userMustInclude.length > 3 && <Chip label={`+${userMustInclude.length - 3} more`} size="small" sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.04)' }} />}
+
+                {userMustAvoid.slice(0,3).map((t: any, i: number) => (
+                  <Chip key={`share-avoid-${i}`} label={extractLabel(t)} size="small" sx={{ color: 'white', backgroundColor: 'rgba(244, 67, 54, 0.12)', borderColor: 'rgba(244,67,54,0.18)' }} />
+                ))}
+                {userMustAvoid.length > 3 && <Chip label={`+${userMustAvoid.length - 3} more`} size="small" sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.04)' }} />}
+              </Box>
+            )}
           </Box>
 
           {/* Share Link */}

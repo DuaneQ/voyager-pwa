@@ -43,13 +43,7 @@ export const CostBreakdownSection: React.FC<CostBreakdownSectionProps> = ({
   }
 
   return (
-    <Accordion sx={{ 
-      mb: 2,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      '&:before': { display: 'none' }
-    }}>
+    <Accordion sx={{ mb: 2, transform: 'translateX(-4%)', backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AttachMoney sx={{ color: 'white' }} />

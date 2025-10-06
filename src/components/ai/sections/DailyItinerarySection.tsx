@@ -169,7 +169,7 @@ export const DailyItinerarySection: React.FC<DailyItinerarySectionProps> = ({
   };
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: { xs: '100%', md: 900, lg: 1200 }, mx: 'auto', px: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
         Daily Itinerary
       </Typography>
@@ -177,6 +177,7 @@ export const DailyItinerarySection: React.FC<DailyItinerarySectionProps> = ({
       {dailyData.map((day: any, dayIndex: number) => (
         <Accordion key={dayIndex} defaultExpanded={dayIndex === 0} sx={{
           mb: 2,
+          transform: { xs: 'translateX(-13%)', sm: 'translateX(-13%)', md: 'translateX(-6%)', lg: 'translateX(-4%)' },
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',

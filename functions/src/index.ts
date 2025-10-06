@@ -720,4 +720,8 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
 export const stripeWebhook = functions.https.onRequest(app);
 // export { createStripePortalSession, createStripeCheckoutSession };
 export { videoShare } from './videoSharing';
+export { itineraryShare } from './itinerarySharing';
 export { searchFlights } from './searchFlights';
+export { searchAccommodations } from './searchAccommodations';
+export { searchActivities } from './searchActivities';
+export { generateItineraryWithAI } from './generateItineraryWithAI';

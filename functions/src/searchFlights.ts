@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import logger from './utils/logger';
 
 /**
  * Simple flight search cloud function
@@ -149,7 +150,7 @@ export { formatDurationMinutes, mapItineraryToFlight };
 export const searchFlights = functions.https.onCall(async (data, context) => {
   try {
     const params: FlightSearchParams = data || {};
-    console.log('[searchFlights] Request params:', JSON.stringify(params));
+  logger.debug('[searchFlights] Request params:', JSON.stringify(params));
 
     // Basic validation
     const required = ['departureAirportCode', 'destinationAirportCode', 'departureDate'];
@@ -160,7 +161,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
 
   // Using embedded Amadeus credentials (client_id and client_secret are present in source).
   // NOTE: credentials are intentionally kept in source per project constraints.
-  console.log('[searchFlights] Using embedded Amadeus credentials from source');
+  logger.debug('[searchFlights] Using embedded Amadeus credentials from source');
 
     // date validation
     if (params.returnDate) {
@@ -175,7 +176,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
     }
 
     // Build SerpApi Google Flights request
-    console.log('[searchFlights] Using SerpApi google_flights engine');
+  logger.debug('[searchFlights] Using SerpApi google_flights engine');
     if (!SERPAPI_KEY) {
       throw new functions.https.HttpsError('failed-precondition', 'SerpApi key missing in function source');
     }
@@ -223,12 +224,12 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
         candidateCode = labelMap[up] || null;
       }
       const allowed = ['1', '2', '3', '4'];
-      console.log('[searchFlights] cabinClass raw:', params.cabinClass, '-> candidateCode:', candidateCode);
+  logger.debug('[searchFlights] cabinClass raw:', params.cabinClass, '-> candidateCode:', candidateCode);
       if (candidateCode && allowed.includes(candidateCode)) {
         q.set('travel_class', candidateCode);
-        console.log('[searchFlights] SerpApi travel_class set to:', candidateCode, '(input cabinClass=', params.cabinClass, ')');
+  logger.debug('[searchFlights] SerpApi travel_class set to:', candidateCode, '(input cabinClass=', params.cabinClass, ')');
       } else {
-        console.warn('[searchFlights] Skipping unsupported cabinClass value for SerpApi travel_class:', params.cabinClass, '->', candidateCode);
+  logger.warn('[searchFlights] Skipping unsupported cabinClass value for SerpApi travel_class:', params.cabinClass, '->', candidateCode);
       }
     }
 
@@ -241,7 +242,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       else if (params.stops === 'ANY') stopsCode = '0';
       if (stopsCode) {
         q.set('stops', stopsCode);
-        console.log('[searchFlights] SerpApi stops set to:', stopsCode, '(input stops=', params.stops, ')');
+  logger.debug('[searchFlights] SerpApi stops set to:', stopsCode, '(input stops=', params.stops, ')');
       }
     }
 
@@ -251,7 +252,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const codes = params.preferredAirlines.filter(a => typeof a === 'string' && a.length > 0).map(a => a.toUpperCase()).join(',');
       if (codes) {
         q.set('include_airlines', codes);
-        console.log('[searchFlights] SerpApi include_airlines set to:', codes);
+  logger.debug('[searchFlights] SerpApi include_airlines set to:', codes);
       }
     }
 
@@ -260,7 +261,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const maxPrice = Number((params as any).maxPrice);
       if (!isNaN(maxPrice) && maxPrice > 0) {
         q.set('max_price', String(Math.round(maxPrice)));
-        console.log('[searchFlights] SerpApi max_price set to:', maxPrice);
+  logger.debug('[searchFlights] SerpApi max_price set to:', maxPrice);
       }
     }
 
@@ -270,21 +271,21 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const times = (params as any).outboundTimes.map((t: any) => parseInt(t, 10)).filter((t: number) => !isNaN(t));
       if (times.length >= 2) {
         q.set('outbound_times', times.slice(0, 4).join(','));
-        console.log('[searchFlights] SerpApi outbound_times set to:', times.slice(0, 4).join(','));
+  logger.debug('[searchFlights] SerpApi outbound_times set to:', times.slice(0, 4).join(','));
       }
     }
     if ((params as any).returnTimes && Array.isArray((params as any).returnTimes) && (params as any).returnTimes.length >= 2 && params.returnDate) {
       const times = (params as any).returnTimes.map((t: any) => parseInt(t, 10)).filter((t: number) => !isNaN(t));
       if (times.length >= 2) {
         q.set('return_times', times.slice(0, 4).join(','));
-        console.log('[searchFlights] SerpApi return_times set to:', times.slice(0, 4).join(','));
+  logger.debug('[searchFlights] SerpApi return_times set to:', times.slice(0, 4).join(','));
       }
     }
 
     // --- Emissions filter (if provided) ---
     if ((params as any).emissions && String((params as any).emissions) === '1') {
       q.set('emissions', '1');
-      console.log('[searchFlights] SerpApi emissions filter enabled');
+  logger.debug('[searchFlights] SerpApi emissions filter enabled');
     }
 
     // --- Layover duration (if provided) ---
@@ -292,7 +293,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const [minLay, maxLay] = (params as any).layoverDuration;
       if (!isNaN(minLay) && !isNaN(maxLay)) {
         q.set('layover_duration', `${minLay},${maxLay}`);
-        console.log('[searchFlights] SerpApi layover_duration set to:', `${minLay},${maxLay}`);
+  logger.debug('[searchFlights] SerpApi layover_duration set to:', `${minLay},${maxLay}`);
       }
     }
 
@@ -301,7 +302,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const maxDuration = Number((params as any).maxDuration);
       if (!isNaN(maxDuration) && maxDuration > 0) {
         q.set('max_duration', String(Math.round(maxDuration)));
-        console.log('[searchFlights] SerpApi max_duration set to:', maxDuration);
+  logger.debug('[searchFlights] SerpApi max_duration set to:', maxDuration);
       }
     }
 
@@ -310,7 +311,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const bags = Number((params as any).bags);
       if (!isNaN(bags) && bags >= 0) {
         q.set('bags', String(bags));
-        console.log('[searchFlights] SerpApi bags set to:', bags);
+  logger.debug('[searchFlights] SerpApi bags set to:', bags);
       }
     }
 
@@ -319,7 +320,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const codes = (params as any).excludeAirlines.filter((a: any) => typeof a === 'string' && a.length > 0).map((a: string) => a.toUpperCase()).join(',');
       if (codes) {
         q.set('exclude_airlines', codes);
-        console.log('[searchFlights] SerpApi exclude_airlines set to:', codes);
+  logger.debug('[searchFlights] SerpApi exclude_airlines set to:', codes);
       }
     }
 
@@ -328,14 +329,14 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const codes = (params as any).excludeConns.filter((a: any) => typeof a === 'string' && a.length > 0).map((a: string) => a.toUpperCase()).join(',');
       if (codes) {
         q.set('exclude_conns', codes);
-        console.log('[searchFlights] SerpApi exclude_conns set to:', codes);
+  logger.debug('[searchFlights] SerpApi exclude_conns set to:', codes);
       }
     }
 
     // --- Deep search (if provided) ---
     if ((params as any).deepSearch === true) {
       q.set('deep_search', 'true');
-      console.log('[searchFlights] SerpApi deep_search enabled');
+  logger.debug('[searchFlights] SerpApi deep_search enabled');
     }
 
     // --- Adults/children/infants (if provided) ---
@@ -343,28 +344,28 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const adults = Number((params as any).adults);
       if (!isNaN(adults) && adults > 0) {
         q.set('adults', String(adults));
-        console.log('[searchFlights] SerpApi adults set to:', adults);
+  logger.debug('[searchFlights] SerpApi adults set to:', adults);
       }
     }
     if ((params as any).children) {
       const children = Number((params as any).children);
       if (!isNaN(children) && children > 0) {
         q.set('children', String(children));
-        console.log('[searchFlights] SerpApi children set to:', children);
+  logger.debug('[searchFlights] SerpApi children set to:', children);
       }
     }
     if ((params as any).infantsInSeat) {
       const infants = Number((params as any).infantsInSeat);
       if (!isNaN(infants) && infants > 0) {
         q.set('infants_in_seat', String(infants));
-        console.log('[searchFlights] SerpApi infants_in_seat set to:', infants);
+  logger.debug('[searchFlights] SerpApi infants_in_seat set to:', infants);
       }
     }
     if ((params as any).infantsOnLap) {
       const infants = Number((params as any).infantsOnLap);
       if (!isNaN(infants) && infants > 0) {
         q.set('infants_on_lap', String(infants));
-        console.log('[searchFlights] SerpApi infants_on_lap set to:', infants);
+  logger.debug('[searchFlights] SerpApi infants_on_lap set to:', infants);
       }
     }
 
@@ -383,7 +384,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const sortCode = sortMap[sortRaw] || null;
       if (sortCode) {
         q.set('sort_by', sortCode);
-        console.log('[searchFlights] SerpApi sort_by set to:', sortCode);
+  logger.debug('[searchFlights] SerpApi sort_by set to:', sortCode);
       }
     }
 
@@ -391,12 +392,12 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
 
     const url = `${SERPAPI_BASE}?${q.toString()}`;
     // Log final query for debugging provider validation errors
-    console.log('[searchFlights] SerpApi request URL:', url);
+  logger.debug('[searchFlights] SerpApi request URL:', url);
     const resp = await fetch(url, { headers: { Accept: 'application/json' } });
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      console.error('[searchFlights] SerpApi error', resp.status, text);
+      logger.error('[searchFlights] SerpApi error', resp.status, text);
       throw new functions.https.HttpsError('unavailable', `SerpApi error ${resp.status}: ${text}`);
     }
 

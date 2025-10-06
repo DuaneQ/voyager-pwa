@@ -5,10 +5,16 @@ import { UserProfileContext } from '../Context/UserProfileContext';
 import { auth } from '../environments/firebaseConfig';
 
 const FREE_DAILY_LIMIT = 10;
+// AI generation limits
+const FREE_DAILY_AI_LIMIT = 5;
+const PREMIUM_DAILY_AI_LIMIT = 20;
 
 export const useUsageTracking = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { userProfile, updateUserProfile } = useContext(UserProfileContext);
+  // Guard: some tests render components without wrapping UserProfileContext.
+  // Ensure we don't destructure undefined from useContext().
+  const userProfileContext = useContext(UserProfileContext) as any || {};
+  const { userProfile, updateUserProfile } = userProfileContext;
   const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   const db = getFirestore(app);
 
@@ -41,6 +47,79 @@ export const useUsageTracking = () => {
     }
     return dailyUsage.viewCount >= FREE_DAILY_LIMIT;
   }, [userProfile, hasPremium]);
+
+  // --- AI generation specific helpers ---
+  const hasReachedAILimit = useCallback(() => {
+    if (!userProfile) return false;
+    const today = getTodayString();
+    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+
+    const aiUsage = userProfile.dailyUsage?.aiItineraries;
+    if (!aiUsage || aiUsage.date !== today) return false;
+    return aiUsage.count >= aiLimit;
+  }, [userProfile, hasPremium]);
+
+  const getRemainingAICreations = useCallback(() => {
+    if (!userProfile) return 0;
+    const today = getTodayString();
+    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+    const aiUsage = userProfile.dailyUsage?.aiItineraries;
+    if (!aiUsage || aiUsage.date !== today) return aiLimit;
+    return Math.max(0, aiLimit - aiUsage.count);
+  }, [userProfile, hasPremium]);
+
+  // Track an AI-generated itinerary creation
+  const trackAICreation = useCallback(async (): Promise<boolean> => {
+    if (!userId || !userProfile) {
+      console.error('No user ID or profile found');
+      return false;
+    }
+
+    // Determine today's date and limits
+    const today = getTodayString();
+    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+
+    const currentAIUsage = userProfile.dailyUsage?.aiItineraries;
+    let newCount = 1;
+    if (currentAIUsage && currentAIUsage.date === today) {
+      if (currentAIUsage.count >= aiLimit) {
+        // Already reached or exceeded
+        return false;
+      }
+      newCount = currentAIUsage.count + 1;
+    }
+
+    const updatedAIUsage = {
+      date: today,
+      count: newCount,
+    };
+
+    setIsLoading(true);
+    try {
+      const userRef = doc(db, 'users', userId);
+      // Use dot-path to update nested field
+      await updateDoc(userRef, {
+        ['dailyUsage.aiItineraries']: updatedAIUsage,
+      });
+
+      // Update local context
+      const updatedProfile = {
+        ...userProfile,
+        dailyUsage: {
+          ...(userProfile.dailyUsage || { date: today, viewCount: 0 }),
+          aiItineraries: updatedAIUsage,
+        },
+      };
+      updateUserProfile(updatedProfile);
+      localStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
+      return true;
+    } catch (error) {
+      console.error('Error tracking AI creation:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, userProfile, hasPremium, updateUserProfile, db]);
 
   // Get remaining views for today
   const getRemainingViews = useCallback(() => {
@@ -138,6 +217,11 @@ export const useUsageTracking = () => {
     resetDailyUsage,
     isLoading,
     dailyLimit: FREE_DAILY_LIMIT,
-    hasPremium
+    hasPremium,
+    // AI-specific
+    hasReachedAILimit,
+    getRemainingAICreations,
+    trackAICreation,
+    dailyAILimit: FREE_DAILY_AI_LIMIT,
   };
 };

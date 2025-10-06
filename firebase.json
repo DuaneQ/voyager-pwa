@@ -24,7 +24,7 @@
     },
     "ui": {
       "enabled": true,
-      "port": 4000
+      "port": 4100
     },
     "singleProjectMode": true
   },
@@ -49,6 +49,10 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/share-itinerary/**",
+        "function": "itineraryShare"
+      },
       {
         "source": "/video-share/**",
         "function": "videoShare"
@@ -130,13 +134,7 @@
       }
     ]
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
   "remoteconfig": {
     "template": "remoteconfig.template.json"
-  },
-  "database": {
-    "rules": "database.rules.json"
   }
 }

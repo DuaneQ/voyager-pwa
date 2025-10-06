@@ -11,13 +11,7 @@ const AlternativeRestaurantsSection: React.FC<Props> = ({ restaurants }) => {
   if (!restaurants || !Array.isArray(restaurants) || restaurants.length === 0) return null;
 
   return (
-    <Accordion sx={{
-      mb: 2,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      '&:before': { display: 'none' }
-    }}>
+    <Accordion sx={{ mb: 2, transform: { xs: 'translateX(-6%)', sm: 'translateX(-6%)', md: 'translateX(-3%)', lg: 'translateX(-2%)' }, backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} /> }>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Restaurant sx={{ color: 'white' }} />
