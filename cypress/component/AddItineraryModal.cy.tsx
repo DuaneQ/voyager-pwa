@@ -4,11 +4,14 @@ import React from "react";
 import AddItineraryModal from "../../src/components/forms/AddItineraryModal";
 import { UserProfileContext } from "../../src/Context/UserProfileContext";
 import { AlertContext } from "../../src/Context/AlertContext";
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter } from 'react-router-dom';
 
 
 let mockShowAlert: any;
 let mockOnClose: any;
 let mockOnItineraryAdded: any;
+let mockOnRefresh: any;
 let postItineraryStub: any;
 
 const mockUserProfile = {
@@ -51,7 +54,7 @@ const mockItineraries = [
   },
 ];
 
-function TestProvider({ children, profile = mockUserProfile }) {
+function TestProvider({ children, profile = mockUserProfile }: { children: React.ReactNode; profile?: any }) {
   const [userProfile, setUserProfile] = React.useState(profile);
   const updateUserProfile = (newProfile: typeof userProfile) => setUserProfile(newProfile);
   return (
@@ -70,6 +73,7 @@ describe("<AddItineraryModal />", () => {
     mockShowAlert = cy.stub();
     mockOnClose = cy.stub();
     mockOnItineraryAdded = cy.stub();
+    mockOnRefresh = cy.stub();
     if (!postItineraryStub) {
       postItineraryStub = cy.stub().callsFake((...args) => {
         return Promise.resolve();
@@ -106,20 +110,29 @@ describe("<AddItineraryModal />", () => {
   });
 
   it("renders the modal and all main fields", () => {
+    const theme = createTheme();
+
     cy.mount(
-      <TestProvider>
-        <AddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={mockItineraries}
-        />
-      </TestProvider>
+      <ThemeProvider theme={theme}>
+        <BrowserRouter>
+          <TestProvider>
+            <AddItineraryModal
+              open={true}
+              onClose={mockOnClose}
+              onItineraryAdded={mockOnItineraryAdded}
+              onRefresh={mockOnRefresh}
+              itineraries={mockItineraries}
+            />
+          </TestProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     );
-    cy.contains("Add New Itinerary").should("be.visible");
-    // Check for the visible placeholder text and the react-select input
-    cy.contains('Search for a city...').should('exist');
-    cy.get('input[id^="react-select"]').should('exist');
+
+  // wait for modal heading to render and animations to settle
+  cy.contains("Add New Itinerary", { timeout: 10000 }).should("be.visible");
+  // Check for the react-select input and its placeholder (increase timeout)
+  cy.get('input[id^="react-select"]', { timeout: 10000 }).should('exist');
+  cy.get('input[placeholder="Search for a city..."]', { timeout: 10000 }).should('exist');
     cy.get('input[type="date"]').should("have.length", 2);
     cy.get('textarea').should("exist");
     cy.contains("Save Itinerary").should("exist");
@@ -127,32 +140,50 @@ describe("<AddItineraryModal />", () => {
   });
 
   it("calls onClose when Cancel is clicked", () => {
+    const theme = createTheme();
+
     cy.mount(
-      <TestProvider>
-        <AddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={mockItineraries}
-        />
-      </TestProvider>
+      <ThemeProvider theme={theme}>
+        <BrowserRouter>
+          <TestProvider>
+            <AddItineraryModal
+              open={true}
+              onClose={mockOnClose}
+              onItineraryAdded={mockOnItineraryAdded}
+              onRefresh={mockOnRefresh}
+              itineraries={mockItineraries}
+            />
+          </TestProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     );
-    cy.contains("Cancel").click();
+
+  cy.contains("Add New Itinerary", { timeout: 10000 }).should("be.visible");
+  cy.contains("Cancel").click();
     cy.wrap(mockOnClose).should("have.been.called");
   });
 
   it("shows validation error if required fields are missing", () => {
+    const theme = createTheme();
+
     cy.mount(
-      <TestProvider>
-        <AddItineraryModal
-          open={true}
-          onClose={mockOnClose}
-          onItineraryAdded={mockOnItineraryAdded}
-          itineraries={mockItineraries}
-        />
-      </TestProvider>
+      <ThemeProvider theme={theme}>
+        <BrowserRouter>
+          <TestProvider>
+            <AddItineraryModal
+              open={true}
+              onClose={mockOnClose}
+              onItineraryAdded={mockOnItineraryAdded}
+              onRefresh={mockOnRefresh}
+              itineraries={mockItineraries}
+            />
+          </TestProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     );
-    cy.contains("Save Itinerary").click();
+
+  cy.contains("Add New Itinerary", { timeout: 10000 }).should("be.visible");
+  cy.contains("Save Itinerary").click();
     cy.on('window:alert', (txt) => {
       expect(txt).to.match(/required|complete your profile/i);
     });
