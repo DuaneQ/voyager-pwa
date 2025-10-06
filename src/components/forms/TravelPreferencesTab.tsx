@@ -100,6 +100,11 @@ export const TravelPreferencesTab: React.FC = () => {
   // Update editing preferences when selected profile changes
   useEffect(() => {
     if (selectedProfile) {
+      try {
+        console.log('[TravelPreferencesTab] selectedProfile changed:', selectedProfile.id, selectedProfile.transportation);
+      } catch (e) {
+        console.log('[TravelPreferencesTab] selectedProfile changed (unable to stringify)');
+      }
       const profileCopy = { ...selectedProfile };
       
       // Ensure accommodation type has a valid default if undefined
@@ -165,7 +170,15 @@ export const TravelPreferencesTab: React.FC = () => {
   // Load preferences on component mount
   useEffect(() => {
     if (loadPreferences) {
-      loadPreferences();
+      (async () => {
+        try {
+          console.log('[TravelPreferencesTab] mounting - calling loadPreferences()');
+          await loadPreferences();
+          console.log('[TravelPreferencesTab] loadPreferences() completed');
+        } catch (e) {
+          console.warn('[TravelPreferencesTab] loadPreferences() failed on mount', e);
+        }
+      })();
     }
   }, [loadPreferences]);
 
@@ -262,6 +275,17 @@ export const TravelPreferencesTab: React.FC = () => {
         console.log('Updating profile (updateProfile) payload:', editingPreferences);
         await updateProfile(editingPreferences.id, editingPreferences as any);
         setHasUnsavedChanges(false);
+        // Refresh preferences so other components (for example the AI modal)
+        // read the latest saved profile immediately without requiring a page refresh.
+        if (loadPreferences) {
+          try {
+            console.log('[TravelPreferencesTab] Calling loadPreferences() after updateProfile');
+            await loadPreferences();
+            console.log('[TravelPreferencesTab] loadPreferences() after updateProfile completed');
+          } catch (e) {
+            console.warn('loadPreferences after updateProfile failed', e);
+          }
+        }
       } else {
         console.error('No updateProfile function available');
       }
@@ -521,7 +545,24 @@ export const TravelPreferencesTab: React.FC = () => {
   const savePreferences = saveCurrentProfile;
 
   // AI Modal handlers
-  const handleOpenAIModal = () => {
+  const handleOpenAIModal = async () => {
+    try {
+      console.log('[TravelPreferencesTab] Opening AI modal. selectedProfileId=', selectedProfileId);
+      console.log('[TravelPreferencesTab] current editingPreferences:', editingPreferences);
+      console.log('[TravelPreferencesTab] available profiles count:', allProfiles.length);
+      // Ensure latest preferences are loaded before opening the modal to avoid stale reads
+      if (loadPreferences) {
+        console.log('[TravelPreferencesTab] Refreshing preferences before opening AI modal...');
+        try {
+          await loadPreferences();
+          console.log('[TravelPreferencesTab] loadPreferences() before open completed');
+        } catch (e) {
+          console.warn('[TravelPreferencesTab] loadPreferences() before open failed', e);
+        }
+      }
+    } catch (e) {
+      console.log('[TravelPreferencesTab] Opening AI modal (unable to stringify some values)');
+    }
     setAiModalOpen(true);
   };
 
@@ -1520,6 +1561,8 @@ export const TravelPreferencesTab: React.FC = () => {
         open={aiModalOpen}
         onClose={handleCloseAIModal}
         onGenerated={handleAIGenerated}
+        initialPreferenceProfileId={selectedProfileId}
+        initialPreferenceProfile={editingPreferences}
       />
     </Box>
   );
