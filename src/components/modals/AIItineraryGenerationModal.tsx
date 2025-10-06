@@ -28,6 +28,7 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 import logger from '../../utils/logger';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
+import { TravelPreferenceProfile } from '../../types/TravelPreferences';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
 // ...existing code...
 import { AirportSelector } from '../common/AirportSelector';
@@ -46,6 +47,13 @@ interface AIItineraryGenerationModalProps {
     startDate: string;
     endDate: string;
   };
+  // If provided, prefer this profile id when initializing the form. The modal will
+  // still read the full profile from the travel preferences hook (source of truth).
+  initialPreferenceProfileId?: string;
+  // A fallback profile object to use only if the preferences hook hasn't yet
+  // updated to include the saved changes. This is a defensive fallback to
+  // avoid race conditions when opening the modal immediately after saving.
+  initialPreferenceProfile?: TravelPreferenceProfile | null;
 }
 
 export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProps> = ({
@@ -54,6 +62,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   onGenerated,
   initialDestination = '',
   initialDates,
+  initialPreferenceProfileId,
+  initialPreferenceProfile,
 }) => {
   // Hooks  
   const { 
@@ -71,6 +81,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     getProfileById
     , loadPreferences
   } = useTravelPreferences();
+  // Preference profiles are read from saved preferences only
 
   // Form state
   const [formData, setFormData] = useState<AIGenerationRequest>({
@@ -103,32 +114,49 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   useEffect(() => {
     if (open && !wasOpen) {
       // Modal just opened
-      setModalKey(prev => prev + 1);
-      setWasOpen(true);
-      
-      // Reset form data only once when modal opens
-      const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
-      
-      setFormData({
-        destination: initialDestination,
-        destinationAirportCode: '',
-        departure: '',
-        departureAirportCode: '',
-        startDate: initialDates?.startDate || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-        endDate: initialDates?.endDate || format(addDays(new Date(), 14), 'yyyy-MM-dd'),
-        tripType: 'leisure',
-        preferenceProfileId: defaultProfileId,
-        specialRequests: '',
-        mustInclude: [],
-        mustAvoid: [],
-        flightPreferences: {
-          class: 'economy',
-          stopPreference: 'any',
-          preferredAirlines: [],
-        },
-      });
+      (async () => {
+        setModalKey(prev => prev + 1);
+        setWasOpen(true);
+
+        // If we have a loadPreferences function, ensure we refresh before initializing
+        if (typeof loadPreferences === 'function') {
+          try {
+            console.log('[AIItineraryGenerationModal] calling loadPreferences() on open to ensure latest profiles');
+            await loadPreferences();
+            console.log('[AIItineraryGenerationModal] loadPreferences() on open completed');
+          } catch (err) {
+            console.warn('[AIItineraryGenerationModal] loadPreferences() on open failed, proceeding with cached preferences', err);
+          }
+        }
+
+        // Reset form data only once when modal opens (after attempting to refresh preferences)
+        const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
+        console.log('[AIItineraryGenerationModal] modal opened, defaultProfileId=', defaultProfileId);
+
+        // Prefer an explicitly-provided initial profile id (from parent) if available.
+        const initProfileId = (initialPreferenceProfileId as string) || defaultProfileId || '';
+
+        setFormData({
+          destination: initialDestination,
+          destinationAirportCode: '',
+          departure: '',
+          departureAirportCode: '',
+          startDate: initialDates?.startDate || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+          endDate: initialDates?.endDate || format(addDays(new Date(), 14), 'yyyy-MM-dd'),
+          tripType: 'leisure',
+          preferenceProfileId: initProfileId,
+          specialRequests: '',
+          mustInclude: [],
+          mustAvoid: [],
+          flightPreferences: {
+            class: 'economy',
+            stopPreference: 'any',
+            preferredAirlines: [],
+          },
+        });
+      })();
     }
-  }, [open, wasOpen, initialDestination, initialDates, preferences]);
+  }, [open, wasOpen, initialDestination, initialDates, preferences, initialPreferenceProfileId]);
 
   // Handle form field changes
   const handleFieldChange = useCallback((field: string, value: any) => {
@@ -162,9 +190,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
 
     // Determine flight visibility based on the selected profile at validation time
-    const selectedProfileForValidation = typeof getProfileById === 'function'
+    const selectedProfileForValidation = (typeof getProfileById === 'function'
       ? getProfileById(formData.preferenceProfileId)
-      : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
+      : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null);
+    console.log('[AIItineraryGenerationModal] validateForm selectedProfileForValidation=', selectedProfileForValidation?.id, selectedProfileForValidation?.transportation);
     const profileTransportationForValidation = selectedProfileForValidation?.transportation;
     const flightSectionVisibleForValidation = !!(
       profileTransportationForValidation && (
@@ -345,6 +374,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         preferredAirlines: [],
       },
     });
+    // Mark as not-open so next open will reinitialize
+    setWasOpen(false);
     // Notify parent that modal should close
     onClose();
   }, [isGenerating, cancelGeneration, resetGeneration, onClose, preferences]);
@@ -403,6 +434,19 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const selectedProfileForRender = typeof getProfileById === 'function'
     ? getProfileById(formData.preferenceProfileId)
     : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
+
+  // If the parent passed a recent profile object (editingPreferences) and its id
+  // matches the selected profile id, prefer that object to avoid a race where the
+  // hook's state hasn't yet reflected the saved change. This is a defensive
+  // fallback; the hook remains the source of truth when available.
+  let selectedProfile: TravelPreferenceProfile | null = selectedProfileForRender;
+  if (initialPreferenceProfile && formData.preferenceProfileId && initialPreferenceProfile.id === formData.preferenceProfileId) {
+    // Use parent-provided profile when it's likely more up-to-date
+    selectedProfile = initialPreferenceProfile;
+    console.log('[AIItineraryGenerationModal] using initialPreferenceProfile (parent) for render:', initialPreferenceProfile.id, initialPreferenceProfile.transportation);
+  }
+  console.log('[AIItineraryGenerationModal] selectedProfile used for render=', selectedProfile?.id, selectedProfile?.transportation);
+  console.log('[AIItineraryGenerationModal] selectedProfileForRender=', selectedProfileForRender?.id, selectedProfileForRender?.transportation);
 
   // Flight section should show if the profile explicitly enables flight searching via includeFlights
   // or if the primaryMode is the canonical 'airplane' value. This avoids relying on legacy UI labels.
