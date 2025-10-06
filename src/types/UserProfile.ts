@@ -1,3 +1,5 @@
+import { UserTravelPreferences } from './TravelPreferences';
+
 export interface UserProfile {
   username?: string;
   email?: string;
@@ -32,4 +34,11 @@ export interface UserProfile {
     slot4?: string;
     [key: string]: string | undefined;
   };
+  /**
+   * Travel preferences for AI itinerary generation and personalization
+   */
+  travelPreferences?: UserTravelPreferences;
+  /**
+   * Additional profile fields can be added here later
+   */
 }

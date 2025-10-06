@@ -22,6 +22,7 @@ import {
 import { signOut } from "firebase/auth";
 import { auth } from "../../environments/firebaseConfig";
 import { EditProfileModal } from "./EditProfileModal";
+import { TravelPreferencesTab } from "./TravelPreferencesTab";
 import useGetUserProfile from "../../hooks/useGetUserProfile";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import { ProfilePhoto } from "./ProfilePhoto";
@@ -99,7 +100,7 @@ export const ProfileForm = ({
       {/* Header Section: ProfilePhoto + Username + Tabs */}
       {(headerOnly || (!headerOnly && !contentOnly)) && (
         <Box sx={{
-          maxWidth: '300px',
+          maxWidth: { xs: '300px', md: 900, lg: 1200 },
           margin: '0 auto',
           p: { xs: 0.5, sm: 2 } // Reduced padding on mobile
         }}>
@@ -188,25 +189,33 @@ export const ProfileForm = ({
               <Tabs 
                 value={currentTab || 0} 
                 onChange={handleTabChange} 
-                centered
+                variant="scrollable"
+                scrollButtons={false}
+                allowScrollButtonsMobile
                 sx={{
                   '& .MuiTab-root': {
                     color: 'white',
-                    fontSize: { xs: '0.8rem', sm: '1rem' }, // Smaller font on mobile
-                    minHeight: { xs: '36px', sm: '48px' }, // Smaller height on mobile
-                    padding: { xs: '6px 8px', sm: '12px 16px' }, // Smaller padding on mobile
+                    fontSize: { xs: '0.65rem', sm: '0.85rem' }, // Even smaller font to fit 4 tabs
+                    minHeight: { xs: '32px', sm: '44px' }, // Reduced height
+                    padding: { xs: '4px 6px', sm: '8px 12px' }, // Tighter padding
+                    minWidth: { xs: '60px', sm: '80px' }, // Set minimum width
+                    maxWidth: { xs: '75px', sm: '120px' }, // Prevent tabs from being too wide
                     '&.Mui-selected': {
                       color: 'white'
                     }
                   },
                   '& .MuiTabs-indicator': {
                     backgroundColor: 'white'
+                  },
+                  '& .MuiTabs-flexContainer': {
+                    justifyContent: 'center' // Center the tabs
                   }
                 }}
               >
                 <Tab label="Profile" />
                 <Tab label="Photos" />
                 <Tab label="Videos" />
+                <Tab label="Traval Profile" />
               </Tabs>
             </Box>
           )}
@@ -216,7 +225,7 @@ export const ProfileForm = ({
       {/* Content Section: Profile Details Card */}
       {(contentOnly || (!headerOnly && !contentOnly)) && (
         <Box sx={{
-          maxWidth: '300px',
+          maxWidth: { xs: '300px', md: 900, lg: 1200 },
           margin: '0 auto',
           p: { xs: 0.5, sm: 2 } // Much smaller padding on mobile
         }}>
@@ -310,6 +319,26 @@ export const ProfileForm = ({
             </Grid>
           </Grid>
         </Card>
+          )}
+
+          {/* Travel Preferences content - show when Travel Preferences tab is active */}
+          {(!onTabChange || currentTab === 3) && (
+            <Card
+              elevation={0}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: { xs: 1, sm: 2 },
+                p: { xs: 1.5, sm: 3 },
+                maxWidth: '100%',
+                margin: { xs: "8px auto", sm: "20px auto" },
+                borderRadius: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}>
+              <TravelPreferencesTab />
+            </Card>
           )}
         </Box>
       )}

@@ -15,6 +15,8 @@ import { getAnalytics, logEvent } from "firebase/analytics";
 import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
 import "./App.css";
+// Import debug functions for testing Firestore connectivity
+import "./debug/testFirestore";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Search } from "./components/pages/Search";
 import { Profile } from "./components/pages/Profile";
@@ -34,6 +36,7 @@ import { NewConnectionProvider } from "./Context/NewConnectionContext";
 import { app } from "./environments/firebaseConfig";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { SimpleTermsGuard } from "./components/auth/SimpleTermsGuard";
+import { PublicAIItineraryPage } from "./components/pages/PublicAIItineraryPage";
 
 // AnalyticsTracker logs a page_view event on every route change
 function AnalyticsTracker() {
@@ -151,6 +154,7 @@ function App() {
                     }
                   />
                   <Route path="/Reset" element={<Reset />} />
+                  <Route path="/share-itinerary/:itineraryId" element={<PublicAIItineraryPage />} />
                 </Routes>
               </Suspense>
             </div>

@@ -1,41 +1,51 @@
 import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
 
 /**
- * Validates a video file before upload
+ * Validates a video file before upload with improved error handling
  */
 export const validateVideoFile = async (file: File): Promise<VideoValidationResult> => {
   const errors: string[] = [];
 
+  // Input validation
+  if (!file) {
+    return { isValid: false, errors: ['No file provided'] };
+  }
+
   // Debug logging to help identify mobile MIME type issues
   console.log('Video file validation - File type:', file.type, 'File name:', file.name);
 
-  // Check file type
-  if (!VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.includes(file.type as any)) {
-    // Fallback: check file extension for mobile browsers that may not detect MIME type correctly
-    const fileName = file.name.toLowerCase();
-    const supportedExtensions = ['.mp4', '.mov'];
-    const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
-    
-    if (!hasValidExtension) {
-      errors.push(`Unsupported file format "${file.type}". Supported formats: ${VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.join(', ')} or files with extensions: ${supportedExtensions.join(', ')}`);
-    } else {
-      console.log('File type not recognized but has valid extension - allowing upload');
-    }
+  // Check file type with better fallback logic
+  const isValidMimeType = VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.includes(file.type as any);
+  const fileName = file.name.toLowerCase();
+  const supportedExtensions = ['.mp4', '.mov', '.avi', '.wmv'];
+  const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+  
+  if (!isValidMimeType && !hasValidExtension) {
+    errors.push(`Unsupported file format "${file.type}". Supported formats: ${VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.join(', ')} or files with extensions: ${supportedExtensions.join(', ')}`);
+  } else if (!isValidMimeType && hasValidExtension) {
+    console.log('File type not recognized but has valid extension - allowing upload');
   }
 
-  // Check file size
-  if (file.size > VIDEO_CONSTRAINTS.MAX_FILE_SIZE) {
-    errors.push(`File size too large. Maximum size: ${VIDEO_CONSTRAINTS.MAX_FILE_SIZE / 1024 / 1024}MB`);
+  // Check file size with better error message
+  if (file.size === 0) {
+    errors.push('File appears to be empty');
+  } else if (file.size > VIDEO_CONSTRAINTS.MAX_FILE_SIZE) {
+    const maxSizeMB = VIDEO_CONSTRAINTS.MAX_FILE_SIZE / (1024 * 1024);
+    const fileSizeMB = file.size / (1024 * 1024);
+    errors.push(`File size too large (${fileSizeMB.toFixed(1)}MB). Maximum size: ${maxSizeMB}MB`);
   }
 
-  // Check video duration
-  try {
-    const duration = await getVideoDuration(file);
-    if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
-      errors.push(`Video too long. Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`);
+  // Only check video duration if other validations pass to avoid timeouts
+  if (errors.length === 0) {
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
+        errors.push(`Video too long (${Math.round(duration)}s). Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error reading video duration';
+      errors.push(`Unable to read video duration: ${errorMessage}`);
     }
-  } catch (error) {
-    errors.push('Unable to read video duration');
   }
 
   return {
@@ -86,29 +96,64 @@ export const getVideoDuration = (file: File): Promise<number> => {
 };
 
 /**
- * Validates video metadata (title, description)
+ * Validates video metadata (title, description) with comprehensive checks
  */
 export const validateVideoMetadata = (title?: string, description?: string): VideoValidationResult => {
   const errors: string[] = [];
 
-  if (title && title.length > VIDEO_CONSTRAINTS.MAX_TITLE_LENGTH) {
-    errors.push(`Title too long. Maximum length: ${VIDEO_CONSTRAINTS.MAX_TITLE_LENGTH} characters`);
+  // Title validation
+  if (title !== undefined) {
+    if (title.trim().length === 0) {
+      errors.push('Title cannot be empty');
+    } else if (title.length > VIDEO_CONSTRAINTS.MAX_TITLE_LENGTH) {
+      errors.push(`Title too long (${title.length} characters). Maximum length: ${VIDEO_CONSTRAINTS.MAX_TITLE_LENGTH} characters`);
+    }
   }
 
-  if (description && description.length > VIDEO_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) {
-    errors.push(`Description too long. Maximum length: ${VIDEO_CONSTRAINTS.MAX_DESCRIPTION_LENGTH} characters`);
+  // Description validation
+  if (description !== undefined) {
+    if (description.length > VIDEO_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) {
+      errors.push(`Description too long (${description.length} characters). Maximum length: ${VIDEO_CONSTRAINTS.MAX_DESCRIPTION_LENGTH} characters`);
+    }
   }
 
-  // Basic profanity check (simple implementation for MVP)
-  const profanityWords = ['badword1', 'badword2']; // Replace with actual list
+  // Enhanced content filtering
+  if (title || description) {
+    const contentCheckResult = checkContentAppropriate(title, description);
+    if (!contentCheckResult.isValid) {
+      errors.push(...contentCheckResult.errors);
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * Checks content for inappropriate language and patterns
+ */
+const checkContentAppropriate = (title?: string, description?: string): VideoValidationResult => {
+  const errors: string[] = [];
+  
+  // Basic profanity and spam detection
+  const inappropriatePatterns = [
+    /badword1/i, /badword2/i, // Replace with actual patterns
+    /spam/i, /click here/i, /free money/i, // Basic spam detection
+    /(.)\1{10,}/i // Repeated characters (spam indicator)
+  ];
+
   const titleCheck = title?.toLowerCase() || '';
   const descriptionCheck = description?.toLowerCase() || '';
+  const combinedContent = `${titleCheck} ${descriptionCheck}`;
 
-  profanityWords.forEach(word => {
-    if (titleCheck.includes(word) || descriptionCheck.includes(word)) {
-      errors.push('Content contains inappropriate language');
+  for (const pattern of inappropriatePatterns) {
+    if (pattern.test(combinedContent)) {
+      errors.push('Content contains inappropriate or spam-like content');
+      break; // Only add the error once
     }
-  });
+  }
 
   return {
     isValid: errors.length === 0,

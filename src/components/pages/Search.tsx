@@ -31,6 +31,7 @@ import { useNewConnection } from "../../Context/NewConnectionContext";
 import React from "react";
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { getAnalytics, logEvent } from "firebase/analytics";
+import { createExampleItinerary, isExampleItinerary } from '../../utils/exampleItinerary';
 
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
@@ -139,10 +140,18 @@ export const Search = React.memo(() => {
 
   // Dislike handler with usage tracking
   const handleDislike = async (itinerary: Itinerary) => {
+    // Prevent actions on example itinerary
+    if (isExampleItinerary(itinerary)) {
+      alert('This is an example itinerary. Create your own itinerary to find real matches!');
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
+    
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
+    
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
@@ -160,10 +169,18 @@ export const Search = React.memo(() => {
 
   // Like handler with usage tracking and mutual like logic
   const handleLike = async (itinerary: Itinerary) => {
+    // Prevent actions on example itinerary
+    if (isExampleItinerary(itinerary)) {
+      alert('This is an example itinerary. Create your own itinerary to find real matches!');
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
+    
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
+    
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
@@ -185,9 +202,16 @@ export const Search = React.memo(() => {
 
     // 1. Add current user's UID to the liked itinerary's likes array in Firestore
     const itineraryRef = doc(db, "itineraries", itinerary.id);
-    await updateDoc(itineraryRef, {
-      likes: arrayUnion(userId),
-    });
+    try {
+      await updateDoc(itineraryRef, {
+        likes: arrayUnion(userId),
+      });
+    } catch (error) {
+      console.error('Failed to like itinerary:', error);
+      alert('Failed to like itinerary. Please try again.');
+      setCurrentMatchIndex((prev) => prev + 1);
+      return;
+    }
 
     // 2. Fetch the latest version of the current user's selected itinerary from Firestore
     const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
@@ -229,22 +253,29 @@ export const Search = React.memo(() => {
           logEvent(analytics, "itinerary_match", { itinerary_id: itinerary.id, matched_user: otherUserUid });
         }
       } catch (e) {}
-    } else {
-      console.log("No mutual like yet.");
     }
 
     setCurrentMatchIndex((prev) => prev + 1);
   };
 
   // Sort itineraries by startDate ascending (oldest first)
-  const sortedItineraries = [...itineraries].sort(
-    (a, b) =>
-      new Date(a.startDate ?? "").getTime() -
-      new Date(b.startDate ?? "").getTime()
-  );
+  // Use a safe parser that falls back to +Infinity when a date is missing or invalid
+  const parseTime = (s?: string | null) => {
+    if (!s) return Number.POSITIVE_INFINITY;
+    const t = Date.parse(String(s));
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+  };
 
-  // Get current match or show appropriate message
-  const currentMatch = matchingItineraries[currentMatchIndex];
+  const sortedItineraries = [...itineraries].sort((a, b) => parseTime(a.startDate) - parseTime(b.startDate));
+
+  // Get current match or show example when no matches found
+  const realMatch = matchingItineraries[currentMatchIndex];
+  const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
+  const hasNoMatches = selectedItineraryId && !searchLoading && matchingItineraries.length === 0;
+  
+  // Show example itinerary if user selected an itinerary but has no matches AND hasn't dismissed it yet
+  const showExample = hasNoMatches && selectedItinerary && currentMatchIndex === 0;
+  const currentMatch = realMatch || (showExample ? createExampleItinerary(selectedItinerary.destination) : null);
   const isAtEnd = currentMatchIndex >= matchingItineraries.length;
 
   return (
@@ -361,10 +392,11 @@ export const Search = React.memo(() => {
           flex: 1,
           position: "relative",
           display: "flex",
-          alignItems: "center",
+          alignItems: { xs: "flex-start", sm: "center" },
           justifyContent: "center",
           overflow: "hidden",
           minHeight: 0,
+          pt: { xs: 2, sm: 0 }, // Add top padding on mobile
         }}>
         {/* Show onboarding message if user has never created an itinerary */}
         {!isFetching && itineraries.length === 0 && (
@@ -427,8 +459,8 @@ export const Search = React.memo(() => {
           </Typography>
         )}
 
-        {/* Show end message with loading state, only if user has itineraries */}
-        {isAtEnd && !searchLoading && itineraries.length > 0 && (
+        {/* Show end message with loading state, only if user has itineraries and no current match showing */}
+        {isAtEnd && !searchLoading && itineraries.length > 0 && !currentMatch && (
           <Box sx={{ textAlign: 'center', padding: 2 }}>
             <Typography>
               {hasMore

@@ -1,5 +1,5 @@
 import profilePlaceholder from "../../assets/images/imagePH.png";
-import { Menu, MenuItem, CircularProgress, Input, Alert, Modal, Box, IconButton, Button } from "@mui/material";
+import { Menu, MenuItem, CircularProgress, Input, Alert, Modal, Box, IconButton } from "@mui/material";
 import { useContext, useRef, useState } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
@@ -92,7 +92,7 @@ export const ProfilePhoto = () => {
     <>
       <img
         src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
-        alt="Profile Placeholder"
+        alt={userProfile?.photos?.profile ? "profile" : "Profile Placeholder"}
         loading="lazy"
         style={{
           width: "100%",
@@ -169,7 +169,7 @@ export const ProfilePhoto = () => {
           {enlargedPhoto && (
             <img
               src={enlargedPhoto}
-              alt="Enlarged Profile Photo"
+              alt="enlarged"
               style={{
                 maxWidth: "90vw",
                 maxHeight: "90vh",

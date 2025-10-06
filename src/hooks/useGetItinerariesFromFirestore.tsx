@@ -19,6 +19,7 @@ const useGetItinerariesFromFirestore = () => {
     setError(null);
     const userCredentials = localStorage.getItem("USER_CREDENTIALS");
     let userUid = userCredentials ? JSON.parse(userCredentials).user.uid : null;
+
     if (!userUid) {
       const auth = getAuth();
       userUid = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
@@ -40,7 +41,11 @@ const useGetItinerariesFromFirestore = () => {
         id: doc.id,
         ...doc.data(),
       })) as Itinerary[];
-      return fetchedItineraries;
+
+      // We only read from the canonical `itineraries` collection. AI generation
+      // writes should save final itineraries into `itineraries` so the UI can
+      // rely on a single authoritative source.
+      return fetchedItineraries as Itinerary[];
     } catch (err) {
       console.error("Error fetching itineraries:", err);
       setError("Failed to fetch itineraries. Please try again later.");

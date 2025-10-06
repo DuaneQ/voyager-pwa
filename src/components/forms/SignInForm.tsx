@@ -195,6 +195,104 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
             }}>
             Sign in
           </Typography>
+
+          {/* App Features Section */}
+          <Box sx={{ 
+            mb: { xs: 1, sm: 2 },
+            p: { xs: 1, sm: 1.5 },
+            bgcolor: 'rgba(25, 118, 210, 0.04)',
+            borderRadius: 1.5,
+            border: '1px solid rgba(25, 118, 210, 0.12)'
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontSize: { xs: "0.9rem", sm: "1.1rem" },
+                fontWeight: 600,
+                color: 'primary.main',
+                mb: { xs: 0.8, sm: 1 },
+                textAlign: 'center'
+              }}
+            >
+              Welcome to TravalPass
+            </Typography>
+            <Stack spacing={{ xs: 0.5, sm: 0.8 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                py: 0.2
+              }}>
+                <Box sx={{ 
+                  color: 'primary.main',
+                  fontSize: { xs: '1rem', sm: '1.2rem' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: { xs: '18px', sm: '20px' }
+                }}>
+                  ✈️
+                </Box>
+                <Typography sx={{ 
+                  fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                  fontWeight: 500,
+                  color: 'text.primary',
+                  lineHeight: 1.3
+                }}>
+                  AI generated itineraries
+                </Typography>
+              </Box>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                py: 0.2
+              }}>
+                <Box sx={{ 
+                  color: 'primary.main',
+                  fontSize: { xs: '1rem', sm: '1.2rem' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: { xs: '18px', sm: '20px' }
+                }}>
+                  ✈️
+                </Box>
+                <Typography sx={{ 
+                  fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                  fontWeight: 500,
+                  color: 'text.primary',
+                  lineHeight: 1.3
+                }}>
+                  Safely match with other travelers
+                </Typography>
+              </Box>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                py: 0.2
+              }}>
+                <Box sx={{ 
+                  color: 'primary.main',
+                  fontSize: { xs: '1rem', sm: '1.2rem' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: { xs: '18px', sm: '20px' }
+                }}>
+                  ✈️
+                </Box>
+                <Typography sx={{ 
+                  fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                  fontWeight: 500,
+                  color: 'text.primary',
+                  lineHeight: 1.3
+                }}>
+                  Your own personal travel agent
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
           <Box
             component="form"
             onSubmit={handleSubmit}
