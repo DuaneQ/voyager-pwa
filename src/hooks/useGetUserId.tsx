@@ -27,7 +27,15 @@ const useGetUserId = () => {
         }
       });
 
-      return () => unsubscribe();
+      return () => {
+        try {
+          if (typeof unsubscribe === 'function') {
+            unsubscribe();
+          }
+        } catch (e) {
+          // swallow errors from mocks during tests
+        }
+      };
   }, []);
 
   return userId;

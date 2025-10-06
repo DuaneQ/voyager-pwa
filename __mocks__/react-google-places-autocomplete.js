@@ -1,17 +1,26 @@
 
 const React = require('react');
 
-// Only show dropdown if input matches 'London' (case-insensitive)
+// Mock that accepts any input for testing
 module.exports = function MockGooglePlacesAutocomplete(props) {
   const [inputValue, setInputValue] = React.useState(props.selectProps?.value?.label || '');
   const [showDropdown, setShowDropdown] = React.useState(false);
-  const option = { label: 'London, UK', value: 'London, UK' };
-  const match = inputValue.toLowerCase().includes('london');
+  
+  // Create dynamic option based on input
+  const option = { 
+    label: inputValue || 'London, UK', 
+    value: inputValue || 'London, UK' 
+  };
+  const match = inputValue.length > 0;
 
   const handleChange = (e) => {
-    setInputValue(e.target.value);
-    setShowDropdown(e.target.value.length > 0 && e.target.value.toLowerCase().includes('london'));
-    // Do not call onChange here, only on selection
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    setShowDropdown(newValue.length > 0);
+    // Call onChange immediately to simulate real behavior
+    if (newValue.trim()) {
+      props.selectProps?.onChange?.({ label: newValue, value: newValue });
+    }
   };
 
   const handleSelect = () => {
@@ -37,7 +46,7 @@ module.exports = function MockGooglePlacesAutocomplete(props) {
         onBlur={() => setTimeout(() => setShowDropdown(false), 100)}
         onKeyDown={handleKeyDown}
         style={{ width: '100%', padding: 8, border: '1px solid #ccc', borderRadius: 4 }}
-        data-testid="mock-google-places-input"
+        data-testid="destination-input"
       />
       {showDropdown && match && (
         <div

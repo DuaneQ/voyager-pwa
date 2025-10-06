@@ -54,6 +54,25 @@
       gtag('config', 'AW-17355046176');
     </script>
 
+    <!-- Suppress Google Maps API deprecation warnings -->
+    <script>
+      // Suppress Google Maps Places API deprecation warnings in development
+      if (typeof console !== 'undefined' && console.warn) {
+        const originalWarn = console.warn;
+        console.warn = function(message, ...args) {
+          // Filter out specific Google Maps deprecation warnings
+          if (typeof message === 'string' && (
+            message.includes('AutocompleteService is not available to new customers') ||
+            message.includes('google.maps.places.AutocompleteService') ||
+            message.includes('google.maps.places.AutocompleteSuggestion is recommended')
+          )) {
+            return; // Suppress this warning
+          }
+          originalWarn.apply(console, [message, ...args]);
+        };
+      }
+    </script>
+
     <!-- Additional SEO Meta Tags -->
     <meta name="keywords" content="travel, itinerary, companions, chat, explore, solo traveler, travel buddy, travelpass" />
     <meta name="author" content="Traval Team" />

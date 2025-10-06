@@ -926,41 +926,48 @@ describe('VideoFeedPage', () => {
 
   describe('Video playback behavior', () => {
     it('should start videos in paused state for mobile compatibility', async () => {
-      // Set up authenticated user
-      (auth as any).currentUser = {
-        uid: 'test-user-id',
-        email: 'test@example.com'
-      };
-      
-      // Set up dual getDocs mock for connections + videos queries
-      mockGetDocs.mockClear();
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call - connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValue({
-          // Subsequent calls - videos query (repeatable)
-          forEach: (callback: any) => {
-            mockVideos.forEach((video) => {
-              const { id, ...rest } = video;
-              callback({
-                id,
-                data: () => rest
-              });
-            });
-          }
-        } as any);
-      
-      render(<VideoFeedPage />);
-      
-      await waitFor(() => {
-        expect(screen.getByTestId('video-container')).toBeInTheDocument();
-      });
-
-      // VideoPlayer should receive isPlaying=false initially
-      const videoPlayer = screen.getByTestId('video-player');
-      expect(videoPlayer).toBeInTheDocument();
+          (auth as any).currentUser = {
+            uid: 'test-user-id',
+            email: 'test@example.com'
+          };
+          const testVideos = [
+            {
+              id: 'video-1',
+              userId: 'user-1',
+              title: 'Test Video 1',
+              description: 'First test video',
+              videoUrl: 'https://example.com/video1.mp4',
+              thumbnailUrl: 'https://example.com/thumb1.jpg',
+              isPublic: true,
+              likes: [],
+              comments: [],
+              viewCount: 100,
+              duration: 30,
+              fileSize: 1024 * 1024,
+              createdAt: { seconds: 1 },
+              updatedAt: { seconds: 1 }
+            }
+          ];
+          mockGetDocs.mockClear();
+          mockGetDocs
+            .mockResolvedValueOnce({
+              forEach: jest.fn()
+            } as any)
+            .mockResolvedValueOnce({
+              forEach: (callback: any) => {
+                testVideos.forEach((video) => {
+                  callback({ id: video.id, data: () => video });
+                });
+              }
+            } as any);
+          render(<VideoFeedPage />);
+          // Wait for the container to render, then wait for the mocked VideoPlayer
+          await waitFor(() => {
+            expect(screen.getByTestId('video-container')).toBeInTheDocument();
+          });
+          await waitFor(() => {
+            expect(screen.getByTestId('video-player')).toBeInTheDocument();
+          });
     });
 
     it.skip('should auto-play next video after swipe', async () => {
@@ -1027,11 +1034,10 @@ describe('VideoFeedPage', () => {
         } as any);
 
       render(<VideoFeedPage />);
-      
-      await waitFor(() => {
-        const videoPlayer = screen.getByTestId('video-player');
-        expect(videoPlayer).toBeInTheDocument();
-      });
+
+      // Wait for loading to finish and the video player to render
+      await waitFor(() => expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId('video-player')).toBeInTheDocument());
 
       // Simulate video ending
       const videoPlayer = screen.getByTestId('video-player');
@@ -1321,69 +1327,60 @@ describe('VideoFeedPage', () => {
     });
 
     it('should handle like action when not yet liked', async () => {
-      const mockUpdateDoc = jest.fn().mockResolvedValue({});
-      const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
-      const mockArrayUnion = jest.fn().mockReturnValue(['test-user-id']);
-      
-      (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
-      (firestore.doc as jest.Mock) = mockDoc;
-      (firestore.arrayUnion as jest.Mock) = mockArrayUnion;
-      (firestore.arrayRemove as jest.Mock) = jest.fn().mockReturnValue({});
-      
-      const mockVideos = [
-        {
-          id: 'video-1',
-          title: 'Test Video',
-          videoUrl: 'test-url',
-          thumbnailUrl: 'test-thumb',
-          likes: [], // No likes initially
-          comments: [],
-          userId: 'test-user',
-          createdAt: Timestamp.fromDate(new Date()),
-          isPublic: true
-        }
-      ];
-
-      // Set up dual getDocs mock for connections + videos queries
-      mockGetDocs.mockReset();
-      mockGetDocs
-        .mockResolvedValueOnce({
-          // First call - connections query (empty)
-          forEach: jest.fn()
-        } as any)
-        .mockResolvedValue({
-          // Subsequent calls - videos query (repeatable)
-          forEach: (callback: any) => {
-            mockVideos.forEach((video) => {
-              const { id, ...rest } = video;
-              callback({
-                id,
-                data: () => rest
-              });
+          (auth as any).currentUser = {
+            uid: 'test-user-id',
+            email: 'test@example.com'
+          };
+          const mockUpdateDoc = jest.fn().mockResolvedValue({});
+          const mockDoc = jest.fn().mockReturnValue({ id: 'video-1' });
+          const mockArrayUnion = jest.fn().mockReturnValue(['test-user-id']);
+          (firestore.updateDoc as jest.Mock) = mockUpdateDoc;
+          (firestore.doc as jest.Mock) = mockDoc;
+          (firestore.arrayUnion as jest.Mock) = mockArrayUnion;
+          (firestore.arrayRemove as jest.Mock) = jest.fn().mockReturnValue({});
+          const mockVideos = [
+            {
+              id: 'video-1',
+              title: 'Test Video',
+              videoUrl: 'test-url',
+              thumbnailUrl: 'test-thumb',
+              likes: [],
+              comments: [],
+              userId: 'test-user',
+              createdAt: Timestamp.fromDate(new Date()),
+              isPublic: true
+            }
+          ];
+          mockGetDocs.mockReset();
+          mockGetDocs
+            .mockResolvedValueOnce({
+              forEach: jest.fn()
+            } as any)
+            .mockResolvedValue({
+              forEach: (callback: any) => {
+                mockVideos.forEach((video) => {
+                  const { id, ...rest } = video;
+                  callback({
+                    id,
+                    data: () => rest
+                  });
+                });
+              }
+            } as any);
+          render(<VideoFeedPage />);
+          await waitFor(() => {
+            expect(screen.getByTestId('like-button')).toBeInTheDocument();
+          });
+          const likeButton = screen.getByTestId('like-button');
+          expect(likeButton).toHaveTextContent('❤️ 0');
+          fireEvent.click(likeButton);
+          await waitFor(() => {
+            expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'videos', 'video-1');
+            expect(mockArrayUnion).toHaveBeenCalledWith('test-user-id');
+            expect(mockUpdateDoc).toHaveBeenCalledWith({ id: 'video-1' }, {
+              likes: ['test-user-id']
             });
-          }
-        } as any);
-      
-      render(<VideoFeedPage />);
-      
-      // Wait for component to load
-      await waitFor(() => {
-        expect(screen.getByTestId('like-button')).toBeInTheDocument();
-      });
-
-      const likeButton = screen.getByTestId('like-button');
-      expect(likeButton).toHaveTextContent('❤️ 0');
-      
-      // Click like button
-      fireEvent.click(likeButton);
-      
-      await waitFor(() => {
-        expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'videos', 'video-1');
-        expect(mockArrayUnion).toHaveBeenCalledWith('test-user-id');
-        expect(mockUpdateDoc).toHaveBeenCalledWith({ id: 'video-1' }, {
-          likes: ['test-user-id']
-        });
-      });
+          });
     });
 
     it.skip('should handle unlike action when already liked', async () => {

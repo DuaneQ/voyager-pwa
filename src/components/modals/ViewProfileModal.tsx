@@ -123,6 +123,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [videosError, setVideosError] = useState<string | null>(null);
   const [enlargedVideo, setEnlargedVideo] = useState<Video | null>(null);
+  const [hasAttemptedVideoLoad, setHasAttemptedVideoLoad] = useState(false);
 
   const currentUserId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
   // Check if the current user has a connection with the viewed user
@@ -160,13 +161,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       }
     };
     checkConnection();
-  }, [open, currentUserId, userId]);
+  }, [open, currentUserId, userId]); // All dependencies used
 
   useEffect(() => {
     if (!open) {
       // Clear videos when modal is closed
       setUserVideos([]);
       setCurrentTab(0); // Reset to first tab
+      setHasAttemptedVideoLoad(false); // Reset video load attempt flag
       return;
     }
 
@@ -189,15 +191,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setUserVideos([]);
       setLoadingVideos(false);
       setVideosError(null);
+      setHasAttemptedVideoLoad(false);
     };
-  }, [open, userId]);
+  }, [open, userId]); // All dependencies used
 
   // Function to load user's videos
   const loadUserVideos = useCallback(async () => {
     if (!userId) return;
-    
     setLoadingVideos(true);
     setVideosError(null);
+    setHasAttemptedVideoLoad(true);
     try {
       const videosQuery = query(
         collection(db, 'videos'),
@@ -205,17 +208,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         orderBy('createdAt', 'desc'),
         limit(20) // Load recent videos
       );
-      
       const videosSnapshot = await getDocs(videosQuery);
       const videos: Video[] = [];
-      
       videosSnapshot.forEach((doc) => {
         videos.push({
           id: doc.id,
           ...doc.data()
         } as Video);
       });
-      
       setUserVideos(videos);
     } catch (error) {
       console.error('Error loading user videos:', error);
@@ -224,14 +224,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     } finally {
       setLoadingVideos(false);
     }
-  }, [userId]);
+  }, [userId]); // Only userId is needed as dependency
 
   // Load videos only when Videos tab is selected
   useEffect(() => {
-    if (currentTab === 2 && userId && !loadingVideos && userVideos.length === 0 && !videosError) {
+    if (currentTab === 2 && userId && !loadingVideos && userVideos.length === 0 && !videosError && !hasAttemptedVideoLoad) {
       loadUserVideos();
     }
-  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, loadUserVideos]);
+  }, [currentTab, userId, loadingVideos, userVideos.length, videosError, hasAttemptedVideoLoad, loadUserVideos]); // All dependencies used
 
   useEffect(() => {
     if (profile?.ratings?.ratedBy && currentUserId) {
@@ -241,7 +241,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
       setNewRating(existingRating);
       setNewComment(existingComment);
     }
-  }, [profile, currentUserId]);
+  }, [profile, currentUserId]); // All dependencies used
 
   // Filter out null/empty photos
   // Use new slot-based photo object
@@ -704,7 +704,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                         value={profile.bio || ""}
                         InputProps={{
                           readOnly: true,
-                          disableUnderline: true,
                           style: { pointerEvents: 'none', background: '#f5f5f5' },
                         }}
                         multiline
@@ -726,7 +725,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                         value={getAge(profile.dob)}
                         InputProps={{
                           readOnly: true,
-                          disableUnderline: true,
                           style: { pointerEvents: 'none', background: '#f5f5f5' },
                         }}
                         variant="outlined"
@@ -752,7 +750,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                         value={profile?.status || ""}
                         InputProps={{
                           readOnly: true,
-                          disableUnderline: true,
                           style: { pointerEvents: 'none', background: '#f5f5f5' },
                         }}
                         variant="outlined"
@@ -778,7 +775,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.gender || ""}
                       InputProps={{
                         readOnly: true,
-                        disableUnderline: true,
                         style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
                       variant="outlined"
@@ -804,7 +800,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.sexualOrientation || ""}
                       InputProps={{
                         readOnly: true,
-                        disableUnderline: true,
                         style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
                       variant="outlined"
@@ -830,7 +825,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.edu || ""}
                       InputProps={{
                         readOnly: true,
-                        disableUnderline: true,
                         style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
                       variant="outlined"
@@ -856,7 +850,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.drinking || ""}
                       InputProps={{
                         readOnly: true,
-                        disableUnderline: true,
                         style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
                       variant="outlined"
@@ -882,7 +875,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       value={profile.smoking || ""}
                       InputProps={{
                         readOnly: true,
-                        disableUnderline: true,
                         style: { pointerEvents: 'none', background: '#f5f5f5' },
                       }}
                       variant="outlined"

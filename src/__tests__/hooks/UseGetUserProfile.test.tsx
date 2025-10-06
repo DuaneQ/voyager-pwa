@@ -1,65 +1,81 @@
-import { renderHook } from "@testing-library/react";
-import useGetUserProfile from "../../hooks/useGetUserProfile";
+import React from 'react';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import useGetUserProfile from '../../hooks/useGetUserProfile';
+import { UserProfileContext } from '../../Context/UserProfileContext';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { app, auth } from '../../environments/firebaseConfig';
 
-jest.mock("../../hooks/useGetUserProfile");
-const mockedHook = jest.mocked(useGetUserProfile);
-const mockProfile = {
-  email: "test@example.com",
-  username: "testuser",
-  userBio: "Bio",
-  dob: "mm/dd/yyyy",
-  gender: "Male",
-  sexualOrientation: "M",
-  education: "University",
-  drinkingHabits: "Social",
-  smokingHabits: "No",
-};
-beforeEach(() => {
-  localStorage.clear();
-});
+jest.mock('firebase/firestore');
 
-describe("Can retrieve user profile when the storage is null", () => {
-  it("should return the initial values for data, error and loading", async () => {
-    //Arrange
-    localStorage.clear();
-    mockedHook.mockReturnValue({
-      isLoading: false,
-      userProfile: {
-        email: "test@example.com",
-        username: "testuser",
-        userBio: "Bio",
-        dob: "mm/dd/yyyy",
-        gender: "Male",
-        sexualOrientation: "M",
-        education: "University",
-        drinkingHabits: "Social",
-        smokingHabits: "No",
-      },
-      setUserProfile: jest.fn(),
-    });
+describe('useGetUserProfile', () => {
+  const updateUserProfile = jest.fn();
 
-    //Act
-    const { result } = renderHook(() => useGetUserProfile());
-
-    //Assert
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.userProfile).toEqual(mockProfile);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // default: auth has a user
+    (auth as any).currentUser = { uid: 'u1' };
   });
 
-  it("should return the user profile from local storage", async () => {
-    // Arrange
-    localStorage.setItem("userProfile", JSON.stringify(mockProfile));
-    mockedHook.mockReturnValue({
-      isLoading: false,
-      userProfile: JSON.parse(localStorage.getItem("userProfile") || "{}"),
-      setUserProfile: jest.fn(),
-    });
+  it('fetches profile from firestore and updates context + localStorage', async () => {
+    const profile = { username: 'alice' };
+    const mockSnap = { exists: () => true, data: () => profile };
 
-    // Act
-    const { result } = renderHook(() => useGetUserProfile());
+    (getFirestore as jest.Mock).mockReturnValue({});
+    (doc as jest.Mock).mockReturnValue({});
+    (getDoc as jest.Mock).mockResolvedValue(mockSnap);
 
-    // Assert
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.userProfile).toEqual(mockProfile);
+    const wrapper = ({ children }: any) => (
+      <UserProfileContext.Provider value={{ updateUserProfile, userProfile: null, setUserProfile: jest.fn(), isLoading: false }}>
+        {children}
+      </UserProfileContext.Provider>
+    );
+
+    const { result } = renderHook(() => useGetUserProfile(), { wrapper });
+
+    // wait for effect to complete
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+  expect(updateUserProfile).toHaveBeenCalledWith(profile);
+  // PROFILE_INFO should have been set
+    const stored = JSON.parse(window.localStorage.getItem('PROFILE_INFO') as string);
+    expect(stored).toEqual(profile);
+  });
+
+  it('falls back to localStorage when getDoc throws', async () => {
+    (getFirestore as jest.Mock).mockReturnValue({});
+    (doc as jest.Mock).mockReturnValue({});
+    (getDoc as jest.Mock).mockRejectedValue(new Error('boom'));
+
+    // pre-fill localStorage
+    const cached = { username: 'cached' };
+    window.localStorage.setItem('PROFILE_INFO', JSON.stringify(cached));
+
+    const wrapper = ({ children }: any) => (
+      <UserProfileContext.Provider value={{ updateUserProfile, userProfile: null, setUserProfile: jest.fn(), isLoading: false }}>
+        {children}
+      </UserProfileContext.Provider>
+    );
+
+    const { result } = renderHook(() => useGetUserProfile(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(updateUserProfile).toHaveBeenCalledWith(cached);
+  });
+
+  it('does nothing when no auth user exists', async () => {
+    (auth as any).currentUser = null;
+
+    const wrapper = ({ children }: any) => (
+      <UserProfileContext.Provider value={{ updateUserProfile, userProfile: null, setUserProfile: jest.fn(), isLoading: false }}>
+        {children}
+      </UserProfileContext.Provider>
+    );
+
+    const { result } = renderHook(() => useGetUserProfile(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // updateUserProfile should not have been called
+    expect(updateUserProfile).not.toHaveBeenCalled();
   });
 });

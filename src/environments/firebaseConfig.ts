@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 // App Check import temporarily removed for emergency hotfix
 // import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";

@@ -54,6 +54,11 @@ service cloud.firestore {
       allow update, delete: if request.auth != null 
         && request.auth.uid == resource.data.userInfo.uid;
       
+      // Allow authenticated users to update likes only on any itinerary (for social interactions)
+      allow update: if request.auth != null 
+        && request.auth.uid != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      
       // Allow admins to read/update/delete any itinerary
       allow read, update, delete: if request.auth != null 
         && request.auth.token.admin == true;

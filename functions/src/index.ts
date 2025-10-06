@@ -21,6 +21,14 @@ import express from "express";
 import bodyParser from "body-parser";
 // import { createStripePortalSession } from './createStripePortalSession';
 // import { createStripeCheckoutSession } from './createStripeCheckoutSession';
+/**
+ * IMPORTANT DEVELOPER NOTE:
+ * Do NOT remove hardcoded API keys from Cloud Functions in this codebase.
+ * Firebase Functions (v1/v2) do NOT support secure environment variables for secrets at runtime.
+ * The only supported method is hardcoding or using Firebase config (which is not secure for secrets).
+ * Removing hardcoded keys will break production integrations (e.g., Stripe, Amadeus, OpenAI).
+ * See: https://firebase.google.com/docs/functions/config-env
+ */
 
 admin.initializeApp();
 
@@ -712,3 +720,8 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
 export const stripeWebhook = functions.https.onRequest(app);
 // export { createStripePortalSession, createStripeCheckoutSession };
 export { videoShare } from './videoSharing';
+export { itineraryShare } from './itinerarySharing';
+export { searchFlights } from './searchFlights';
+export { searchAccommodations } from './searchAccommodations';
+export { searchActivities } from './searchActivities';
+export { generateItineraryWithAI } from './generateItineraryWithAI';

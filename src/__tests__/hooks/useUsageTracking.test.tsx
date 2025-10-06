@@ -11,7 +11,7 @@ jest.mock('../../environments/firebaseConfig', () => {
     app: {},
     auth: {
       get currentUser() {
-        return global.__mockCurrentUser;
+        return (global as any).__mockCurrentUser;
       },
     },
   };
@@ -37,7 +37,7 @@ describe('useUsageTracking', () => {
 
   function getWrapper(userProfile: any) {
     return ({ children }: any) => {
-      global.__mockCurrentUser = { uid: 'test-user-id' };
+  (global as any).__mockCurrentUser = { uid: 'test-user-id' };
       return (
         <UserProfileContext.Provider value={{ userProfile, updateUserProfile: mockUpdateUserProfile }}>
           {children}
@@ -96,6 +96,58 @@ describe('useUsageTracking', () => {
       wrapper: getWrapper(profile),
     });
     expect(result.current.getRemainingViews()).toBe(5);
+  });
+
+  it('should return correct remaining AI creations for free user', () => {
+    const profile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 1, aiItineraries: { date: new Date().toISOString().split('T')[0], count: 2 } },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(profile),
+    });
+  expect((result.current as any).getRemainingAICreations()).toBe(3); // FREE_DAILY_AI_LIMIT (5) - 2
+  });
+
+  it('should not allow tracking AI creation when free limit reached', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    updateDoc.mockClear();
+    const profile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 1, aiItineraries: { date: new Date().toISOString().split('T')[0], count: 5 } },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(profile),
+    });
+  const success = await (result.current as any).trackAICreation();
+    expect(success).toBe(false);
+  });
+
+  it('should track an AI creation for free user and update profile/localStorage', async () => {
+    const updateDoc = require('firebase/firestore').updateDoc;
+    updateDoc.mockResolvedValueOnce();
+    const userProfile = {
+      subscriptionType: 'free',
+      subscriptionEndDate: null,
+      subscriptionCancelled: false,
+      dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 0, aiItineraries: { date: new Date().toISOString().split('T')[0], count: 1 } },
+    };
+    const { result } = renderHook(() => useUsageTracking(), {
+      wrapper: getWrapper(userProfile),
+    });
+    // Mock localStorage
+    const setItemSpy = jest.spyOn(window.localStorage.__proto__, 'setItem');
+    setItemSpy.mockImplementation(() => {});
+  const success = await (result.current as any).trackAICreation();
+    expect(success).toBe(true);
+    expect(updateDoc).toHaveBeenCalled();
+    expect(mockUpdateUserProfile).toHaveBeenCalled();
+    expect(setItemSpy).toHaveBeenCalled();
+    setItemSpy.mockRestore();
   });
 
   it('should track a view for free user and update profile/localStorage', async () => {

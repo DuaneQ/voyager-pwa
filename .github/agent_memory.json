@@ -1,0 +1,33 @@
+{
+  "lastRuns": {
+    "unit": {
+      "timestamp": "2025-09-12T00:00:00Z",
+      "commit": "",
+      "result": "unknown",
+      "coverage": null,
+      "artifact": null
+    },
+    "e2e": {
+      "timestamp": "2025-09-12T00:00:00Z",
+      "commit": "",
+      "result": "unknown",
+      "failures": null,
+      "artifact": null
+    }
+  },
+  "fixtures": {
+    "openai": {
+      "version": "v1",
+      "path": "tests/fixtures/openai/sample-completion.json"
+    },
+    "places": {
+      "version": "v1",
+      "path": "tests/fixtures/places/textsearch-cancun.json"
+    },
+    "serpapi": {
+      "version": "v1",
+      "path": "tests/fixtures/serpapi/sample-flights.json"
+    }
+  },
+  "openTasks": []
+}
