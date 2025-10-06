@@ -40,8 +40,8 @@ export const VideoFeedPage: React.FC = () => {
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
+    // First load connections; videos will be loaded once connectedUserIds updates
     loadConnectedUsers();
-    loadVideos();
   }, [currentFilter]);
 
   // Load connected user IDs from connections
@@ -419,12 +419,12 @@ export const VideoFeedPage: React.FC = () => {
     }
   }, [currentVideoIndex, videos.length, hasMoreVideos, isLoadingMore]);
 
-  // Reload videos when connections change
+  // Load videos when connections or filter change. This ensures we sequence
+  // the connections query first (which updates connectedUserIds) and then
+  // load videos once connectedUserIds is available.
   useEffect(() => {
-    if (connectedUserIds.length >= 0) { // Trigger even when 0 connections
-      loadVideos(false);
-    }
-  }, [connectedUserIds]);
+    loadVideos(false);
+  }, [connectedUserIds, currentFilter]);
 
   const getEmptyStateMessage = () => {
     switch (currentFilter) {
