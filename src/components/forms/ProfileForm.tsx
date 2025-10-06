@@ -100,7 +100,7 @@ export const ProfileForm = ({
       {/* Header Section: ProfilePhoto + Username + Tabs */}
       {(headerOnly || (!headerOnly && !contentOnly)) && (
         <Box sx={{
-          maxWidth: '300px',
+          maxWidth: { xs: '300px', md: 900, lg: 1200 },
           margin: '0 auto',
           p: { xs: 0.5, sm: 2 } // Reduced padding on mobile
         }}>
@@ -225,7 +225,7 @@ export const ProfileForm = ({
       {/* Content Section: Profile Details Card */}
       {(contentOnly || (!headerOnly && !contentOnly)) && (
         <Box sx={{
-          maxWidth: '300px',
+          maxWidth: { xs: '300px', md: 900, lg: 1200 },
           margin: '0 auto',
           p: { xs: 0.5, sm: 2 } // Much smaller padding on mobile
         }}>

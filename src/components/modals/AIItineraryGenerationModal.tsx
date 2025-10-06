@@ -23,6 +23,8 @@ import {
 } from '@mui/icons-material';
 import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
+import { useUsageTracking } from '../../hooks/useUsageTracking';
+import logger from '../../utils/logger';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
@@ -60,6 +62,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     resetGeneration,
     cancelGeneration 
   } = useAIGeneration();
+  const { hasReachedAILimit, getRemainingAICreations, trackAICreation, hasPremium } = useUsageTracking();
   
   const { 
     preferences, 
@@ -271,20 +274,35 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({ preferenceProfileId: 'Selected profile not found.' });
       return;
     }
+    // AI usage limit check (client-side)
+    if (hasReachedAILimit && hasReachedAILimit()) {
+      const freeLimit = hasPremium() ? '20' : '5';
+      setFormErrors({ general: `You have reached your daily AI generation limit. You get ${freeLimit} AI Generated Itineraries per day.` });
+      return;
+    }
+
     try {
   // Include the selected preference profile in the generation request so the hook
   // can map accommodation preferences -> search params (starRating, accessibility, etc.)
   const requestWithProfile = { ...formData, preferenceProfile: selectedProfile } as any;
-  console.log('request with profile', requestWithProfile);
+  logger.debug('request with profile', requestWithProfile);
   const result = await generateItinerary(requestWithProfile);
 
-      console.log('🎉 [MODAL] Generation successful, result:', result);
+    logger.debug('🎉 [MODAL] Generation successful, result:', result);
 
       // Show success state in the modal
       setShowSuccessState(true);
 
       // Call onGenerated to trigger the parent refresh
       onGenerated?.(result);
+
+      // Track AI creation (best-effort client-side increment)
+      try {
+        await trackAICreation?.();
+      } catch (e) {
+        // Non-fatal: continue even if tracking fails
+        console.warn('[AIItineraryGenerationModal] trackAICreation failed', e);
+      }
 
       // Close modal after showing success
       setTimeout(() => {

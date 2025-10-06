@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../../utils/logger';
 import { 
   Box, 
   Typography, 
@@ -8,20 +9,11 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Grid,
   Chip,
 } from '@mui/material';
 import { 
   Delete, 
-  ExpandMore, 
-  AttachMoney,
-  Restaurant,
-  LocalActivity,
-  AccessTime,
-  LocationOn,
-  Language,
-  Star,
-  Phone
+  ExpandMore,
 } from '@mui/icons-material';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
@@ -152,13 +144,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     setEditingData(updatedData);
     setSelectedFlights(new Set());
   };
-  
-
-  
-  // Prefer provider results attached to itinerary (top-level) but fall back to recommendations
-  const itineraryProvider = itineraryData || {};
-
-
 
   // Early return if no itineraries AND no selected itinerary - parent should handle no-data case
   // Allow rendering when a selected itinerary prop was provided (useful in tests and direct displays)
@@ -182,141 +167,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       </Card>
     );
   }
-
-  const formatDate = (dateString: string | null | undefined) => {
-    // Handle null, undefined, or empty strings
-    if (!dateString || typeof dateString !== 'string') {
-      return 'Date not specified';
-    }
-    
-    // Handle both date-only strings (YYYY-MM-DD) and full datetime strings
-    const date = dateString.includes('T') 
-      ? new Date(dateString)
-      : new Date(dateString + 'T12:00:00'); // Add noon time to avoid timezone issues
-    
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'UTC' // Use UTC to prevent timezone shifting for date-only values
-    });
-  };
-
-  const formatFlightDateTime = (dateString: string, timeString: string) => {
-    if (!dateString || !timeString) return 'Time TBD';
-    
-    try {
-      // Handle different date formats
-      let formattedDate = dateString;
-      if (dateString.length === 10 && !dateString.includes('T')) {
-        // YYYY-MM-DD format
-        formattedDate = dateString;
-      }
-      
-      // Handle different time formats
-      let formattedTime = timeString;
-      if (timeString.length === 5 && timeString.includes(':')) {
-        // HH:MM format, add seconds
-        formattedTime = timeString + ':00';
-      } else if (timeString.length === 4 && !timeString.includes(':')) {
-        // HHMM format, convert to HH:MM:SS
-        formattedTime = timeString.substring(0, 2) + ':' + timeString.substring(2) + ':00';
-      }
-      
-      // Create the datetime string
-      const dateTimeString = `${formattedDate}T${formattedTime}`;
-      const date = new Date(dateTimeString);
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-      
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }) + ' • ' + date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch (error) {
-      console.error('Error formatting flight datetime:', error, { dateString, timeString });
-      return 'Invalid Date';
-    }
-  };
-
-  // Helpers for rendering hotel cards
-  const PLACEHOLDER_IMAGE = '/DEFAULT_AVATAR.png';
-
-  const getImageUrl = (item: any): string => {
-    // Try common fields in order of likelihood
-    if (!item) return PLACEHOLDER_IMAGE;
-    if (Array.isArray(item.photos) && item.photos.length > 0) {
-      // accommodations may already contain full URLs
-      const first = item.photos[0];
-      if (typeof first === 'string') {
-        // Accept relative (local) or absolute URLs
-        if (first.startsWith('http') || first.startsWith('/')) return first;
-        return PLACEHOLDER_IMAGE;
-      }
-      if (first.photo_reference) {
-        // We don't expose the Places API key to the client here; return placeholder.
-        return PLACEHOLDER_IMAGE;
-      }
-    }
-    // vendorRaw may contain provider photos (for externalData entries)
-    if (item.vendorRaw && Array.isArray(item.vendorRaw.photos) && item.vendorRaw.photos.length > 0) {
-      const p = item.vendorRaw.photos[0];
-      if (p.photo_reference) {
-        // prefer a proxy if you add one; otherwise use placeholder to avoid broken backgrounds
-        return PLACEHOLDER_IMAGE;
-      }
-    }
-    // fallback
-    return PLACEHOLDER_IMAGE;
-  };
-
-  const formatPrice = (item: any): string => {
-    // accommodation shape may include pricePerNight { amount, currency } or price { amount }
-    const amt = item?.pricePerNight?.amount ?? item?.price?.amount ?? item?.priceAmount;
-    const cur = item?.pricePerNight?.currency ?? item?.price?.currency ?? 'USD';
-    if (typeof amt === 'number') {
-      try {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amt);
-      } catch (e) {
-        return `${cur} ${amt}`;
-      }
-    }
-    // If provider only has a coarse price level, show that
-    if (item?.price_level || item?.priceLevel) {
-      const lvl = item.price_level ?? item.priceLevel;
-      return `${'$'.repeat(Math.max(1, Math.min(4, Number(lvl) || 1)))}`;
-    }
-    return '';
-  };
-
-  const formatActivityPrice = (activity: any): string => {
-    // Prefer structured estimatedCost { amount, currency }
-    const amt = activity?.estimatedCost?.amount ?? activity?.estimatedCost?.price ?? activity?.price?.amount ?? activity?.priceAmount;
-    const cur = activity?.estimatedCost?.currency ?? activity?.price?.currency ?? 'USD';
-    if (typeof amt === 'number') {
-      try {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amt);
-      } catch (e) {
-        return `${cur} ${amt}`;
-      }
-    }
-    // If provider only has a coarse price level, show dollar signs
-    const lvl = activity?.price_level ?? activity?.priceLevel ?? activity?.estimatedCost?.price_level;
-    if (lvl !== undefined && lvl !== null) {
-      const v = Number(lvl) || 1;
-      return `${'$'.repeat(Math.max(1, Math.min(4, v)))}`;
-    }
-    return 'Price TBD';
-  };
 
   // At this point we know we have itineraryData, render the main component
   if (!itineraryData) {
@@ -372,7 +222,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   };
 
   return (
-    <Box sx={{ color: 'white' }}>
+    <Box sx={{ color: 'white', width: '100%', maxWidth: { xs: '100%', md: 900, lg: 1200 }, mx: 'auto', px: { xs: 2, md: 3 } }}>
       {/* Header Section */}
       <AIItineraryHeader
         itineraryData={itineraryData}
@@ -617,14 +467,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           }
           return out;
         })();
-
-        // Dev helper: log the combined providers so you can inspect raw objects
-        // and confirm which URL fields were used. This only logs in non-production
-        // builds to avoid noisy logs in production.
-        if (process.env.NODE_ENV !== 'production') {
-          // eslint-disable-next-line no-console
-          console.log('AIItineraryDisplay: combinedProviders', combinedProviders);
-        }
 
         const combinedTips: string[] = (() => {
           const t: string[] = [];

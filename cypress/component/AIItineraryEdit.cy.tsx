@@ -25,7 +25,7 @@ function TestProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Minimal itinerary fixture with one activity and one meal
+// Minimal itinerary fixture with one activity and one meal, including filtering metadata
 const mockItinerary = {
   id: 'it-1',
   response: {
@@ -64,7 +64,16 @@ const mockItinerary = {
           }
         ]
       },
-      recommendations: {}
+      recommendations: {},
+      metadata: {
+        filtering: {
+          userMustInclude: ['Cafe Test', 'Visit Museum'],
+          userMustAvoid: ['Crowds'],
+          mustIncludeMatchesCount: 2,
+          mustAvoidFilteredCount: 1,
+          specialRequestsUsed: false
+        }
+      }
     }
   }
 };
@@ -88,6 +97,11 @@ describe('<AIItineraryDisplay /> (component) - edit interaction', () => {
 
     // Enter edit mode
     cy.contains('Edit').click();
+
+  // The header should display the user-provided include/avoid chips
+  cy.contains('Cafe Test').should('exist');
+  cy.contains('Visit Museum').should('exist');
+  cy.contains('Crowds').should('exist');
 
     // Activity website input should be editable (first Website input)
     cy.get('input[placeholder="Website"]').eq(0)

@@ -4,6 +4,7 @@ import { AIItineraryGenerationModal } from '../../components/modals/AIItineraryG
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AlertContext } from '../../Context/AlertContext';
+import { UserProfileContext } from '../../Context/UserProfileContext';
 
 // Mock Firebase
 jest.mock('../../environments/firebaseConfig', () => ({
@@ -12,6 +13,14 @@ jest.mock('../../environments/firebaseConfig', () => ({
   },
   db: {},
   storage: {}
+}));
+
+// Mock Firestore APIs used by useUsageTracking so tests don't require a real app
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
+  doc: jest.fn(() => ({})),
+  updateDoc: jest.fn().mockResolvedValue(undefined),
+  getDoc: jest.fn().mockResolvedValue({ exists: () => false, data: () => ({}) }),
 }));
 
 // Mock external dependencies
@@ -105,6 +114,20 @@ const mockAlertContextValue = {
   alert: { open: false, severity: 'info' as const, message: '' },
   showAlert: mockShowAlert,
   closeAlert: mockCloseAlert,
+};
+
+const mockUserProfile = {
+  id: 'test-user-id',
+  subscriptionType: 'free',
+  subscriptionEndDate: null,
+  dailyUsage: { date: new Date().toISOString().split('T')[0], viewCount: 0, aiItineraries: { date: new Date().toISOString().split('T')[0], count: 0 } }
+};
+
+const mockUserProfileContextValue = {
+  userProfile: mockUserProfile,
+  updateUserProfile: jest.fn(),
+  setUserProfile: jest.fn(),
+  isLoading: false,
 };
 
 const mockTravelPreferences = {
@@ -201,7 +224,9 @@ describe('AIItineraryGenerationModal', () => {
   const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
       <AlertContext.Provider value={mockAlertContextValue}>
-        {children}
+        <UserProfileContext.Provider value={mockUserProfileContextValue as any}>
+          {children}
+        </UserProfileContext.Provider>
       </AlertContext.Provider>
     );
   };

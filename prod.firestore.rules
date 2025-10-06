@@ -20,10 +20,13 @@ service cloud.firestore {
         && data.fileSize is number;
     }
 
-    // User profiles
+    // User profiles - FIXED FOR SAFARI AUTH ISSUES
     match /users/{userId} {
+      // Allow any authenticated user to read user profiles (needed for terms acceptance, FCM tokens, etc.)
       allow read: if request.auth != null;
+      // Only allow users to create their own profile
       allow create: if request.auth != null && request.auth.uid == userId;
+      // Allow users to update their own profile OR allow rating updates from other users
       allow update: if request.auth != null && (
         request.auth.uid == userId || 
         (
@@ -53,7 +56,7 @@ service cloud.firestore {
       // Allow users to update/delete their own itineraries
       allow update, delete: if request.auth != null 
         && request.auth.uid == resource.data.userInfo.uid;
-      
+
       // Allow authenticated users to update likes only on any itinerary (for social interactions)
       allow update: if request.auth != null 
         && request.auth.uid != null

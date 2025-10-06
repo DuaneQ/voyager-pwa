@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import express from "express";
+import logger from './utils/logger';
 
 // Initialize admin if not already done
 if (!admin.apps.length) {
@@ -38,24 +39,24 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
   const recommendations = itinerary?.response?.data?.recommendations;
   
   // Debug logging to help identify data structure issues
-  console.log('Generating HTML for itinerary:', itineraryId);
-  console.log('Sample accommodation data:', recommendations?.accommodations?.[0]);
-  console.log('Sample activity data:', itineraryData?.days?.[0]?.activities?.[0] || itineraryData?.dailyPlans?.[0]?.activities?.[0]);
+  logger.debug('Generating HTML for itinerary:', itineraryId);
+  logger.debug('Sample accommodation data:', recommendations?.accommodations?.[0]);
+  logger.debug('Sample activity data:', itineraryData?.days?.[0]?.activities?.[0] || itineraryData?.dailyPlans?.[0]?.activities?.[0]);
   
   // CRITICAL DEBUG: Check transportation data structure
-  console.log('=== TRANSPORTATION DEBUG ===');
-  console.log('itinerary.response exists:', !!itinerary?.response);
-  console.log('itinerary.response.data exists:', !!itinerary?.response?.data);
-  console.log('itinerary.response.data.transportation exists:', !!itinerary?.response?.data?.transportation);
+  logger.debug('=== TRANSPORTATION DEBUG ===');
+  logger.debug('itinerary.response exists:', !!itinerary?.response);
+  logger.debug('itinerary.response.data exists:', !!itinerary?.response?.data);
+  logger.debug('itinerary.response.data.transportation exists:', !!itinerary?.response?.data?.transportation);
   if (itinerary?.response?.data?.transportation) {
-    console.log('Transportation data:', JSON.stringify(itinerary.response.data.transportation, null, 2));
-    console.log('Transportation mode:', itinerary.response.data.transportation.mode);
-    console.log('Is NOT flight?', itinerary.response.data.transportation.mode !== 'flight');
+    logger.debug('Transportation data:', JSON.stringify(itinerary.response.data.transportation, null, 2));
+    logger.debug('Transportation mode:', itinerary.response.data.transportation.mode);
+    logger.debug('Is NOT flight?', itinerary.response.data.transportation.mode !== 'flight');
   }
-  console.log('Full itinerary keys:', Object.keys(itinerary || {}));
-  if (itinerary?.response) console.log('Response keys:', Object.keys(itinerary.response));
-  if (itinerary?.response?.data) console.log('Response.data keys:', Object.keys(itinerary.response.data));
-  console.log('=== END TRANSPORTATION DEBUG ===');
+  logger.debug('Full itinerary keys:', Object.keys(itinerary || {}));
+  if (itinerary?.response) logger.debug('Response keys:', Object.keys(itinerary.response));
+  if (itinerary?.response?.data) logger.debug('Response.data keys:', Object.keys(itinerary.response.data));
+  logger.debug('=== END TRANSPORTATION DEBUG ===');
   
   const destination = itineraryData?.destination || itinerary.destination || 'Travel Itinerary';
   const startDate = itineraryData?.startDate || itinerary.startDate;
@@ -900,7 +901,7 @@ app.get('/share-itinerary/:itineraryId/preview.json', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[itineraryShare][preview] Error fetching preview', err);
+    logger.error('[itineraryShare][preview] Error fetching preview', err);
     return res.status(500).json({ success: false, error: 'Internal error' });
   }
 });
@@ -910,13 +911,13 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
     const itineraryId = req.params.itineraryId;
     const userAgent = req.get('User-Agent') || '';
     
-    console.log(`Itinerary share request for ${itineraryId}, User-Agent: ${userAgent}`);
+  logger.info(`Itinerary share request for ${itineraryId}, User-Agent: ${userAgent}`);
 
     // Fetch itinerary from Firestore
     const itineraryDoc = await db.collection('itineraries').doc(itineraryId).get();
     
     if (!itineraryDoc.exists) {
-      console.log(`Itinerary not found: ${itineraryId}`);
+      logger.info(`Itinerary not found: ${itineraryId}`);
       return res.status(404).send(`
         <!DOCTYPE html>
         <html>
@@ -953,7 +954,7 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
     res.send(html);
     
   } catch (error) {
-    console.error('Error serving itinerary share page:', error);
+    logger.error('Error serving itinerary share page:', error);
     res.status(500).send(`
       <!DOCTYPE html>
       <html>

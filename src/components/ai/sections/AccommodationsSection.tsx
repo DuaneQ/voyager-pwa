@@ -52,6 +52,7 @@ const AccommodationsSection: React.FC<AccommodationsSectionProps> = ({ accommoda
   return (
     <Accordion sx={{
       mb: 2,
+      transform: { xs: 'translateX(-6%)', sm: 'translateX(-6%)', md: 'translateX(-3%)', lg: 'translateX(-2%)' },
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
