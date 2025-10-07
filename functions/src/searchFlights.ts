@@ -281,7 +281,7 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
     if ((params as any).layoverDuration && Array.isArray((params as any).layoverDuration) && (params as any).layoverDuration.length === 2) {
       const [minLay, maxLay] = (params as any).layoverDuration;
       if (!isNaN(minLay) && !isNaN(maxLay)) {
-        q.set('layover_duration', `${minLay},${maxLay}`)
+        q.set('layover_duration', `${minLay},${maxLay}`);
       }
     }
 
