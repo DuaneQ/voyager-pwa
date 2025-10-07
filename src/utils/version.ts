@@ -10,5 +10,4 @@ export const getVersionInfo = () => ({
   serviceWorkerSupported: 'serviceWorker' in navigator
 });
 
-// Log version info to console for debugging
-console.log('TravalPass Version Info:', getVersionInfo());
+// Version info is available via getVersionInfo(); avoid noisy console logging in production

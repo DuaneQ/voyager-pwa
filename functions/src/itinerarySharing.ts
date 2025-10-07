@@ -38,26 +38,6 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
   const metadata = itinerary?.response?.data?.metadata;
   const recommendations = itinerary?.response?.data?.recommendations;
   
-  // Debug logging to help identify data structure issues
-  logger.debug('Generating HTML for itinerary:', itineraryId);
-  logger.debug('Sample accommodation data:', recommendations?.accommodations?.[0]);
-  logger.debug('Sample activity data:', itineraryData?.days?.[0]?.activities?.[0] || itineraryData?.dailyPlans?.[0]?.activities?.[0]);
-  
-  // CRITICAL DEBUG: Check transportation data structure
-  logger.debug('=== TRANSPORTATION DEBUG ===');
-  logger.debug('itinerary.response exists:', !!itinerary?.response);
-  logger.debug('itinerary.response.data exists:', !!itinerary?.response?.data);
-  logger.debug('itinerary.response.data.transportation exists:', !!itinerary?.response?.data?.transportation);
-  if (itinerary?.response?.data?.transportation) {
-    logger.debug('Transportation data:', JSON.stringify(itinerary.response.data.transportation, null, 2));
-    logger.debug('Transportation mode:', itinerary.response.data.transportation.mode);
-    logger.debug('Is NOT flight?', itinerary.response.data.transportation.mode !== 'flight');
-  }
-  logger.debug('Full itinerary keys:', Object.keys(itinerary || {}));
-  if (itinerary?.response) logger.debug('Response keys:', Object.keys(itinerary.response));
-  if (itinerary?.response?.data) logger.debug('Response.data keys:', Object.keys(itinerary.response.data));
-  logger.debug('=== END TRANSPORTATION DEBUG ===');
-  
   const destination = itineraryData?.destination || itinerary.destination || 'Travel Itinerary';
   const startDate = itineraryData?.startDate || itinerary.startDate;
   const endDate = itineraryData?.endDate || itinerary.endDate;
@@ -912,8 +892,6 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
     const itineraryId = req.params.itineraryId;
     const userAgent = req.get('User-Agent') || '';
     
-  logger.info(`Itinerary share request for ${itineraryId}, User-Agent: ${userAgent}`);
-
     // Fetch itinerary from Firestore
     const itineraryDoc = await db.collection('itineraries').doc(itineraryId).get();
     

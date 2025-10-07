@@ -21,7 +21,7 @@ export const PublicAIItineraryPage: React.FC = () => {
       }
 
       try {
-        console.log('Fetching public itinerary:', itineraryId);
+  // fetching public itinerary id for debug
         const itineraryDoc = await getDoc(doc(db, 'itineraries', itineraryId));
         
         if (itineraryDoc.exists()) {

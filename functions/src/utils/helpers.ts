@@ -102,8 +102,6 @@ export function logGenerationMetrics(data: {
     type: 'AI_GENERATION',
     ...data
   };
-
-  console.log('AI Generation Metrics:', JSON.stringify(logEntry));
 }
 
 /**

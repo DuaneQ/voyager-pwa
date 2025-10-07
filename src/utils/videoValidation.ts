@@ -10,10 +10,6 @@ export const validateVideoFile = async (file: File): Promise<VideoValidationResu
   if (!file) {
     return { isValid: false, errors: ['No file provided'] };
   }
-
-  // Debug logging to help identify mobile MIME type issues
-  console.log('Video file validation - File type:', file.type, 'File name:', file.name);
-
   // Check file type with better fallback logic
   const isValidMimeType = VIDEO_CONSTRAINTS.SUPPORTED_FORMATS.includes(file.type as any);
   const fileName = file.name.toLowerCase();

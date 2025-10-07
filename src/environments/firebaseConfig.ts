@@ -99,7 +99,6 @@ export const getMessagingInstance = () => {
   // Type assertion for window.chrome which may not exist on all browsers
   const hasChrome = typeof window !== "undefined" && !!(window as any).chrome;
   if (isIOS || (isSafari && typeof window !== "undefined" && !hasChrome) || isWebView || isCypress) {
-    console.log("FCM: Messaging not supported in this browser environment");
     return null;
   }
   

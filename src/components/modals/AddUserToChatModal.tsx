@@ -49,7 +49,7 @@ export const AddUserToChatModal: React.FC<AddUserToChatModalProps> = ({
     if (!open) return;
     setLoading(true);
     // eslint-disable-next-line no-console
-    console.log('[AddUserToChatModal] Fetching eligible users for:', { currentUserId, currentChatUserIds });
+  // fetching eligible users for modal
     getEligibleUsersForChat(currentUserId, currentChatUserIds)
       .then(async (users) => {
         const db = getFirestore(app);
@@ -57,18 +57,15 @@ export const AddUserToChatModal: React.FC<AddUserToChatModalProps> = ({
           users.map(async (u) => {
             try {
               const snap = await getDoc(doc(db, "users", u.userId));
-              // eslint-disable-next-line no-console
-              if (snap.exists()) console.log('[AddUserToChatModal] User profile:', snap.data());
               return snap.exists() ? { ...u, profile: snap.data() } : u;
             } catch (err) {
-              // eslint-disable-next-line no-console
-              console.log('[AddUserToChatModal] Error fetching user profile:', u.userId, err);
+              // preserve error logging
+              console.error('[AddUserToChatModal] Error fetching user profile:', u.userId, err);
               return u;
             }
           })
         );
-        // eslint-disable-next-line no-console
-        console.log('[AddUserToChatModal] Eligible user options:', withProfiles);
+        setUserOptions(withProfiles);
         setUserOptions(withProfiles);
       })
       .finally(() => setLoading(false));
@@ -160,8 +157,7 @@ export const AddUserToChatModal: React.FC<AddUserToChatModalProps> = ({
         <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={() => {
-            // eslint-disable-next-line no-console
-            console.log('[AddUserToChatModal] Adding users:', selected);
+          // silent in production
             onAdd(selected);
             setSelected([]);
             onClose();

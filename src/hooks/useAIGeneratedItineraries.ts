@@ -242,9 +242,7 @@ export const useAIGeneratedItineraries = () => {
       );
 
       const querySnapshot = await getDocs(q);
-      const fetchedItineraries: AIGeneratedItinerary[] = [];
-      
-      console.log('fetchAIItineraries: Found', querySnapshot.size, 'AI-generated itineraries');
+  const fetchedItineraries: AIGeneratedItinerary[] = [];
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -252,13 +250,13 @@ export const useAIGeneratedItineraries = () => {
         // Check if itinerary has expired based on end date
         const itineraryEndDate = data.endDate || data.response?.data?.itinerary?.endDate;
         
-        if (itineraryEndDate) {
+          if (itineraryEndDate) {
           const endDate = new Date(itineraryEndDate);
           const currentDate = new Date();
           
           // Skip expired itineraries (end date has passed)
           if (endDate < currentDate) {
-            console.log('fetchAIItineraries: Skipping expired itinerary:', doc.id, 'ended:', itineraryEndDate);
+            // skipping expired itinerary
             return;
           }
         }
@@ -269,7 +267,7 @@ export const useAIGeneratedItineraries = () => {
         } as AIGeneratedItinerary);
       });
 
-      console.log('fetchAIItineraries: Final active itineraries count:', fetchedItineraries.length);
+  // finished fetching itineraries
 
       setItineraries(fetchedItineraries);
     } catch (err: any) {
