@@ -298,7 +298,6 @@ export const searchFlights = functions.https.onCall(async (data, context) => {
       const bags = Number((params as any).bags);
       if (!isNaN(bags) && bags >= 0) {
         q.set('bags', String(bags));
-  
       }
     }
 
