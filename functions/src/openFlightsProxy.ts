@@ -87,10 +87,9 @@ async function loadAirports(): Promise<OFAirportRaw[]> {
       }
     }
 
-    cachedAirports = airports;
-    cachedAt = Date.now();
-    console.log(`[openFlightsProxy] Loaded ${airports.length} airports`);
-    return airports;
+  cachedAirports = airports;
+  cachedAt = Date.now();
+  return airports;
   } catch (err) {
     console.error('[openFlightsProxy] Failed to load airports:', err);
     // Fallback to a tiny curated list to keep features working
@@ -119,6 +118,48 @@ export const openFlightsGetAll = functions.https.onCall(async (data, context) =>
     lng: a.longitude
   }));
   return { success: true, data: trimmed };
+});
+
+// Public HTTP endpoint for OpenFlights data. This is intentionally
+// an HTTP GET so browser clients can fetch the pre-parsed JSON from
+// our Cloud Function (avoids client-side GitHub CORS/CSP issues).
+export const openFlightsHttp = functions.https.onRequest((req, res) => {
+  (async () => {
+    try {
+      // Handle CORS preflight and set permissive response headers for browsers.
+      const origin = req.get('origin') || '';
+      // Allow production origin and localhost for dev; default to wildcard if unknown.
+      const allowedOrigins = ['https://travalpass.com', 'https://www.travalpass.com', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+      const allowOrigin = allowedOrigins.includes(origin) ? origin : '*';
+      res.set('Access-Control-Allow-Origin', allowOrigin);
+      res.set('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        // Respond to preflight immediately
+        res.set('Cache-Control', 'public, max-age=300');
+        return res.status(204).send('');
+      }
+
+      const airports = await loadAirports();
+      const trimmed = airports.map(a => ({
+        iata: a.iata,
+        name: a.name,
+        city: a.city,
+        country: a.country,
+        lat: a.latitude,
+        lng: a.longitude
+      }));
+
+      // Small cache header to allow CDN/edges to cache briefly (5 minutes)
+      res.set('Cache-Control', 'public, max-age=300');
+      res.status(200).json({ success: true, data: trimmed });
+    } catch (err: any) {
+      console.error('[openFlightsHttp] Error', err);
+      res.set('Access-Control-Allow-Origin', '*');
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  })();
 });
 
 export const openFlightsSearch = functions.https.onCall(async (data, context) => {

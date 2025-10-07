@@ -100,11 +100,7 @@ export const TravelPreferencesTab: React.FC = () => {
   // Update editing preferences when selected profile changes
   useEffect(() => {
     if (selectedProfile) {
-      try {
-        console.log('[TravelPreferencesTab] selectedProfile changed:', selectedProfile.id, selectedProfile.transportation);
-      } catch (e) {
-        console.log('[TravelPreferencesTab] selectedProfile changed (unable to stringify)');
-      }
+
       const profileCopy = { ...selectedProfile };
       
       // Ensure accommodation type has a valid default if undefined
@@ -172,9 +168,7 @@ export const TravelPreferencesTab: React.FC = () => {
     if (loadPreferences) {
       (async () => {
         try {
-          console.log('[TravelPreferencesTab] mounting - calling loadPreferences()');
           await loadPreferences();
-          console.log('[TravelPreferencesTab] loadPreferences() completed');
         } catch (e) {
           console.warn('[TravelPreferencesTab] loadPreferences() failed on mount', e);
         }
@@ -246,15 +240,14 @@ export const TravelPreferencesTab: React.FC = () => {
       return;
     }
     
-  try {
-      // If this is a temporary profile (first-time user), create it as a new profile
-      if (editingPreferences.id === 'temp-default' && createProfile) {
+      try {
+        // If this is a temporary profile (first-time user), create it as a new profile
+        if (editingPreferences.id === 'temp-default' && createProfile) {
         const { id, ...profileData } = editingPreferences;
         const payload = {
           ...profileData,
           isDefault: true
         } as any;
-        console.log('Saving new profile (createProfile) payload:', payload);
         const newProfileId = await createProfile(payload);
 
         // Update the editing preferences with the new ID and activities passed through unchanged
@@ -270,18 +263,15 @@ export const TravelPreferencesTab: React.FC = () => {
         if (loadPreferences) {
           await loadPreferences();
         }
-      } else if (updateProfile) {
-        // Update existing profile, pass editingPreferences through
-        console.log('Updating profile (updateProfile) payload:', editingPreferences);
-        await updateProfile(editingPreferences.id, editingPreferences as any);
+  } else if (updateProfile) {
+  // Update existing profile, pass editingPreferences through
+  await updateProfile(editingPreferences.id, editingPreferences as any);
         setHasUnsavedChanges(false);
         // Refresh preferences so other components (for example the AI modal)
         // read the latest saved profile immediately without requiring a page refresh.
         if (loadPreferences) {
-          try {
-            console.log('[TravelPreferencesTab] Calling loadPreferences() after updateProfile');
+            try {
             await loadPreferences();
-            console.log('[TravelPreferencesTab] loadPreferences() after updateProfile completed');
           } catch (e) {
             console.warn('loadPreferences after updateProfile failed', e);
           }
@@ -289,7 +279,7 @@ export const TravelPreferencesTab: React.FC = () => {
       } else {
         console.error('No updateProfile function available');
       }
-    } catch (err) {
+      } catch (err) {
       console.error('Failed to save preferences:', err);
     }
   };
@@ -431,13 +421,10 @@ export const TravelPreferencesTab: React.FC = () => {
     if (newProfileId === selectedProfileId) return;
     
     try {
-      // Save current profile if there are unsaved changes
       if (hasUnsavedChanges && editingPreferences && updateProfile) {
         await updateProfile(editingPreferences.id, editingPreferences);
         setHasUnsavedChanges(false);
       }
-      
-      // Switch to new profile
       setSelectedProfileId(newProfileId);
     } catch (err) {
       console.error('Failed to switch profiles:', err);
@@ -482,11 +469,10 @@ export const TravelPreferencesTab: React.FC = () => {
     }
     
     // Original logic for creating additional profiles
-    try {
+      try {
       const profileName = prompt('Enter a name for your new travel profile:');
       
       if (!profileName || profileName.trim() === '') {
-        console.log('Profile creation cancelled or empty name provided');
         return;
       }
       
@@ -497,8 +483,6 @@ export const TravelPreferencesTab: React.FC = () => {
         name: profileName.trim(),
         isDefault: false
       });
-      
-      console.log('New Travel profile created with ID:', newProfileId);
       
       // Switch to the newly created profile
       setSelectedProfileId(newProfileId);
@@ -525,9 +509,6 @@ export const TravelPreferencesTab: React.FC = () => {
         isDefault: false
       });
       
-      console.log('New Travel profile created with ID:', newProfileId);
-      
-      // Switch to the newly created profile
       setSelectedProfileId(newProfileId);
       setCreateProfileDialogOpen(false);
     } catch (err) {
@@ -547,21 +528,15 @@ export const TravelPreferencesTab: React.FC = () => {
   // AI Modal handlers
   const handleOpenAIModal = async () => {
     try {
-      console.log('[TravelPreferencesTab] Opening AI modal. selectedProfileId=', selectedProfileId);
-      console.log('[TravelPreferencesTab] current editingPreferences:', editingPreferences);
-      console.log('[TravelPreferencesTab] available profiles count:', allProfiles.length);
-      // Ensure latest preferences are loaded before opening the modal to avoid stale reads
       if (loadPreferences) {
-        console.log('[TravelPreferencesTab] Refreshing preferences before opening AI modal...');
         try {
           await loadPreferences();
-          console.log('[TravelPreferencesTab] loadPreferences() before open completed');
         } catch (e) {
           console.warn('[TravelPreferencesTab] loadPreferences() before open failed', e);
         }
       }
     } catch (e) {
-      console.log('[TravelPreferencesTab] Opening AI modal (unable to stringify some values)');
+      // ignore stringify issues
     }
     setAiModalOpen(true);
   };
@@ -571,43 +546,25 @@ export const TravelPreferencesTab: React.FC = () => {
   };
 
   const handleAIGenerated = async (result: any) => {
-    console.log('🎯 [DEBUG] handleAIGenerated called with result:', result);
+  // handleAIGenerated called
     
     try {
       // Immediately refresh the AI itineraries list to show the new one
-      console.log('🔄 [DEBUG] Starting AI itineraries refresh...');
       if (refreshItineraries) {
-        console.log('🔄 [DEBUG] refreshItineraries function exists, calling it...');
         await refreshItineraries();
-        console.log('✅ [DEBUG] AI itineraries refreshed successfully');
-      } else {
-        console.warn('⚠️ [DEBUG] refreshItineraries function not available!');
       }
 
       // Extract the generation ID from the result to auto-select it
       const newItineraryId = result?.id || result?.data?.metadata?.generationId;
-      console.log('🎯 [DEBUG] Extracted generation ID:', newItineraryId);
       if (newItineraryId) {
-        console.log('🎯 [DEBUG] Auto-selecting new itinerary:', newItineraryId);
         setSelectedAIItineraryId(newItineraryId);
-        console.log('🎯 [DEBUG] setSelectedAIItineraryId called');
-      } else {
-        console.warn('⚠️ [DEBUG] No itinerary ID found in result');
       }
 
       // Switch to AI Itineraries tab to show the new result
-      console.log('📋 [DEBUG] Switching to AI Itineraries tab (index 1)');
-      setActiveTab(1);
-      console.log('📋 [DEBUG] setActiveTab(1) called');
-      
-      // Close the AI modal
-      console.log('❌ [DEBUG] Closing AI modal');
-      setAiModalOpen(false);
-      console.log('❌ [DEBUG] setAiModalOpen(false) called');
-      
-      console.log('🎉 [DEBUG] handleAIGenerated completed successfully');
+  setActiveTab(1);
+  setAiModalOpen(false);
     } catch (error) {
-      console.error('❌ [DEBUG] Error in handleAIGenerated:', error);
+      console.error('Error in handleAIGenerated:', error);
       // Still switch to the tab even if there's an error
       setActiveTab(1);
       setAiModalOpen(false);

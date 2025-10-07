@@ -8,7 +8,7 @@ export const useFCMToken = () => {
   useEffect(() => {
     // Early exit if FCM is not supported
     if (!isFCMSupported()) {
-      console.log("FCM: Not supported in this browser environment");
+  // FCM not supported in this browser environment
       return;
     }
 
@@ -27,7 +27,7 @@ export const useFCMToken = () => {
       }
 
       if (!validation.supported) {
-        console.log("FCM: Not supported in this environment");
+  // FCM not supported in this environment
         return;
       }
 
@@ -35,7 +35,7 @@ export const useFCMToken = () => {
       const result = await setupFCMForUser(userId);
       
       if (result.success) {
-        console.log("FCM: Setup completed successfully");
+  // FCM setup completed
       } else {
         console.error("FCM: Setup failed:", result.error);
       }

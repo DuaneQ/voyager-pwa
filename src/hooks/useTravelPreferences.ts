@@ -76,14 +76,12 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
   const updateBothStates = useCallback((newPreferences: UserTravelPreferences) => {
     // Update local state first
     setPreferences(newPreferences);
-    console.log('[useTravelPreferences] updateBothStates called. New preferences:', newPreferences);
     // Update context to keep everything in sync
     if (userProfile && updateUserProfile) {
       const updatedProfile = {
         ...userProfile,
         travelPreferences: newPreferences
       };
-      console.log('[useTravelPreferences] updateUserProfile called with:', updatedProfile);
       updateUserProfile(updatedProfile);
       // Update localStorage for persistence
       localStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
@@ -205,7 +203,6 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
     }
 
     try {
-      console.log('[useTravelPreferences] createProfile called with:', profile);
       setLoading(true);
       setError(null);
       // Comprehensive validation for the new profile
@@ -237,7 +234,6 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
           preferenceSignals: []
         };
       }
-      console.log('[useTravelPreferences] Existing profiles before creation:', currentPrefs.profiles);
       // Check for duplicate profile names (case-insensitive)
       const existingProfile = currentPrefs.profiles.find(p => 
         p.name.toLowerCase().trim() === newProfile.name.toLowerCase().trim()
@@ -254,7 +250,6 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
         profiles: [...currentPrefs.profiles, newProfile],
         defaultProfileId: effectiveDefaultId
       };
-      console.log('[useTravelPreferences] Updated profiles after creation:', updatedPrefs.profiles);
       // Validate the complete preferences structure before saving
       validateUserTravelPreferences(updatedPrefs);
       if (userDoc.exists()) {
@@ -673,15 +668,12 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
 
   // Sync preferences from UserProfileContext when it changes (one-way sync from context to local state)
   useEffect(() => {
-    // Debug: log context and local state before sync
-    console.log('[useTravelPreferences] Context sync effect. userProfile:', userProfile, 'local preferences:', preferences);
     // Only sync from context if we have context data and it's different from local state
     if (userProfile?.travelPreferences && !loading) {
       const contextVersion = createSyncVersion(userProfile.travelPreferences);
       const currentVersion = createSyncVersion(preferences);
       // Only update if context has different data and we're not already synced
       if (contextVersion !== currentVersion && contextVersion !== lastSyncedVersion) {
-        console.log('[useTravelPreferences] Syncing local preferences from context.');
         setPreferences(userProfile.travelPreferences);
         setLastSyncedVersion(contextVersion);
       }
@@ -695,7 +687,6 @@ export const useTravelPreferences = (): UseTravelPreferencesReturn => {
       const emptyVersion = createSyncVersion(emptyPrefs);
       const currentVersion = createSyncVersion(preferences);
       if (emptyVersion !== currentVersion && emptyVersion !== lastSyncedVersion) {
-        console.log('[useTravelPreferences] Syncing local preferences to empty.');
         setPreferences(emptyPrefs);
         setLastSyncedVersion(emptyVersion);
       }

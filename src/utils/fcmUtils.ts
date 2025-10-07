@@ -51,7 +51,6 @@ export const isFCMSupported = (): boolean => {
   // Type assertion for window.chrome which may not exist on all browsers
   const hasChrome = !!(window as any).chrome;
   if (isIOS || (isSafari && !hasChrome)) {
-    console.log("FCM: iOS Safari detected - limited FCM support");
     return false;
   }
 
@@ -59,7 +58,6 @@ export const isFCMSupported = (): boolean => {
   const isWebView = window.navigator.userAgent.includes('wv');
   
   if (isWebView && isIOS) {
-    console.log("FCM: iOS WebView detected - FCM not supported");
     return false;
   }
 
@@ -144,10 +142,6 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
       vapidKey: process.env.REACT_APP_VAPID_KEY,
       serviceWorkerRegistration: swRegistration,
     });
-
-    console.log("VAPID Key:", process.env.REACT_APP_VAPID_KEY);
-    console.log("Service Worker Registration:", swRegistration);
-    console.log("Generated Token:", token);
 
     if (!token) {
       return {

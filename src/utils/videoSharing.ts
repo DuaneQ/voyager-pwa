@@ -561,7 +561,6 @@ export const createBrandedVideoBlob = async (
 ): Promise<Blob> => {
   // This would require video processing libraries like FFmpeg.wasm
   // For MVP, we'll just return the original video and handle branding in the UI
-  console.log('Video processing not implemented yet - using UI overlay approach');
   return originalVideoBlob;
 };
 

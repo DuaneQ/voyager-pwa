@@ -39,22 +39,17 @@ export function parseAIServerResponse(params: {
     } else if (aiData && typeof aiData === 'object') {
       assistantTextCandidate = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
     }
-      if (assistantTextCandidate && typeof assistantTextCandidate === 'string') {
-      logger.debug('[useAIGeneration] Found assistantTextCandidate (preview):', assistantTextCandidate.slice(0, 400));
+    if (assistantTextCandidate && typeof assistantTextCandidate === 'string') {
       const parsed = parseAssistantJSON(assistantTextCandidate);
-      logger.debug('[useAIGeneration] parseAssistantJSON (global) result keys:', parsed ? Object.keys(parsed).slice(0, 10) : null);
       if (parsed && parsed.transportation) {
         parsedTransportation = parsed.transportation;
-        logger.debug('[useAIGeneration] parsedTransportation extracted (global) keys:', Object.keys(parsedTransportation).slice(0, 10));
       }
     }
 
     if (aiData && typeof aiData === 'object') {
-  logger.debug('🤖 [useAIGeneration] AI Data received, keys:', Object.keys(aiData));
 
       if ((aiData as any).transportation) {
-  parsedTransportation = (aiData as any).transportation;
-  logger.debug('🚗 [useAIGeneration] Found transportation in direct aiData:', parsedTransportation);
+        parsedTransportation = (aiData as any).transportation;
       }
 
       if ((aiData as any).id || (aiData as any).response) {
@@ -62,9 +57,7 @@ export function parseAIServerResponse(params: {
         const assistantText = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
         if (assistantText && typeof assistantText === 'string') {
           try {
-            logger.debug('[useAIGeneration] Attempting to parse assistantText (preview):', assistantText.slice(0, 400));
             const maybe = parseAssistantJSON(assistantText);
-            logger.debug('[useAIGeneration] parseAssistantJSON result keys:', maybe ? Object.keys(maybe).slice(0, 10) : null);
             if (maybe && maybe.transportation) parsedTransportation = maybe.transportation;
           } catch (e) {
             logger.warn('[useAIGeneration] parseAssistantJSON failed:', e);
@@ -105,9 +98,7 @@ export function parseAIServerResponse(params: {
         const assistantText = (aiData as any).assistant || (aiData as any).response?.data?.assistant || (aiData as any).data?.assistant || null;
         if (assistantText && typeof assistantText === 'string') {
           try {
-            logger.debug('[useAIGeneration] Attempting to parse assistantText for itinerary (preview):', assistantText.slice(0, 400));
             const maybe = parseAssistantJSON(assistantText);
-            logger.debug('[useAIGeneration] parseAssistantJSON (itinerary) result keys:', maybe ? Object.keys(maybe).slice(0, 10) : null);
             if (maybe && maybe.transportation) parsedTransportation = maybe.transportation;
           } catch (e) {
             logger.warn('[useAIGeneration] parseAssistantJSON (itinerary) failed:', e);

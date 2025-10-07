@@ -3,8 +3,7 @@ import { db } from '../environments/firebaseConfig';
 
 // Simple test function to verify Firestore connectivity
 export const testFirestoreConnection = async (userId: string) => {
-  console.log('Testing Firestore connection...');
-  
+  // Debug helper invoked via window in dev only
   try {
     // Test writing a simple document
     const testDoc = doc(db, 'test', 'connectivity');
@@ -13,25 +12,18 @@ export const testFirestoreConnection = async (userId: string) => {
       message: 'Firestore connection test',
       userId: userId
     });
-    console.log('✅ Write test successful');
-    
+  // write succeeded
     // Test reading the document
     const docSnap = await getDoc(testDoc);
-    if (docSnap.exists()) {
-      console.log('✅ Read test successful:', docSnap.data());
-    } else {
-      console.log('❌ Document does not exist');
+    if (!docSnap.exists()) {
+      // document missing
     }
     
     // Test user document structure
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
     
-    if (userDoc.exists()) {
-      console.log('✅ User document exists:', userDoc.data());
-    } else {
-      console.log('⚠️ User document does not exist - will be created on first save');
-    }
+    // user doc existence checked
     
     return true;
   } catch (error) {
@@ -42,8 +34,7 @@ export const testFirestoreConnection = async (userId: string) => {
 
 // Test travel preferences specifically
 export const testTravelPreferencesWrite = async (userId: string) => {
-  console.log('Testing travel preferences write...');
-  
+  // Travel preferences write test (dev helper)
   try {
     const userDocRef = doc(db, 'users', userId);
     
@@ -70,18 +61,13 @@ export const testTravelPreferencesWrite = async (userId: string) => {
       travelPreferences: testPreferences
     }, { merge: true });
     
-    console.log('✅ Travel preferences write test successful');
-    
+  // write successful
     // Verify the write
     const userDoc = await getDoc(userDocRef);
     if (userDoc.exists()) {
-      const data = userDoc.data();
-      console.log('✅ Travel preferences read back:', data.travelPreferences);
       return true;
-    } else {
-      console.log('❌ Could not read back travel preferences');
-      return false;
     }
+    return false;
   } catch (error) {
     console.error('❌ Travel preferences test failed:', error);
     return false;

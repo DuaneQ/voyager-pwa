@@ -145,9 +145,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
         createdAt: Timestamp.now()
       };
 
-      console.log('Attempting to add comment:', newCommentData);
-      console.log('Current user:', { uid: currentUser.uid, email: currentUser.email });
-      console.log('Video ID:', video.id);
+  // Attempting to add comment (noisy details suppressed)
 
       // Update the video document by adding the comment to the comments array
       const videoRef = doc(db, 'videos', video.id);
@@ -156,7 +154,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
         updatedAt: Timestamp.now()
       });
       
-      console.log('Comment added successfully to Firebase');
+  // Comment added successfully
       
       // Add comment to local state immediately (optimistic update)
       const newCommentWithUser: CommentWithUser = {

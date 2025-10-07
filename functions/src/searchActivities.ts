@@ -214,9 +214,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
       location: params.destinationLatLng,
       radius: params.destinationLatLng ? 50000 : undefined
     });
-
-  logger.debug('[searchActivities] Activities TextSearch URL:', activitiesUrl.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
-
     // Build restaurant search promise. If client provided a food object, honor it
     // (allows cuisine filters, rankByDistance, etc.). Otherwise run a small
     // default restaurant TextSearch using tripType hints + keywords.
@@ -241,7 +238,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
           if (typeof params.food?.maxprice === 'number') nearbyUrl.searchParams.set('maxprice', String(params.food.maxprice));
           nearbyUrl.searchParams.set('key', GOOGLE_PLACES_API_KEY);
 
-          logger.debug('[searchActivities] Food NearbySearch URL:', nearbyUrl.toString().replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
           foodSearchPromise = fetchAllTextSearchResults(nearbyUrl.toString(), restaurantMaxResults);
         } else {
           const foodQuery = (Array.isArray(params.food.keywords) && params.food.keywords.length > 0)
@@ -256,7 +252,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
             maxprice: params.food?.maxprice
           });
 
-          logger.debug('[searchActivities] Food TextSearch URL:', foodUrl.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
           foodSearchPromise = fetchAllTextSearchResults(foodUrl, restaurantMaxResults);
         }
       } else {
@@ -281,7 +276,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
           const keyword = defaultFoodHintsBase || 'restaurants';
           if (keyword) nearbyUrl.searchParams.set('keyword', keyword);
           nearbyUrl.searchParams.set('key', GOOGLE_PLACES_API_KEY);
-          logger.debug('[searchActivities] Default Food NearbySearch URL:', nearbyUrl.toString().replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
           foodSearchPromise = fetchAllTextSearchResults(nearbyUrl.toString(), restaurantMaxResults);
         } else {
           const foodUrl = buildTextSearchUrl(foodQuery, {
@@ -289,7 +283,7 @@ export async function _searchActivitiesImpl(data: any, context: any) {
             location: params.destinationLatLng,
             radius: params.destinationLatLng ? 50000 : undefined
           });
-          logger.debug('[searchActivities] Default Food TextSearch URL:', foodUrl.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+          
           foodSearchPromise = fetchAllTextSearchResults(foodUrl, restaurantMaxResults);
         }
       }
@@ -312,14 +306,8 @@ export async function _searchActivitiesImpl(data: any, context: any) {
       foodSearchPromise
     ]);
 
-    logger.debug('[searchActivities] Search results counts:', {
-      activityPlaces: activityPlaces.length,
-      foodPlaces: foodPlaces.length
-    });
-
     // Calculate trip days for Place Details enrichment
     const tripDays = (params.days && Number(params.days)) || 0;
-  logger.debug(`[searchActivities] Trip duration: ${tripDays} days`);
 
     // Map and dedupe activity places
     const activities: any[] = [];
@@ -363,8 +351,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
         // Sort by rating desc, fall back to presence if rating missing
         const sorted = [...items].sort((a, b) => (b.rating || 0) - (a.rating || 0));
         const toEnrich = sorted.slice(0, Math.min(count, sorted.length));
-
-  logger.debug(`[searchActivities] Enriching ${toEnrich.length} ${itemType} with Place Details for ${count} days`);
 
         // Limit concurrency to avoid bursting quota; use a small worker pool to improve
         // throughput while keeping requests bounded.
@@ -425,7 +411,6 @@ export async function _searchActivitiesImpl(data: any, context: any) {
       // Perform Place Details enrichment based on trip days, but limit to a small cap
         if (tripDays > 0) {
           const enrichmentCount = Math.min(tripDays, 6); // cap enrichment to control quota
-          console.log(`[searchActivities] Trip has ${tripDays} days, enriching up to ${enrichmentCount} items`);
 
           // Enrich activities for the capped number
           await enrichWithPlaceDetails(activities, enrichmentCount, 'activities');

@@ -82,24 +82,11 @@ export const useAIGeneration = () => {
       let activitiesSettled: any = orchestration.activitiesSettled;
       let aiSettled: any = orchestration.aiSettled;
 
-      // Diagnostic: show promise settlement statuses to trace which calls resolved/failed
-      try {
-        logger.debug('[useAIGeneration] settled statuses:', {
-          flight: flightSettled ? flightSettled.status : 'skipped',
-          accommodations: accSettled ? accSettled.status : 'unknown',
-          activities: activitiesSettled ? activitiesSettled.status : 'unknown',
-          ai: aiSettled ? aiSettled.status : 'skipped'
-        });
-      } catch (e) {
-        // no-op
-      }
-
       // Handle flight result
       let flightResultData: any = null;
       if (includeFlights) {
         if (flightSettled.status === 'fulfilled') {
           flightResultData = (flightSettled.value as any).data;
-          logger.debug('✅ [useAIGeneration] Flight search successful:', flightResultData);
         } else {
           logger.warn('⚠️ [useAIGeneration] Flight search failed:', flightSettled.reason);
         }
@@ -123,8 +110,6 @@ export const useAIGeneration = () => {
             const maybeHotels = Object.values(accDataAny).find((v: any) => Array.isArray(v) && v.length > 0 && typeof v[0] === 'object');
             if (Array.isArray(maybeHotels)) accommodations = maybeHotels as any[];
           }
-
-          logger.debug('✅ [useAIGeneration] Accommodations search successful, found', accommodations.length);
         } catch (accErr) {
           logger.warn('⚠️ [useAIGeneration] Failed to parse accommodations response:', accErr);
         }
@@ -146,7 +131,6 @@ export const useAIGeneration = () => {
           if (Array.isArray(actDataAny.restaurants)) restaurantsFromActivitiesSearch = actDataAny.restaurants;
           else if (Array.isArray(actDataAny.data?.restaurants)) restaurantsFromActivitiesSearch = actDataAny.data.restaurants;
 
-          logger.debug('✅ [useAIGeneration] Activities search successful, found', activities.length, 'activities and', restaurantsFromActivitiesSearch.length, 'restaurants');
           // Capture filtering metadata from activities call (if present) so we can
           // attach it to the saved itinerary for UI display.
           try {
@@ -604,9 +588,6 @@ export const useAIGeneration = () => {
           // CRITICAL FIX: UI looks for transportation at response.data.transportation, not recommendations.transportation
           toSave.response.data.transportation = parsedTransportation;
           toSave.response.data.recommendations.transportation = parsedTransportation;
-
-          logger.debug('🚗 [useAIGeneration] Transportation merged to BOTH locations successfully');
-          logger.debug('toSave.response.data.transportation exists:', !!toSave.response.data.transportation);
         } else {
           logger.warn('❌ [useAIGeneration] NO TRANSPORTATION DATA TO MERGE - parsedTransportation is null/undefined');
         }
