@@ -72,22 +72,48 @@ export class OpenFlightsAirportService implements IAirportService {
           return;
         }
       } catch (fnErr) {
-        // If functions are not available or callable failed, continue to original fetch
-        console.debug('openFlights proxy not available, falling back to direct fetch', fnErr);
+        // If functions are not available or callable failed, try the HTTP proxy
+        // Cloud Function endpoint as a browser-safe fallback. Only if that
+        // fails do we load the curated fallback set to keep the UI functional.
+        console.debug('openFlights proxy not available, attempting HTTP fallback', fnErr);
+        try {
+          const functionUrl = 'https://us-central1-mundo1-1.cloudfunctions.net/openFlightsHttp';
+          // Try fetching the pre-parsed JSON from our functions HTTP endpoint
+          const resp = await fetch(functionUrl);
+          if (resp.ok) {
+            const payload = await resp.json();
+            const data = payload?.data;
+            if (Array.isArray(data) && data.length > 0) {
+              this.airports = data.map((a: any, idx: number) => ({
+                id: idx + 1,
+                name: a.name || '',
+                city: a.city || '',
+                country: a.country || '',
+                iata: a.iata || null,
+                icao: a.icao || null,
+                latitude: a.lat || 0,
+                longitude: a.lng || 0,
+                altitude: 0,
+                timezone: 0,
+                dst: '',
+                tz: '',
+                type: 'airport',
+                source: 'openflights-http'
+              }));
+              this.buildIndexes();
+              this.isDataLoaded = true;
+              console.log(`Loaded ${this.airports.length} airports from OpenFlights HTTP proxy`);
+              return;
+            }
+          }
+        } catch (httpErr) {
+          console.debug('openFlights HTTP proxy failed, falling back to curated list', httpErr);
+        }
+        // If HTTP fallback also fails, load curated data
+        console.warn('openFlights: HTTP fallback unavailable, loading curated fallback data');
+        this.loadFallbackData();
+        return;
       }
-
-      // Fetch the OpenFlights airport data from the canonical GitHub source as a final fallback
-      const response = await fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch airport data: ${response.statusText}`);
-      }
-
-      const csvData = await response.text();
-      this.parseAirportData(csvData);
-      this.buildIndexes();
-      this.isDataLoaded = true;
-
-      console.log(`Loaded ${this.airports.length} airports from OpenFlights dataset`);
     } catch (error) {
       console.error('Failed to load airport data:', error);
       // Fallback to limited hardcoded data if fetch fails
@@ -124,7 +150,7 @@ export class OpenFlightsAirportService implements IAirportService {
           };
 
           // Only include airports with valid IATA codes and coordinates
-          if (airport.iata && airport.iata !== '\\N' && airport.iata.length === 3 && 
+          if (airport.iata && airport.iata !== '\\N' && airport.iata.length === 3 &&
               airport.latitude !== 0 && airport.longitude !== 0 &&
               airport.type === 'airport') {
             this.airports.push(airport);
@@ -136,7 +162,6 @@ export class OpenFlightsAirportService implements IAirportService {
       }
     }
   }
-
   /**
    * Parse CSV line handling quoted fields properly
    */
