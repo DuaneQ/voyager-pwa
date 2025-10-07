@@ -121,17 +121,14 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         // If we have a loadPreferences function, ensure we refresh before initializing
         if (typeof loadPreferences === 'function') {
           try {
-            console.log('[AIItineraryGenerationModal] calling loadPreferences() on open to ensure latest profiles');
             await loadPreferences();
-            console.log('[AIItineraryGenerationModal] loadPreferences() on open completed');
           } catch (err) {
-            console.warn('[AIItineraryGenerationModal] loadPreferences() on open failed, proceeding with cached preferences', err);
+            console.warn('[AIItineraryGenerationModal] loadPreferences() on open failed, proceeding with cached preferences');
           }
         }
 
         // Reset form data only once when modal opens (after attempting to refresh preferences)
-        const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
-        console.log('[AIItineraryGenerationModal] modal opened, defaultProfileId=', defaultProfileId);
+  const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
 
         // Prefer an explicitly-provided initial profile id (from parent) if available.
         const initProfileId = (initialPreferenceProfileId as string) || defaultProfileId || '';
@@ -189,11 +186,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       errors.destination = 'Destination is required';
     }
 
-    // Determine flight visibility based on the selected profile at validation time
+  // Determine flight visibility based on the selected profile at validation time
     const selectedProfileForValidation = (typeof getProfileById === 'function'
       ? getProfileById(formData.preferenceProfileId)
       : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null);
-    console.log('[AIItineraryGenerationModal] validateForm selectedProfileForValidation=', selectedProfileForValidation?.id, selectedProfileForValidation?.transportation);
+  // validation: selectedProfileForValidation available for debug if needed
     const profileTransportationForValidation = selectedProfileForValidation?.transportation;
     const flightSectionVisibleForValidation = !!(
       profileTransportationForValidation && (
@@ -310,15 +307,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({ general: 'AI_LIMIT' });
       return;
     }
-
-    try {
-  // Include the selected preference profile in the generation request so the hook
-  // can map accommodation preferences -> search params (starRating, accessibility, etc.)
+  
+  try {
+  // Include the selected preference profile in the generation request
   const requestWithProfile = { ...formData, preferenceProfile: selectedProfile } as any;
-  logger.debug('request with profile', requestWithProfile);
   const result = await generateItinerary(requestWithProfile);
-
-    logger.debug('🎉 [MODAL] Generation successful, result:', result);
 
       // Show success state in the modal
       setShowSuccessState(true);
@@ -331,7 +324,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         await trackAICreation?.();
       } catch (e) {
         // Non-fatal: continue even if tracking fails
-        console.warn('[AIItineraryGenerationModal] trackAICreation failed', e);
+        console.warn('[AIItineraryGenerationModal] trackAICreation failed');
       }
 
       // Close modal after showing success
@@ -443,10 +436,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   if (initialPreferenceProfile && formData.preferenceProfileId && initialPreferenceProfile.id === formData.preferenceProfileId) {
     // Use parent-provided profile when it's likely more up-to-date
     selectedProfile = initialPreferenceProfile;
-    console.log('[AIItineraryGenerationModal] using initialPreferenceProfile (parent) for render:', initialPreferenceProfile.id, initialPreferenceProfile.transportation);
   }
-  console.log('[AIItineraryGenerationModal] selectedProfile used for render=', selectedProfile?.id, selectedProfile?.transportation);
-  console.log('[AIItineraryGenerationModal] selectedProfileForRender=', selectedProfileForRender?.id, selectedProfileForRender?.transportation);
 
   // Flight section should show if the profile explicitly enables flight searching via includeFlights
   // or if the primaryMode is the canonical 'airplane' value. This avoids relying on legacy UI labels.

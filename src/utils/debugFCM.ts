@@ -11,14 +11,9 @@ export const debugFCMOnDevice = async () => {
   const auth = getAuth(app);
   const currentUser = auth.currentUser;
   
-  // 5. Service Worker status
-  console.log("\n5. Service Worker Status:");
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
-    console.log("- Active Registrations:", registrations.length);
     registrations.forEach((reg, index) => {
-      console.log(`  [${index}] Scope: ${reg.scope}`);
-      console.log(`  [${index}] State: ${reg.active?.state || 'inactive'}`);
     });
     
     // Check for Firebase messaging service worker specifically
@@ -26,7 +21,6 @@ export const debugFCMOnDevice = async () => {
       reg.scope.includes('firebase-messaging') || 
       reg.active?.scriptURL.includes('firebase-messaging')
     );
-    console.log("- Firebase Messaging SW Found:", !!firebaseSW);
   } catch (error) {
     console.error("- Service Worker Check Error:", error);
   }
@@ -35,12 +29,10 @@ export const debugFCMOnDevice = async () => {
 
   try {
     const tokenResult = await generateFCMToken();
-    console.log("- Token Generation Success:", tokenResult.success);
     if (tokenResult.success && tokenResult.token) {
       
       // 8. Save to Firestore test
       if (currentUser?.uid) {
-        console.log("\n8. Firestore Save Test:");
         const saveResult = await saveFCMTokenToFirestore(currentUser.uid, tokenResult.token);
       }
     } else {
@@ -81,7 +73,6 @@ export const debugFCMOnDevice = async () => {
  * Quick test function for browser console
  */
 export const testFCM = () => {
-  console.log("Running FCM test...");
   return debugFCMOnDevice();
 };
 
@@ -89,7 +80,6 @@ export const testFCM = () => {
  * Legacy function for backward compatibility
  */
 export const debugAndSaveFCMToken = async () => {
-  console.log("Legacy debugAndSaveFCMToken called - redirecting to enhanced version");
   return debugFCMOnDevice();
 };
 

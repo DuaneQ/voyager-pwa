@@ -68,14 +68,13 @@ export class OpenFlightsAirportService implements IAirportService {
           }));
           this.buildIndexes();
           this.isDataLoaded = true;
-          console.log(`Loaded ${this.airports.length} airports from OpenFlights proxy`);
           return;
         }
       } catch (fnErr) {
-        // If functions are not available or callable failed, try the HTTP proxy
+  // If functions are not available or callable failed, try the HTTP proxy
         // Cloud Function endpoint as a browser-safe fallback. Only if that
         // fails do we load the curated fallback set to keep the UI functional.
-        console.debug('openFlights proxy not available, attempting HTTP fallback', fnErr);
+  // functions unavailable; attempt HTTP fallback
         try {
           const functionUrl = 'https://us-central1-mundo1-1.cloudfunctions.net/openFlightsHttp';
           // Try fetching the pre-parsed JSON from our functions HTTP endpoint
@@ -102,14 +101,16 @@ export class OpenFlightsAirportService implements IAirportService {
               }));
               this.buildIndexes();
               this.isDataLoaded = true;
-              console.log(`Loaded ${this.airports.length} airports from OpenFlights HTTP proxy`);
               return;
             }
           }
         } catch (httpErr) {
-          console.debug('openFlights HTTP proxy failed, falling back to curated list', httpErr);
+          // HTTP fallback failed; continue to curated fallback
+          // keep detailed failure only in error logs
+          console.error('openFlights HTTP proxy failed', httpErr);
         }
         // If HTTP fallback also fails, load curated data
+        // warn the operator but avoid noisy debug logs in production
         console.warn('openFlights: HTTP fallback unavailable, loading curated fallback data');
         this.loadFallbackData();
         return;
@@ -245,10 +246,9 @@ export class OpenFlightsAirportService implements IAirportService {
       { id: 10, name: 'Charles de Gaulle Airport', city: 'Paris', country: 'France', iata: 'CDG', icao: 'LFPG', latitude: 49.0097, longitude: 2.5479, altitude: 392, timezone: 1, dst: 'E', tz: 'Europe/Paris', type: 'airport', source: 'OurAirports' }
     ];
 
-    this.airports = fallbackAirports;
-    this.buildIndexes();
-    this.isDataLoaded = true;
-    console.log('Loaded fallback airport data');
+  this.airports = fallbackAirports;
+  this.buildIndexes();
+  this.isDataLoaded = true;
   }
 
   /**

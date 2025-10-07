@@ -54,7 +54,7 @@ describe('useTravelPreferences profile creation vs update', () => {
         profiles.push(result.current.preferences.profiles[1]);
       }
     });
-    console.log('[TEST] profiles after name change:', JSON.stringify(result.current.preferences?.profiles, null, 2));
+  
     expect(result.current.preferences?.profiles.length).toBe(2);
     // The original profile should remain unchanged
     expect(result.current.preferences?.profiles[0].name).toBe('Original Profile');
@@ -84,7 +84,7 @@ describe('useTravelPreferences profile creation vs update', () => {
     await act(async () => {
       await result.current.updateProfile('profile_2', { travelStyle: 'luxury' });
     });
-    console.log('[TEST] profiles after update:', result.current.preferences?.profiles);
+    
     expect(result.current.preferences?.profiles.length).toBe(1);
     expect(result.current.preferences?.profiles[0].travelStyle).toBe('luxury');
   });

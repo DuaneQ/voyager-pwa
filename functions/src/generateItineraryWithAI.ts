@@ -11,9 +11,7 @@ export async function _generateItineraryWithAIImpl(data: any, context: any) {
   // Derive transportType from explicit payload or from preferenceProfile if provided
   const transportTypeFromProfile = payload.preferenceProfile?.transportation?.primaryMode || null;
   const transportType = (payload.transportType || transportTypeFromProfile || null);
-
-  // Debug logging: surface incoming origin/destination/transportType for troubleshooting
-  console.log('[generateItineraryWithAI] origin:', origin, 'destination:', destination, 'transportType:', transportType);
+  
 
   // Accept two valid shapes from clients:
   // 1) transport-specific: { origin, destination, transportType, ... }

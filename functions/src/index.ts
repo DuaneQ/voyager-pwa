@@ -97,7 +97,6 @@ export const sendNewMessageNotification = functions.firestore
     const connectionId = context.params.connectionId;
 
     if (!message) {
-      console.log("No message data found:", message);
       return null;
     }
 
@@ -106,7 +105,6 @@ export const sendNewMessageNotification = functions.firestore
     const connectionSnap = await connectionRef.get();
     const connection = connectionSnap.data();
     if (!connection || !connection.users || !Array.isArray(connection.users)) {
-      console.log("No users found in connection doc:", connection);
       return null;
     }
 
@@ -115,23 +113,12 @@ export const sendNewMessageNotification = functions.firestore
       (uid: string) => uid !== message.sender
     );
     if (!recipientUid) {
-      console.log("No recipient found for message:", message);
       return null;
     }
 
     // Get the recipient's FCM token from their user profile
     const userDoc = await db.collection("users").doc(recipientUid).get();
     const userData = userDoc.data();
-    
-    console.log(`FCM Debug for user ${recipientUid}:`, {
-      userExists: userDoc.exists,
-      hasData: !!userData,
-      hasFCMToken: !!(userData && userData.fcmToken),
-      lastTokenUpdate: userData?.lastTokenUpdate,
-      deviceInfo: userData?.deviceInfo?.platform,
-      tokenValidated: userData?.tokenValidated
-    });
-    
     const fcmToken = userData && userData.fcmToken;
 
     if (fcmToken) {
@@ -146,14 +133,10 @@ export const sendNewMessageNotification = functions.firestore
             connectionId,
           },
         });
-        console.log(`Notification sent successfully to user ${recipientUid}`);
-      } catch (error: any) {
-        console.error(`Failed to send notification to user ${recipientUid}:`, error);
-        
+      } catch (error: any) {        
         // If the token is invalid, remove it from the user document
         if (error.code === 'messaging/invalid-registration-token' || 
             error.code === 'messaging/registration-token-not-registered') {
-          console.log(`Removing invalid FCM token for user ${recipientUid}`);
           await db.collection("users").doc(recipientUid).update({
             fcmToken: admin.firestore.FieldValue.delete(),
             invalidTokenRemovedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -174,10 +157,6 @@ export const notifyFeedbackSubmission = functions.firestore
     const feedback = snap.data();
     const feedbackId = context.params.feedbackId;
 
-    console.log("=== FEEDBACK SUBMISSION DEBUG ===");
-    console.log("Feedback ID:", feedbackId);
-    console.log("Feedback data:", JSON.stringify(feedback, null, 2));
-
     if (!feedback) {
       console.log("❌ No feedback data found:", feedback);
       return null;
@@ -187,10 +166,8 @@ export const notifyFeedbackSubmission = functions.firestore
       // Get user details if available
       let userData = null;
       if (feedback.userId && feedback.userId !== 'anonymous') {
-        console.log("🔍 Fetching user data for:", feedback.userId);
         const userDoc = await db.collection("users").doc(feedback.userId).get();
         userData = userDoc.data() || {};
-        console.log("👤 User data found:", !!userData, userData?.username);
       }
 
       // Format feedback type and severity
@@ -322,18 +299,11 @@ export const notifyFeedbackSubmission = functions.firestore
         },
       };
 
-      console.log("📧 Preparing to send email to:", mailDoc.to);
-      console.log("📧 Email subject:", mailDoc.message.subject);
-      console.log("📧 Email from:", mailDoc.from);
-
       // Send the email using the "mail" collection
       const mailRef = await db.collection("mail").add(mailDoc);
-      console.log(`✅ Mail document created successfully: mail/${mailRef.id}`);
-
+     
       // Check if the mail document was actually created
       const createdMailDoc = await mailRef.get();
-      console.log("📄 Mail document exists:", createdMailDoc.exists);
-      console.log("📄 Mail document data:", JSON.stringify(createdMailDoc.data(), null, 2));
 
       // Update the feedback document to mark the email as sent
       await db.collection("feedback").doc(feedbackId).update({
@@ -341,9 +311,6 @@ export const notifyFeedbackSubmission = functions.firestore
         emailSentTimestamp: admin.firestore.FieldValue.serverTimestamp(),
         mailDocumentId: mailRef.id, // Add this for debugging
       });
-
-      console.log("✅ Feedback document updated successfully");
-      console.log("=== END FEEDBACK SUBMISSION DEBUG ===");
 
       return null;
     } catch (err) {
@@ -472,7 +439,7 @@ export const notifyViolationReport = functions.firestore
     }
   });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: '2022-11-15' });
+const stripe = new Stripe('', { apiVersion: '2022-11-15' });
 
 const app = express();
 
@@ -481,18 +448,12 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
   const sig = req.headers["stripe-signature"];
   let event: Stripe.Event;
 
-  // Log the incoming webhook for troubleshooting
-  console.log("[STRIPE WEBHOOK] Incoming request", {
-    headers: req.headers,
-    body: req.body ? req.body.toString('utf8').slice(0, 500) : undefined // avoid logging secrets
-  });
-
   try {
     // Use req.rawBody for Firebase Functions compatibility
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig as string,
-      process.env.STRIPE_WEBHOOK_SECRET || "" // Ensure this is set in your environment variables
+      '' // Ensure this is set in your environment variables
     );
     console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
@@ -725,3 +686,5 @@ export { searchFlights } from './searchFlights';
 export { searchAccommodations } from './searchAccommodations';
 export { searchActivities } from './searchActivities';
 export { generateItineraryWithAI } from './generateItineraryWithAI';
+export { placeSearch, geocodePlace } from './placeProxy';
+export { openFlightsGetAll, openFlightsSearch, openFlightsHttp } from './openFlightsProxy';

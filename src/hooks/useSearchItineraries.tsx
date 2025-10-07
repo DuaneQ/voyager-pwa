@@ -77,7 +77,6 @@ const useSearchItineraries = () => {
   // Apply client-side filters
   const applyClientSideFilters = (results: Itinerary[], params: SearchParams): Itinerary[] => {
     const { currentUserItinerary, currentUserId } = params;
-    console.log('currentUserItinerary', currentUserItinerary)
     const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
     const userEndDay = new Date(currentUserItinerary.endDate!).getTime();
     const viewedItineraries = getViewedItineraries();
