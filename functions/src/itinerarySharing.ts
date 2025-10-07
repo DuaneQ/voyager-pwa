@@ -104,8 +104,9 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
     }
   };
 
-  const shareUrl = `https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/${itineraryId}`;
   const appUrl = 'https://travalpass.com';
+  // Use the public site URL for canonical shares and social previews
+  const shareUrl = `${appUrl}/share-itinerary/${itineraryId}`;
   // Prefer recommendations only. Do NOT use externalData or vendorRaw fallbacks for
   // prices or invented data. However, it's acceptable to use vendorRaw/vendorRaw.details
   // as a fallback for official website/booking URL when an explicit `bookingUrl` is
@@ -881,8 +882,8 @@ app.get('/share-itinerary/:itineraryId/preview.json', async (req, res) => {
       ? (firstAccommodation.photos && firstAccommodation.photos.length > 0 ? firstAccommodation.photos[0]
          : (firstAccommodation.vendorRaw && firstAccommodation.vendorRaw.photos && firstAccommodation.vendorRaw.photos.length > 0 ? firstAccommodation.vendorRaw.photos[0] : null))
       : null;
-    const appUrl = 'https://travalpass.com';
-    const shareUrl = `https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/${itineraryId}`;
+  const appUrl = 'https://travalpass.com';
+  const shareUrl = `${appUrl}/share-itinerary/${itineraryId}`;
     const previewImage = firstAccPhoto || (metadata && metadata.previewImage) || `${appUrl}/og-image.png`;
 
     // Cache for a short period to allow quick revalidation

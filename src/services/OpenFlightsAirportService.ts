@@ -39,17 +39,54 @@ export class OpenFlightsAirportService implements IAirportService {
     if (this.isDataLoaded) return;
 
     try {
-      // Fetch the OpenFlights airport data
+      // Try to load airports via Cloud Functions proxy (if Firebase functions are initialized)
+      try {
+        // Dynamically require firebase functions to avoid bundling at build-time
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { getFunctions, httpsCallable } = require('firebase/functions');
+        const functions = getFunctions();
+        const fn = httpsCallable(functions, 'openFlightsGetAll');
+        const resp = await fn();
+        const payload: any = resp?.data ?? resp;
+        const data = payload?.data;
+        if (Array.isArray(data) && data.length > 0) {
+          this.airports = data.map((a: any, idx: number) => ({
+            id: idx + 1,
+            name: a.name || '',
+            city: a.city || '',
+            country: a.country || '',
+            iata: a.iata || null,
+            icao: a.icao || null,
+            latitude: a.lat || 0,
+            longitude: a.lng || 0,
+            altitude: 0,
+            timezone: 0,
+            dst: '',
+            tz: '',
+            type: 'airport',
+            source: 'openflights-proxy'
+          }));
+          this.buildIndexes();
+          this.isDataLoaded = true;
+          console.log(`Loaded ${this.airports.length} airports from OpenFlights proxy`);
+          return;
+        }
+      } catch (fnErr) {
+        // If functions are not available or callable failed, continue to original fetch
+        console.debug('openFlights proxy not available, falling back to direct fetch', fnErr);
+      }
+
+      // Fetch the OpenFlights airport data from the canonical GitHub source as a final fallback
       const response = await fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat');
       if (!response.ok) {
         throw new Error(`Failed to fetch airport data: ${response.statusText}`);
       }
-      
+
       const csvData = await response.text();
       this.parseAirportData(csvData);
       this.buildIndexes();
       this.isDataLoaded = true;
-      
+
       console.log(`Loaded ${this.airports.length} airports from OpenFlights dataset`);
     } catch (error) {
       console.error('Failed to load airport data:', error);

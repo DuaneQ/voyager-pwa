@@ -4,6 +4,7 @@ import { IAirportService, IGooglePlacesService, IDistanceCalculator } from './in
 import { Airport, AirportSearchResult, LocationCoordinates } from '../types/Airport';
 import { OpenFlightsAirportService } from './OpenFlightsAirportService';
 import { ModernGooglePlacesService } from './ModernGooglePlacesService';
+import { ProxiedGooglePlacesService } from './ProxiedGooglePlacesService';
 import { DistanceCalculator } from '../utils/DistanceCalculator';
 
 export class UnifiedAirportService implements IAirportService {
@@ -17,6 +18,14 @@ export class UnifiedAirportService implements IAirportService {
     
     if (googleApiKey) {
       this.googlePlacesService = new ModernGooglePlacesService(googleApiKey);
+    } else {
+      // If no API key provided in client build, use the functions-backed proxy
+      try {
+        this.googlePlacesService = new ProxiedGooglePlacesService() as any;
+      } catch (err) {
+        console.warn('ProxiedGooglePlacesService initialization failed, Google Places will be unavailable', err);
+        this.googlePlacesService = null;
+      }
     }
   }
 
