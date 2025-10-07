@@ -27,15 +27,15 @@ function isSocialMediaCrawler(userAgent: string): boolean {
     /googlebot/i,
     /bingbot/i
   ];
-  
+
   return crawlerPatterns.some(pattern => pattern.test(userAgent));
 }
 
 // Helper function to detect Facebook's in-app browser
 function isFacebookInAppBrowser(userAgent: string): boolean {
   // Facebook in-app browser patterns
-  return /FBAN|FBAV|FBSV|FBID/i.test(userAgent) || 
-         (/Mobile.*Facebook/i.test(userAgent) && !/facebookexternalhit/i.test(userAgent));
+  return /FBAN|FBAV|FBSV|FBID/i.test(userAgent) ||
+    (/Mobile.*Facebook/i.test(userAgent) && !/facebookexternalhit/i.test(userAgent));
 }
 
 // Helper function to detect other in-app browsers that might have issues
@@ -47,7 +47,7 @@ function isRestrictedInAppBrowser(userAgent: string): boolean {
     /MicroMessenger/i,     // WeChat
     /TwitterAndroid|Twitter for iPhone/i // Twitter
   ];
-  
+
   return restrictedPatterns.some(pattern => pattern.test(userAgent));
 }
 
@@ -57,17 +57,17 @@ function generateVideoHTML(video: any, videoId: string): string {
   const baseUrl = 'https://travalpass.com';
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
-  
+
   // Use video thumbnail or fallback to default
   const imageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
-  
+
   // Clean and truncate description
-  const description = video.description 
-    ? video.description.substring(0, 160) 
+  const description = video.description
+    ? video.description.substring(0, 160)
     : 'Watch this amazing video on TravalPass';
-  
-  const title = video.title 
-    ? `${video.title} - TravalPass` 
+
+  const title = video.title
+    ? `${video.title} - TravalPass`
     : 'Video - TravalPass';
 
   // For Facebook sharing, prioritize a compelling thumbnail over video file
@@ -166,10 +166,10 @@ function generateFacebookInAppHTML(video: any, videoId: string): string {
   const baseUrl = 'https://travalpass.com';
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
-  
+
   const title = video.title || 'Video';
-  const description = video.description 
-    ? video.description.substring(0, 160) 
+  const description = video.description
+    ? video.description.substring(0, 160)
     : 'Watch this amazing video on TravalPass';
   const imageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
 
@@ -318,7 +318,7 @@ function generateFacebookInAppHTML(video: any, videoId: string): string {
 function generatePrivateVideoHTML(video: any, videoId: string): string {
   const baseUrl = 'https://travalpass.com';
   const videoUrl = `${baseUrl}/video/${videoId}`;
-  
+
   const title = 'Private Video - TravalPass';
   const description = 'This video is private. Log in to TravalPass to see if you have access.';
   const imageUrl = `${baseUrl}/og-image.png`; // Use default image for private videos
@@ -373,14 +373,12 @@ app.get('/video-share/:videoId', async (req, res) => {
   try {
     const videoId = req.params.videoId;
     const userAgent = req.get('User-Agent') || '';
-    
-    console.log(`Video share request for ${videoId}, User-Agent: ${userAgent}`);
-    
+
     // Fetch video from Firestore using Admin SDK (bypasses security rules)
     const videoDoc = await db.collection('videos').doc(videoId).get();
-    
+
     if (!videoDoc.exists) {
-      console.log(`Video not found: ${videoId}`);
+
       return res.status(404).send(`
         <!DOCTYPE html>
         <html>
@@ -396,14 +394,14 @@ app.get('/video-share/:videoId', async (req, res) => {
         </html>
       `);
     }
-    
+
     const videoData = videoDoc.data();
-    
+
     // Check if video is public or if we should allow sharing
     const isPublic = videoData?.isPublic === true;
-    
+
     if (!isPublic) {
-      console.log(`Private video shared: ${videoId}`);
+
       // For private videos, still show some content for social media crawlers
       // but redirect users to app where they can authenticate
       if (isSocialMediaCrawler(userAgent)) {
@@ -413,33 +411,32 @@ app.get('/video-share/:videoId', async (req, res) => {
         res.send(html);
       } else {
         // Redirect users to the app where they can authenticate and check access
-        console.log('Redirecting to app for private video authentication check');
         res.redirect(302, `https://travalpass.com/video/${videoId}`);
       }
       return;
     }
-    
+
     // Handle public videos
-    
+
     // Check if this is a Facebook in-app browser
     if (isFacebookInAppBrowser(userAgent)) {
-      console.log('Detected Facebook in-app browser, serving special landing page');
+
       const html = generateFacebookInAppHTML(videoData, videoId);
       res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
       return res.send(html);
     }
-    
+
     if (isSocialMediaCrawler(userAgent)) {
-      console.log('Serving crawler-optimized HTML for public video:', videoId);
+
       const html = generateVideoHTML(videoData, videoId);
       res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
       res.send(html);
     } else {
       // For regular users, redirect to the client-side video route
-      console.log('Redirecting regular user to client-side video route for video:', videoId);
+
       res.redirect(302, `https://travalpass.com/video/${videoId}`);
     }
-    
+
   } catch (error) {
     console.error('Error serving video page:', error);
     res.status(500).send(`
@@ -464,26 +461,25 @@ app.get('/video/:videoId', async (req, res) => {
   try {
     const videoId = req.params.videoId;
     const userAgent = req.get('User-Agent') || '';
-    
-    console.log(`Video page request for ${videoId}, User-Agent: ${userAgent}`);
-    
+
+
+
     // If it's a social media crawler, redirect to the sharing URL for proper meta tags
     if (isSocialMediaCrawler(userAgent)) {
-      console.log('Redirecting crawler to sharing URL for proper meta tags');
+
       return res.redirect(301, `https://travalpass.com/video-share/${videoId}`);
     }
-    
+
     // If it's a Facebook in-app browser, also redirect to sharing URL for special handling
     if (isFacebookInAppBrowser(userAgent)) {
-      console.log('Redirecting Facebook in-app browser to sharing URL for special handling');
       return res.redirect(302, `https://travalpass.com/video-share/${videoId}`);
     }
-    
+
     // For regular users, serve the client-side app
     // This should be handled by your hosting, but if it reaches here, redirect to main app
     console.log('Redirecting regular user to client app');
     res.redirect(302, `https://travalpass.com`);
-    
+
   } catch (error) {
     console.error('Error handling video route:', error);
     res.redirect(302, `https://travalpass.com`);

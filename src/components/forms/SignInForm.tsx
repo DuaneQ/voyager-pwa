@@ -176,9 +176,14 @@ export default function SignInForm(props: { disableCustomTheme?: boolean }) {
             display: "flex",
             flexDirection: "column",
             width: { xs: "95%", sm: "90%" },
-            maxWidth: "500px",
-            padding: { xs: 1.5, sm: 3 },
-            gap: { xs: 1.5, sm: 2 },
+            // slightly reduce the mobile max width to keep proportions while
+            // applying an overall scale for compact mobile presentation
+            maxWidth: { xs: "400px", sm: "500px" },
+            padding: { xs: 1.2, sm: 3 },
+            gap: { xs: 1.2, sm: 2 },
+            // Scale the entire card down on small screens by ~20%
+            transform: { xs: 'scale(0.8)', sm: 'none' },
+            transformOrigin: { xs: 'top center', sm: 'initial' },
             marginLeft: "auto",
             marginRight: "auto",
             boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px"

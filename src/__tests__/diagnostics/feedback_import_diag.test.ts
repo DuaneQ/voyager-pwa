@@ -26,7 +26,7 @@ try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { FeedbackDashboard } = require('../../components/admin/FeedbackDashboard');
   // eslint-disable-next-line no-console
-  console.log('Imported FeedbackDashboard successfully for diagnostic');
+  
 } catch (err) {
   // eslint-disable-next-line no-console
   console.error('Import diagnostic failed:', err && err.stack ? err.stack : err);

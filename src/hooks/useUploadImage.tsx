@@ -31,7 +31,9 @@ const useUploadImage = () => {
       const url = await getDownloadURL(storageRef);
       return url;
     } catch (err) {
-      console.log(err);
+      // preserve error information for debugging
+      console.error('useUploadImage upload failed:', err);
+      setError((err as any)?.message || String(err));
     } finally {
       setUploading(false);
     }

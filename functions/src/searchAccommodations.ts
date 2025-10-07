@@ -62,7 +62,7 @@ function getPlacesQuery(accommodationType?: string, destination?: string): strin
     'resort': 'resort',
     'any': 'lodging'
   };
-  
+
   const baseQuery = queries[accommodationType || 'any'] || 'hotel';
   return destination ? `${baseQuery} in ${destination}` : baseQuery;
 }
@@ -70,13 +70,13 @@ function getPlacesQuery(accommodationType?: string, destination?: string): strin
 // Helper: extract amenities from place details
 function extractAmenities(place: any): string[] {
   const amenities: string[] = [];
-  
+
   // Check for common amenities in types or other fields
   if (place.types) {
     if (place.types.includes('gym')) amenities.push('gym');
     if (place.types.includes('spa')) amenities.push('spa');
   }
-  
+
   // Note: Google Places doesn't provide detailed amenities in basic API
   // In a real implementation, you might use Place Details with specific fields
   return amenities;
@@ -91,7 +91,7 @@ function extractAmenities(place: any): string[] {
 // Helper: get photo URLs from place photos
 function getPhotoUrls(place: any, maxPhotos: number = 3): string[] {
   if (!place.photos || !Array.isArray(place.photos)) return [];
-  
+
   return place.photos
     .slice(0, maxPhotos)
     .map((photo: any) => {
@@ -115,13 +115,13 @@ async function fetchAllTextSearchResults(initialUrl: string, maxResults: number 
       attempts++;
       const res = await fetch(url);
       if (!res.ok) {
-  const t = await res.text().catch(() => '');
-  logger.error('[searchAccommodations] Places fetch error', res.status, t);
+        const t = await res.text().catch(() => '');
+        logger.error('[searchAccommodations] Places fetch error', res.status, t);
         break;
       }
       const json = await res.json();
       if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
-  logger.error('[searchAccommodations] Places API status:', json.status, json.error_message);
+        logger.error('[searchAccommodations] Places API status:', json.status, json.error_message);
         break;
       }
 
@@ -164,13 +164,13 @@ function mapPlaceToHotel(place: any, originLat?: number, originLng?: number): Ho
       address: place.formatted_address || place.vicinity || '',
       lat: place.geometry?.location?.lat,
       lng: place.geometry?.location?.lng,
-  rating: place.rating,
-  userRatingsTotal: place.user_ratings_total,
-  // Use explicit star rating fields if available on the provider response. If not present,
-  // leave as null to indicate unknown. Do NOT infer from other signals.
-  starRating: (place.star_rating ?? place.starRating ?? null),
-  // Map coarse provider price level when available (1-4)
-  priceLevel: (place.price_level ?? place.priceLevel ?? null),
+      rating: place.rating,
+      userRatingsTotal: place.user_ratings_total,
+      // Use explicit star rating fields if available on the provider response. If not present,
+      // leave as null to indicate unknown. Do NOT infer from other signals.
+      starRating: (place.star_rating ?? place.starRating ?? null),
+      // Map coarse provider price level when available (1-4)
+      priceLevel: (place.price_level ?? place.priceLevel ?? null),
       types: place.types || [],
       photos: getPhotoUrls(place),
       wheelchairAccessible: place.wheelchair_accessible_entrance || null,
@@ -183,16 +183,16 @@ function mapPlaceToHotel(place: any, originLat?: number, originLng?: number): Ho
       const R = 6371000; // Earth radius in meters
       const dLat = (hotel.lat - originLat) * Math.PI / 180;
       const dLng = (hotel.lng - originLng) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(originLat * Math.PI / 180) * Math.cos(hotel.lat * Math.PI / 180) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(originLat * Math.PI / 180) * Math.cos(hotel.lat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       hotel.distanceMeters = Math.round(R * c);
     }
 
     return hotel;
   } catch (err) {
-  logger.error('[searchAccommodations] Mapping error for place:', place?.name, 'Error:', err);
+    logger.error('[searchAccommodations] Mapping error for place:', place?.name, 'Error:', err);
     return null;
   }
 }
@@ -202,9 +202,6 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     // Accept either the callable-wrapped shape ({ data: { ... } }) or raw body ({ ... })
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const params: AccommodationSearchParams = normalized as AccommodationSearchParams;
-  logger.debug('[searchAccommodations] Request params:', JSON.stringify(params));
-  logger.debug('[searchAccommodations] starRating param specifically:', params.starRating, typeof params.starRating);
-  logger.debug('[searchAccommodations] Using GOOGLE_PLACES_API_KEY from env:', GOOGLE_PLACES_API_KEY);
 
     // Basic validation
     if (!params.destination) {
@@ -215,9 +212,9 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
       throw new functions.https.HttpsError('failed-precondition', 'Google Places API key missing in function source');
     }
 
-  // Set defaults
-  // Use 20 as default to match one full initial Places Text Search page
-  const maxResults = params.maxResults || 20;
+    // Set defaults
+    // Use 20 as default to match one full initial Places Text Search page
+    const maxResults = params.maxResults || 20;
 
     // Use explicit minUserRating from params; do NOT derive server-side.
     // Defaults: ensure a concrete value so downstream filtering is deterministic.
@@ -225,11 +222,9 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     let effectiveMinUserRating: number = DEFAULT_MIN_USER_RATING;
     if (params.minUserRating !== undefined && params.minUserRating !== null) {
       effectiveMinUserRating = Number(params.minUserRating);
-  logger.debug('[searchAccommodations] Using explicit minUserRating from request:', effectiveMinUserRating);
     } else {
       // No explicit minUserRating provided; fall back to server default (do not infer from starRating)
       effectiveMinUserRating = DEFAULT_MIN_USER_RATING;
-  logger.debug('[searchAccommodations] No explicit minUserRating provided; using default:', effectiveMinUserRating);
     }
 
     // Build Google Places Text Search request
@@ -254,11 +249,11 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
       }
     }
     const searchUrl = new URL(`${PLACES_BASE}/textsearch/json`);
-    
+
     searchUrl.searchParams.set('query', query);
     searchUrl.searchParams.set('type', 'lodging');
     searchUrl.searchParams.set('key', GOOGLE_PLACES_API_KEY);
-    
+
     // Add location bias if lat/lng provided
     if (params.destinationLatLng) {
       const { lat, lng } = params.destinationLatLng;
@@ -266,20 +261,15 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
       searchUrl.searchParams.set('radius', '50000'); // 50km radius
     }
 
-  // No price-based filtering applied here. We only use explicit starRating and minUserRating.
-
-  logger.debug('[searchAccommodations] Google Places request URL:', searchUrl.toString().replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
-
-  // Use pagination helper to collect multiple pages of Text Search results up to maxResults
-  const allPlaces = await fetchAllTextSearchResults(searchUrl.toString(), maxResults * 3);
-  logger.debug('[searchAccommodations] Raw places found (aggregated pages):', allPlaces.length);
+    // No price-based filtering applied here. We only use explicit starRating and minUserRating.
+    // Use pagination helper to collect multiple pages of Text Search results up to maxResults
+    const allPlaces = await fetchAllTextSearchResults(searchUrl.toString(), maxResults * 3);
 
     // Map places to hotel objects. Perform dedupe and optional sorting (both non-invasive)
     let hotels: Hotel[] = [];
     const seenPlaceIds = new Set<string>();
 
     for (const place of allPlaces.slice(0, maxResults * 6)) {
-  logger.debug('[searchAccommodations] Processing place (no destructive filtering):', place.name, 'ID:', place.place_id);
       const hotel = mapPlaceToHotel(
         place,
         params.destinationLatLng?.lat,
@@ -310,17 +300,9 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     // Ensure we return at most maxResults
     hotels = hotels.slice(0, maxResults);
 
-    logger.debug('[searchAccommodations] Final hotels count:', hotels.length);
-    logger.debug('[searchAccommodations] Sample hotels:', hotels.slice(0, 2).map(h => ({
-      name: h.name,
-      rating: h.rating,
-      starRating: h.starRating,
-      address: h.address
-    })));
-
     const searchId = `hotels_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
 
-  const priceFilteringApplied = false;
+    const priceFilteringApplied = false;
 
     return {
       success: true,
