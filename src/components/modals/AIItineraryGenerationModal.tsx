@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -25,7 +25,6 @@ import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
-import logger from '../../utils/logger';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { AIGenerationRequest, TRIP_TYPES, FLIGHT_CLASSES, STOP_PREFERENCES, POPULAR_AIRLINES } from '../../types/AIGeneration';
 import { TravelPreferenceProfile } from '../../types/TravelPreferences';
@@ -33,6 +32,7 @@ import { format, addDays, isAfter, isBefore } from 'date-fns';
 // ...existing code...
 import { AirportSelector } from '../common/AirportSelector';
 import ProfileValidationService from '../../services/ProfileValidationService';
+import { UserProfileContext } from '../../Context/UserProfileContext';
 
 // Input limits
 const MAX_TAGS = 10; // max items for mustInclude / mustAvoid
@@ -55,6 +55,10 @@ interface AIItineraryGenerationModalProps {
   // updated to include the saved changes. This is a defensive fallback to
   // avoid race conditions when opening the modal immediately after saving.
   initialPreferenceProfile?: TravelPreferenceProfile | null;
+  // Test-only: if true, automatically trigger generation once the modal is initialized
+  // and a preferenceProfileId has been set. This is useful to avoid interacting with
+  // native select controls in component tests.
+  autoGenerateOnOpen?: boolean;
 }
 
 export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProps> = ({
@@ -65,6 +69,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   initialDates,
   initialPreferenceProfileId,
   initialPreferenceProfile,
+  autoGenerateOnOpen,
 }) => {
   // Hooks  
   const { 
@@ -74,7 +79,11 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     resetGeneration,
     cancelGeneration 
   } = useAIGeneration();
-  const { hasReachedAILimit, getRemainingAICreations, trackAICreation, hasPremium } = useUsageTracking();
+  // User profile from context (must be read at top-level using hook rules)
+  // Defensive: some tests render this component without wrapping the provider.
+  // Fall back to an empty object so destructuring doesn't throw.
+  const { userProfile } = (useContext(UserProfileContext) as any) || {};
+  const { hasReachedAILimit, trackAICreation } = useUsageTracking();
   
   const { 
     preferences, 
@@ -118,6 +127,14 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       (async () => {
         setModalKey(prev => prev + 1);
         setWasOpen(true);
+
+        // If the parent provided an initial preference profile id, set it synchronously
+        // so the form has a selected profile immediately. This avoids a short-lived
+        // validation state and stabilizes component tests that open the modal
+        // immediately after saving a profile.
+        if (initialPreferenceProfileId) {
+          setFormData(prev => ({ ...prev, preferenceProfileId: initialPreferenceProfileId }));
+        }
 
         // If we have a loadPreferences function, ensure we refresh before initializing
         if (typeof loadPreferences === 'function') {
@@ -258,6 +275,12 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     if (!validateForm()) {
       return;
     }
+  // Ensure user has completed their profile (dob & gender) before allowing AI generation
+  const profileValidation = ProfileValidationService.validateProfileCompleteness(userProfile);
+    if (!profileValidation.isValid) {
+      setFormErrors({ general: profileValidation.errors[0].message });
+      return;
+    }
     if (preferencesLoading) {
       setFormErrors({ general: 'Preferences are still loading, please wait.' });
       return;
@@ -317,6 +340,21 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({ general: message });
     }
   }, [formData, validateForm, generateItinerary, onGenerated, preferencesLoading, getProfileById]);
+
+  // Test-only behavior: if requested, automatically trigger generation once the
+  // modal has initialized and a preferenceProfileId exists. This effect runs
+  // after handleGenerate is defined and will only act when explicitly enabled.
+  useEffect(() => {
+    if (autoGenerateOnOpen && wasOpen && formData.preferenceProfileId) {
+      // Schedule on next tick to ensure state updates have settled
+      const t = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        (async () => { await handleGenerate(); })();
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [autoGenerateOnOpen, wasOpen, formData.preferenceProfileId, handleGenerate]);
 
   // Handle modal close
   const handleClose = useCallback(() => {
@@ -854,6 +892,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               error={!!formErrors.preferenceProfileId}
               helperText={formErrors.preferenceProfileId}
               disabled={preferencesLoading}
+                  // Add a stable test id for component tests to target the select input.
+                  inputProps={{ 'data-testid': 'preference-select' }}
             >
               {availableProfiles.map((profile) => (
                 <MenuItem key={profile.id} value={profile.id}>

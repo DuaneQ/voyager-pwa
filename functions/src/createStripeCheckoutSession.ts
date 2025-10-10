@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 
-const stripe = new Stripe('', { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_API_KEY ? process.env.STRIPE_API_KEY : '', { apiVersion: '2022-11-15' });
 
 export const createStripeCheckoutSession = functions.https.onCall(async (data, context) => {
   if (!context.auth) {

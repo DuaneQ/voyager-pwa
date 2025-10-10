@@ -1,4 +1,4 @@
-# REF-01: Fix Search Cache Pagination Reset Bug
+# [DONE] REF-01: Fix Search Cache Pagination Reset Bug
 
 ## Problem
 **Type**: Performance  

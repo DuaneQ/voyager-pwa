@@ -1,5 +1,9 @@
 import { TravelPreferenceProfile } from '../types/TravelPreferences';
 import { POPULAR_AIRLINES } from '../types/AIGeneration';
+import { UserProfile } from '../types/UserProfile';
+
+export type ValidationError = { field: string; code: string; message: string; severity: 'error' | 'warning' };
+export type ValidationResult = { isValid: boolean; errors: ValidationError[] };
 
 const toLower = (v?: any) => (v ? String(v).toLowerCase() : '');
 
@@ -13,6 +17,18 @@ export const ProfileValidationService = {
         toLower(profileTransportation.primaryMode) === 'flights'
       )
     );
+  },
+
+  validateProfileCompleteness(userProfile: UserProfile | null | undefined): ValidationResult {
+    const errors: ValidationError[] = [];
+    if (!userProfile) {
+      errors.push({ field: 'profile', code: 'INCOMPLETE_PROFILE', message: 'Profile is required', severity: 'error' });
+      return { isValid: false, errors };
+    }
+    if (!userProfile.dob || !userProfile.gender) {
+      errors.push({ field: 'profile', code: 'INCOMPLETE_PROFILE', message: 'Please complete your profile by setting your date of birth and gender before creating an itinerary.', severity: 'error' });
+    }
+    return { isValid: errors.length === 0, errors };
   },
 
   validateFlightFields(formData: any, selectedProfile: TravelPreferenceProfile | null | undefined) {

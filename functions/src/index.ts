@@ -439,7 +439,7 @@ export const notifyViolationReport = functions.firestore
     }
   });
 
-const stripe = new Stripe('', { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_API_KEY ? process.env.STRIPE_API_KEY : '', { apiVersion: '2022-11-15' });
 
 const app = express();
 
@@ -453,7 +453,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig as string,
-      '' // Ensure this is set in your environment variables
+      process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET : ''
     );
     console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
