@@ -50,7 +50,7 @@ interface Hotel {
 }
 
 // Google Places API configuration: prefer environment variable for testing, fallback to embedded key
-const GOOGLE_PLACES_API_KEY = '';
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
 
 // Helper: map accommodation type to Places API query

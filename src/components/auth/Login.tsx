@@ -7,10 +7,8 @@ import { getAnalytics, logEvent } from "firebase/analytics";
 export const Login = () => {
   React.useEffect(() => {
     if (process.env.NODE_ENV === "production") {
-      try {
-        const analytics = getAnalytics();
-        logEvent(analytics, "login_page_viewed");
-      } catch (e) {}
+      const analytics = getAnalytics();
+      logEvent(analytics, "login_page_viewed");
     }
   }, []);
   return (
