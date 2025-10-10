@@ -14,120 +14,49 @@ import {
 } from "firebase/firestore";
 import { app } from "../environments/firebaseConfig";
 import { Itinerary } from "../types/Itinerary";
-import { searchCache } from "../utils/searchCache";
+import { 
+  applyClientSideFilters as applyFilters,
+  SearchParams as FilterParams
+} from '../utils/clientSideFilters';
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
-interface SearchParams {
+interface LocalSearchParams {
   currentUserItinerary: Itinerary;
   currentUserId: string;
 }
 
 const useSearchItineraries = () => {
-  const [matchingItineraries, setMatchingItineraries] = useState<Itinerary[]>([]);
+  const [allMatchingItineraries, setAllMatchingItineraries] = useState<Itinerary[]>([]); // Store all results
+  const [currentIndex, setCurrentIndex] = useState<number>(0); // Track current position
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [currentSearchParams, setCurrentSearchParams] = useState<SearchParams | null>(null);
-  const [isFromCache, setIsFromCache] = useState(false);
+  const [currentSearchParams, setCurrentSearchParams] = useState<LocalSearchParams | null>(null);
+  
+  // Computed property for UI - current itinerary to show
+  // Show empty array when we've reached the end and there are no more results
+  const matchingItineraries = allMatchingItineraries.length > 0 && currentIndex < allMatchingItineraries.length 
+    ? [allMatchingItineraries[currentIndex]] 
+    : [];
 
-  // Helper function to calculate age from date of birth
-  const calculateAge = (dob: string): number => {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
+  // Use imported filtering functions
+  const applyClientSideFilters = applyFilters;
+
+  // Fetch from Firestore one itinerary at a time
+  const fetchFromFirestore = async (params: LocalSearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
+    const { currentUserItinerary } = params;
+    const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
+
+    console.log('🔥 REALTIME FIRESTORE: Building query constraints for batch fetch');
+    console.log('🔥 REALTIME FIRESTORE: User start day timestamp:', userStartDay, '=', new Date(userStartDay).toISOString());
+
+    // Fetch all matching itineraries at once for simplicity
+    const PAGE_SIZE = 50; // Get more results to account for filtering
     
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // Helper function to get viewed itineraries from localStorage
-  const getViewedItineraries = (): string[] => {
-    try {
-      const viewed = localStorage.getItem(VIEWED_STORAGE_KEY);
-      return viewed ? JSON.parse(viewed) : [];
-    } catch (error) {
-      console.error("Error reading viewed itineraries:", error);
-      return [];
-    }
-  };
-
-  // Helper function to check date overlap
-  const datesOverlap = (userStart: number, userEnd: number, otherStart: number, otherEnd: number): boolean => {
-    return userStart <= otherEnd && userEnd >= otherStart;
-  };
-
-  // Generate cache key for search parameters
-  const generateCacheKey = (params: SearchParams): string => {
-    const { currentUserItinerary } = params;
-    return searchCache.generateCacheKey({
-      destination: currentUserItinerary.destination,
-      userProfile: {
-        gender: currentUserItinerary.gender,
-        status: currentUserItinerary.userInfo?.status,
-        sexualOrientation: currentUserItinerary.sexualOrientation,
-      }
-    });
-  };
-
-  // Apply client-side filters
-  const applyClientSideFilters = (results: Itinerary[], params: SearchParams): Itinerary[] => {
-    const { currentUserItinerary, currentUserId } = params;
-    const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
-    const userEndDay = new Date(currentUserItinerary.endDate!).getTime();
-    const viewedItineraries = getViewedItineraries();
-
-    return results.filter((itinerary) => {
-      // 1. Exclude current user's itineraries
-      if (itinerary.userInfo?.uid === currentUserId) {
-        return false;
-      }
-
-      // 2. Exclude already viewed itineraries
-      if (viewedItineraries.includes(itinerary.id)) {
-        return false;
-      }
-
-      // 3. Check precise date overlap
-      if (itinerary.startDay && itinerary.endDay) {
-        if (!datesOverlap(userStartDay, userEndDay, itinerary.startDay, itinerary.endDay)) {
-          return false;
-        }
-      }
-
-      // 4. Check age range compatibility
-      if (itinerary.userInfo?.dob && currentUserItinerary.lowerRange && currentUserItinerary.upperRange) {
-        const otherUserAge = calculateAge(itinerary.userInfo.dob);
-        
-        if (otherUserAge < currentUserItinerary.lowerRange || otherUserAge > currentUserItinerary.upperRange) {
-          return false;
-        }
-      }
-
-      // 5. Check if current user's age falls within other user's range
-      if (currentUserItinerary.userInfo?.dob && itinerary.lowerRange && itinerary.upperRange) {
-        const currentUserAge = calculateAge(currentUserItinerary.userInfo.dob);
-        
-        if (currentUserAge < itinerary.lowerRange || currentUserAge > itinerary.upperRange) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  };
-
-  // Fetch from Firestore with pagination
-  const fetchFromFirestore = async (params: SearchParams, isNewSearch: boolean = true): Promise<Itinerary[]> => {
-    const { currentUserItinerary } = params;
-    const userStartDay = new Date(currentUserItinerary.startDate!).getTime();
-
-    const PAGE_SIZE = 2;
     // Build query constraints with proper typing, skip filters if 'No Preference' or empty
+    // NOTE: Cannot use where("userInfo.uid", "!=", currentUserId) with other inequalities due to Firestore limitations
     const constraints: QueryConstraint[] = [
       where("destination", "==", currentUserItinerary.destination),
       ...(currentUserItinerary.gender && currentUserItinerary.gender !== "No Preference"
@@ -141,8 +70,30 @@ const useSearchItineraries = () => {
         : []),
       where("endDay", ">=", userStartDay),
       orderBy("endDay"),
-      limit(PAGE_SIZE) // Fetch 2 at a time to reduce Firestore reads/costs
+      orderBy("__name__"), // Add document ID as secondary sort to handle duplicate endDay values
+      limit(PAGE_SIZE)
     ];
+
+    console.log('🔥 FIRESTORE: Query constraints applied:');
+    console.log('  - destination ==', currentUserItinerary.destination);
+    if (currentUserItinerary.gender && currentUserItinerary.gender !== "No Preference") {
+      console.log('  - userInfo.gender ==', currentUserItinerary.gender);
+    } else {
+      console.log('  - userInfo.gender: NO FILTER (No Preference or empty)');
+    }
+    if (currentUserItinerary?.status && currentUserItinerary?.status !== "No Preference") {
+      console.log('  - userInfo.status ==', currentUserItinerary?.status);
+    } else {
+      console.log('  - userInfo.status: NO FILTER (No Preference or empty)');
+    }
+    if (currentUserItinerary.sexualOrientation && currentUserItinerary.sexualOrientation !== "No Preference") {
+      console.log('  - userInfo.sexualOrientation ==', currentUserItinerary.sexualOrientation);
+    } else {
+      console.log('  - userInfo.sexualOrientation: NO FILTER (No Preference or empty)');
+    }
+    console.log('  - endDay >=', userStartDay, '(' + new Date(userStartDay).toISOString() + ')');
+    console.log('  - orderBy: endDay, __name__');
+    console.log('  - limit:', PAGE_SIZE);
 
     // Add pagination cursor for subsequent requests
     if (!isNewSearch && lastDoc) {
@@ -151,21 +102,48 @@ const useSearchItineraries = () => {
 
     const db = getFirestore(app);
     const itinerariesQuery = query(collection(db, "itineraries"), ...constraints);
+    
+    console.log('🔥 FIRESTORE DEBUG: Executing Firestore query...');
     const snapshot = await getDocs(itinerariesQuery);
 
+    console.log('🔥 FIRESTORE DEBUG: Firestore query completed');
+    console.log('🔥 FIRESTORE DEBUG: Raw results from Firestore:', snapshot.docs.length, 'documents');
+    
     // Debug: log results from Firestore query (counts + ids)
     try {
       const itinIds = (snapshot?.docs || []).map((d: any) => d.id);
+      console.log('🔥 FIRESTORE DEBUG: Document IDs returned:', itinIds);
+      
+      // Log detailed info about each document
+      snapshot.docs.forEach((doc, index) => {
+        const data = doc.data();
+        console.log(`🔥 FIRESTORE DEBUG: Document ${index + 1}/${snapshot.docs.length}:`, {
+          id: doc.id,
+          destination: data.destination,
+          endDay: data.endDay ? new Date(data.endDay).toISOString() : 'No endDay',
+          userInfo: data.userInfo ? {
+            uid: data.userInfo.uid,
+            username: data.userInfo.username,
+            gender: data.userInfo.gender,
+            status: data.userInfo.status,
+            sexualOrientation: data.userInfo.sexualOrientation
+          } : 'No userInfo'
+        });
+      });
     } catch (e) {
-      // defensive
+      console.error('🔥 FIRESTORE DEBUG: Error logging document details:', e);
     }
     
-    // Update pagination state
+    // Update pagination state for next search
     if (snapshot.docs && snapshot.docs.length > 0) {
       setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+      // Always assume more results available if we got any results
+      // We'll determine if there are actually more when we try to fetch
+      setHasMore(snapshot.docs.length === PAGE_SIZE);
+    } else {
+      setLastDoc(null);
+      setHasMore(false); // No more results available
     }
-  // If the itineraries collection returned at least a full page, indicate there may be more
-  setHasMore((snapshot.docs && snapshot.docs.length >= PAGE_SIZE));
 
     const regularItineraries: Itinerary[] = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -184,119 +162,159 @@ const useSearchItineraries = () => {
 
     return unique;
   };
-  // Main search function
+  // Main search function - Simple batch approach
   const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {    
 
-    // ✅ Reset cache flag at start of new search
-    setIsFromCache(false);
-    
-    const params: SearchParams = { currentUserItinerary, currentUserId };
-    setCurrentSearchParams(params);
-
-    const cacheKey = generateCacheKey(params);    
-    const cachedResults = searchCache.get(cacheKey);
-    
-    if (cachedResults) {
-      setIsFromCache(true);
-      setHasMore(false); // No more to load from cache
-
-      const filteredResults = applyClientSideFilters(cachedResults, params);
-      setMatchingItineraries(filteredResults);
-      setLoading(false);
-      
-      // 👈 ADD THESE LINES - Reset pagination for cached results
-      setLastDoc(null);  // Reset pagination cursor
-      
-      return;
-    }
+    console.log('🔍 SIMPLE SEARCH: Starting search for user:', currentUserId);
+    console.log('🔍 SIMPLE SEARCH: User itinerary filters:', {
+      destination: currentUserItinerary.destination,
+      gender: currentUserItinerary.gender,
+      status: currentUserItinerary.status,
+      sexualOrientation: currentUserItinerary.sexualOrientation,
+      dates: `${currentUserItinerary.startDate} to ${currentUserItinerary.endDate}`
+    });
     
     setLoading(true);
     setError(null);
+    setCurrentIndex(0); // Reset to first result
+    
+    const params: LocalSearchParams = { currentUserItinerary, currentUserId };
+    setCurrentSearchParams(params);
 
     try {
-      // Reset pagination state for new search
+      // Reset pagination state
       setLastDoc(null);
       setHasMore(true);
 
-      // Fetch first page from Firestore
-      const results = await fetchFromFirestore(params, true);
-      // Cache the raw results (before filtering)
-      searchCache.set(cacheKey, results);
+      // Fetch a batch of results and store them all
+      console.log('🔍 SIMPLE SEARCH: Fetching initial batch...');
       
-      // Apply filters and set results
-      const filteredResults = applyClientSideFilters(results, params);
-      setMatchingItineraries(filteredResults);
+      const batchResults = await fetchFromFirestore(params, true);
+      console.log('🔍 SIMPLE SEARCH: Firestore returned:', batchResults.length, 'results');
+      
+      // Apply filters to get valid results
+      const filteredResults = applyClientSideFilters(batchResults, params);
+      console.log('🔍 SIMPLE SEARCH: After filtering:', filteredResults.length, 'valid results');
+      
+      console.log('🔍 SIMPLE SEARCH: Valid results:', filteredResults.map(r => ({
+        id: r.id,
+        username: r.userInfo?.username
+      })));
+      
+      // Store all results and show first one
+      setAllMatchingItineraries(filteredResults);
+      setCurrentIndex(0);
+      
+  // NOTE: Do not override hasMore here. fetchFromFirestore already sets hasMore
+  // based on Firestore results (false when no documents). Overriding to `true`
+  // incorrectly prevents UI from showing the example itinerary when there
+  // are no server-side results.
       
     } catch (err) {
       console.error("Error searching itineraries:", err);
       setError("Failed to search itineraries. Please try again later.");
-      setMatchingItineraries([]);
+      setAllMatchingItineraries([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load more results (called when user needs more matches)
-  const loadMoreMatches = async () => {
-    if (!currentSearchParams || loading || !hasMore) {
+  // Simple function to get next itinerary from stored results
+  const getNextItinerary = async () => {
+    console.log('🔄 GET NEXT: User requested next itinerary');
+    console.log('🔄 GET NEXT: Current state - index:', currentIndex, 'total:', allMatchingItineraries.length);
+    
+    const nextIndex = currentIndex + 1;
+    
+    // If we have more results in our current batch, just move to next
+    if (nextIndex < allMatchingItineraries.length) {
+      console.log('🔄 GET NEXT: Moving to next result in current batch');
+      setCurrentIndex(nextIndex);
       return;
     }
-
-    setLoading(true);
-
-    try {      
-      // Fetch next page
-      const moreResults = await fetchFromFirestore(currentSearchParams, false);
+    
+    // If we've reached the end of current batch, fetch more if possible
+    if (hasMore && !loading && currentSearchParams) {
+      console.log('🔄 GET NEXT: Fetching next batch...');
+      setLoading(true);
       
-      if (moreResults.length > 0) {
-        // Apply filters to new results
-        const filteredNewResults = applyClientSideFilters(moreResults, currentSearchParams);
+      try {
+        // Retry mechanism: Keep fetching until we find valid results or exhaust all results
+        let allNewResults: Itinerary[] = [];
+        let validNewResults: Itinerary[] = [];
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
         
-        // Append to existing results
-        setMatchingItineraries(prev => [...prev, ...filteredNewResults]);
+        while (validNewResults.length === 0 && retryCount < MAX_RETRIES && hasMore) {
+          console.log(`🔄 GET NEXT: Retry ${retryCount + 1}/${MAX_RETRIES}`);
+          
+          const batchResults = await fetchFromFirestore(currentSearchParams, false);
+          console.log('🔄 GET NEXT: Got', batchResults.length, 'raw results');
+          
+          if (batchResults.length === 0) {
+            console.log('🔄 GET NEXT: No more results from Firestore');
+            setHasMore(false);
+            break;
+          }
+          
+          allNewResults = [...allNewResults, ...batchResults];
+          
+          // Filter all results we've gathered so far
+          validNewResults = applyClientSideFilters(allNewResults, currentSearchParams);
+          console.log('🔄 GET NEXT: Filtered to', validNewResults.length, 'valid results from', allNewResults.length, 'total');
+          
+          retryCount++;
+        }
         
-        // Update cache with combined results
-        const cacheKey = generateCacheKey(currentSearchParams);
-        const existingCached = searchCache.get(cacheKey) || [];
-        searchCache.set(cacheKey, [...existingCached, ...moreResults]);
+        if (validNewResults.length > 0) {
+          // Add new results to existing array
+          setAllMatchingItineraries(prev => [...prev, ...validNewResults]);
+          setCurrentIndex(nextIndex); // Move to first new result
+          console.log('🔄 GET NEXT: ✅ Added', validNewResults.length, 'new valid results');
+        } else {
+          console.log('🔄 GET NEXT: ❌ No valid results found after', retryCount, 'attempts');
+          setHasMore(false);
+          // Increment currentIndex so matchingItineraries will be empty
+          setCurrentIndex(nextIndex);
+        }
+        
+      } catch (err) {
+        console.error("Error fetching next batch:", err);
+        setError("Failed to load more itineraries.");
+      } finally {
+        setLoading(false);
       }
-      
-    } catch (err) {
-      console.error("Error loading more matches:", err);
-      setError("Failed to load more matches.");
-    } finally {
-      setLoading(false);
+    } else {
+      console.log('🔄 GET NEXT: No more results available - hasMore:', hasMore, 'loading:', loading);
+      setHasMore(false);
+      // Increment currentIndex so matchingItineraries will be empty
+      setCurrentIndex(nextIndex);
     }
   };
 
-  // Check if we need more matches (call this when user is near the end)
-  const checkForMoreMatches = (currentIndex: number, bufferSize: number = 3) => {
-    const remainingMatches = matchingItineraries.length - currentIndex - 1;
-    
-    // 👈 ADD BOUNDS CHECK
-    if (remainingMatches < 0 || currentIndex >= matchingItineraries.length) {
-      return; // Don't load more if we're already past the end
-    }
-    
-    if (remainingMatches <= bufferSize && hasMore && !loading && !isFromCache) {
-      loadMoreMatches();
-    }
-  };
+  // Keep loadNextItinerary for backward compatibility
+  const loadNextItinerary = getNextItinerary;
 
-  // Clear cache (useful for debugging or forced refresh)
+  // Clear cache (no-op since we removed caching)
   const clearSearchCache = () => {
-    searchCache.clear();
+    console.log('Cache clearing disabled - using simple batch approach');
+  };
+
+  // Force a fresh search
+  const forceRefreshSearch = async (currentUserItinerary: Itinerary, currentUserId: string) => {
+    await searchItineraries(currentUserItinerary, currentUserId);
   };
 
   return { 
-    matchingItineraries, 
+    matchingItineraries, // This is now computed from allMatchingItineraries[currentIndex]
     searchItineraries, 
     loading, 
     error,
     hasMore,
-    loadMoreMatches,
-    checkForMoreMatches,
-    clearSearchCache
+    loadNextItinerary,
+    getNextItinerary,
+    clearSearchCache,
+    forceRefreshSearch
   };
 };
 

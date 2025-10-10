@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -32,6 +32,7 @@ import { TravelPreferenceProfile } from '../../types/TravelPreferences';
 import { format, addDays, isAfter, isBefore } from 'date-fns';
 // ...existing code...
 import { AirportSelector } from '../common/AirportSelector';
+import ProfileValidationService from '../../services/ProfileValidationService';
 
 // Input limits
 const MAX_TAGS = 10; // max items for mustInclude / mustAvoid
@@ -178,6 +179,20 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   }, [handleFieldChange]);
 
   // Validation
+  // Memoize selected profile (prefer getProfileById when available) and
+  // whether the flight section should be shown for that profile.
+  const memoizedSelectedProfile = useMemo(() => {
+    const p = (typeof getProfileById === 'function'
+      ? getProfileById(formData.preferenceProfileId)
+      : (preferences?.profiles || []).find(pp => pp.id === formData.preferenceProfileId) || null);
+    if (initialPreferenceProfile && formData.preferenceProfileId && initialPreferenceProfile.id === formData.preferenceProfileId) {
+      return initialPreferenceProfile;
+    }
+    return p;
+  }, [formData.preferenceProfileId, getProfileById, preferences, initialPreferenceProfile]);
+
+  const memoizedShowFlightSection = useMemo(() => ProfileValidationService.isFlightSectionVisible(memoizedSelectedProfile), [memoizedSelectedProfile]);
+
   const validateForm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
 
@@ -186,29 +201,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       errors.destination = 'Destination is required';
     }
 
-  // Determine flight visibility based on the selected profile at validation time
-    const selectedProfileForValidation = (typeof getProfileById === 'function'
-      ? getProfileById(formData.preferenceProfileId)
-      : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null);
-  // validation: selectedProfileForValidation available for debug if needed
-    const profileTransportationForValidation = selectedProfileForValidation?.transportation;
-    const flightSectionVisibleForValidation = !!(
-      profileTransportationForValidation && (
-        profileTransportationForValidation.includeFlights === true ||
-        String(profileTransportationForValidation.primaryMode).toLowerCase() === 'airplane' ||
-        String(profileTransportationForValidation.primaryMode).toLowerCase() === 'flights'
-      )
-    );
-
-    // Only require airport codes if flight section is shown for the selected profile
-    if (flightSectionVisibleForValidation) {
-      if (formData.departure && !formData.departureAirportCode) {
-        errors.departureAirportCode = 'Departure airport is required.';
-      }
-      if (formData.destination && !formData.destinationAirportCode) {
-        errors.destinationAirportCode = 'Destination airport is required.';
-      }
-    }
+    // Delegate flight-related validation to the service using the memoized profile
+    Object.assign(errors, ProfileValidationService.validateFlightFields(formData, memoizedSelectedProfile));
 
     // Always validate start date
     if (!formData.startDate) {
@@ -247,32 +241,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       errors.preferenceProfileId = 'Please select a travel preference profile';
     }
 
-    // Validate special requests length
-    if (formData.specialRequests && formData.specialRequests.length > MAX_SPECIAL_REQUESTS_LENGTH) {
-      errors.specialRequests = `Special requests must be at most ${MAX_SPECIAL_REQUESTS_LENGTH} characters.`;
-    }
-
-    // Validate tag counts and lengths
-    if (formData.mustInclude && formData.mustInclude.length > MAX_TAGS) {
-      errors.mustInclude = `You can add up to ${MAX_TAGS} items.`;
-    }
-    if (formData.mustAvoid && formData.mustAvoid.length > MAX_TAGS) {
-      errors.mustAvoid = `You can add up to ${MAX_TAGS} items.`;
-    }
-    (formData.mustInclude || []).forEach((t) => {
-      if (t && t.length > MAX_TAG_LENGTH) {
-        errors.mustInclude = `Each item must be at most ${MAX_TAG_LENGTH} characters.`;
-      }
-    });
-    (formData.mustAvoid || []).forEach((t) => {
-      if (t && t.length > MAX_TAG_LENGTH) {
-        errors.mustAvoid = `Each item must be at most ${MAX_TAG_LENGTH} characters.`;
-      }
-    });
+    // Delegate tag and special request validations
+    Object.assign(errors, ProfileValidationService.validateTagsAndSpecialRequests(formData, {
+      maxTags: MAX_TAGS,
+      maxTagLength: MAX_TAG_LENGTH,
+      maxSpecialRequestsLength: MAX_SPECIAL_REQUESTS_LENGTH,
+    }));
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [formData, getProfileById, preferences]);
+  }, [formData, memoizedSelectedProfile]);
 
   // Handle generation
   const handleGenerate = useCallback(async () => {
@@ -423,31 +401,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   }, [formData.preferenceProfileId]);
   const availableProfiles = preferences?.profiles || [];
 
-  // Determine whether to show the flight section based on the currently-selected profile's transportation
-  const selectedProfileForRender = typeof getProfileById === 'function'
-    ? getProfileById(formData.preferenceProfileId)
-    : (preferences?.profiles || []).find(p => p.id === formData.preferenceProfileId) || null;
-
-  // If the parent passed a recent profile object (editingPreferences) and its id
-  // matches the selected profile id, prefer that object to avoid a race where the
-  // hook's state hasn't yet reflected the saved change. This is a defensive
-  // fallback; the hook remains the source of truth when available.
-  let selectedProfile: TravelPreferenceProfile | null = selectedProfileForRender;
-  if (initialPreferenceProfile && formData.preferenceProfileId && initialPreferenceProfile.id === formData.preferenceProfileId) {
-    // Use parent-provided profile when it's likely more up-to-date
-    selectedProfile = initialPreferenceProfile;
-  }
-
-  // Flight section should show if the profile explicitly enables flight searching via includeFlights
-  // or if the primaryMode is the canonical 'airplane' value. This avoids relying on legacy UI labels.
-  const profileTransportation = selectedProfileForRender?.transportation;
-  const showFlightSection = !!(
-    profileTransportation && (
-      profileTransportation.includeFlights === true ||
-      String(profileTransportation.primaryMode).toLowerCase() === 'airplane' ||
-      String(profileTransportation.primaryMode).toLowerCase() === 'flights'
-    )
-  );
+  // Use memoized values for selected profile and whether to show flight section
+  const selectedProfile = memoizedSelectedProfile;
+  const showFlightSection = memoizedShowFlightSection;
 
   // Always reset flight fields when toggling between profiles with/without flights
   useEffect(() => {

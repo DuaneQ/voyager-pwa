@@ -2,6 +2,15 @@ interface CacheEntry {
   data: any[];
   timestamp: number;
   expiresAt: number;
+  metadata?: CacheMetadata;
+}
+
+interface CacheMetadata {
+  hasMore: boolean;
+  lastDocId?: string;
+  pageSize?: number;
+  totalResults?: number;
+  timestamp: number;
 }
 
 class SearchCache {
@@ -31,6 +40,10 @@ class SearchCache {
   }
 
   set(key: string, data: any[]): void {
+    this.setWithMetadata(key, data, null);
+  }
+
+  setWithMetadata(key: string, data: any[], metadata: Partial<CacheMetadata> | null): void {
 
     // If we're adding a new key and cache is full, remove oldest entry
     if (!this.cache.has(key) && this.cache.size >= this.MAX_CACHE_SIZE) {
@@ -50,20 +63,29 @@ class SearchCache {
     }
 
     const now = Date.now();
-    this.cache.set(key, {
+    const entry: CacheEntry = {
       data,
       timestamp: now,
       expiresAt: now + this.CACHE_DURATION
-    });
+    };
+
+    // Add metadata if provided
+    if (metadata) {
+      entry.metadata = {
+        hasMore: metadata.hasMore ?? false,
+        lastDocId: metadata.lastDocId,
+        pageSize: metadata.pageSize,
+        totalResults: metadata.totalResults,
+        timestamp: now
+      };
+    }
+
+    this.cache.set(key, entry);
 
     // Also store in localStorage for persistence across sessions
     try {
       const persistentCache = JSON.parse(localStorage.getItem('searchCache') || '{}');
-      persistentCache[key] = {
-        data,
-        timestamp: now,
-        expiresAt: now + this.CACHE_DURATION
-      };
+      persistentCache[key] = entry;
 
       const serialized = JSON.stringify(persistentCache);
       localStorage.setItem('searchCache', serialized);
@@ -118,6 +140,21 @@ class SearchCache {
       localStorage.removeItem('searchCache');
     } catch (error) {
       console.warn('Failed to clear localStorage:', error);
+    }
+  }
+
+  // Delete a specific cache entry
+  delete(key: string): void {
+    // Remove from memory cache
+    this.cache.delete(key);
+
+    // Remove from localStorage cache
+    try {
+      const persistentCache = JSON.parse(localStorage.getItem('searchCache') || '{}');
+      delete persistentCache[key];
+      localStorage.setItem('searchCache', JSON.stringify(persistentCache));
+    } catch (error) {
+      console.warn('Failed to delete from localStorage cache:', error);
     }
   }
 
@@ -188,6 +225,29 @@ class SearchCache {
     };
   }
 
+  // Get metadata for a cache entry
+  getMetadata(key: string): CacheMetadata | null {
+    // Check memory cache first
+    const memoryEntry = this.cache.get(key);
+    if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+      return memoryEntry.metadata || null;
+    }
+
+    // Check localStorage cache
+    try {
+      const persistentCache = JSON.parse(localStorage.getItem('searchCache') || '{}');
+      const persistentEntry = persistentCache[key];
+
+      if (persistentEntry && persistentEntry.expiresAt > Date.now()) {
+        return persistentEntry.metadata || null;
+      }
+    } catch (error) {
+      console.error('🔧 localStorage read error for metadata:', error);
+    }
+
+    return null;
+  }
+
   // Method to preload cache with fresh data
   preloadCache(key: string, data: any[]): void {
     this.set(key, data);
@@ -209,7 +269,7 @@ class SearchCache {
   }
 }
 
-export { SearchCache };
+export { SearchCache, type CacheMetadata };
 export const searchCache = new SearchCache();
 
 // Auto-cleanup every 10 minutes

@@ -200,12 +200,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleVideoLoadStart = () => {
-    console.log("Video load started:", video.videoUrl);
-    console.log("Video element src:", videoRef.current?.src);
+    console.log("Video load started:");
   };
 
   const handleVideoCanPlay = () => {
-    console.log("Video can play:", video.videoUrl);
+    console.log("Video can play:");
   };
 
   const handleMuteToggle = (e: React.MouseEvent) => {
