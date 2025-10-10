@@ -33,7 +33,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { AutoAwesome as AIIcon } from '@mui/icons-material';
 import { TravelPreferenceProfile } from '../../types/TravelPreferences';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
-import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import AIItineraryGenerationModal from '../modals/AIItineraryGenerationModal';
 import AIItineraryDisplay from '../ai/AIItineraryDisplay';
@@ -72,8 +71,6 @@ export const TravelPreferencesTab: React.FC = () => {
   // Tab state for switching between Travel Profile and AI Itineraries
   const [activeTab, setActiveTab] = useState(0);
 
-  // Premium status and AI itineraries
-  const { hasPremium } = useUsageTracking();
   const { 
     itineraries: aiItineraries, 
     loading: aiLoading, 
@@ -315,17 +312,6 @@ export const TravelPreferencesTab: React.FC = () => {
     const updated = exists ? baseActivities.filter(a => a !== activityKey) : [...baseActivities, activityKey];
 
     updateLocalPreferences({ activities: updated });
-  };
-
-  const handleBudgetChange = (event: Event, newValue: number | number[]) => {
-    const [min, max] = newValue as number[];
-    updateLocalPreferences({
-      budgetRange: {
-        ...currentPreferences.budgetRange,
-        min,
-        max
-      }
-    });
   };
 
   const handleTravelStyleChange = (style: TravelPreferenceProfile['travelStyle']) => {
@@ -679,6 +665,7 @@ export const TravelPreferencesTab: React.FC = () => {
           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }}>
             Use AI to generate personalized travel itineraries based on your preferences.
             Use the Traval Profile options below to define your Traval preferences.
+            You can only generate itineraries using AI after you have saved your travel preference profile and user profile.
           </Typography>
           <Button
             variant="contained"

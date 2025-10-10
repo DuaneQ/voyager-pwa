@@ -1,20 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Select,
-  MenuItem,
   Button,
   Box,
   Typography,
-  FormControl,
 } from "@mui/material";
 import SubscriptionCard from '../common/SubscriptionCard';
 import AddItineraryModal from "../forms/AddItineraryModal";
 import useGetItinerariesFromFirestore from "../../hooks/useGetItinerariesFromFirestore";
 import { Itinerary } from "../../types/Itinerary";
-import useGetUserProfile from "../../hooks/useGetUserProfile";
 import useSearchItineraries from "../../hooks/useSearchItineraries";
-import ItineraryCard from "../forms/ItineraryCard";
+import ItinerarySelector from '../search/ItinerarySelector';
+import MatchDisplay from '../search/MatchDisplay';
 import {
   getFirestore,
   doc,
@@ -32,24 +29,47 @@ import React from "react";
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { createExampleItinerary, isExampleItinerary } from '../../utils/exampleItinerary';
+import { hasUserSeenExample, markExampleAsSeen } from '../../utils/exampleItineraryStorage';
+import { isDebugMode } from '../../utils/searchDebugUtils';
 
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
+const debugPanelSx = {
+  position: 'fixed',
+  top: 10,
+  right: 10,
+  background: 'rgba(255, 0, 0, 0.9)',
+  color: 'white',
+  p: 2,
+  borderRadius: 1,
+  zIndex: 9999,
+  fontSize: '12px',
+  maxWidth: 300,
+};
+
 // Store viewed itineraries in localStorage - store only IDs
+// Cache parsed IDs in-memory for the current session to avoid repeated JSON.parse calls
+let _viewedIdsCache: Set<string> | null = null;
 function saveViewedItinerary(itinerary: Itinerary) {
   try {
-    const viewed = JSON.parse(localStorage.getItem(VIEWED_STORAGE_KEY) || "[]");
-    const viewedIds = viewed.map((item: any) =>
-      typeof item === 'string' ? item : item.id
-    ).filter(Boolean);
+    if (!_viewedIdsCache) {
+      const raw = localStorage.getItem(VIEWED_STORAGE_KEY) || '[]';
+      try {
+        const parsed = JSON.parse(raw);
+        _viewedIdsCache = new Set((parsed || []).map((item: any) => (typeof item === 'string' ? item : item?.id)).filter(Boolean));
+      } catch (e) {
+        // If parsing fails, start with an empty set
+        _viewedIdsCache = new Set();
+      }
+    }
 
-    if (!viewedIds.includes(itinerary.id)) {
-      viewedIds.push(itinerary.id);
-      localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(viewedIds));
+    if (!_viewedIdsCache.has(itinerary.id)) {
+      _viewedIdsCache.add(itinerary.id);
+      localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(Array.from(_viewedIdsCache)));
     }
   } catch (error) {
-    console.error("Error saving viewed itinerary:", error);
+    console.error('Error saving viewed itinerary:', error);
   }
 }
 
@@ -69,7 +89,9 @@ export const Search = React.memo(() => {
       navigate({ search: newParams.toString() }, { replace: true });
     }
   }, [location.search, navigate]);
-  useGetUserProfile();
+
+  // Use a sentinel value to indicate example itinerary dismissed
+  const EXAMPLE_DISMISSED = "EXAMPLE_DISMISSED";
   const [selectedItineraryId, setSelectedItineraryId] = useState<string>("");
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -79,15 +101,18 @@ export const Search = React.memo(() => {
   const {
     matchingItineraries,
     searchItineraries,
-    checkForMoreMatches,
+    getNextItinerary,
     loading: searchLoading,
     hasMore
   } = useSearchItineraries();
 
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  // Removed currentMatchIndex since we show one itinerary at a time
   const { setHasNewConnection } = useNewConnection();
   const userId = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
+  
+  // Track if user has ever seen an example itinerary
+  const [hasSeenExample] = useState(() => hasUserSeenExample());
   const db = getFirestore(app);
   const {
     hasReachedLimit,
@@ -103,8 +128,6 @@ export const Search = React.memo(() => {
       document.documentElement.style.overflow = '';
     };
   }, []);
-
-
 
   // Fetch user's itineraries on mount or refresh
   useEffect(() => {
@@ -122,119 +145,136 @@ export const Search = React.memo(() => {
     loadItineraries();
   }, [refreshKey, fetchItineraries]);
 
-  // Auto-load more matches when user is near the end
+  // Auto-select first itinerary when itineraries load
   useEffect(() => {
-    checkForMoreMatches(currentMatchIndex);
-  }, [currentMatchIndex, checkForMoreMatches]);
+    // Only auto-select if not dismissed example
+    if (
+      itineraries.length > 0 &&
+      !selectedItineraryId &&
+      userId
+    ) {
+      const firstItinerary = itineraries[0];
+      setSelectedItineraryId(firstItinerary.id);
+      console.debug('SEARCH DEBUG: auto-selecting first itinerary', { firstId: firstItinerary.id });
+      searchItineraries(firstItinerary, userId);
+    }
+  }, [itineraries, selectedItineraryId, userId, searchItineraries]);
 
-  // SubscriptionCard is always visible (floating/compact)
-  const handleItinerarySelect = (id: string) => {
+  // Prevent auto-select if example was dismissed
+  useEffect(() => {
+    if (selectedItineraryId === EXAMPLE_DISMISSED) {
+      // Do nothing, user dismissed example
+      return;
+    }
+  }, [selectedItineraryId]);
+
+  // Map of itinerary id -> itinerary for O(1) lookup and stable reference when `itineraries` doesn't change
+  const itineraryById = useMemo(() => {
+    const m = new Map<string, Itinerary>();
+    for (const it of itineraries) {
+      if (it && it.id) m.set(it.id, it);
+    }
+    return m;
+  }, [itineraries]);
+
+  const handleItinerarySelect = useCallback((id: string) => {
     setSelectedItineraryId(id);
-    const selected = itineraries.find((itinerary) => itinerary.id === id);
+    const selected = itineraryById.get(id) || null;
+    console.debug('SEARCH DEBUG: user selected itinerary', { id });
     if (selected && userId) {
-      setCurrentMatchIndex(0);
       searchItineraries(selected, userId);
     }
-  };
+  }, [itineraryById, userId, searchItineraries]);
 
 
   // Dislike handler with usage tracking
-  const handleDislike = async (itinerary: Itinerary) => {
+  const handleDislike = useCallback(async (itinerary: Itinerary) => {
     // Prevent actions on example itinerary
     if (isExampleItinerary(itinerary)) {
-      alert('This is an example itinerary. Create your own itinerary to find real matches!');
-      setCurrentMatchIndex((prev) => prev + 1);
+      setSelectedItineraryId(EXAMPLE_DISMISSED);
       return;
     }
-    
+
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
-    
+
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
       return;
     }
     saveViewedItinerary(itinerary);
-    try {
-      if (process.env.NODE_ENV === "production") {
-        const analytics = getAnalytics();
-        logEvent(analytics, "itinerary_disliked", { itinerary_id: itinerary.id });
-      }
-    } catch (e) {}
-    setCurrentMatchIndex((prev) => prev + 1);
-  };
+    if (process.env.NODE_ENV === "production") {
+      const analytics = getAnalytics();
+      logEvent(analytics, "itinerary_disliked", { itinerary_id: itinerary.id });
+    }
+
+    // Get next itinerary in real-time
+    getNextItinerary();
+  }, [hasReachedLimit, trackView, getNextItinerary]);
 
   // Like handler with usage tracking and mutual like logic
-  const handleLike = async (itinerary: Itinerary) => {
+  const handleLike = useCallback(async (itinerary: Itinerary) => {
     // Prevent actions on example itinerary
     if (isExampleItinerary(itinerary)) {
-      alert('This is an example itinerary. Create your own itinerary to find real matches!');
-      setCurrentMatchIndex((prev) => prev + 1);
+      setSelectedItineraryId(EXAMPLE_DISMISSED);
       return;
     }
-    
+
     if (hasReachedLimit()) {
       alert(`Daily limit reached! You've viewed 10 itineraries today. Upgrade to Premium for unlimited views.`);
       return;
     }
-    
+
     const success = await trackView();
     if (!success) {
       alert('Unable to track usage. Please try again.');
       return;
     }
     saveViewedItinerary(itinerary);
-    try {
-      if (process.env.NODE_ENV === "production") {
-        const analytics = getAnalytics();
-        logEvent(analytics, "itinerary_liked", { itinerary_id: itinerary.id });
-      }
-    } catch (e) {}
+    if (process.env.NODE_ENV === "production") {
+      const analytics = getAnalytics();
+      logEvent(analytics, "itinerary_liked", { itinerary_id: itinerary.id });
+    }
 
     if (!userId) {
       alert("You must be logged in to like an itinerary.");
-      setCurrentMatchIndex((prev) => prev + 1);
+      getNextItinerary();
       return;
     }
 
-    // 1. Add current user's UID to the liked itinerary's likes array in Firestore
-    const itineraryRef = doc(db, "itineraries", itinerary.id);
+  // 1. Add current user's UID to the liked itinerary's likes array in Firestore
+  const _db = getFirestore(app);
+  const itineraryRef = doc(_db, "itineraries", itinerary.id);
     try {
       await updateDoc(itineraryRef, {
         likes: arrayUnion(userId),
       });
-    } catch (error) {
-      console.error('Failed to like itinerary:', error);
-      alert('Failed to like itinerary. Please try again.');
-      setCurrentMatchIndex((prev) => prev + 1);
-      return;
-    }
 
     // 2. Fetch the latest version of the current user's selected itinerary from Firestore
-    const myItineraryRef = doc(db, "itineraries", selectedItineraryId);
+    const myItineraryRef = doc(_db, "itineraries", selectedItineraryId);
     const myItinerarySnap = await getDoc(myItineraryRef);
     const myItinerary = myItinerarySnap.data();
     if (!myItinerary) {
-      setCurrentMatchIndex((prev) => prev + 1);
+      getNextItinerary();
       return;
     }
 
     // 3. Check if the other user's UID is in your itinerary's likes array
     const otherUserUid = itinerary.userInfo?.uid ?? "";
     if (!otherUserUid) {
-      setCurrentMatchIndex((prev) => prev + 1);
+      getNextItinerary();
       return;
     }
 
     // 4. Create a new connection document with a unique ID if mutual like
-    if ((myItinerary.likes || []).includes(otherUserUid)) {
+  if ((myItinerary.likes || []).includes(otherUserUid)) {
       const myEmail = myItinerary?.userInfo?.email ?? "";
       const otherEmail = itinerary?.userInfo?.email ?? "";
 
-      await addDoc(collection(db, "connections"), {
+  await addDoc(collection(_db, "connections"), {
         users: [userId, otherUserUid],
         emails: [myEmail, otherEmail],
         unreadCounts: {
@@ -247,16 +287,19 @@ export const Search = React.memo(() => {
       });
       setHasNewConnection(true);
       alert("It's a match! You can now chat with this user.");
-      try {
-        if (process.env.NODE_ENV === "production") {
-          const analytics = getAnalytics();
-          logEvent(analytics, "itinerary_match", { itinerary_id: itinerary.id, matched_user: otherUserUid });
-        }
-      } catch (e) {}
+      if (process.env.NODE_ENV === "production") {
+        const analytics = getAnalytics();
+        logEvent(analytics, "itinerary_match", { itinerary_id: itinerary.id, matched_user: otherUserUid });
+      }
     }
 
-    setCurrentMatchIndex((prev) => prev + 1);
-  };
+    } catch (e) {
+      console.error('Error handling like action:', e);
+    }
+
+    // Get next itinerary after like action
+    getNextItinerary();
+  }, [hasReachedLimit, trackView, getNextItinerary, db, selectedItineraryId, setHasNewConnection, userId]);
 
   // Sort itineraries by startDate ascending (oldest first)
   // Use a safe parser that falls back to +Infinity when a date is missing or invalid
@@ -265,18 +308,58 @@ export const Search = React.memo(() => {
     const t = Date.parse(String(s));
     return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
   };
+  const sortedItineraries = useMemo(() => {
+    return [...itineraries].sort((a, b) => parseTime(a.startDate) - parseTime(b.startDate));
+  }, [itineraries]);
 
-  const sortedItineraries = [...itineraries].sort((a, b) => parseTime(a.startDate) - parseTime(b.startDate));
+  // Memoize selected itinerary lookup
+  const selectedItinerary = useMemo(() => {
+    return itineraries.find(itin => itin.id === selectedItineraryId) || null;
+  }, [itineraries, selectedItineraryId]);
 
-  // Get current match or show example when no matches found
-  const realMatch = matchingItineraries[currentMatchIndex];
-  const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
-  const hasNoMatches = selectedItineraryId && !searchLoading && matchingItineraries.length === 0;
-  
-  // Show example itinerary if user selected an itinerary but has no matches AND hasn't dismissed it yet
-  const showExample = hasNoMatches && selectedItinerary && currentMatchIndex === 0;
-  const currentMatch = realMatch || (showExample ? createExampleItinerary(selectedItinerary.destination) : null);
-  const isAtEnd = currentMatchIndex >= matchingItineraries.length;
+  // Compute match state (realMatch, showExample, currentMatch, isAtEnd) in one memoized object
+  const { hasNoMatches, showExample, currentMatch, isAtEnd } = useMemo(() => {
+    const realMatch = matchingItineraries[0] || null; // Always show first match since we fetch one at a time
+    const hasNoMatches = !!(selectedItineraryId && !searchLoading && matchingItineraries.length === 0 && !hasSeenExample);
+    const showExample = hasNoMatches && !!selectedItinerary && !hasSeenExample;
+    const currentMatch = realMatch || (showExample ? createExampleItinerary(selectedItinerary?.destination) : null);
+    const isAtEnd = !hasMore && matchingItineraries.length === 0;
+    return { realMatch, hasNoMatches, showExample, currentMatch, isAtEnd };
+  }, [matchingItineraries, selectedItineraryId, searchLoading, hasMore, selectedItinerary, hasSeenExample]);
+
+  // Diagnostic logging for search state — helps trace why example may not show
+  useEffect(() => {
+    try {
+      console.debug('SEARCH DEBUG: state snapshot', {
+        selectedItineraryId,
+        selectedItineraryId_present: !!selectedItinerary,
+        matchingItinerariesLength: matchingItineraries.length,
+        searchLoading,
+        hasMore,
+        hasSeenExample,
+        hasNoMatches,
+        showExample,
+        currentMatchId: currentMatch ? currentMatch.id : null,
+      });
+    } catch (e) {
+      console.error('SEARCH DEBUG: failed to log state', e);
+    }
+  }, [selectedItineraryId, matchingItineraries.length, searchLoading, hasMore, hasSeenExample, hasNoMatches, showExample, currentMatch]);
+
+  // Persist-only: when the example is shown, write the persisted flag so
+  // subsequent mounts won't show it. We intentionally do NOT flip the
+  // in-memory `hasSeenExample` state synchronously so the example renders
+  // at least once before being considered seen.
+  useEffect(() => {
+    if (showExample && !hasUserSeenExample()) {
+      console.debug('SEARCH DEBUG: showExample true — persisting hasSeenExampleItinerary');
+      try {
+        markExampleAsSeen();
+      } catch (e) {
+        console.error('SEARCH DEBUG: markExampleAsSeen() failed', e);
+      }
+    }
+  }, [showExample]);
 
   return (
     <Box
@@ -314,77 +397,50 @@ export const Search = React.memo(() => {
       {/* Subscription Card - always visible at the bottom */}
       <SubscriptionCard compact />
 
+      {/* Debug Panel - only show in debug mode */}
+      {isDebugMode() && (
+        <Box sx={debugPanelSx}>
+          <Typography variant="h6" sx={{ fontSize: '14px', mb: 1 }}>🧪 DEBUG MODE</Typography>
+          <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
+            Console: window.searchDebug.scenarios
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Button 
+              size="small" 
+              variant="contained" 
+              onClick={() => {
+                localStorage.removeItem('hasSeenExampleItinerary');
+                window.location.reload();
+              }}
+              sx={{ fontSize: '10px', p: 0.5 }}
+            >
+              Reset Example
+            </Button>
+            <Button 
+              size="small" 
+              variant="contained"
+              onClick={() => {
+                localStorage.removeItem('searchDebugMode');
+                window.location.reload();
+              }}
+              sx={{ fontSize: '10px', p: 0.5 }}
+            >
+              Disable Debug
+            </Button>
+          </Box>
+          <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.8 }}>
+            Matches: {matchingItineraries.length} | HasMore: {hasMore ? 'Yes' : 'No'} | Example Seen: {hasSeenExample ? 'Yes' : 'No'}
+          </Typography>
+        </Box>
+      )}
 
-      {/* Select and Button area - simplified, removed unnecessary Box wrappers */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 16px",
-          backgroundColor: "white",
-          borderBottom: "1px solid rgba(0,0,0,0.05)",
-          gap: "16px",
-          flexShrink: 0,
-          mt: 10,
-        }}>
-        <FormControl fullWidth sx={{ maxWidth: { xs: 180, sm: 240 } }}>
-          <Select
-            data-testid="itinerary-select"
-            value={selectedItineraryId}
-            onChange={(e) => handleItinerarySelect(e.target.value)}
-            displayEmpty
-            size="small"
-            sx={{
-              ".MuiSelect-select": {
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              },
-            }}
-            MenuProps={{
-              PaperProps: {
-                style: {
-                  maxHeight: 300,
-                  maxWidth: 300,
-                  zIndex: 1001,
-                },
-              },
-            }}>
-            <MenuItem value="" disabled>
-              Select an itinerary
-            </MenuItem>
-            {sortedItineraries.map((itinerary) => (
-              <MenuItem key={itinerary.id} value={itinerary.id}>
-                <Box
-                  sx={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    width: "100%",
-                  }}>
-                  {itinerary.destination}{" "}
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: "0.8em",
-                      color: "#666",
-                    }}>
-                    ({itinerary.startDate} - {itinerary.endDate})
-                  </Typography>
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          data-testid="add-itinerary-button"
-          variant="contained"
-          onClick={() => setShowModal(true)}
-          size="small">
-          Add/Edit Itineraries
-        </Button>
-      </Box>
+      {/* Toolbar: itinerary selector and add button */}
+      <ItinerarySelector
+        sortedItineraries={sortedItineraries}
+        selectedItineraryId={selectedItineraryId}
+        onSelect={handleItinerarySelect}
+        onOpenModal={() => setShowModal(true)}
+      />
 
       {/* Content area */}
       <Box
@@ -440,41 +496,19 @@ export const Search = React.memo(() => {
           </Box>
         )}
 
-        {/* Show current match */}
-        {currentMatch && (
-          <Box data-testid="search-results">
-            <ItineraryCard
-              data-testid="itinerary-card"
-              itinerary={currentMatch}
-              onLike={handleLike}
-              onDislike={handleDislike}
-            />
-          </Box>
-        )}
-
-        {/* Show loading when searching or loading more, but only if user has itineraries */}
-        {searchLoading && !currentMatch && itineraries.length > 0 && (
-          <Typography sx={{ padding: 2 }}>
-            Searching for matches...
-          </Typography>
-        )}
-
-        {/* Show end message with loading state, only if user has itineraries and no current match showing */}
-        {isAtEnd && !searchLoading && itineraries.length > 0 && !currentMatch && (
-          <Box sx={{ textAlign: 'center', padding: 2 }}>
-            <Typography>
-              {hasMore
-                ? "Loading more matches..."
-                : "No more itineraries to view."
-              }
-            </Typography>
-            {hasMore && (
-              <Typography variant="caption" color="text.secondary">
-                Found {matchingItineraries.length} matches so far
-              </Typography>
-            )}
-          </Box>
-        )}
+        {/* Match display (card, loading, or end state) */}
+        <MatchDisplay
+          currentMatch={currentMatch}
+          searchLoading={searchLoading}
+          itinerariesCount={itineraries.length}
+          selectedItineraryId={selectedItineraryId}
+          isAtEnd={isAtEnd}
+          hasMore={hasMore}
+          hasSeenExample={hasSeenExample}
+          matchingLength={matchingItineraries.length}
+          onLike={handleLike}
+          onDislike={handleDislike}
+        />
       </Box>
 
       <AddItineraryModal

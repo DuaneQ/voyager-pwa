@@ -21,7 +21,7 @@ import {
 } from "firebase/auth";
 import { app, auth } from "../../environments/firebaseConfig";
 import { FormHelperText } from "@mui/material";
-import { doc, getFirestore, setDoc } from "firebase/firestore";
+import { doc, getFirestore, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { GoogleIcon } from "../custom-icons/GoogleIcon";
 
 export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
@@ -113,6 +113,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     setIsSubmitting(true);
     try {
       const result = await signInWithPopup(auth, provider);
+      
       const user = result.user;
       
       const userData = {
@@ -148,6 +149,27 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
       };
 
       const db = getFirestore(app);
+
+      // Check for existing profile by email to avoid overwriting an existing users doc.
+      // Wrap in a targeted try/catch so tests that don't initialize Firebase won't blow up.
+      if (user.email) {
+        try {
+          const q = query(collection(db, "users"), where("email", "==", user.email));
+          const qsnap = await getDocs(q);
+          if (!qsnap.empty) {
+            showAlert("Error", "A profile already exists for this email. Please sign in instead.");
+            navigate("/Login");
+            return;
+          }
+        } catch (err: any) {
+          // If Firebase isn't initialized in the test environment (app/no-app), skip the check.
+          if (!err || !err.code || !String(err.code).includes('app/no-app')) {
+            // Unknown error - rethrow so real failures are visible
+            throw err;
+          }
+        }
+      }
+
       const docRef = doc(db, "users", user.uid);
       await setDoc(docRef, userData);
 
@@ -176,6 +198,24 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Before creating an auth user, ensure there's no existing users doc with this email
+      if (inputs.email) {
+        try {
+          const db = getFirestore(app);
+          const q = query(collection(db, "users"), where("email", "==", inputs.email));
+          const qsnap = await getDocs(q);
+          if (!qsnap.empty) {
+            showAlert("Error", "An account already exists for that email. Please sign in instead.");
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (err: any) {
+          if (!err || !err.code || !String(err.code).includes('app/no-app')) {
+            throw err;
+          }
+          // Otherwise, ignore missing app in test environment and continue with signup
+        }
+      }
       if (inputs.password !== inputs.confirm) {
         showAlert(
           "Error",

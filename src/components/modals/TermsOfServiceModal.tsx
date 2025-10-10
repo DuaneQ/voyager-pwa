@@ -94,7 +94,18 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
       fullWidth
       disableEscapeKeyDown
       PaperProps={{
-        sx: { maxHeight: '90vh' }
+        sx: {
+          // Make the modal 10% smaller on extra-small screens (xs)
+          // by scaling the Paper. Keep normal scale on small+ screens.
+          transform: { xs: 'scale(0.9)', sm: 'scale(1)' },
+          transformOrigin: 'top center',
+          // Force a narrower width on very small devices so the dialog appears smaller
+          width: { xs: '340px', sm: '600px' },
+          // Responsive max height: tighter on small devices
+          maxHeight: { xs: '80vh', sm: '90vh' },
+          // Ensure the dialog doesn't overflow the viewport on xs
+          overflow: 'hidden',
+        }
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
@@ -106,7 +117,20 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, py: 2 }}>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          // Scale down typography and inner spacing slightly on xs to make the whole modal feel smaller
+          '& .MuiTypography-root': {
+            fontSize: { xs: '0.92rem', sm: '1rem' },
+          },
+          '& .MuiAlert-root': {
+            px: { xs: 1.25, sm: 2 },
+            py: { xs: 1, sm: 1.5 },
+          },
+        }}
+      >
         <Alert severity="warning" sx={{ mb: 3 }}>
           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
             IMPORTANT LEGAL NOTICE
@@ -205,7 +229,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
         </Alert>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, gap: 2 }}>
+  <DialogActions sx={{ p: { xs: 2, sm: 3 }, gap: { xs: 1, sm: 2 } }}>
         <Button
           onClick={onDecline}
           variant="outlined"

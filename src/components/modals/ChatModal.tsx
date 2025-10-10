@@ -58,7 +58,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
-  const [addUserLoading, setAddUserLoading] = useState(false);
+  const [addUserLoading, setAddUserLoading] = useState<boolean>(false);
   const [removeUserLoading, setRemoveUserLoading] = useState<string | null>(null);
 
   // Ref for the messages container
