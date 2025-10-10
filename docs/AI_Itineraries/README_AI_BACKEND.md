@@ -1,119 +1,154 @@
-# AI Itinerary Generation Backend Setup
+# AI Itinerary Backend - Setup & API Reference
 
-This directory contains the backend Firebase Functions for AI-powered itinerary generation.
+## Overview
 
-## Required Environment Variables
+This document provides setup instructions, environment configuration, and API reference for the AI itinerary generation backend. 
 
-### OpenAI Configuration
+**For comprehensive architecture and system design**, see: [AI System Architecture](AI_SYSTEM_ARCHITECTURE.md)  
+**For detailed function contracts and implementation**, see: [AI Backend Overview](AI_BACKEND_OVERVIEW.md)
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+ and npm
+- Firebase CLI installed (`npm install -g firebase-tools`)
+- Firebase project with Functions, Firestore, and Auth enabled
+
+### Environment Setup
+
+#### Required API Keys
 ```bash
-# Set OpenAI API key
-firebase functions:config:set openai.api_key="your-openai-api-key"
+# OpenAI Configuration (REQUIRED)
+export OPENAI_API_KEY="sk-your-openai-api-key"
 
-# Or set as environment variable
-export OPENAI_API_KEY="your-openai-api-key"
+# Google Places API (REQUIRED)
+export GOOGLE_PLACES_API_KEY="your-google-places-api-key"
+
+# Optional (with fallbacks)
+export AMADEUS_API_KEY="your-amadeus-api-key"
+export AMADEUS_API_SECRET="your-amadeus-secret"
 ```
 
-### Google Maps Configuration (Optional)
+#### Firebase Configuration
 ```bash
-# Set Google Maps API key for enhanced location data
-firebase functions:config:set google.maps_api_key="your-google-maps-api-key"
-
-# Or set as environment variable
-export GOOGLE_MAPS_API_KEY="your-google-maps-api-key"
+# Set via Firebase CLI (alternative to environment variables)
+firebase functions:config:set openai.api_key="your-key"
+firebase functions:config:set google.places_api_key="your-key"
 ```
 
 ## Available Functions
 
-### 1. generateItinerary
-**Endpoint**: `generateItinerary` (Callable Function)
-**Description**: Generate complete AI itineraries for premium users
-**Required**: Premium subscription
-**Rate Limit**: 10 requests per hour
-**Storage**: Saves to `itineraries` collection with `ai_status: "completed"`
+### Core AI Generation Functions
 
-**Usage**:
+#### 1. generateItineraryWithAI (Primary Function)
+**Type**: Firebase Callable Function  
+**Description**: Complete AI itinerary generation with real-time progress tracking  
+**Authentication**: Required (Firebase Auth)  
+**Authorization**: Premium subscription required  
+**Rate Limit**: 10 generations per hour  
+**Timeout**: 540 seconds (9 minutes)  
+**Memory**: 2GB allocation for AI processing  
+
+**Request Format**:
+```typescript
+interface AIGenerationRequest {
+  destination: string;           // "Paris, France"
+  startDate: string;            // "2025-08-01" (YYYY-MM-DD)
+  endDate: string;              // "2025-08-07" (YYYY-MM-DD)
+  budget?: {
+    total: number;              // 2000
+    currency: 'USD' | 'EUR' | 'GBP';
+  };
+  groupSize?: number;           // 2
+  tripType?: 'leisure' | 'business' | 'adventure' | 'romantic' | 'family';
+  preferenceProfileId?: string; // "profile-123"
+  specialRequests?: string;     // "Include art museums"
+  mustInclude?: string[];       // ["Eiffel Tower", "Louvre"]
+  mustAvoid?: string[];         // ["Crowded areas"]
+  flightPreferences?: {
+    class?: string;
+    preferredAirlines?: string[];
+  };
+  transportType?: string;
+}
+```
+
+**Usage Example**:
 ```javascript
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const functions = getFunctions();
-const generateItinerary = httpsCallable(functions, 'generateItinerary');
+const generateItinerary = httpsCallable(functions, 'generateItineraryWithAI');
 
-const result = await generateItinerary({
+const result = await generateItinerary({ data: {
   destination: "Paris, France",
   startDate: "2025-08-01",
   endDate: "2025-08-07",
   budget: { total: 2000, currency: "USD" },
   groupSize: 2,
-  tripType: "leisure",
-  preferenceProfileId: "profile-1", // optional
-  specialRequests: "Include art museums", // optional
-  mustInclude: ["Eiffel Tower", "Louvre"], // optional
-  mustAvoid: ["Crowded areas"] // optional
-});
+  tripType: "leisure"
+}});
+
+// Response: { success: true, generationId: "...", savedDocId: "..." }
 ```
 
-### 2. estimateItineraryCost
-**Endpoint**: `estimateItineraryCost` (Callable Function)  
-**Description**: Quick cost estimation for trip planning
-**Required**: User authentication (premium or free)
-**Rate Limit**: More lenient than full generation
+#### 2. estimateItineraryCost
+**Type**: Firebase Callable Function  
+**Description**: Quick cost estimation without full generation  
+**Authentication**: Required  
+**Authorization**: Available to all authenticated users  
+**Rate Limit**: More lenient than full generation  
 
-**Usage**:
+**Usage Example**:
 ```javascript
 const estimateCost = httpsCallable(functions, 'estimateItineraryCost');
 
-const result = await estimateCost({
+const result = await estimateCost({ data: {
   destination: "Paris, France",
   startDate: "2025-08-01", 
   endDate: "2025-08-07",
   groupSize: 2,
   tripType: "leisure"
-});
+}});
 ```
 
-### 3. getGenerationStatus
-**Endpoint**: `getGenerationStatus` (Callable Function)
-**Description**: Check the status of an ongoing AI generation
-**Required**: User authentication
+#### 3. getGenerationStatus
+**Type**: Firebase Callable Function  
+**Description**: Check progress of ongoing generation  
+**Authentication**: Required  
 
-**Usage**:
+**Usage Example**:
 ```javascript
 const getStatus = httpsCallable(functions, 'getGenerationStatus');
 
-const result = await getStatus({
+const result = await getStatus({ data: {
   generationId: "gen_1234567890_abcdefgh"
-});
+}});
 ```
 
-### New: searchFlights (HTTP POST)
+### Helper Search Functions
 
-**Endpoint**: `/searchFlights` (HTTPS function)  
-**Description**: Accepts a JSON payload with flight search parameters and returns a simplified list of flights from Amadeus (mapped). Useful for the AI Itinerary modal.
+#### 4. searchFlights
+**Type**: HTTPS Function (also callable)  
+**Description**: Search flight options using Amadeus API  
 
-**Example payload**:
-```json
-{
-  "departureAirportCode": "JFK",
-  "destinationAirportCode": "LAX",
-  "departureDate": "2025-09-01",
-  "returnDate": "2025-09-08",
-  "cabinClass": "ECONOMY",
-  "preferredAirlines": ["DL","AA"],
-  "stops": "ONE_OR_FEWER",
-  "maxResults": 5
-}
-```
-
-**Call example (emulator)**:
+**HTTP Usage**:
 ```bash
-# after running `npm run serve` to start functions emulator
-curl -X POST \\
-  -H "Content-Type: application/json" \\
-  -d '{"departureAirportCode":"JFK","destinationAirportCode":"LAX","departureDate":"2025-09-01","returnDate":"2025-09-08"}' \\
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"destination":"Paris","startDate":"2025-08-01","endDate":"2025-08-07"}}' \
   http://localhost:5001/YOUR_PROJECT/us-central1/searchFlights
 ```
 
-Logs: The function will console.log the incoming params and a sample of mapped flights for quick verification.
+#### 5. searchAccommodations
+**Type**: HTTPS Function (also callable)  
+**Description**: Search hotels using Google Places API  
+
+### Function Call Pattern
+**Important**: All Firebase Functions expect requests in the format:
+```javascript
+await functionCall({ data: yourPayload })
+```
 
 ## Data Models
 

@@ -1,32 +1,30 @@
-User Story
+# User Story: Flight Search Integration for AI Itineraries
 
-Title: Search Flights (Round-Trip) using user preferences with Stops & Airline filters
+## Title
+Search Flights (Round-Trip) using user preferences with Stops & Airline filters
 
-As a traveler using the AI Itinerary Generator
-I want the system to retrieve flight options from a flight API based on my preferences (airports, dates, cabin, preferred airlines, stops)
+## Description
+As a traveler using the AI Itinerary Generator  
+I want the system to retrieve flight options from a flight API based on my preferences (airports, dates, cabin, preferred airlines, stops)  
 So that I can review relevant flight options before finalizing my itinerary.
 
-Scope (v1)
+## Implementation Status: ✅ **COMPLETED**
+- **Provider**: Amadeus Self-Service Flight Offers Search (/v2/shopping/flight-offers) 
+- **Integration**: Part of `generateItineraryWithAI` function
+- **Current Implementation**: Parallel processing with 45-second timeout
+- **Fallback Strategy**: Mock flight data on API failures
 
-Provider: Amadeus Self-Service Flight Offers Search (/v2/shopping/flight-offers) 
-Amadeus IT Group SA
-+1
+## Scope (v1 - Implemented)
 
-Call site: a single React hook that calls a single FlightService function.
-
-Trip: round-trip only (one outbound + one inbound itinerary).
-
-Passengers: 1 adult.
-
-Currency: USD.
-
-Max results: 10.
-
-No pagination, no sorting beyond provider defaults.
-
-No booking; read-only search.
-
-No caching in v1.
+- **Provider**: Amadeus Flight API with OAuth token management
+- **Call Site**: Integrated into AI generation pipeline (not standalone hook)
+- **Trip Type**: Round-trip only (outbound + inbound itinerary)
+- **Passengers**: 1 adult
+- **Currency**: USD
+- **Max Results**: 10 flight options
+- **Pagination**: None (single request)
+- **Booking**: Read-only search (no booking functionality)
+- **Caching**: 5-minute cache implemented for cost optimization
 
 Input Contract (to FlightService)
 type FlightSearchParams = {

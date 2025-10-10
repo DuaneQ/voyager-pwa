@@ -54,7 +54,7 @@ interface Flight {
 }
 
 // SerpApi configuration (embedded key per project constraint). Replace with your SerpApi key.
-const SERPAPI_KEY = '';
+const SERPAPI_KEY = process.env.SERPAPI_KEY;
 const SERPAPI_BASE = 'https://serpapi.com/search.json';
 
 // Helper: format minutes to Hh Mm string

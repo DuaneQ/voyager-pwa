@@ -3,6 +3,7 @@ import { TravelPreferenceProfile } from '../../types/TravelPreferences';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import AIItineraryGenerationModal from '../../components/modals/AIItineraryGenerationModal';
 import { AlertContext } from '../../Context/AlertContext';
+import { UserProfileContext } from '../../Context/UserProfileContext';
 
 // Mock the hooks
 const mockUseAIGeneration = {
@@ -104,10 +105,19 @@ const mockAlertContextValue = {
   closeAlert: jest.fn(),
 };
 
+const mockUserProfileContextValue = {
+  userProfile: null,
+  updateUserProfile: jest.fn(),
+  setUserProfile: jest.fn(),
+  isLoading: false,
+};
+
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <AlertContext.Provider value={mockAlertContextValue}>
-      {children}
+      <UserProfileContext.Provider value={mockUserProfileContextValue as any}>
+        {children}
+      </UserProfileContext.Provider>
     </AlertContext.Provider>
   );
 };
