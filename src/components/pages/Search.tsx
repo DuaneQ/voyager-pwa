@@ -145,21 +145,6 @@ export const Search = React.memo(() => {
     loadItineraries();
   }, [refreshKey, fetchItineraries]);
 
-  // Auto-select first itinerary when itineraries load
-  useEffect(() => {
-    // Only auto-select if not dismissed example
-    if (
-      itineraries.length > 0 &&
-      !selectedItineraryId &&
-      userId
-    ) {
-      const firstItinerary = itineraries[0];
-      setSelectedItineraryId(firstItinerary.id);
-      console.debug('SEARCH DEBUG: auto-selecting first itinerary', { firstId: firstItinerary.id });
-      searchItineraries(firstItinerary, userId);
-    }
-  }, [itineraries, selectedItineraryId, userId, searchItineraries]);
-
   // Prevent auto-select if example was dismissed
   useEffect(() => {
     if (selectedItineraryId === EXAMPLE_DISMISSED) {
@@ -177,10 +162,10 @@ export const Search = React.memo(() => {
     return m;
   }, [itineraries]);
 
+
   const handleItinerarySelect = useCallback((id: string) => {
     setSelectedItineraryId(id);
     const selected = itineraryById.get(id) || null;
-    console.debug('SEARCH DEBUG: user selected itinerary', { id });
     if (selected && userId) {
       searchItineraries(selected, userId);
     }
@@ -326,25 +311,6 @@ export const Search = React.memo(() => {
     const isAtEnd = !hasMore && matchingItineraries.length === 0;
     return { realMatch, hasNoMatches, showExample, currentMatch, isAtEnd };
   }, [matchingItineraries, selectedItineraryId, searchLoading, hasMore, selectedItinerary, hasSeenExample]);
-
-  // Diagnostic logging for search state — helps trace why example may not show
-  useEffect(() => {
-    try {
-      console.debug('SEARCH DEBUG: state snapshot', {
-        selectedItineraryId,
-        selectedItineraryId_present: !!selectedItinerary,
-        matchingItinerariesLength: matchingItineraries.length,
-        searchLoading,
-        hasMore,
-        hasSeenExample,
-        hasNoMatches,
-        showExample,
-        currentMatchId: currentMatch ? currentMatch.id : null,
-      });
-    } catch (e) {
-      console.error('SEARCH DEBUG: failed to log state', e);
-    }
-  }, [selectedItineraryId, matchingItineraries.length, searchLoading, hasMore, hasSeenExample, hasNoMatches, showExample, currentMatch]);
 
   // Persist-only: when the example is shown, write the persisted flag so
   // subsequent mounts won't show it. We intentionally do NOT flip the
