@@ -226,17 +226,6 @@ describe("useSearchItineraries - Real-Time Search", () => {
       expect(mockGetDocs).toHaveBeenCalled();
       expect(mockSearchCache.setWithMetadata).not.toHaveBeenCalled();
     });
-
-    test("clearSearchCache is a no-op in current implementation", () => {
-      const { result } = renderHook(() => useSearchItineraries());
-
-      act(() => {
-        result.current.clearSearchCache();
-      });
-
-      // In the current hook clearSearchCache does not call the external cache
-      expect(mockSearchCache.clear).not.toHaveBeenCalled();
-    });
   });
 
   describe("Pagination Tests", () => {

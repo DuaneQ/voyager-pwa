@@ -114,7 +114,7 @@ export const useAIGeneration = () => {
           logger.warn('⚠️ [useAIGeneration] Failed to parse accommodations response:', accErr);
         }
       } else {
-  logger.warn('⚠️ [useAIGeneration] Accommodations search failed:', accSettled.reason);
+        logger.warn('⚠️ [useAIGeneration] Accommodations search failed:', accSettled.reason);
       }
 
       // Handle activities result defensively
@@ -142,7 +142,7 @@ export const useAIGeneration = () => {
           logger.warn('⚠️ [useAIGeneration] Failed to parse activities response:', aerr);
         }
       } else if (activitiesSettled) {
-  logger.warn('⚠️ [useAIGeneration] Activities search failed:', activitiesSettled.reason);
+        logger.warn('⚠️ [useAIGeneration] Activities search failed:', activitiesSettled.reason);
       }
 
       // Recreate start/end Date objects for daily plan generation
@@ -264,12 +264,6 @@ export const useAIGeneration = () => {
         const key = rest.id || rest.placeId;
         return key && !usedEnrichedRestaurants.has(key);
       });
-
-
-
-
-
-      // generationId was created earlier
 
       // Extract filtering metadata captured from the activities call (if any)
       const activitiesFilteringMetadata = (() => {
@@ -434,8 +428,8 @@ export const useAIGeneration = () => {
       // invoked the server AI (if applicable) as part of the settled promises above.
       setProgress({ stage: 'ai_generation', percent: 60, message: 'Requesting server-side itinerary generation...' });
 
-  let toSave: any = null;
-  // parsedTransportation and serverToSave will be populated from the parser output
+      let toSave: any = null;
+      // parsedTransportation and serverToSave will be populated from the parser output
 
       // Extract AI result from the settled promises and parse server output using helper
       const parsed = (await import('./parseAIServerResponse')).parseAIServerResponse({
@@ -549,7 +543,7 @@ export const useAIGeneration = () => {
             // actually returned so the developer can diagnose why a canonical
             // payload wasn't present. Avoid printing user PII — only show top-level
             // keys and a short preview of assistant text (if present).
-              try {
+            try {
               const preview: any = { keys: null, assistantPreview: null };
               if (aiData && typeof aiData === 'object') {
                 preview.keys = Object.keys(aiData).slice(0, 20);
@@ -579,7 +573,6 @@ export const useAIGeneration = () => {
       // response.data.recommendations.transportation. Do NOT touch flights.
       try {
         if (parsedTransportation) {
-          logger.debug('🚗 [useAIGeneration] MERGING TRANSPORTATION DATA:', JSON.stringify(parsedTransportation, null, 2));
           toSave = toSave || {};
           toSave.response = toSave.response || { success: true, data: { recommendations: {} } };
           toSave.response.data = toSave.response.data || {};
@@ -678,10 +671,10 @@ export const useAIGeneration = () => {
             }
           }
         } catch (e) {
-            logger.warn('[useAIGeneration] Failed to persist user mustInclude/mustAvoid into metadata.filtering', e);
+          logger.warn('[useAIGeneration] Failed to persist user mustInclude/mustAvoid into metadata.filtering', e);
         }
       } catch (mergeErr) {
-  logger.warn('[useAIGeneration] Failed to merge activities filtering metadata into payload:', mergeErr);
+        logger.warn('[useAIGeneration] Failed to merge activities filtering metadata into payload:', mergeErr);
         // Do not fail the generation for metadata merge problems
       }
 
@@ -697,24 +690,7 @@ export const useAIGeneration = () => {
         // larger utility function.
         // Log payload shapes to help debug Firestore 'undefined' errors. Keep logs small to avoid PII.
         const sanitized = JSON.parse(JSON.stringify(toSave, (_k, v) => v === undefined ? null : v));
-          try {
-          logger.debug('[useAIGeneration] Saving ai_generation document id=', clientGenerationId, 'summary=', {
-            destination: toSave.destination,
-            startDate: toSave.startDate,
-            endDate: toSave.endDate,
-            days: (itineraryData as any)?.days?.length ?? 0,
-            alternativeActivitiesCount: (toSave.response?.data?.recommendations?.alternativeActivities?.length) ?? 0,
-            alternativeRestaurantsCount: (toSave.response?.data?.recommendations?.alternativeRestaurants?.length) ?? 0,
-            flightsCount: (toSave.response?.data?.recommendations?.flights?.length) ?? 0
-          });
-          logger.debug('[useAIGeneration] Sanitized payload preview:', {
-            id: sanitized.id,
-            itineraryDays: (sanitized.response?.data?.itinerary?.days?.length) ?? 0,
-            metadata: sanitized.response?.data?.metadata
-          });
-        } catch (logErr) {
-          logger.warn('[useAIGeneration] Failed to log toSave or sanitized preview', logErr);
-        }
+
         // Save canonical itinerary to `itineraries` collection (app expects final items here)
         const itineraryDocRef = doc(db, 'itineraries', clientGenerationId);
         await setDoc(itineraryDocRef, sanitized);
@@ -734,7 +710,7 @@ export const useAIGeneration = () => {
         savedDocId: clientGenerationId
       };
 
-      } catch (err: any) {
+    } catch (err: any) {
       logger.error('❌ [useAIGeneration] Flight search failed:', err);
       const errorMessage = err?.message || 'Failed to search flights';
       setError(errorMessage);

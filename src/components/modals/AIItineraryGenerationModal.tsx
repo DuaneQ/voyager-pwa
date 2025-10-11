@@ -146,7 +146,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         }
 
         // Reset form data only once when modal opens (after attempting to refresh preferences)
-  const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
+        const defaultProfileId = preferences?.profiles?.find(p => p.isDefault)?.id || '';
 
         // Prefer an explicitly-provided initial profile id (from parent) if available.
         const initProfileId = (initialPreferenceProfileId as string) || defaultProfileId || '';
@@ -516,7 +516,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 if (!progress) return 'Starting generation...';
                 switch (progress.stage) {
                   case 'searching':
-                    return 'Searching for flights and accommodations...';
+                    return 'Searching for travel and accommodations...';
                   case 'activities':
                     return 'Searching for activities and restaurants...';
                   case 'ai_generation':
