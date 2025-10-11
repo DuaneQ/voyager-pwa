@@ -15,11 +15,8 @@ import {
 import { app } from "../environments/firebaseConfig";
 import { Itinerary } from "../types/Itinerary";
 import { 
-  applyClientSideFilters as applyFilters,
-  SearchParams as FilterParams
+  applyClientSideFilters as applyFilters
 } from '../utils/clientSideFilters';
-
-const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
 
 interface LocalSearchParams {
   currentUserItinerary: Itinerary;
@@ -82,9 +79,7 @@ const useSearchItineraries = () => {
     const snapshot = await getDocs(itinerariesQuery);
     
     // Debug: log results from Firestore query (counts + ids)
-    try {
-      const itinIds = (snapshot?.docs || []).map((d: any) => d.id);
-      
+    try {      
       // Log detailed info about each document
       snapshot.docs.forEach((doc, index) => {
         const data = doc.data();
