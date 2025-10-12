@@ -30,23 +30,8 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { createExampleItinerary, isExampleItinerary } from '../../utils/exampleItinerary';
 import { hasUserSeenExample, markExampleAsSeen } from '../../utils/exampleItineraryStorage';
-import { isDebugMode } from '../../utils/searchDebugUtils';
-
 
 const VIEWED_STORAGE_KEY = "VIEWED_ITINERARIES";
-
-const debugPanelSx = {
-  position: 'fixed',
-  top: 10,
-  right: 10,
-  background: 'rgba(255, 0, 0, 0.9)',
-  color: 'white',
-  p: 2,
-  borderRadius: 1,
-  zIndex: 9999,
-  fontSize: '12px',
-  maxWidth: 300,
-};
 
 // Store viewed itineraries in localStorage - store only IDs
 // Cache parsed IDs in-memory for the current session to avoid repeated JSON.parse calls
@@ -362,43 +347,6 @@ export const Search = React.memo(() => {
 
       {/* Subscription Card - always visible at the bottom */}
       <SubscriptionCard compact />
-
-      {/* Debug Panel - only show in debug mode */}
-      {isDebugMode() && (
-        <Box sx={debugPanelSx}>
-          <Typography variant="h6" sx={{ fontSize: '14px', mb: 1 }}>🧪 DEBUG MODE</Typography>
-          <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-            Console: window.searchDebug.scenarios
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            <Button 
-              size="small" 
-              variant="contained" 
-              onClick={() => {
-                localStorage.removeItem('hasSeenExampleItinerary');
-                window.location.reload();
-              }}
-              sx={{ fontSize: '10px', p: 0.5 }}
-            >
-              Reset Example
-            </Button>
-            <Button 
-              size="small" 
-              variant="contained"
-              onClick={() => {
-                localStorage.removeItem('searchDebugMode');
-                window.location.reload();
-              }}
-              sx={{ fontSize: '10px', p: 0.5 }}
-            >
-              Disable Debug
-            </Button>
-          </Box>
-          <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.8 }}>
-            Matches: {matchingItineraries.length} | HasMore: {hasMore ? 'Yes' : 'No'} | Example Seen: {hasSeenExample ? 'Yes' : 'No'}
-          </Typography>
-        </Box>
-      )}
 
       {/* Toolbar: itinerary selector and add button */}
       <ItinerarySelector

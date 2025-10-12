@@ -57,17 +57,59 @@ root.render(
 // Learn more about service workers: https://cra.link/PWA
 serviceWorkerRegistration.register({
   onUpdate: (registration) => {
-    // When a new service worker is available, show a notification to users
-    const confirmUpdate = window.confirm(
-      'A new version of TravalPass is available. Would you like to update now?'
-    );
-    
-    if (confirmUpdate && registration.waiting) {
-      // Tell the waiting service worker to skip waiting and become active
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      
-      // Reload the page to get the new version
-      window.location.reload();
+    // When a new service worker is available, show a single prompt and then
+    // wait for the new worker to take control before reloading. This avoids
+    // repeated prompts (user clicking OK but the reload happening before the
+    // worker activates) and multiple confirmations across quick reloads.
+    try {
+      const swUrl = registration?.waiting?.scriptURL || 'unknown-sw';
+      const promptKey = `sw-update-prompted:${swUrl}`;
+
+      // If we've already prompted for this exact waiting worker, don't prompt again
+      if (localStorage.getItem(promptKey)) return;
+
+      const confirmUpdate = window.confirm(
+        'A new version of TravalPass is available. Would you like to update now?'
+      );
+
+      if (!confirmUpdate) return;
+
+      if (registration.waiting) {
+        // mark that we've prompted for this worker so we don't show the dialog again
+        localStorage.setItem(promptKey, '1');
+
+        let reloaded = false;
+
+        // When the new SW takes control (controllerchange), reload once.
+        const onControllerChange = () => {
+          if (reloaded) return;
+          reloaded = true;
+          try { localStorage.removeItem(promptKey); } catch (e) {}
+          window.location.reload();
+        };
+
+        navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+
+        // Tell the waiting service worker to skip waiting and become active
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+        // Fallback: if controllerchange doesn't fire within 5s, reload once.
+        setTimeout(() => {
+          if (!reloaded) {
+            reloaded = true;
+            try { localStorage.removeItem(promptKey); } catch (e) {}
+            window.location.reload();
+          }
+        }, 5000);
+      }
+    } catch (e) {
+      // Don't block the user on unexpected errors — at worst they will see
+      // the original prompt behavior (reload immediately).
+      console.error('Error handling SW update prompt', e);
+      if (registration.waiting) {
+        try { registration.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (err) {}
+        window.location.reload();
+      }
     }
   },
   onSuccess: (registration) => {
