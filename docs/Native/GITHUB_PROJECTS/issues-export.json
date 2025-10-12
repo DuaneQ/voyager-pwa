@@ -1,0 +1,122 @@
+[
+  {
+    "title": "S2.1 — Create /shared workspace and tooling",
+    "body": "Goal:\nCreate a shared package at the repo root that other packages can import via npm workspaces and TypeScript path mappings.\n\nAcceptance criteria:\n- `shared/package.json` exists with `main`/`types` and `build` scripts.\n- Root `package.json` includes `workspaces` entry for `mobile` and `shared`.\n- `tsconfig.json` path aliases updated so imports like `@voyager/shared/*` resolve.\n- Minimal README in `/shared` documenting usage.\n\nTasks:\n1) Add `shared/package.json` with name `@voyager/shared` and TypeScript entry points.\n2) Update root `package.json` workspaces.\n3) Update root `tsconfig.json` paths to include `@voyager/shared/*`.\n4) Add `shared/src/index.ts` and `shared/src/types.ts`.\n5) Add Jest config for shared.\n\nEstimate: 0.5 day",
+    "labels": ["milestone:S2_Shared_Extraction","type:task"],
+    "milestone": "S2_Shared_Extraction"
+  },
+  {
+    "title": "S2.2 — Extract types & pure utils into /shared",
+    "body": "Goal:\nMove TypeScript types and pure utility functions (date formatting, serialization, normalization) into `/shared` so both web and RN-web can use them.\n\nAcceptance criteria:\n- `shared/src/types/**` and `shared/src/utils/**` exist and are exported via `shared/src/index.ts`.\n- Web and mobile compile after updating imports.\n\nTasks:\n1) Identify files to move from `src/types` and `src/utils`.\n2) Move files into `shared/src/types` and `shared/src/utils`.\n3) Update imports across the repo to reference `@voyager/shared`.\n4) Run TypeScript compile and fix errors.\n5) Add tests for critical utils.\n\nEstimate: 1-2 days",
+    "labels": ["milestone:S2_Shared_Extraction","type:task"],
+    "milestone": "S2_Shared_Extraction"
+  },
+  {
+    "title": "S2.3 — Extract API clients & server-callable wrappers",
+    "body": "Goal:\nMove Firebase callable wrappers and other API client code to `/shared` and make them accept a platform-agnostic http/callable client.\n\nAcceptance criteria:\n- Server-callable wrappers are available under `shared/services/*` and are mockable.\n- API clients avoid browser-only imports.\n- Unit tests exist for client wrappers.\n\nTasks:\n1) Identify API client files and hooks that use `httpsCallable`.\n2) Refactor to accept an injected callable client or thin adapter in `shared/adapters`.\n3) Add unit tests with mocked responses.\n4) Update web and mobile callers to provide the platform client.\n\nEstimate: 1-2 days",
+    "labels": ["milestone:S2_Shared_Extraction","type:task"],
+    "milestone": "S2_Shared_Extraction"
+  },
+  {
+    "title": "S2.4 — Implement storage & notifications adapters",
+    "body": "Goal:\nDefine adapter interfaces in `/shared/adapters` and implement web/mobile versions for storage and notifications.\n\nAcceptance criteria:\n- `shared/src/adapters/storage.ts` defines `StorageAdapter`.\n- Web and mobile adapters exist and are wired in bootstrap.\n- `shared/src/adapters/notifications.ts` defines `NotificationsAdapter` with mobile `expo-notifications` implementation.\n\nTasks:\n1) Create adapter interfaces.\n2) Implement web/mobile adapters.\n3) Wire adapters in platform bootstrap and verify with PoC.\n\nEstimate: 1-2 days",
+    "labels": ["milestone:S2_Shared_Extraction","type:task"],
+    "milestone": "S2_Shared_Extraction"
+  },
+  {
+    "title": "S2.5 — Wire sample shared service into mobile PoC",
+    "body": "Goal:\nDemonstrate integration by using a `shared` service (session or usage tracking) from the `/mobile` PoC.\n\nAcceptance criteria:\n- `shared/services/session.ts` exposes `getSession()`/`setSession()`.\n- `/mobile` bootstraps adapters and renders session state.\n\nTasks:\n1) Implement `shared/services/session.ts`.\n2) Add bootstrap wiring in `/mobile/src/App.tsx`.\n3) Update PoC Login to show session state.\n\nEstimate: 0.5-1 day",
+    "labels": ["milestone:S2_Shared_Extraction","type:task"],
+    "milestone": "S2_Shared_Extraction"
+  },
+  {
+    "title": "S3.1 — Login Screen (RN-web)",
+    "body": "Goal:\nPort the Login UI to React Native primitives so it runs on mobile and web via react-native-web. Reuse `shared/services/auth`.\n\nAcceptance criteria:\n- RN Login renders on mobile and web.\n- Email/password login uses `shared/services/auth.signInWithEmail()` and maps errors.\n- Google Sign-In triggers `shared/services/auth.signInWithGoogle()` with web fallback.\n- On success session stored via shared session service and navigates to Home.\n\nTasks:\n1) Replace MUI fields with RN `TextInput`/`Button`.\n2) Wire validation and error mapping.\n3) Use shared auth service and handle errors.\n4) Add Google Sign-In fallback for web.\n5) Store session and navigate.\n6) Add tests.\n\nEstimate: 1-2 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S3.2 — Home Feed / Video Feed",
+    "body": "Goal:\nPort the main feed (video / itinerary cards) UI to RN components with lazy loading, card interactions, and video playback.\n\nAcceptance criteria:\n- Feed is scrollable on mobile and web.\n- Video playback uses `expo-av` on mobile with a web fallback.\n- Actions call shared services and update UI optimistically.\n\nTasks:\n1) Implement `FeedList` with `FlatList`.\n2) Implement `FeedCard` with thumbnail/video.\n3) Integrate `expo-av` and web fallback.\n4) Wire actions to shared services.\n5) Implement pagination/infinite scroll using shared cache.\n6) Add tests.\n\nEstimate: 3-5 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S3.3 — Search Screen & Filters",
+    "body": "Goal:\nPort Search UI including destination input, date pickers, preference profile selection, and filter controls. Use shared search/cache.\n\nAcceptance criteria:\n- Inputs render cross-platform and search honors cache TTL.\n- Preference profiles load from shared services.\n\nTasks:\n1) Implement destination input via Places adapter.\n2) Implement cross-platform date pickers.\n3) Recreate filters UI.\n4) Hook search to shared service and show cached results.\n5) Add tests.\n\nEstimate: 2-4 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S3.4 — AI Itinerary Generation UI (Modal)",
+    "body": "Goal:\nPort AI generation modal to RN and reuse shared validation/generation services. Show multi-stage progress.\n\nAcceptance criteria:\n- Modal implemented cross-platform with validation.\n- Generation calls shared service and shows progress stages.\n\nTasks:\n1) Recreate modal UI.\n2) Integrate shared validation.\n3) Call generateItinerary and show progress.\n4) Trigger onGenerated on success.\n5) Add tests.\n\nEstimate: 3-5 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S3.5 — Chat & Connections",
+    "body": "Goal:\nPort chat screens, message lists, and connections UI to RN with real-time Firestore listeners and media support.\n\nAcceptance criteria:\n- Chat list and threads render cross-platform.\n- Sending messages writes to Firestore via shared service.\n- Media messages upload and render in-thread.\n\nTasks:\n1) Implement `ChatList` and `ChatThread` with `FlatList`.\n2) Integrate shared chat service and manage listeners.\n3) Add message composer with file/camera adapter.\n4) Wire media uploads to shared upload service.\n5) Add tests.\n\nEstimate: 3-6 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S3.6 — Profile Edit",
+    "body": "Goal:\nPort Edit Profile screen to RN with photo upload and validation. Integrate shared profile service and media adapter.\n\nAcceptance criteria:\n- Profile edits save via shared service and photo upload uses shared adapter.\n- Validation blocks save on failure.\n\nTasks:\n1) Implement form inputs and pickers.\n2) Integrate image picker and upload service.\n3) Reuse shared validation.\n4) Add tests.\n\nEstimate: 2-4 days",
+    "labels": ["milestone:S3_UI_Migration","type:story"],
+    "milestone": "S3_UI_Migration"
+  },
+  {
+    "title": "S4.1 — Stripe Integration (stripe-react-native)",
+    "body": "Goal:\nIntegrate `stripe-react-native` for payments and implement server-side PaymentIntent/subscription flows. Decide strategy for iOS subscriptions.\n\nAcceptance criteria:\n- Native integration builds via EAS and can create/confirm PaymentIntent.\n- Server verifies payments and maps entitlements.\n- Subscriptions approach documented/implemented.\n\nTasks:\n1) Add `stripe-react-native` and update EAS config.\n2) Implement server endpoints for PaymentIntent/subscriptions.\n3) Implement client flow to collect and confirm payments.\n4) Implement entitlement mapping and verification.\n5) Add tests and E2E validation.\n\nEstimate: 2-4 weeks",
+    "labels": ["milestone:S4_Native_Integrations","type:epic"],
+    "milestone": "S4_Native_Integrations"
+  },
+  {
+    "title": "S4.2 — Crashlytics Setup",
+    "body": "Goal:\nConfigure Firebase Crashlytics for mobile and ensure mapping files are uploaded from EAS builds.\n\nAcceptance criteria:\n- Crashlytics initialized and crashes appear symbolicated.\n- dSYMs/mapping files uploaded automatically.\n\nTasks:\n1) Choose RNFB or native Crashlytics approach.\n2) Add Crashlytics SDK and init.\n3) Configure EAS to upload mapping files.\n4) Trigger test crash and verify.\n\nEstimate: 3-5 days",
+    "labels": ["milestone:S4_Native_Integrations","type:story"],
+    "milestone": "S4_Native_Integrations"
+  },
+  {
+    "title": "S4.3 — Maps & Places Integration",
+    "body": "Goal:\nIntegrate maps and places autocomplete for mobile and web with a shared adapter and markers for itineraries.\n\nAcceptance criteria:\n- Map component renders with markers; Places autocomplete works cross-platform.\n\nTasks:\n1) Add `react-native-maps` and configure API keys.\n2) Implement Places adapter for mobile/web.\n3) Add tests for search and marker rendering.\n\nEstimate: 1-2 weeks",
+    "labels": ["milestone:S4_Native_Integrations","type:story"],
+    "milestone": "S4_Native_Integrations"
+  },
+  {
+    "title": "S4.4 — Video Playback & Upload",
+    "body": "Goal:\nImplement robust video playback/upload using `expo-av` or `react-native-video` and resumable uploads to Firebase Storage.\n\nAcceptance criteria:\n- Smooth playback and resumable uploads with progress.\n- Files available in Firebase Storage.\n\nTasks:\n1) Integrate `expo-av` for playback.\n2) Implement compression/transcoding if needed.\n3) Implement resumable uploads and progress UI.\n4) Run device stress tests.\n\nEstimate: 1-3 weeks",
+    "labels": ["milestone:S4_Native_Integrations","type:story"],
+    "milestone": "S4_Native_Integrations"
+  },
+  {
+    "title": "S4.5 — Push Notifications Server Integration",
+    "body": "Goal:\nImplement server-side push sending using FCM or Expo Push and integrate device token registration.\n\nAcceptance criteria:\n- Server can send pushes to device tokens and clients receive notifications correctly on iOS and Android.\n\nTasks:\n1) Create server endpoint to store tokens.\n2) Implement sender via Firebase Admin or Expo Push.\n3) Add targeted notification logic and tests.\n4) Verify on iOS and Android.\n\nEstimate: 3-5 days",
+    "labels": ["milestone:S4_Native_Integrations","type:story"],
+    "milestone": "S4_Native_Integrations"
+  },
+  {
+    "title": "S5.1 — EAS Config & eas.json",
+    "body": "Goal:\nCreate `eas.json` for build profiles and document EAS usage.\n\nAcceptance criteria:\n- `mobile/eas.json` exists with profiles and docs updated.\n\nTasks:\n1) Add `eas.json` with development/preview/production profiles.\n2) Document EAS env vars and secrets.\n3) Test a local EAS build and capture CI command.\n\nEstimate: 0.5-1 day",
+    "labels": ["milestone:S5_CI_Release","type:task"],
+    "milestone": "S5_CI_Release"
+  },
+  {
+    "title": "S5.2 — GitHub Actions workflow for EAS builds",
+    "body": "Goal:\nCreate GitHub Actions workflows that run tests and trigger EAS builds/submits for release branches.\n\nAcceptance criteria:\n- Workflow exists that runs tests and EAS builds; uses secrets for auth.\n\nTasks:\n1) Add workflow that installs `eas-cli`, logs in, and runs `eas build`.\n2) Add artifact/upload or `eas submit` steps.\n3) Document required secrets.\n\nEstimate: 1-2 days",
+    "labels": ["milestone:S5_CI_Release","type:task"],
+    "milestone": "S5_CI_Release"
+  },
+  {
+    "title": "S5.3 — Signing and Secrets (APNs, keystore, firebase files)",
+    "body": "Goal:\nDocument and implement credential management for production builds (APNs, keystore, firebase files).\n\nAcceptance criteria:\n- Guides for APNs key, Android keystore, and Firebase config uploads exist.\n\nTasks:\n1) Guide to generate APNs key and upload to EAS.\n2) Guide for Android keystore and Play App Signing.\n3) Document google-services file handling.\n4) Notes on rotating keys and access control.\n\nEstimate: 0.5-1 day",
+    "labels": ["milestone:S5_CI_Release","type:task"],
+    "milestone": "S5_CI_Release"
+  },
+  {
+    "title": "S5.4 — App Store / Play Store Listing & Submission Checklist",
+    "body": "Goal:\nPrepare assets and metadata for App Store and Play Store submission and document the submission steps.\n\nAcceptance criteria:\n- Store listing text, screenshots, privacy policy, and review notes prepared.\n\nTasks:\n1) Draft store descriptions and keywords.\n2) Generate screenshots for required sizes and locales.\n3) Prepare privacy policy and support URL.\n4) Document submission process and checklist.\n\nEstimate: 1-3 days",
+    "labels": ["milestone:S5_CI_Release","type:task"],
+    "milestone": "S5_CI_Release"
+  }
+]
