@@ -519,9 +519,18 @@ describe("Search Component", () => {
         expect(screen.getByRole("combobox")).toBeInTheDocument();
       });
 
+      // Explicitly open the combobox and select the first itinerary (Paris)
+      const select = screen.getByRole('combobox');
+      fireEvent.mouseDown(select);
+      await waitFor(() => {
+        const options = screen.getAllByRole('option');
+        const parisOption = options.find(opt => opt.textContent && /Paris/.test(opt.textContent));
+        expect(parisOption).toBeTruthy();
+        if (parisOption) fireEvent.click(parisOption);
+      });
+
       // Wait for component logic to persist example-as-seen if example is shown
       await waitFor(() => {
-        // markExampleAsSeen should be called when example is rendered
         expect(markExampleAsSeen).toHaveBeenCalled();
       }, { timeout: 8000 });
     });
@@ -542,11 +551,23 @@ describe("Search Component", () => {
       // Verify key is set
       expect(localStorage.getItem('hasSeenExampleItinerary')).toBe('true');
 
+  // Ensure helper aligns with persisted key
+  (hasUserSeenExample as jest.Mock).mockReturnValue(true);
+
+
       renderWithContext();
 
-      // Wait for component to load
+      // Wait for component to load and explicitly select first itinerary
       await waitFor(() => {
         expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+      const select = screen.getByRole('combobox');
+      fireEvent.mouseDown(select);
+      await waitFor(() => {
+        const options = screen.getAllByRole('option');
+        const parisOption = options.find(opt => opt.textContent && /Paris/.test(opt.textContent));
+        expect(parisOption).toBeTruthy();
+        if (parisOption) fireEvent.click(parisOption);
       });
 
       // Should NOT show example
