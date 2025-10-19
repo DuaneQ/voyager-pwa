@@ -7,6 +7,17 @@ import '@testing-library/jest-dom';
 import "@testing-library/jest-dom";
 import "whatwg-fetch";
 
+// Canvas/Image polyfills for jsdom test environment
+import './testUtils/canvasPolyfill';
+
+// Use the manual Jest mock for firebase/functions (in __mocks__/firebase-functions.js)
+jest.mock('firebase/functions');
+
+// Install RPC shim used by tests to ensure firebase/functions.httpsCallable
+// consults per-RPC global handlers like `global.__mock_httpsCallable_<name>`.
+import installRpcShim from './testUtils/installRpcShim';
+installRpcShim();
+
 // Add setImmediate polyfill for Node.js compatibility
 if (typeof setImmediate === 'undefined') {
   (window as any).setImmediate = (fn: Function) => setTimeout(fn, 0);

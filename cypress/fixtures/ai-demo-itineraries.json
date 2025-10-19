@@ -1,0 +1,88 @@
+{
+  "aiItineraries": [
+    {
+      "id": "ai-itinerary-owner-QtWLY9o8",
+      "destination": "Rome",
+      "startDate": "2035-09-01",
+      "endDate": "2035-09-07",
+      "description": "AI generated demo itinerary for owner (QtWLY9o8uBemzPxr1pq165KzEM92)",
+      "userInfo": {
+        "uid": "QtWLY9o8uBemzPxr1pq165KzEM92",
+        "username": "DemoOwner",
+        "gender": "Female",
+        "dob": "1992-06-15",
+        "status": "single",
+        "sexualOrientation": "heterosexual",
+        "email": "demoowner@example.com"
+      },
+      "activities": ["Museums", "Dining"],
+      "startDay": 2060496000000,
+      "endDay": 2061004800000,
+      "lowerRange": 25,
+      "upperRange": 40,
+      "ai_status": "completed",
+      "aiGenerated": true,
+      "response": {
+        "data": {
+          "itinerary": {
+            "title": "Rome in a week",
+            "days": [
+              { "day": 1, "plans": ["Colosseum", "Roman Forum"] },
+              { "day": 2, "plans": ["Vatican Museums", "St. Peter's"] }
+            ]
+          },
+          "metadata": {
+            "filtering": {
+              "budget": "mid",
+              "preferredActivities": ["Museums", "Food"],
+              "matchCriteria": { "gender": "Female", "ageRange": [25,40] }
+            }
+          },
+          "success": true
+        }
+      }
+    },
+    {
+      "id": "ai-itinerary-match-OPoJ6tPN3",
+      "destination": "Rome",
+      "startDate": "2035-09-02",
+      "endDate": "2035-09-06",
+      "description": "AI generated demo itinerary for matching user (OPoJ6tPN3DaCAXxCmXwGFjOF7SI3)",
+      "userInfo": {
+        "uid": "OPoJ6tPN3DaCAXxCmXwGFjOF7SI3",
+        "username": "DemoMatch",
+        "gender": "Female",
+        "dob": "1993-03-22",
+        "status": "single",
+        "sexualOrientation": "heterosexual",
+        "email": "demomatch@example.com"
+      },
+      "activities": ["Museums", "Shopping"],
+      "startDay": 2060582400000,
+      "endDay": 2060880000000,
+      "lowerRange": 25,
+      "upperRange": 35,
+      "ai_status": "completed",
+      "aiGenerated": true,
+      "response": {
+        "data": {
+          "itinerary": {
+            "title": "Short Rome highlights",
+            "days": [
+              { "day": 1, "plans": ["Pantheon", "Piazza Navona"] },
+              { "day": 2, "plans": ["Trevi Fountain", "Spanish Steps"] }
+            ]
+          },
+          "metadata": {
+            "filtering": {
+              "budget": "mid",
+              "preferredActivities": ["Museums", "Shopping"],
+              "matchCriteria": { "gender": "Female", "ageRange": [25,35] }
+            }
+          },
+          "success": true
+        }
+      }
+    }
+  ]
+}

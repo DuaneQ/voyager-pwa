@@ -26,6 +26,13 @@ jest.mock('firebase/firestore', () => ({
 // Mock the hooks
 const mockRefreshItineraries = jest.fn();
 
+// Mock useUpdateItinerary to avoid RPC calls in component tests
+const mockUpdateItinerary = jest.fn().mockResolvedValue(null);
+jest.mock('../../hooks/useUpdateItinerary', () => ({
+  __esModule: true,
+  default: () => ({ updateItinerary: mockUpdateItinerary, loading: false, error: null })
+}));
+
 jest.mock('../../hooks/useAIGeneratedItineraries', () => ({
   useAIGeneratedItineraries: () => ({
     itineraries: [],
@@ -429,7 +436,7 @@ describe('AIItineraryDisplay Comprehensive Tests', () => {
       fireEvent.click(saveButton);
       
       await waitFor(() => {
-        expect(mockUpdateDoc).toHaveBeenCalled();
+        expect(mockUpdateItinerary).toHaveBeenCalled();
       });
     });
 
@@ -446,7 +453,7 @@ describe('AIItineraryDisplay Comprehensive Tests', () => {
     });
 
     test('handles save error gracefully', async () => {
-      mockUpdateDoc.mockRejectedValueOnce(new Error('Save failed'));
+      mockUpdateItinerary.mockRejectedValueOnce(new Error('Save failed'));
       
       render(<AIItineraryDisplay itinerary={mockItinerary as any} />);
       

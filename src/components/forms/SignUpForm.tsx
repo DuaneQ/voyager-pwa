@@ -177,7 +177,7 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
 
       showAlert("Success", "You have successfully signed up with Google!");
-      navigate("/");
+      navigate("/profile");
     } catch (error) {
       if (
         error instanceof Error &&
@@ -312,12 +312,14 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
             flexDirection: "column",
             width: { xs: "99%", sm: "90%" },
             maxWidth: { xs: 340, sm: 420 },
-            padding: { xs: 1, sm: 2.5 },
-            gap: { xs: 0.7, sm: 2 },
+            maxHeight: { xs: "90vh", sm: "90vh" }, // Limit max height to 90% of viewport
+            padding: { xs: 0.9, sm: 2.25 }, // Reduced padding by 10%
+            gap: { xs: 0.63, sm: 1.8 }, // Reduced gap by 10%
             marginLeft: "auto",
             marginRight: "auto",
             boxShadow: "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
             borderRadius: { xs: 2, sm: 3 },
+            overflow: "auto", // Allow scrolling if content exceeds maxHeight
           }}
         >
           <Typography

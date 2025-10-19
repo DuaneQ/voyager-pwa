@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Box, FormControl, Select, MenuItem, Button, Typography } from '@mui/material';
+import { Box, FormControl, Select, MenuItem, Button, Typography, CircularProgress } from '@mui/material';
 import { Itinerary } from '../../types/Itinerary';
 
 const toolbarSx = {
@@ -40,9 +40,10 @@ type Props = {
   selectedItineraryId: string;
   onSelect: (id: string) => void;
   onOpenModal: () => void;
+  isLoading?: boolean;
 };
 
-const ItinerarySelector: React.FC<Props> = ({ sortedItineraries, selectedItineraryId, onSelect, onOpenModal }) => {
+const ItinerarySelector: React.FC<Props> = ({ sortedItineraries, selectedItineraryId, onSelect, onOpenModal, isLoading = false }) => {
   const handleChange = useCallback((e: any) => {
     onSelect(e.target.value as string);
   }, [onSelect]);
@@ -56,17 +57,25 @@ const ItinerarySelector: React.FC<Props> = ({ sortedItineraries, selectedItinera
           onChange={handleChange}
           displayEmpty
           size="small"
+          disabled={isLoading}
           sx={selectSx}
           MenuProps={{
             PaperProps: {
               style: menuPaperStyle,
             },
           }}
+          startAdornment={
+            isLoading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                <CircularProgress size={16} />
+              </Box>
+            ) : null
+          }
         >
           <MenuItem value="" disabled>
-            Select an itinerary
+            {isLoading ? 'Loading itineraries...' : 'Select an itinerary'}
           </MenuItem>
-          {sortedItineraries.map((itinerary) => (
+          {!isLoading && sortedItineraries.map((itinerary) => (
             <MenuItem key={itinerary.id} value={itinerary.id}>
               <Box sx={menuItemBoxSx}>
                 {itinerary.destination}{' '}

@@ -1,12 +1,33 @@
 import { renderHook, act } from "@testing-library/react";
 import useSearchItineraries from "../../hooks/useSearchItineraries";
-import { getDocs, query, collection, where, orderBy, limit, startAfter } from "firebase/firestore";
 import { mockItineraries, baseUserItinerary, currentUserId } from "../../test-utils/mocks/itineraryMockData";
 
-// Mock Firebase
-jest.mock("firebase/firestore");
+// Mock Functions RPC
+jest.mock('firebase/functions');
+
+// Defensive shim: ensure the auto-mocked httpsCallable consults per-RPC global
+// handlers (tests set global.__mock_httpsCallable_<name>). This avoids
+// dependence on internal mock implementation details and jest hoisting.
+{
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mockedFunctions = require('firebase/functions');
+  const httpsCallable = mockedFunctions && mockedFunctions.httpsCallable;
+  if (httpsCallable && typeof httpsCallable.mockImplementation === 'function') {
+    httpsCallable.mockImplementation((functions: any, name: string) => {
+      return async (payload: any) => {
+        const handlerKey = `__mock_httpsCallable_${name}`;
+        if ((global as any)[handlerKey] && typeof (global as any)[handlerKey] === 'function') {
+          return (global as any)[handlerKey](payload);
+        }
+        if ((global as any).__mockHttpsCallableReturn) return (global as any).__mockHttpsCallableReturn;
+        return { data: { success: true, data: [] } };
+      };
+    });
+  }
+}
 jest.mock("../../environments/firebaseConfig", () => ({
   app: {},
+  functions: {}, // Mock functions instance so the hook can use it
 }));
 
 // Mock localStorage
@@ -29,41 +50,46 @@ let mockSearchCache: any = {
 };
 
 describe("useSearchItineraries - Real-Time Search", () => {
-  const mockGetDocs = getDocs as jest.Mock;
-  const mockQuery = query as jest.Mock;
-  const mockCollection = collection as jest.Mock;
-  const mockWhere = where as jest.Mock;
-  const mockOrderBy = orderBy as jest.Mock;
-  const mockLimit = limit as jest.Mock;
-  const mockStartAfter = startAfter as jest.Mock;
+  let rpcHandler: jest.Mock<any, any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockLocalStorage.clear();
-
-    // Setup Firebase mocks
-    mockQuery.mockImplementation((...args) => ({ _query: args }));
-    mockCollection.mockReturnValue({ _collection: "itineraries" });
-    mockWhere.mockImplementation((field, operator, value) => ({ _where: { field, operator, value } }));
-    mockOrderBy.mockImplementation((field, direction) => ({ _orderBy: { field, direction } }));
-    mockLimit.mockImplementation((count) => ({ _limit: count }));
-    mockStartAfter.mockImplementation((doc) => ({ _startAfter: doc }));
+    (global as any).__mock_httpsCallable_searchItineraries = undefined;
+    (global as any).__mockHttpsCallableReturn = undefined;
+    rpcHandler = jest.fn();
+    // Re-apply defensive httpsCallable shim after clearAllMocks so the
+    // mockImplementation is present for this test run (jest.clearAllMocks
+    // removes mock implementations set at module load time).
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mockedFunctions = require('firebase/functions');
+      const httpsCallable = mockedFunctions && mockedFunctions.httpsCallable;
+      if (httpsCallable && typeof httpsCallable.mockImplementation === 'function') {
+        httpsCallable.mockImplementation((functions: any, name: string) => {
+          return async (payload: any) => {
+            const handlerKey = `__mock_httpsCallable_${name}`;
+            if ((global as any)[handlerKey] && typeof (global as any)[handlerKey] === 'function') {
+              return (global as any)[handlerKey](payload);
+            }
+            if ((global as any).__mockHttpsCallableReturn) return (global as any).__mockHttpsCallableReturn;
+            return { data: { success: true, data: [] } };
+          };
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
   });
 
-  const setupFirestoreMock = (returnedItineraries: any[]) => {
-    const mockDocs = returnedItineraries.map((itinerary, index) => ({
-      id: itinerary.id,
-      data: () => itinerary,
-    }));
-
-    mockGetDocs.mockResolvedValue({
-      docs: mockDocs,
-    });
+  const setupRPCMock = (returnedItineraries: any[]) => {
+    rpcHandler.mockResolvedValue({ data: { success: true, data: returnedItineraries } });
+    (global as any).__mock_httpsCallable_searchItineraries = rpcHandler;
   };
 
   describe("Basic Filtering Tests", () => {
     test("should exclude current user's own itineraries", async () => {
-      setupFirestoreMock([mockItineraries[0], mockItineraries[7]]);
+  setupRPCMock([mockItineraries[0], mockItineraries[7]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -76,6 +102,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
       );
       expect(ownItinerary).toBeUndefined();
 
+      expect(rpcHandler).toHaveBeenCalled();
       expect(result.current.matchingItineraries.every(
         (itinerary) => itinerary.userInfo?.uid !== currentUserId
       )).toBe(true);
@@ -84,7 +111,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
     test("should exclude viewed itineraries from localStorage", async () => {
       mockLocalStorage.setItem("VIEWED_ITINERARIES", JSON.stringify(["itinerary-1", "itinerary-7"]));
 
-      setupFirestoreMock([mockItineraries[0], mockItineraries[6]]);
+      // Server-side filtering: mock returns only non-viewed itineraries
+      setupRPCMock([mockItineraries[1], mockItineraries[2]]); // itinerary-2 and itinerary-3
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -92,6 +120,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
+      // Should only see the non-viewed itineraries
+      expect(result.current.matchingItineraries.length).toBeGreaterThan(0);
       const viewedItinerary1 = result.current.matchingItineraries.find(
         (itinerary) => itinerary.id === "itinerary-1"
       );
@@ -106,7 +136,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
   describe("Date Overlap Tests", () => {
     test("should include itineraries with overlapping dates", async () => {
-      setupFirestoreMock([mockItineraries[9]]);
+  setupRPCMock([mockItineraries[9]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -119,8 +149,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
     });
 
     test("should exclude itineraries with no date overlap", async () => {
-      // Use itinerary with dates that don't overlap with baseUserItinerary
-      setupFirestoreMock([mockItineraries[2]]);
+      // Server-side filtering: mock returns empty array (no matches with date overlap)
+      setupRPCMock([]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -134,7 +164,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
   describe("Age Range Tests", () => {
     test("should include users within age range", async () => {
-      setupFirestoreMock([mockItineraries[0]]);
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -147,8 +177,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
     });
 
     test("should exclude users outside age range", async () => {
-      // Use itinerary with user outside age range
-      setupFirestoreMock([mockItineraries[1]]);
+      // Server-side filtering: mock returns empty array (no matches within age range)
+      setupRPCMock([]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -162,7 +192,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
   describe("Sexual Orientation Tests", () => {
     test("should exclude users with incompatible sexual orientation", async () => {
-      setupFirestoreMock([]);
+  setupRPCMock([]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -174,7 +204,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
     });
 
     test("should include users with compatible sexual orientation", async () => {
-      setupFirestoreMock([mockItineraries[0]]);
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -190,12 +220,11 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
   describe("Cache Tests", () => {
     test("should return results from Firestore (cache unused in current implementation)", async () => {
-      const cachedResults = [mockItineraries[0]];
-      mockSearchCache.get.mockReturnValue(cachedResults);
+  const cachedResults = [mockItineraries[0]];
+  mockSearchCache.get.mockReturnValue(cachedResults);
 
-      // Even if cache has data, current implementation queries Firestore.
-      setupFirestoreMock([mockItineraries[0]]);
-
+  // Even if cache has data, current implementation calls search RPC.
+  setupRPCMock([mockItineraries[0]]);
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
@@ -203,12 +232,12 @@ describe("useSearchItineraries - Real-Time Search", () => {
       });
 
       // Current hook implementation always queries Firestore
-      expect(mockGetDocs).toHaveBeenCalled();
-      expect(result.current.matchingItineraries).toHaveLength(1);
+  expect(rpcHandler).toHaveBeenCalled();
+  expect(result.current.matchingItineraries).toHaveLength(1);
     });
 
     test("should fetch from Firestore and not call cache setters", async () => {
-      setupFirestoreMock([mockItineraries[0]]);
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -217,17 +246,15 @@ describe("useSearchItineraries - Real-Time Search", () => {
       });
 
       // Ensure Firestore was called and cache setter was not invoked in this implementation
-      expect(mockGetDocs).toHaveBeenCalled();
-      expect(mockSearchCache.setWithMetadata).not.toHaveBeenCalled();
+  expect(rpcHandler).toHaveBeenCalled();
+  expect(mockSearchCache.setWithMetadata).not.toHaveBeenCalled();
     });
   });
 
   describe("Pagination Tests", () => {
-    test("should load more matches when available", async () => {
-      // Create a raw batch of PAGE_SIZE where only the first document passes client-side filters
-      // (the rest are from the current user and therefore filtered out). This forces
-      // hasMore=true (because snapshot length === PAGE_SIZE) but filteredResults length === 1
-      const firstBatch = Array.from({ length: 50 }, (_, i) => {
+    test("should NOT automatically load more matches (to preserve usage limits)", async () => {
+      // Create a batch where only 1 result passes client-side filters
+      const firstBatch = Array.from({ length: 10 }, (_, i) => {
         if (i === 0) {
           return {
             ...mockItineraries[0],
@@ -242,40 +269,43 @@ describe("useSearchItineraries - Real-Time Search", () => {
         };
       });
 
-      setupFirestoreMock(firstBatch);
+  setupRPCMock(firstBatch);
 
       const { result } = renderHook(() => useSearchItineraries());
 
-      // Initial search - will set hasMore=true (raw PAGE_SIZE) but filtered results will be small
+      // Initial search - will set hasMore=true (raw PAGE_SIZE=10) but filtered results = 1
       await act(async () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      expect(result.current.hasMore).toBe(true);
+  expect(rpcHandler).toHaveBeenCalledTimes(1);
+  expect(result.current.hasMore).toBe(true); // Based on raw results
+      expect(result.current.matchingItineraries.length).toBe(1); // Only 1 after filtering
 
-      // Setup second batch (next page)
+      // Setup second batch (should never be fetched)
       const secondBatch = Array.from({ length: 5 }, (_, i) => ({
         ...mockItineraries[0],
         id: `itinerary-second-${i}`,
         userInfo: { ...mockItineraries[0].userInfo, uid: `other-${i}` }
       }));
-      setupFirestoreMock(secondBatch);
+  setupRPCMock(secondBatch);
 
-      // Now request next itinerary which should trigger a fetch because we exhausted the single filtered result
+      // Request next itinerary - should just move to end state, NOT fetch more
       await act(async () => {
         await result.current.loadNextItinerary();
       });
 
-      // We expect at least two fetches: initial + next
-      expect(mockGetDocs).toHaveBeenCalledTimes(2);
-      // Should have combined results from both batches (after filtering)
-      expect(result.current.matchingItineraries.length).toBeGreaterThanOrEqual(1);
+      // Should still only have 1 RPC call (no automatic pagination)
+      // This is correct because usage tracking happens at UI layer
+  expect(rpcHandler).toHaveBeenCalledTimes(1);
+      expect(result.current.matchingItineraries.length).toBe(0); // Reached end
+      expect(result.current.hasMore).toBe(false); // No more in current batch
     });
 
-    test("should check for more matches when near end (using loadNextItinerary)", async () => {
-      // Create enough results to match PAGE_SIZE (50) so hasMore becomes true
-      // Make only the first doc valid so filtered results are small and trigger fetch on next
-      const firstBatch = Array.from({ length: 50 }, (_, i) => {
+    test("should set hasMore based on raw results, not filtered (for server pagination)", async () => {
+      // Create enough results to match PAGE_SIZE (10) so hasMore becomes true
+      // Even though only 1 passes filtering, hasMore should be true based on raw count
+      const firstBatch = Array.from({ length: 10 }, (_, i) => {
         if (i === 0) {
           return {
             ...mockItineraries[0],
@@ -290,7 +320,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
         };
       });
 
-      setupFirestoreMock(firstBatch);
+  setupRPCMock(firstBatch);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -298,38 +328,35 @@ describe("useSearchItineraries - Real-Time Search", () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      // Verify hasMore is true initially
-      expect(result.current.hasMore).toBe(true);
+      // hasMore should be true because raw results = PAGE_SIZE (10)
+      // This indicates server has more results, even if client-side filtering reduces them
+  expect(rpcHandler).toHaveBeenCalledTimes(1);
+  expect(result.current.hasMore).toBe(true);
+      expect(result.current.matchingItineraries.length).toBe(1); // Only 1 after filtering
 
-      // Mock that we have more results available for the load
-      const secondBatch = Array.from({ length: 5 }, (_, i) => ({
-        ...mockItineraries[0],
-        id: `itinerary-auto-${i}`,
-      }));
-      setupFirestoreMock(secondBatch);
-
+      // When we advance past the single result, hasMore should become false
       await act(async () => {
-        // Explicitly trigger loading the next batch
         await result.current.loadNextItinerary();
       });
 
-      // Should have triggered an extra fetch
-      expect(mockGetDocs).toHaveBeenCalledTimes(2);
+      // Still only 1 RPC call - no automatic pagination
+      expect(rpcHandler).toHaveBeenCalledTimes(1);
+      expect(result.current.hasMore).toBe(false); // Now false because we exhausted current batch
     });
   });
 
   describe("Error Handling Tests", () => {
     test("should handle Firestore errors gracefully", async () => {
-      mockGetDocs.mockRejectedValue(new Error("Firestore error"));
-
+  const rpcError = jest.fn().mockRejectedValue(new Error("RPC error"));
+  (global as any).__mock_httpsCallable_searchItineraries = rpcError;
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      expect(result.current.error).toBe("Failed to search itineraries. Please try again later.");
-      expect(result.current.matchingItineraries).toHaveLength(0);
+  expect(result.current.error).toBe("Failed to search itineraries. Please try again later.");
+  expect(result.current.matchingItineraries).toHaveLength(0);
     });
 
     test("should handle localStorage errors gracefully", async () => {
@@ -338,7 +365,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
         throw new Error("localStorage error");
       });
 
-      setupFirestoreMock([mockItineraries[0]]);
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -346,49 +373,26 @@ describe("useSearchItineraries - Real-Time Search", () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      expect(result.current.error).toBeNull();
-      expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBeNull();
+  expect(result.current.loading).toBe(false);
 
       mockLocalStorage.getItem = originalGetItem;
     });
 
-    test("should handle load more errors gracefully", async () => {
-      // Create a PAGE_SIZE raw batch but only the first document will pass client-side filters
-      const firstBatch = Array.from({ length: 50 }, (_, i) => {
-        if (i === 0) {
-          return {
-            ...mockItineraries[0],
-            id: `itinerary-${i}`,
-            userInfo: { ...mockItineraries[0].userInfo, uid: 'other-user' }
-          };
-        }
-        return {
-          ...mockItineraries[0],
-          id: `itinerary-${i}`,
-          userInfo: { ...mockItineraries[0].userInfo, uid: currentUserId }
-        };
-      });
-
-      setupFirestoreMock(firstBatch);
+    test("should handle search errors gracefully", async () => {
+      const rpcError = jest.fn().mockRejectedValue(new Error("Search error"));
+      (global as any).__mock_httpsCallable_searchItineraries = rpcError;
 
       const { result } = renderHook(() => useSearchItineraries());
 
-      // Initial search - filtered results small, hasMore true because raw PAGE_SIZE
+      // Attempt search that will fail
       await act(async () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      expect(result.current.hasMore).toBe(true);
-
-      // Make load more fail for the next fetch
-      mockGetDocs.mockRejectedValue(new Error("Load more error"));
-
-      await act(async () => {
-        await result.current.loadNextItinerary();
-      });
-
-      // Hook sets this message when load more fails
-      expect(result.current.error).toBe("Failed to load more itineraries.");
+      // Hook sets this message when search fails
+      expect(result.current.error).toBe("Failed to search itineraries. Please try again later.");
+      expect(result.current.matchingItineraries.length).toBe(0);
     });
   });
 
@@ -399,7 +403,9 @@ describe("useSearchItineraries - Real-Time Search", () => {
         resolvePromise = resolve;
       });
 
-      mockGetDocs.mockReturnValue(promise);
+      // Make the RPC return a promise we can resolve later to test loading
+      rpcHandler.mockReturnValue(promise);
+      (global as any).__mock_httpsCallable_searchItineraries = rpcHandler;
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -410,7 +416,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
       expect(result.current.loading).toBe(true);
 
       await act(async () => {
-        resolvePromise!({ docs: [] });
+        resolvePromise!({ data: { success: true, data: [] } });
       });
 
       expect(result.current.loading).toBe(false);
@@ -419,7 +425,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
   describe("Comprehensive Matching Tests", () => {
     test("should return perfect matches", async () => {
-      setupFirestoreMock([mockItineraries[6]]);
+      setupRPCMock([mockItineraries[6]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -438,8 +444,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
       const cachedData = [mockItineraries[0]];
       mockSearchCache.get.mockReturnValue(cachedData);
 
-      // Current implementation ignores cache and queries Firestore - ensure we mock Firestore
-      setupFirestoreMock([mockItineraries[0]]);
+  // Current implementation ignores cache and calls search RPC.
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -448,8 +454,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      // Verify: Firestore WAS called in current implementation
-      expect(mockGetDocs).toHaveBeenCalled();
+  // Verify: RPC was called in current implementation
+  expect(rpcHandler).toHaveBeenCalled();
 
       // Verify: Results were produced
       expect(result.current.matchingItineraries).toHaveLength(1);
@@ -461,8 +467,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
       // Setup: Empty cache
       mockSearchCache.get.mockReturnValue(null);
 
-      // Ensure Firestore returns a small batch
-      setupFirestoreMock([mockItineraries[0]]);
+  // Ensure RPC returns a small batch
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -471,8 +477,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
         await result.current.searchItineraries(baseUserItinerary, currentUserId);
       });
 
-      // Verify: Firestore WAS called (cache miss)
-      expect(mockGetDocs).toHaveBeenCalledTimes(1);
+  // Verify: RPC was called (cache miss)
+  expect(rpcHandler).toHaveBeenCalledTimes(1);
       // Current implementation does not set cache metadata
       expect(mockSearchCache.setWithMetadata).not.toHaveBeenCalled();
     });
@@ -481,8 +487,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
       // Setup: Cache with results
       const cachedData = [mockItineraries[0]];
       mockSearchCache.get.mockReturnValue(cachedData);
-      // Current implementation ignores cache and queries Firestore - mock Firestore
-      setupFirestoreMock([mockItineraries[0]]);
+  // Current implementation ignores cache and calls the RPC - mock RPC
+  setupRPCMock([mockItineraries[0]]);
 
       const { result } = renderHook(() => useSearchItineraries());
 
@@ -492,7 +498,7 @@ describe("useSearchItineraries - Real-Time Search", () => {
       });
 
       // There is no auto-loading API exposed; ensure only initial fetch occurred
-      expect(mockGetDocs).toHaveBeenCalledTimes(1);
+      expect(rpcHandler).toHaveBeenCalledTimes(1);
       expect(result.current.hasMore).toBe(false);
     });
 
@@ -530,7 +536,9 @@ describe("useSearchItineraries - Real-Time Search", () => {
 
       describe('No Preference Query Filter Logic', () => {
         it('should add gender, status, and sexualOrientation filters if not No Preference', async () => {
-          const { result } = renderHook(() => useSearchItineraries());
+        // Ensure RPC handler is registered so we can assert on the outgoing payload
+        setupRPCMock([]);
+        const { result } = renderHook(() => useSearchItineraries());
           const itinerary = {
             ...baseUserItinerary,
             gender: 'Female',
@@ -545,12 +553,13 @@ describe("useSearchItineraries - Real-Time Search", () => {
           await act(async () => {
             await result.current.searchItineraries(itinerary as any, currentUserId);
           });
-          (expect(mockWhere) as any).toHaveBeenCalledWith('userInfo.gender', '==', 'Female');
-          (expect(mockWhere) as any).toHaveBeenCalledWith('userInfo.status', '==', 'single');
-          (expect(mockWhere) as any).toHaveBeenCalledWith('userInfo.sexualOrientation', '==', 'heterosexual');
+          // Confirm RPC payload includes explicit filters
+          expect(rpcHandler).toHaveBeenCalledWith(expect.objectContaining({ gender: 'Female', status: 'single', sexualOrientation: 'heterosexual' }));
         });
 
         it('should skip gender, status, and sexualOrientation filters if set to No Preference', async () => {
+          // Ensure RPC handler is registered so we can assert on the outgoing payload
+          setupRPCMock([]);
           const { result } = renderHook(() => useSearchItineraries());
           const itinerary = {
             ...baseUserItinerary,
@@ -566,9 +575,8 @@ describe("useSearchItineraries - Real-Time Search", () => {
           await act(async () => {
             await result.current.searchItineraries(itinerary as any, currentUserId);
           });
-          (expect(mockWhere) as any).not.toHaveBeenCalledWith('userInfo.gender', '==', 'No Preference');
-          (expect(mockWhere) as any).not.toHaveBeenCalledWith('userInfo.status', '==', 'No Preference');
-          (expect(mockWhere) as any).not.toHaveBeenCalledWith('userInfo.sexualOrientation', '==', 'No Preference');
+          // When preferences are 'No Preference' the hook still forwards them to RPC
+          expect(rpcHandler).toHaveBeenCalledWith(expect.objectContaining({ gender: 'No Preference', status: 'No Preference', sexualOrientation: 'No Preference' }));
         });
       });
 
@@ -616,6 +624,170 @@ describe("useSearchItineraries - Real-Time Search", () => {
           writable: true
         });
       });
+    });
+  });
+
+  describe("Viewed Itineraries Exclusion", () => {
+    beforeEach(() => {
+      mockLocalStorage.clear();
+      rpcHandler = jest.fn();
+    });
+
+    test("should pass viewed itinerary IDs to exclude from search", async () => {
+      const viewedIds = ["itin-1", "itin-2", "itin-3"];
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', JSON.stringify(viewedIds));
+
+      const filteredResults = [mockItineraries[3], mockItineraries[4]];
+      setupRPCMock(filteredResults);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Verify RPC was called with excludedIds parameter
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destination: baseUserItinerary.destination,
+          excludedIds: viewedIds,
+        })
+      );
+
+      // Verify results were returned
+      expect(result.current.matchingItineraries).toHaveLength(1);
+    });
+
+    test("should handle empty viewed itineraries list", async () => {
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', JSON.stringify([]));
+
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Should pass empty array
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludedIds: [],
+        })
+      );
+    });
+
+    test("should handle missing VIEWED_ITINERARIES in localStorage", async () => {
+      // Don't set VIEWED_ITINERARIES at all
+
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Should default to empty array
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludedIds: [],
+        })
+      );
+    });
+
+    test("should handle corrupted localStorage data gracefully", async () => {
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', 'not-valid-json{');
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Should log error but continue with empty array
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error reading viewed itineraries:',
+        expect.any(Error)
+      );
+
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludedIds: [],
+        })
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test("should extract IDs from objects with id property", async () => {
+      // Some legacy code might store full objects
+      const viewedObjects = [
+        { id: 'itin-1', destination: 'Paris' },
+        { id: 'itin-2', destination: 'London' },
+      ];
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', JSON.stringify(viewedObjects));
+
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Should extract IDs from objects
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludedIds: ['itin-1', 'itin-2'],
+        })
+      );
+    });
+
+    test("should include excludedIds in all search requests", async () => {
+      const viewedIds = ["viewed-1", "viewed-2"];
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', JSON.stringify(viewedIds));
+
+      // Simple test: just verify excludedIds is passed on initial search
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Verify excludedIds was included in the request
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ 
+          excludedIds: viewedIds,
+          pageSize: 10 // Also verify PAGE_SIZE is 10
+        })
+      );
+    });
+
+    test("should filter null or undefined IDs from viewed list", async () => {
+      const viewedMixed = ['itin-1', null, 'itin-2', undefined, '', 'itin-3'];
+      mockLocalStorage.setItem('VIEWED_ITINERARIES', JSON.stringify(viewedMixed));
+
+      setupRPCMock([mockItineraries[0]]);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(baseUserItinerary, currentUserId);
+      });
+
+      // Should filter out falsy values
+      expect(rpcHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excludedIds: ['itin-1', 'itin-2', 'itin-3'],
+        })
+      );
     });
   });
 });

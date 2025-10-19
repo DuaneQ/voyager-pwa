@@ -16,8 +16,7 @@ import {
 } from '@mui/icons-material';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
-import { app } from '../../environments/firebaseConfig';
+import useUpdateItinerary from '../../hooks/useUpdateItinerary';
 
 // Import refactored sections
 import { AIItineraryHeader } from './sections/AIItineraryHeader';
@@ -28,6 +27,9 @@ import ShareAIItineraryModal from '../modals/ShareAIItineraryModal';
 import AccommodationsSection from './sections/AccommodationsSection';
 import AlternativeActivitiesSection from './sections/AlternativeActivitiesSection';
 import AlternativeRestaurantsSection from './sections/AlternativeRestaurantsSection';
+import { db } from '../../environments/firebaseConfig';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth } from '../../environments/firebaseConfig';
 
 interface AIItineraryDisplayProps {
   itinerary?: AIGeneratedItinerary | null;
@@ -35,6 +37,7 @@ interface AIItineraryDisplayProps {
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
   const { itineraries, refreshItineraries } = useAIGeneratedItineraries();
+  const { updateItinerary } = useUpdateItinerary();
   const [selectedId, setSelectedId] = useState<string | null>(itinerary?.id || null);
   const [selectedItinerary, setSelectedItinerary] = useState<AIGeneratedItinerary | null>(itinerary || null);
   
@@ -106,6 +109,16 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     }
   }, [selectedId, itineraries]);
 
+  // Log for debugging: which user and how many itineraries the UI received
+  useEffect(() => {
+    try {
+  const uid = auth.currentUser?.uid || (itineraries && (itineraries[0] as any)?.userInfo?.uid) || 'unknown';
+      console.info('[AIItineraryDisplay] user:', uid, 'itinerariesReceived:', Array.isArray(itineraries) ? itineraries.length : 0);
+    } catch (e) {
+      console.info('[AIItineraryDisplay] itinerariesUpdated', Array.isArray(itineraries) ? itineraries.length : 0);
+    }
+  }, [itineraries]);
+
   // Use editingData when in edit mode, otherwise use selectedItinerary
   const currentItinerary = isEditing && editingData ? editingData : selectedItinerary;
   const itineraryData = currentItinerary?.response?.data?.itinerary;
@@ -175,26 +188,27 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   // Save function for editing
   const handleSave = async () => {
     if (!editingData || !selectedItinerary) return;
-    
+
     try {
-      const db = getFirestore(app);
-      const docRef = doc(db, 'itineraries', selectedItinerary.id);
-      
-      const updatePayload = {
+      // Build the minimal updates object expected by the updateItinerary RPC
+      const updatePayload: any = {
         response: editingData.response,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
         destination: editingData.response?.data?.itinerary?.destination || editingData.destination,
         startDate: editingData.response?.data?.itinerary?.startDate || editingData.startDate,
         endDate: editingData.response?.data?.itinerary?.endDate || editingData.endDate
       };
-      
-      await updateDoc(docRef, updatePayload);
+
+      // Use the RPC-based updater (matches how non-AI itineraries are updated)
+      await updateItinerary(selectedItinerary.id, updatePayload as any);
+
+      // Update local state and refresh the list
       setSelectedItinerary(editingData);
       await refreshItineraries();
       setIsEditing(false);
       clearAllSelections();
       setEditingData(null);
-      
+
       alert('Changes saved successfully!');
     } catch (error) {
       alert(`Failed to save changes: ${error instanceof Error ? error.message : String(error)}`);
@@ -212,8 +226,33 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     setEditingData(null);
   };
 
-  const handleShare = () => {
-    setShareModalOpen(true);
+  const handleShare = async () => {
+    if (!selectedItinerary) return;
+
+    try {
+      // Save directly to Firestore so the legacy share page (which reads
+      // from Firestore) can serve the itinerary. Doing this inline keeps the
+      // behavior local to the component and avoids introducing a new hook.
+      const id = selectedItinerary.id;
+
+      const payload = {
+        ...selectedItinerary,
+        id,
+        createdAt: selectedItinerary.createdAt || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      } as any;
+
+      const ref = doc(db, 'itineraries', id);
+      await setDoc(ref, payload, { merge: true });
+
+      // Update UI to reflect the persisted id and refresh the list
+      setSelectedItinerary({ ...selectedItinerary, id } as any);
+      try { await refreshItineraries(); } catch (e) { /* best-effort */ }
+      setShareModalOpen(true);
+    } catch (err: any) {
+      console.error('Error saving itinerary to Firestore for share', err);
+      alert('Unable to create a shareable link right now. Please try again.');
+    }
   };
 
   const handleShareClose = () => {

@@ -42,12 +42,28 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   const currentUserId = auth.currentUser?.uid;
 
   // Fix timezone issue by creating date at noon UTC to avoid day shifting
-  const startDate = itinerary.startDate
-    ? new Date(itinerary.startDate + "T12:00:00.000Z").toLocaleDateString()
-    : "N/A";
-  const endDate = itinerary.endDate
-    ? new Date(itinerary.endDate + "T12:00:00.000Z").toLocaleDateString()
-    : "N/A";
+  // Robust date parsing: accept Date instances, epoch numbers, ISO datetimes, or YYYY-MM-DD
+  const parseToDate = (val: any): Date | null => {
+    if (!val && val !== 0) return null;
+    // Date object
+    if (val instanceof Date) return val;
+    // numeric epoch
+    if (typeof val === 'number') return new Date(val);
+    // numeric string epoch
+    if (typeof val === 'string' && /^\d+$/.test(val)) return new Date(Number(val));
+    if (typeof val === 'string') {
+      // If string already contains time component, parse directly
+      if (val.includes('T')) return new Date(val);
+      // Otherwise assume YYYY-MM-DD and set midday UTC to avoid timezone shifts
+      return new Date(val + 'T12:00:00.000Z');
+    }
+    return null;
+  };
+
+  const _start = parseToDate(itinerary.startDate);
+  const _end = parseToDate(itinerary.endDate);
+  const startDate = _start ? _start.toLocaleDateString() : 'N/A';
+  const endDate = _end ? _end.toLocaleDateString() : 'N/A';
 
   // Get activities - for AI itineraries, extract from nested structure
   const getActivities = (): string[] => {

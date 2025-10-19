@@ -106,7 +106,7 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
                 }}
                 title="Share Itinerary"
               >
-                <Share fontSize="small" />
+                <Share fontSize="small" data-testid="ShareIcon" />
               </IconButton>
             )}
             {!isEditing ? (

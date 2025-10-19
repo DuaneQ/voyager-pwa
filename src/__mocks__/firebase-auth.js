@@ -1,8 +1,29 @@
 // __mocks__/firebase-auth.js
-export const onAuthStateChanged = jest.fn((auth, callback) => {
-  // Immediately call the callback with the current user
-  callback(global.__mockCurrentUser);
-  // Return a no-op unsubscribe function
+// Provide common Firebase Auth functions as Jest mocks so test suites can
+// configure return values with mockResolvedValue/mockImplementation.
+const mockCurrentUser = typeof global !== 'undefined' ? global.__mockCurrentUser : null;
+
+const onAuthStateChanged = jest.fn((callback) => {
+  if (typeof callback === 'function') {
+    callback(mockCurrentUser);
+  }
   return () => {};
 });
-export const getAuth = jest.fn(() => ({ currentUser: global.__mockCurrentUser }));
+
+const getAuth = jest.fn(() => ({ currentUser: mockCurrentUser, onAuthStateChanged }));
+
+const signInWithPopup = jest.fn();
+const createUserWithEmailAndPassword = jest.fn();
+const sendEmailVerification = jest.fn();
+const signOut = jest.fn();
+const GoogleAuthProvider = jest.fn();
+
+module.exports = {
+  onAuthStateChanged,
+  getAuth,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signOut,
+  GoogleAuthProvider,
+};

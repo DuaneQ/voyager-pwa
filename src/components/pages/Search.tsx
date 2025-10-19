@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import useUpdateItinerary from '../../hooks/useUpdateItinerary';
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Button,
   Box,
   Typography,
 } from "@mui/material";
@@ -14,13 +14,9 @@ import ItinerarySelector from '../search/ItinerarySelector';
 import MatchDisplay from '../search/MatchDisplay';
 import {
   getFirestore,
-  doc,
-  updateDoc,
-  arrayUnion,
   addDoc,
   collection,
   serverTimestamp,
-  getDoc,
 } from "firebase/firestore";
 import { app } from "../../environments/firebaseConfig";
 import { auth } from "../../environments/firebaseConfig";
@@ -81,6 +77,7 @@ export const Search = React.memo(() => {
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showModal, setShowModal] = useState(false);
   const { fetchItineraries } = useGetItinerariesFromFirestore();
+  const { updateItinerary } = useUpdateItinerary();
   const [isFetching, setIsFetching] = useState(true);
 
   const {
@@ -90,6 +87,15 @@ export const Search = React.memo(() => {
     loading: searchLoading,
     hasMore
   } = useSearchItineraries();
+
+  // Debug log: print userId and counts whenever matching itineraries or owned itineraries change
+  useEffect(() => {
+    try {
+      console.info('[Search] user:', 'ownedItineraries:', Array.isArray(itineraries) ? itineraries.length : 0, 'matchingItineraries:', Array.isArray(matchingItineraries) ? matchingItineraries.length : 0);
+    } catch (e) {
+      console.info('[Search] itineraries updated');
+    }
+  }, [ itineraries, matchingItineraries]);
 
   const [refreshKey, setRefreshKey] = useState<number>(0);
   // Removed currentMatchIndex since we show one itinerary at a time
@@ -215,46 +221,45 @@ export const Search = React.memo(() => {
       return;
     }
 
-  // 1. Add current user's UID to the liked itinerary's likes array in Firestore
-  const _db = getFirestore(app);
-  const itineraryRef = doc(_db, "itineraries", itinerary.id);
     try {
-      await updateDoc(itineraryRef, {
-        likes: arrayUnion(userId),
-      });
+      // 1. Use hook to update itinerary likes in canonical store (Cloud SQL via RPC)
+      const existingLikes: string[] = Array.isArray(itinerary.likes) ? itinerary.likes : [];
+      const newLikes = Array.from(new Set([...existingLikes, userId]));
 
-    // 2. Fetch the latest version of the current user's selected itinerary from Firestore
-    const myItineraryRef = doc(_db, "itineraries", selectedItineraryId);
-    const myItinerarySnap = await getDoc(myItineraryRef);
-    const myItinerary = myItinerarySnap.data();
-    if (!myItinerary) {
-      getNextItinerary();
-      return;
-    }
+      await updateItinerary(itinerary.id, { likes: newLikes });
 
-    // 3. Check if the other user's UID is in your itinerary's likes array
-    const otherUserUid = itinerary.userInfo?.uid ?? "";
-    if (!otherUserUid) {
-      getNextItinerary();
-      return;
-    }
+      // 2. Fetch the current user's itineraries (RPC-backed) and find the selected one
+      const myItineraries = await fetchItineraries();
+      const myItinerary = (myItineraries || []).find((it: any) => it.id === selectedItineraryId);
+      if (!myItinerary) {
+        // If we couldn't find user's itinerary in Cloud SQL, just continue
+        getNextItinerary();
+        return;
+      }
 
-    // 4. Create a new connection document with a unique ID if mutual like
-  if ((myItinerary.likes || []).includes(otherUserUid)) {
-      const myEmail = myItinerary?.userInfo?.email ?? "";
-      const otherEmail = itinerary?.userInfo?.email ?? "";
+      // 3. Check mutual like (other user's uid present in myItinerary.likes)
+      const otherUserUid = itinerary.userInfo?.uid ?? "";
+      if (!otherUserUid) {
+        getNextItinerary();
+        return;
+      }
 
-  await addDoc(collection(_db, "connections"), {
-        users: [userId, otherUserUid],
-        emails: [myEmail, otherEmail],
-        unreadCounts: {
-          [userId]: 0,
-          [otherUserUid]: 0,
-        },
-        itineraryIds: [myItineraryRef.id, itinerary.id],
-        itineraries: [myItinerary, itinerary],
-        createdAt: serverTimestamp(),
-      });
+      if (Array.isArray(myItinerary.likes) && myItinerary.likes.includes(otherUserUid)) {
+        const myEmail = myItinerary?.userInfo?.email ?? "";
+        const otherEmail = itinerary?.userInfo?.email ?? "";
+
+        const _db = getFirestore(app);
+        await addDoc(collection(_db, "connections"), {
+          users: [userId, otherUserUid],
+          emails: [myEmail, otherEmail],
+          unreadCounts: {
+            [userId]: 0,
+            [otherUserUid]: 0,
+          },
+          itineraryIds: [selectedItineraryId, itinerary.id],
+          itineraries: [myItinerary, itinerary],
+          createdAt: serverTimestamp(),
+        });
       setHasNewConnection(true);
       alert("It's a match! You can now chat with this user.");
       if (process.env.NODE_ENV === "production") {
@@ -265,10 +270,10 @@ export const Search = React.memo(() => {
 
     } catch (e) {
       console.error('Error handling like action:', e);
+    } finally {
+      // Get next itinerary after like action
+      getNextItinerary();
     }
-
-    // Get next itinerary after like action
-    getNextItinerary();
   }, [hasReachedLimit, trackView, getNextItinerary, db, selectedItineraryId, setHasNewConnection, userId]);
 
   // Sort itineraries by startDate ascending (oldest first)
@@ -354,6 +359,7 @@ export const Search = React.memo(() => {
         selectedItineraryId={selectedItineraryId}
         onSelect={handleItinerarySelect}
         onOpenModal={() => setShowModal(true)}
+        isLoading={isFetching}
       />
 
       {/* Content area */}
@@ -374,7 +380,7 @@ export const Search = React.memo(() => {
             sx={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               justifyContent: 'center',
               padding: 2,
               maxWidth: 300,
@@ -390,8 +396,7 @@ export const Search = React.memo(() => {
                 borderRadius: 2,
                 padding: 3,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                maxWidth: '100%',
-                mt: -30
+                maxWidth: '100%'
               }}>
               <Typography
                 variant="body1"
@@ -399,12 +404,13 @@ export const Search = React.memo(() => {
                   color: 'white',
                   fontSize: '0.875rem',
                   lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap'
+                  whiteSpace: 'pre-wrap',
+                  textAlign: 'left'
                 }}>
-                After completing your profile, you canreate an itinerary to find matches for 
+                After completing your profile, you can manually create an itinerary (by clicking the Add/EDIT Itineraries button) to find matches for 
                 your future trips. Once created, select one of your itineraries from the dropdown, 
                 and we'll match you with others based on destination, dates, and preferences.
-                Once matched, you can chat and plan your adventures together.
+                Once matched, you can chat and plan your adventures together.  You can also use AI to create your itinerarieson the Travel Preference tab.
               </Typography>
             </Box>
           </Box>
@@ -431,6 +437,7 @@ export const Search = React.memo(() => {
         onItineraryAdded={() => setRefreshKey((prev) => prev + 1)}
         onRefresh={() => setRefreshKey((prev) => prev + 1)}
         itineraries={itineraries}
+        isLoading={isFetching}
       />
     </Box>
   );

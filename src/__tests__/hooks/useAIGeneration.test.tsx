@@ -70,53 +70,60 @@ describe("useAIGeneration hook", () => {
     } as any;
     // Mock httpsCallable for generateItineraryWithAI to return a canonical payload
     const mockHttpsCallable = mockedFunctions.httpsCallable as jest.Mock;
-    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
-      if (name === "generateItineraryWithAI") {
-        return jest.fn(() =>
-          Promise.resolve({
+    const genMock = jest.fn(() =>
+      Promise.resolve({
+        data: {
+          id: "server-gen-1",
+          response: {
+            success: true,
             data: {
-              id: "server-gen-1",
-              response: {
-                success: true,
-                data: {
-                  itinerary: { id: "server-gen-1" },
-                  recommendations: {
-                    transportation: {
-                      mode: "train",
-                      estimatedTime: "6h",
-                      estimatedDistance: "400km",
-                      estimatedCost: { amount: 60, currency: "EUR" },
-                      provider: "Deutsche Bahn",
-                      tips: "Book early for best prices.",
-                    },
-                  },
+              itinerary: { id: "server-gen-1" },
+              recommendations: {
+                transportation: {
+                  mode: "train",
+                  estimatedTime: "6h",
+                  estimatedDistance: "400km",
+                  estimatedCost: { amount: 60, currency: "EUR" },
+                  provider: "Deutsche Bahn",
+                  tips: "Book early for best prices.",
                 },
               },
             },
-          })
-        );
-      }
-      // fallback to default mocks
+          },
+        },
+      })
+    );
+    const createMock = jest.fn(() => Promise.resolve({ data: { success: true, data: {} } }));
+
+    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
+      if (name === "generateItineraryWithAI") return genMock;
+      if (name === "createItinerary") return createMock;
       return jest.fn(() => Promise.resolve({ data: {} }));
     });
+
+    // register returned callables so assertions can inspect them
+    try {
+      (mockedFunctions as any).__rpcMocks = (mockedFunctions as any).__rpcMocks || {};
+      (mockedFunctions as any).__rpcMocks.generateItineraryWithAI = genMock;
+      (mockedFunctions as any).__rpcMocks.createItinerary = createMock;
+    } catch (e) {}
+
     await act(async () => {
       const res = await result.current.generateItinerary(req);
       expect(res).toHaveProperty("id");
       expect(res.success).toBe(true);
     });
-    // Ensure Firestore save includes transportation recommendations under recommendations.transportation
-    const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
-    expect(mockSetDoc).toHaveBeenCalled();
-    const savedArg = mockSetDoc.mock.calls[0][1];
-    expect(savedArg.response.data.itinerary).toBeDefined();
-    // Should include transportation recommendations under recommendations.transportation
-    expect(savedArg.response.data.recommendations.transportation).toBeDefined();
-    expect(savedArg.response.data.recommendations.transportation.mode).toBe(
-      "train"
-    );
-    expect(savedArg.response.data.recommendations.transportation.provider).toBe(
-      "Deutsche Bahn"
-    );
+
+    // Ensure persistence happened via createItinerary RPC and includes transportation
+    const rpcMocks = (mockedFunctions as any).__rpcMocks as Record<string, jest.Mock>;
+    const createItineraryMock = rpcMocks.createItinerary;
+    expect(createItineraryMock).toHaveBeenCalled();
+    const savedArg = createItineraryMock.mock.calls[0][0];
+    expect(savedArg.itinerary).toBeDefined();
+    // Should include transportation recommendations under response.data.recommendations.transportation
+    expect(savedArg.itinerary.response.data.recommendations.transportation).toBeDefined();
+    expect(savedArg.itinerary.response.data.recommendations.transportation.mode).toBe("train");
+    expect(savedArg.itinerary.response.data.recommendations.transportation.provider).toBe("Deutsche Bahn");
   });
 
   it("calls searchFlights when profile primaryMode is airplane", async () => {
@@ -147,6 +154,7 @@ describe("useAIGeneration hook", () => {
         return jest.fn(() => Promise.resolve({ data: { activities: [] } }));
       if (name === "generateItineraryWithAI")
         return generateItineraryWithAIMock;
+      if (name === "createItinerary") return jest.fn(() => Promise.resolve({ data: { success: true, data: {} } }));
       return jest.fn(() => Promise.resolve({ data: {} }));
     });
 
@@ -199,6 +207,7 @@ describe("useAIGeneration hook", () => {
         return jest.fn(() => Promise.resolve({ data: { activities: [] } }));
       if (name === "generateItineraryWithAI")
         return generateItineraryWithAIMock;
+      if (name === "createItinerary") return jest.fn(() => Promise.resolve({ data: { success: true, data: {} } }));
       return jest.fn(() => Promise.resolve({ data: {} }));
     });
 
@@ -268,54 +277,34 @@ describe("useAIGeneration hook", () => {
 
     mockGetFunctions.mockReturnValue({});
 
-    // httpsCallable should return a function which when called returns a Promise
+    // Provide a map of RPC name -> jest.Mock so tests can inspect calls and args
+    const rpcMocks: Record<string, jest.Mock> = {} as any;
+
+    const ensureRpc = (name: string, impl?: (...args: any[]) => any) => {
+      if (!rpcMocks[name]) {
+        rpcMocks[name] = impl ? jest.fn(impl) : jest.fn(() => Promise.resolve({ data: {} }));
+      }
+      return rpcMocks[name];
+    };
+
+    // Pre-create common RPC mocks used by default tests
+    ensureRpc('searchAccommodations', () => Promise.resolve({ data: { hotels: [{ id: 'h1', name: 'Hotel 1' }] } }));
+    ensureRpc('searchActivities', () => Promise.resolve({ data: { activities: [{ id: 'a1', name: 'Louvre Tour', placeId: 'p1' }, { id: 'a2', name: 'Eiffel Visit', placeId: 'p2' }] } }));
+    ensureRpc('generateItineraryWithAI', () => Promise.resolve({ data: { id: 'server-gen-default', response: { success: true, data: { itinerary: { id: 'server-gen-default' }, recommendations: { alternativeActivities: [{ id: 'a1', name: 'Louvre Tour' }, { id: 'a2', name: 'Eiffel Visit' }], alternativeRestaurants: [], flights: [], accommodations: [{ id: 'h1', name: 'Hotel 1' }] } } } } }));
+    ensureRpc('createItinerary', () => Promise.resolve({ data: { success: true, data: {} } }));
+
+    // httpsCallable should return the corresponding rpc mock function.
+    // If a test sets its own mockImplementation that returns a different
+    // function, make sure to register that returned function in rpcMocks
+    // so tests can inspect calls (they look at mockedFunctions.__rpcMocks).
     mockHttpsCallable.mockImplementation((functions: any, name: string) => {
-      if (name === "searchAccommodations") {
-        return jest.fn(() =>
-          Promise.resolve({ data: { hotels: [{ id: "h1", name: "Hotel 1" }] } })
-        );
-      }
-      if (name === "searchActivities") {
-        // Return two activities with both id and placeId so alternativeActivities logic works
-        return jest.fn(() =>
-          Promise.resolve({
-            data: {
-              activities: [
-                { id: "a1", name: "Louvre Tour", placeId: "p1" },
-                { id: "a2", name: "Eiffel Visit", placeId: "p2" },
-              ],
-            },
-          })
-        );
-      }
-      if (name === "generateItineraryWithAI") {
-        // Default server canonical payload used in tests for non-air flows
-        return jest.fn(() =>
-          Promise.resolve({
-            data: {
-              id: "server-gen-default",
-              response: {
-                success: true,
-                data: {
-                  itinerary: { id: "server-gen-default" },
-                  recommendations: {
-                    alternativeActivities: [
-                      { id: "a1", name: "Louvre Tour" },
-                      { id: "a2", name: "Eiffel Visit" },
-                    ],
-                    alternativeRestaurants: [],
-                    flights: [],
-                    accommodations: [{ id: "h1", name: "Hotel 1" }],
-                  },
-                },
-              },
-            },
-          })
-        );
-      }
-      // default: flights or other calls
-      return jest.fn(() => Promise.resolve({ data: {} }));
+      const fn = ensureRpc(name);
+      // ensureRpc created a default fn; return it by default
+      return fn;
     });
+
+    // Attach rpcMocks to mockedFunctions so specific tests can access them if needed
+    (mockedFunctions as any).__rpcMocks = rpcMocks;
   });
 
   const userProfile = {
@@ -354,59 +343,68 @@ describe("useAIGeneration hook", () => {
       expect(res.success).toBe(true);
     });
 
-    // Ensure we attempted to write to Firestore
-    const mockDoc = mockedFirestore.doc as jest.Mock;
-    const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
-    expect(mockDoc).toHaveBeenCalledWith(
-      expect.anything(),
-      "itineraries",
-      expect.any(String)
-    );
-    expect(mockSetDoc).toHaveBeenCalled();
-    const savedArg = mockSetDoc.mock.calls[0][1];
+    // Ensure we attempted to persist via the createItinerary RPC
+    const rpcMocks = (mockedFunctions as any).__rpcMocks as Record<string, jest.Mock>;
+    const createItineraryMock = rpcMocks.createItinerary;
+    expect(createItineraryMock).toHaveBeenCalled();
+    const savedArg = createItineraryMock.mock.calls[0][0];
+    // payload should include server canonical recommendations
     expect(
       Array.isArray(
-        savedArg.response.data.recommendations.alternativeActivities
+        savedArg.itinerary.response.data.recommendations.alternativeActivities
       )
     ).toBe(true);
     expect(
-      savedArg.response.data.recommendations.alternativeActivities?.length
+      savedArg.itinerary.response.data.recommendations.alternativeActivities?.length
     ).toBeGreaterThan(0);
     expect(
-      savedArg.response.data.recommendations.alternativeActivities?.[0]?.name
+      savedArg.itinerary.response.data.recommendations.alternativeActivities?.[0]?.name
     ).toMatch(/Louvre Tour|Eiffel Visit/);
   });
 
   it("handles activities callable rejection gracefully and still saves generation with empty activities", async () => {
     // Override httpsCallable to make searchActivities reject but provide a server canonical payload
     const mockHttpsCallable = mockedFunctions.httpsCallable as jest.Mock;
-    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
-      if (name === "searchAccommodations")
-        return jest.fn(() => Promise.resolve({ data: { hotels: [] } }));
-      if (name === "searchActivities")
-        return jest.fn(() => Promise.reject(new Error("Places failed")));
-      if (name === "generateItineraryWithAI")
-        return jest.fn(() =>
-          Promise.resolve({
+    // Create named rpc mocks so we can both return them from httpsCallable and
+    // register them in mockedFunctions.__rpcMocks for assertions.
+    const searchAccommodationsFn = jest.fn(() => Promise.resolve({ data: { hotels: [] } }));
+    const searchActivitiesFn = jest.fn(() => Promise.reject(new Error("Places failed")));
+    const generateItineraryWithAIFn = jest.fn(() =>
+      Promise.resolve({
+        data: {
+          id: "server-gen-places-failed",
+          response: {
+            success: true,
             data: {
-              id: "server-gen-places-failed",
-              response: {
-                success: true,
-                data: {
-                  itinerary: { id: "server-gen-places-failed" },
-                  recommendations: {
-                    alternativeActivities: [],
-                    alternativeRestaurants: [],
-                    flights: [],
-                    accommodations: [],
-                  },
-                },
+              itinerary: { id: "server-gen-places-failed" },
+              recommendations: {
+                alternativeActivities: [],
+                alternativeRestaurants: [],
+                flights: [],
+                accommodations: [],
               },
             },
-          })
-        );
+          },
+        },
+      })
+    );
+    const createItineraryFn = jest.fn(() => Promise.resolve({ data: { success: true, data: {} } }));
+
+    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
+      if (name === "searchAccommodations") return searchAccommodationsFn;
+      if (name === "searchActivities") return searchActivitiesFn;
+      if (name === "generateItineraryWithAI") return generateItineraryWithAIFn;
+      if (name === "createItinerary") return createItineraryFn;
       return jest.fn(() => Promise.resolve({ data: {} }));
     });
+
+    try {
+      (mockedFunctions as any).__rpcMocks = (mockedFunctions as any).__rpcMocks || {};
+      (mockedFunctions as any).__rpcMocks.searchAccommodations = searchAccommodationsFn;
+      (mockedFunctions as any).__rpcMocks.searchActivities = searchActivitiesFn;
+      (mockedFunctions as any).__rpcMocks.generateItineraryWithAI = generateItineraryWithAIFn;
+      (mockedFunctions as any).__rpcMocks.createItinerary = createItineraryFn;
+    } catch (e) {}
 
     const { result } = renderHook(() => useAIGeneration(), { wrapper });
     const req = {
@@ -421,13 +419,14 @@ describe("useAIGeneration hook", () => {
       expect(res.success).toBe(true);
     });
 
-    const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
+    const rpcMocks = (mockedFunctions as any).__rpcMocks as Record<string, jest.Mock>;
+    const createItineraryMock = rpcMocks.createItinerary;
     // verify saved payload contains recommendations (server canonical payload)
-    expect(mockSetDoc).toHaveBeenCalled();
-    const savedArg = mockSetDoc.mock.calls[0][1];
+    expect(createItineraryMock).toHaveBeenCalled();
+    const savedArg = createItineraryMock.mock.calls[0][0];
     expect(
       Array.isArray(
-        savedArg.response.data.recommendations.alternativeActivities
+        savedArg.itinerary.response.data.recommendations.alternativeActivities
       )
     ).toBe(true);
   });
@@ -435,37 +434,44 @@ describe("useAIGeneration hook", () => {
   it("parses nested activities response shapes correctly", async () => {
     // Override httpsCallable to return nested shape
     const mockHttpsCallable = mockedFunctions.httpsCallable as jest.Mock;
-    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
-      if (name === "searchAccommodations")
-        return jest.fn(() => Promise.resolve({ data: { hotels: [] } }));
-      if (name === "searchActivities")
-        return jest.fn(() =>
-          Promise.resolve({
-            data: { data: { activities: [{ id: "a2", name: "Nested Tour" }] } },
-          })
-        );
-      if (name === "generateItineraryWithAI")
-        return jest.fn(() =>
-          Promise.resolve({
+    const searchAccommodationsFn2 = jest.fn(() => Promise.resolve({ data: { hotels: [] } }));
+    const searchActivitiesFn2 = jest.fn(() => Promise.resolve({ data: { data: { activities: [{ id: "a2", name: "Nested Tour" }] } } }));
+    const generateItineraryWithAIFn2 = jest.fn(() =>
+      Promise.resolve({
+        data: {
+          id: "server-gen-nested",
+          response: {
+            success: true,
             data: {
-              id: "server-gen-nested",
-              response: {
-                success: true,
-                data: {
-                  itinerary: { id: "server-gen-nested" },
-                  recommendations: {
-                    alternativeActivities: [{ id: "a2", name: "Nested Tour" }],
-                    alternativeRestaurants: [],
-                    flights: [],
-                    accommodations: [],
-                  },
-                },
+              itinerary: { id: "server-gen-nested" },
+              recommendations: {
+                alternativeActivities: [{ id: "a2", name: "Nested Tour" }],
+                alternativeRestaurants: [],
+                flights: [],
+                accommodations: [],
               },
             },
-          })
-        );
+          },
+        },
+      })
+    );
+    const createItineraryFn2 = jest.fn(() => Promise.resolve({ data: { success: true, data: {} } }));
+
+    mockHttpsCallable.mockImplementation((functions: any, name: string) => {
+      if (name === "searchAccommodations") return searchAccommodationsFn2;
+      if (name === "searchActivities") return searchActivitiesFn2;
+      if (name === "generateItineraryWithAI") return generateItineraryWithAIFn2;
+      if (name === "createItinerary") return createItineraryFn2;
       return jest.fn(() => Promise.resolve({ data: {} }));
     });
+
+    try {
+      (mockedFunctions as any).__rpcMocks = (mockedFunctions as any).__rpcMocks || {};
+      (mockedFunctions as any).__rpcMocks.searchAccommodations = searchAccommodationsFn2;
+      (mockedFunctions as any).__rpcMocks.searchActivities = searchActivitiesFn2;
+      (mockedFunctions as any).__rpcMocks.generateItineraryWithAI = generateItineraryWithAIFn2;
+      (mockedFunctions as any).__rpcMocks.createItinerary = createItineraryFn2;
+    } catch (e) {}
 
     const { result } = renderHook(() => useAIGeneration(), { wrapper });
     const req = {
@@ -480,23 +486,25 @@ describe("useAIGeneration hook", () => {
       expect(res.success).toBe(true);
     });
 
-    const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
-    expect(mockSetDoc).toHaveBeenCalled();
-    const savedArg = mockSetDoc.mock.calls[0][1];
+    const rpcMocks = (mockedFunctions as any).__rpcMocks as Record<string, jest.Mock>;
+    const createItineraryMock = rpcMocks.createItinerary;
+    expect(createItineraryMock).toHaveBeenCalled();
+    const savedArg = createItineraryMock.mock.calls[0][0];
     // Server canonical payload should include alternativeActivities
     expect(
       Array.isArray(
-        savedArg.response.data.recommendations.alternativeActivities
+        savedArg.itinerary.response.data.recommendations.alternativeActivities
       )
     ).toBe(true);
     expect(
-      savedArg.response.data.recommendations.alternativeActivities?.length
+      savedArg.itinerary.response.data.recommendations.alternativeActivities?.length
     ).toBeGreaterThanOrEqual(0);
   });
 
   it("handles Firestore write failure gracefully", async () => {
-    const mockSetDoc = mockedFirestore.setDoc as jest.Mock;
-    mockSetDoc.mockRejectedValueOnce(new Error("Firestore write failed"));
+  const rpcMocks = (mockedFunctions as any).__rpcMocks as Record<string, jest.Mock>;
+  const createItineraryMock = rpcMocks.createItinerary;
+  createItineraryMock.mockRejectedValueOnce(new Error("create RPC failed"));
     const { result } = renderHook(() => useAIGeneration(), { wrapper });
     const req = {
       destination: "Paris",
@@ -505,7 +513,7 @@ describe("useAIGeneration hook", () => {
       preferenceProfile: { transportation: { primaryMode: "ground" } },
     } as any;
     await expect(result.current.generateItinerary(req)).rejects.toThrow(
-      "Firestore write failed"
+      "create RPC failed"
     );
   });
 });

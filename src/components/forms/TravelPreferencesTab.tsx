@@ -604,7 +604,12 @@ export const TravelPreferencesTab: React.FC = () => {
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ 
+      width: '100%',
+      // Add extra bottom padding on small screens so the bottom action buttons
+      // are not hidden behind mobile bottom navigation or the safe-area inset.
+      pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', sm: 0 }
+    }}>
       {/* Loading State */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -1341,15 +1346,17 @@ export const TravelPreferencesTab: React.FC = () => {
                     color: 'white',
                     fontSize: '0.875rem',
                     lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap'
+                    whiteSpace: 'pre-wrap',
+                    textAlign: 'left'
                   }}>
                   🤖 No AI Generated Itineraries Yet
                   
                   Generate your first AI itinerary using the "Traval Profile" tab above! 
-                  After choosing a travel profile and generating an itinerary with AI, 
+                  After creating a travel profile and generating an itinerary with AI, 
                   you'll be able to select and review them from this tab.
                   
                   Your generated itineraries will appear here until their travel dates expire.
+                  You can also use them to match with other users on the TravalMatch page.
                 </Typography>
               </Card>
             )}

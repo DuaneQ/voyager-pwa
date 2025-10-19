@@ -1,7 +1,6 @@
 import { useState, useCallback, useContext } from 'react';
 import logger from '../utils/logger';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { auth } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
 import { AIGenerationRequest } from '../types/AIGeneration';
@@ -678,25 +677,23 @@ export const useAIGeneration = () => {
         // Do not fail the generation for metadata merge problems
       }
 
-      const db = getFirestore();
-      // Do not introduce shape normalization workarounds here.
-      // Save the raw flightResultData under recommendations.flights where
-      // the UI (`AIItineraryDisplay`) expects it. Avoid duplicating flights at top-level.
-
+      // Instead of writing directly to Firestore, call the server RPC which
+      // persists AI-generated itineraries into the canonical Cloud SQL (Prisma)
+      // backend. This ensures AI itineraries are stored in the same place as
+      // other user itineraries and returned by `listItinerariesForUser`.
       try {
-        // Log arguments to doc and setDoc for troubleshooting
-        // Firestore rejects undefined values. Convert any undefined fields to null
-        // using a JSON replacer so nested undefineds are handled without adding a
-        // larger utility function.
-        // Log payload shapes to help debug Firestore 'undefined' errors. Keep logs small to avoid PII.
         const sanitized = JSON.parse(JSON.stringify(toSave, (_k, v) => v === undefined ? null : v));
-
-        // Save canonical itinerary to `itineraries` collection (app expects final items here)
-        const itineraryDocRef = doc(db, 'itineraries', clientGenerationId);
-        await setDoc(itineraryDocRef, sanitized);
+        const createItineraryFn = httpsCallable(functions, 'createItinerary');
+        const saveRes: any = await createItineraryFn({ itinerary: sanitized });
+        if (!saveRes?.data?.success) {
+          const errMsg = saveRes?.data?.error || 'createItinerary RPC failed';
+          logger.warn('⚠️ [useAIGeneration] createItinerary RPC returned error:', errMsg);
+          throw new Error(errMsg);
+        }
+        // `saveRes.data.data` contains the created itinerary (sanitized by server)
+        // We don't need to do anything else here; the saved id will match clientGenerationId when provided.
       } catch (saveError) {
-        logger.warn('⚠️ [useAIGeneration] Failed to save to Firestore:', saveError);
-        // Rethrow so the outer try/catch treats this as a failure and we don't return a saved id that doesn't exist
+        logger.warn('⚠️ [useAIGeneration] Failed to save via createItinerary RPC:', saveError);
         throw saveError;
       }
 

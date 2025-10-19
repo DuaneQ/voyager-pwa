@@ -5,27 +5,40 @@ const useGetUserId = () => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-      const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
-        if (user) {
-          const userCredentials = {
-            user: {
-              uid: user.uid,
-              email: user.email,
-              emailVerified: user.emailVerified,
-              isAnonymous: user.isAnonymous,
-              providerData: user.providerData,
-            },
-          };
+      // Guard against environments (like unit tests) where Firebase
+      // has not been initialized. getAuth() will throw in that case.
+      let unsubscribe: any = () => {};
+      try {
+        const auth = getAuth();
+        unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (user) {
+            const userCredentials = {
+              user: {
+                uid: user.uid,
+                email: user.email,
+                emailVerified: user.emailVerified,
+                isAnonymous: user.isAnonymous,
+                providerData: user.providerData,
+              },
+            };
 
-          localStorage.setItem(
-            "USER_CREDENTIALS",
-            JSON.stringify(userCredentials)
-          );
-          setUserId(user.uid);
-        } else {
-          setUserId(null);
-        }
-      });
+            try {
+              localStorage.setItem(
+                "USER_CREDENTIALS",
+                JSON.stringify(userCredentials)
+              );
+            } catch (e) {
+              // ignore localStorage errors in test envs
+            }
+            setUserId(user.uid);
+          } else {
+            setUserId(null);
+          }
+        });
+      } catch (e) {
+        // Firebase not initialized (common in unit tests). Do nothing.
+        unsubscribe = () => {};
+      }
 
       return () => {
         try {

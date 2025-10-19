@@ -109,8 +109,27 @@ const firestoreMock = {
   }),
   doc: jest.fn(() => ({})),
   updateDoc: jest.fn().mockResolvedValue(),
-  getDocs: jest.fn().mockResolvedValue({
-    docs: mockMessages.map((m) => ({ id: m.id, data: () => m })),
+  getDocs: jest.fn().mockImplementation(async (q) => {
+    const path = q?.path || q?._collectionType || '';
+    // If tests are requesting itineraries, prefer the functions mock return
+    if (String(path).includes('itineraries')) {
+      // Per-test handler for listItinerariesForUser: global.__mock_httpsCallable_listItinerariesForUser
+      const handler = (global).__mock_httpsCallable_listItinerariesForUser;
+      if (handler && typeof handler === 'function') {
+        const res = await handler({});
+        const rows = res?.data?.data || [];
+        return { docs: rows.map((r) => ({ id: r.id || r._id || 'unknown', data: () => r })) };
+      }
+      // Generic global return
+      if ((global).__mockHttpsCallableReturn && (global).__mockHttpsCallableReturn.data && Array.isArray((global).__mockHttpsCallableReturn.data.data)) {
+        const rows = (global).__mockHttpsCallableReturn.data.data;
+        return { docs: rows.map((r) => ({ id: r.id || r._id || 'unknown', data: () => r })) };
+      }
+      // Fallback: return empty
+      return { docs: [] };
+    }
+    // Default behavior: return messages as before
+    return { docs: mockMessages.map((m) => ({ id: m.id, data: () => m })) };
   }),
 };
 // Also export mockConnections for test debug

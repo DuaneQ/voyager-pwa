@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { app } from "../environments/firebaseConfig";
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import useGetUserId from "./useGetUserId";
 import { Itinerary } from "../types/Itinerary";
 
@@ -29,18 +30,22 @@ const useUpdateItinerary = () => {
     setLoading(true);
     setError(null);
 
-    const db = getFirestore(app);
-    const itineraryRef = doc(db, 'itineraries', itineraryId);
-
     try {
-      await updateDoc(itineraryRef, updates);
+      const functions = getFunctions();
+      const fn = httpsCallable(functions, 'updateItinerary');
+      const res: any = await fn({ itineraryId, updates });
+      if (res?.data?.success) {
+        setLoading(false);
+        return res.data.data;
+      }
+      throw new Error(res?.data?.error || 'Unexpected RPC response');
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Update failed');
+      // Always surface RPC errors; tests should mock the functions SDK.
+      const error = err instanceof Error ? err : new Error('RPC update failed');
       setError(error);
-      console.error("Error updating itinerary:", error);
-      throw error;
-    } finally {
       setLoading(false);
+      console.error('updateItinerary RPC error:', error);
+      throw error;
     }
   };
 
