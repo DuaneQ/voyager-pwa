@@ -50,40 +50,64 @@ jobs:
         env:
           CI: true
     
-      - name: Run Cypress component tests
-        run: npm run cypress:run:component
-        env:
-          CI: true
-      
-      - name: Build project
-        run: npm run build
-        env:
-          CI: false
-          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
-          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
-          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
-          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
-          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
-          REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
-          REACT_APP_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}
-          REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
-          REACT_APP_VAPID_KEY: ${{ secrets.REACT_APP_VAPID_KEY }}
-          # App Check production configuration
-          REACT_APP_SKIP_APPCHECK_DEV: false
-          REACT_APP_APP_CHECK_DEBUG_TOKEN: false
-      
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1}}
-          channelId: live
-          projectId: mundo1-1
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: unittests
-          fail_ci_if_error: false
+        - name: Install dependencies
+          run: npm ci --legacy-peer-deps
+
+        - name: Preflight: check required secrets
+          run: |
+            missing=0
+            if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}" ]; then
+              echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_MUNDO1_1"
+              missing=1
+            fi
+            # Warn about missing optional React env vars used at build time
+            if [ -z "${{ secrets.REACT_APP_FIREBASE_API_KEY }}" ]; then
+              echo "::warning::REACT_APP_FIREBASE_API_KEY is not set. Build may fail or the app may be misconfigured."
+            fi
+            if [ $missing -eq 1 ]; then
+              echo "Aborting: required secrets are missing. See errors above."
+              exit 1
+            fi
+
+        - name: Security audit (report only)
+          run: |
+            echo "🔍 Running security audit..."
+            npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
+
+        - name: Security audit (fail on critical only)
+          run: npm audit --audit-level=critical
+
+        - name: Run Jest unit tests
+          run: npm test -- --coverage --watchAll=false
+          env:
+            CI: true
+
+        - name: Run Cypress component tests
+          run: npm run cypress:run:component
+          env:
+            CI: true
+
+        - name: Build project
+          run: npm run build
+          env:
+            CI: false
+            REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+            REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+            REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+            REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+            REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+            REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+            REACT_APP_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}
+            REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
+            REACT_APP_VAPID_KEY: ${{ secrets.REACT_APP_VAPID_KEY }}
+            # App Check production configuration
+            REACT_APP_SKIP_APPCHECK_DEV: false
+            REACT_APP_APP_CHECK_DEBUG_TOKEN: false
+
+        - name: Deploy to Firebase Hosting
+          uses: FirebaseExtended/action-hosting-deploy@v0
+          with:
+            repoToken: ${{ secrets.GITHUB_TOKEN }}
+            firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}
+            channelId: live
+            projectId: mundo1-1
