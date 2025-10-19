@@ -13,6 +13,9 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
+    # Only run preview deploy on PRs originating from the same repository by default.
+    # This prevents exposing repo secrets to forks. If you want to allow forked PR previews,
+    # consider creating a repository dispatch or using a maintainer workflow to re-run this job.
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     outputs:
@@ -20,6 +23,13 @@ jobs:
       details_url: ${{ steps.firebase_deploy.outputs.details_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Debug origin info (for skipped preview diagnostics)
+        run: |
+          echo "PR head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Base repo: ${{ github.repository }}"
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "::warning::This PR originates from a fork. The preview deploy job will be skipped to avoid exposing secrets."
+          fi
       - run: npm init
       - run: npm install --save firebase --legacy-peer-deps
       
@@ -35,6 +45,17 @@ jobs:
         env:
           REACT_APP_ENV: development
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
+      - name: Preflight: check required secrets for preview deploy
+        run: |
+          missing=0
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}" ]; then
+            echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_DEV"
+            missing=1
+          fi
+          if [ $missing -eq 1 ]; then
+            echo "Aborting: required secrets are missing for preview deploy."
+            exit 1
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         id: firebase_deploy
         with:

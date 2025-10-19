@@ -20,6 +20,22 @@ jobs:
       
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Preflight: check required secrets
+        run: |
+          missing=0
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUNDO1_1 }}" ]; then
+            echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_MUNDO1_1"
+            missing=1
+          fi
+          # Warn about missing optional React env vars used at build time
+          if [ -z "${{ secrets.REACT_APP_FIREBASE_API_KEY }}" ]; then
+            echo "::warning::REACT_APP_FIREBASE_API_KEY is not set. Build may fail or the app may be misconfigured."
+          fi
+          if [ $missing -eq 1 ]; then
+            echo "Aborting: required secrets are missing. See errors above."
+            exit 1
+          fi
       
       - name: Security audit (report only)
         run: |
