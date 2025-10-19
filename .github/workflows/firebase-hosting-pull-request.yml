@@ -45,23 +45,23 @@ jobs:
         env:
           REACT_APP_ENV: development
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
-      - name: Preflight: check required secrets for preview deploy
-        run: |
-          missing=0
-          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}" ]; then
-            echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_DEV"
-            missing=1
-          fi
-          if [ $missing -eq 1 ]; then
-            echo "Aborting: required secrets are missing for preview deploy."
-            exit 1
-          fi
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        id: firebase_deploy
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
-          projectId: mundo1-dev
+        - name: Preflight: check required secrets for preview deploy
+          run: |
+            missing=0
+            if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}" ]; then
+              echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_DEV"
+              missing=1
+            fi
+            if [ $missing -eq 1 ]; then
+              echo "Aborting: required secrets are missing for preview deploy."
+              exit 1
+            fi
+        - uses: FirebaseExtended/action-hosting-deploy@v0
+          id: firebase_deploy
+          with:
+            repoToken: ${{ secrets.GITHUB_TOKEN }}
+            firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+            projectId: mundo1-dev
       - name: Debug Firebase Deploy Outputs
         run: |
           echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
