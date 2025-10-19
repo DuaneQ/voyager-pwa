@@ -4,6 +4,8 @@ module.exports = {
   },
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+  "\\.(gif|ttf|eot|svg|png|jpg|jpeg)$": "<rootDir>/__mocks__/fileMock.js",
+  "^firebase-functions/v1$": "<rootDir>/__mocks__/firebase-functions-v1.js",
   },
   testEnvironment: "jsdom",
   // Ensure testEnvironmentOptions exists so older/newer jest-environment-jsdom
