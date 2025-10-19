@@ -296,5 +296,52 @@ describe('LandingPage', () => {
       
       consoleErrorSpy.mockRestore();
     });
+
+    it('handles video.play rejection gracefully', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Mock video.play() to return a rejected promise
+      HTMLVideoElement.prototype.play = jest.fn().mockRejectedValue(new Error('play rejected'));
+
+      renderWithContext();
+
+      const videos = document.querySelectorAll('video');
+      const heroVideo = videos[0];
+
+      if (heroVideo) {
+        // Trigger the canplay event which attempts to play the video
+        heroVideo.dispatchEvent(new Event('canplay'));
+      }
+
+      // Wait for the microtask queue and handler to run, then assert
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('does not throw when See How It Works target is missing', () => {
+      // Ensure the target element is not present
+      const existing = document.getElementById('how-it-works');
+      if (existing) existing.remove();
+
+      renderWithContext();
+
+      const seeHowButton = screen.getByRole('button', { name: /See How It Works/i });
+
+      // Clicking should not navigate or throw even if the target element is missing
+      userEvent.click(seeHowButton);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('hero video has objectFit cover style', () => {
+      renderWithContext();
+
+      const videos = document.querySelectorAll('video');
+      const heroVideo = Array.from(videos).find(v => v.getAttribute('src') === '/TravalPass.mp4');
+
+      expect(heroVideo).toBeInTheDocument();
+      // inline style should include objectFit: 'cover'
+      expect(heroVideo?.style.objectFit).toBe('cover');
+    });
   });
 });

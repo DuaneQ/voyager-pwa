@@ -1,3 +1,4 @@
+// lightweight tests removed; the comprehensive test suite below covers the Search component
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 
