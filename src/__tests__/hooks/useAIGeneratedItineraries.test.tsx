@@ -103,4 +103,63 @@ describe('useAIGeneratedItineraries', () => {
     });
     expect(notFound).toBeNull();
   });
+
+  it('sets error when RPC returns non-success response', async () => {
+    const rpcHandler = jest.fn().mockResolvedValue({ data: { success: false, error: 'rpc-failed' } });
+    (global as any).__mock_httpsCallable_listItinerariesForUser = rpcHandler;
+    const mf: any = require('firebase/functions');
+    mf.__rpcMocks = mf.__rpcMocks || {};
+    mf.__rpcMocks.listItinerariesForUser = rpcHandler;
+
+    const { result } = renderHook(() => useAIGeneratedItineraries());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toMatch(/rpc-failed/);
+  });
+
+  it('sets error when RPC throws an exception during fetch', async () => {
+    const rpcHandler = jest.fn().mockRejectedValue(new Error('boom-rpc'));
+    (global as any).__mock_httpsCallable_listItinerariesForUser = rpcHandler;
+    const mf: any = require('firebase/functions');
+    mf.__rpcMocks = mf.__rpcMocks || {};
+    mf.__rpcMocks.listItinerariesForUser = rpcHandler;
+
+    const { result } = renderHook(() => useAIGeneratedItineraries());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toMatch(/boom-rpc/);
+  });
+
+  it('getItineraryById returns null when unauthenticated', async () => {
+    const original = jest.requireMock('../../environments/firebaseConfig');
+    // Make user unauthenticated for this test
+    original.auth.currentUser = null;
+
+    const { result } = renderHook(() => useAIGeneratedItineraries());
+
+    // getItineraryById should immediately return null when no user
+    const res = await act(async () => result.current.getItineraryById('any'));
+    expect(res).toBeNull();
+
+    // restore
+    original.auth.currentUser = { uid: 'user-1' };
+  });
+
+  it('getItineraryById returns null when RPC throws', async () => {
+    // initial successful fetch to avoid early unauthenticated error
+    const initialRpc = jest.fn().mockResolvedValue({ data: { success: true, data: [] } });
+    (global as any).__mock_httpsCallable_listItinerariesForUser = initialRpc;
+    const mf: any = require('firebase/functions');
+    mf.__rpcMocks = mf.__rpcMocks || {};
+    mf.__rpcMocks.listItinerariesForUser = initialRpc;
+
+    const { result } = renderHook(() => useAIGeneratedItineraries());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Now make subsequent RPC throw
+    const rpcHandler = jest.fn().mockRejectedValue(new Error('getById-fail'));
+    (global as any).__mock_httpsCallable_listItinerariesForUser = rpcHandler;
+    mf.__rpcMocks.listItinerariesForUser = rpcHandler;
+
+    const res = await act(async () => result.current.getItineraryById('does-not-matter'));
+    expect(res).toBeNull();
+  });
 });
