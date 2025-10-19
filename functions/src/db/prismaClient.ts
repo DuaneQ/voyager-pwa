@@ -13,14 +13,9 @@ import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 // 4) process.env.PRISMA_SECRET_NAME
 // 5) default secret id: 'voyager-itinerary-db' under current project (GCLOUD_PROJECT / GCP_PROJECT)
 async function resolveDatabaseUrl(): Promise<string | null> {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-
   try {
+    // Prefer Secret Manager first (production pattern): attempt to fetch DATABASE_URL from a secret
     const cfg = functions.config && typeof functions.config === 'function' ? functions.config() as any : null;
-    if (cfg && cfg.database && cfg.database.url) {
-      console.info('[prismaClient] Using DATABASE_URL from functions config');
-      return cfg.database.url;
-    }
 
     // Try secret name from functions config
     const secretNameFromCfg = cfg && cfg.secret && cfg.secret.name ? cfg.secret.name : null;
@@ -40,7 +35,7 @@ async function resolveDatabaseUrl(): Promise<string | null> {
       }
       try {
         const [version] = await client.accessSecretVersion({ name });
-  const payload = version.payload && version.payload.data ? version.payload.data.toString() : null;
+        const payload = version.payload && version.payload.data ? version.payload.data.toString() : null;
         if (payload) return payload.trim();
       } catch (e) {
         console.warn(`[prismaClient] accessSecretVersion failed for ${name}:`, (e as Error).message);
@@ -56,6 +51,18 @@ async function resolveDatabaseUrl(): Promise<string | null> {
         console.info('[prismaClient] Retrieved DATABASE_URL from Secret Manager (masked)');
         return val;
       }
+    }
+
+    // Next fallback: functions config database.url
+    if (cfg && cfg.database && cfg.database.url) {
+      console.info('[prismaClient] Using DATABASE_URL from functions config');
+      return cfg.database.url;
+    }
+
+    // Finally, fallback to an environment variable if present (useful for local/dev with Cloud SQL Auth Proxy)
+    if (process.env.DATABASE_URL) {
+      console.info('[prismaClient] Using DATABASE_URL from environment');
+      return process.env.DATABASE_URL;
     }
   } catch (e) {
     console.warn('[prismaClient] Error resolving DATABASE_URL:', (e as Error).message);
