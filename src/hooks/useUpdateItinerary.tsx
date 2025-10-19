@@ -13,8 +13,6 @@
  */
 
 import { useState } from "react";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
-import { app } from "../environments/firebaseConfig";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import useGetUserId from "./useGetUserId";
 import { Itinerary } from "../types/Itinerary";

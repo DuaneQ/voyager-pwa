@@ -12,7 +12,13 @@ import useSearchItineraries from "../../hooks/useSearchItineraries";
 import { Search } from "../../components/pages/Search";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 
-// Mock only Firebase, not the business logic
+// Mock Firebase Functions (Cloud SQL RPC)
+jest.mock("firebase/functions", () => ({
+  getFunctions: jest.fn(() => ({})),
+  httpsCallable: jest.fn(),
+}));
+
+// Mock Firebase Firestore
 jest.mock("firebase/firestore", () => ({
   getFirestore: jest.fn(() => ({})),
   query: jest.fn(),
@@ -107,24 +113,16 @@ describe("Search Hook Integration", () => {
       userInfo: { uid: "current-user", username: "currentuser", email: "current@test.com", dob: "1995-01-01", gender: "Female", status: "Single", sexualOrientation: "Straight" }
     };
 
-    // Mock Firebase to return different results on sequential calls
-    const { getDocs } = require("firebase/firestore");
+    // Mock Cloud SQL RPC to return results
+    const rpcHandler = jest.fn()
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: [mockItineraries[0], mockItineraries[1]]
+        }
+      });
     
-    // First search call - returns first itinerary
-    getDocs.mockResolvedValueOnce({
-      docs: [{ 
-        id: "iter-1", 
-        data: () => mockItineraries[0]
-      }]
-    });
-
-    // Second search call (getNextItinerary) - returns second itinerary
-    getDocs.mockResolvedValueOnce({
-      docs: [{ 
-        id: "iter-2", 
-        data: () => mockItineraries[1]
-      }]
-    });
+    (global as any).__mock_httpsCallable_searchItineraries = rpcHandler;
 
     // Test the hook directly using renderHook
     const { renderHook } = require("@testing-library/react");
@@ -177,13 +175,11 @@ describe("Search Hook Integration", () => {
       userInfo: { uid: "current-user", username: "currentuser", email: "current@test.com", dob: "1995-01-01", gender: "Female", status: "Single", sexualOrientation: "Straight" }
     };
 
-    // Mock Firebase to return no results on second call
-    const { getDocs } = require("firebase/firestore");
-    
-    getDocs.mockResolvedValueOnce({
-      docs: [{ 
-        id: "only-result", 
-        data: () => ({
+    // Mock Cloud SQL RPC to return only one result
+    const rpcHandler = jest.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: [{
           id: "only-result",
           destination: "Miami",
           startDate: "2025-11-01",
@@ -191,14 +187,11 @@ describe("Search Hook Integration", () => {
           startDay: new Date("2025-11-01").getTime(),
           endDay: new Date("2025-11-07").getTime(),
           userInfo: { uid: "other-user", username: "user1", email: "user1@test.com", dob: "1995-01-01", gender: "Male", status: "Single", sexualOrientation: "Straight" }
-        })
-      }]
+        }]
+      }
     });
-
-    // Second call returns empty (no more results)
-    getDocs.mockResolvedValueOnce({
-      docs: []
-    });
+    
+    (global as any).__mock_httpsCallable_searchItineraries = rpcHandler;
 
     const { renderHook } = require("@testing-library/react");
     const { result } = renderHook(() => useSearchItineraries());

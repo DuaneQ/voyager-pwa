@@ -37,11 +37,6 @@ const devHosts = [
   "127.0.0.1",
 ];
 
-// Detect Firebase preview channels (e.g., mundo1-dev--pr52-*.web.app)
-const isDevPreview =
-  typeof window !== "undefined" &&
-  window.location.hostname.includes("mundo1-dev-");
-
 const isDevHost = typeof window !== "undefined" && devHosts.includes(window.location.hostname);
 
 
