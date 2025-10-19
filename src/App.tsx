@@ -37,6 +37,7 @@ import { app } from "./environments/firebaseConfig";
 import { FeedbackButton } from "./components/utilities/FeedbackButton";
 import { SimpleTermsGuard } from "./components/auth/SimpleTermsGuard";
 import { PublicAIItineraryPage } from "./components/pages/PublicAIItineraryPage";
+import { LandingPage } from "./components/pages/LandingPage";
 
 // AnalyticsTracker logs a page_view event on every route change
 function AnalyticsTracker() {
@@ -60,6 +61,15 @@ function App() {
   const { enqueueSnackbar } = useSnackbar();
   const location = useLocation();
   const hideBottomNav = [
+    "/",
+    "/Login",
+    "/Register",
+    "/reset",
+    "/ResendEmail",
+  ].includes(location.pathname);
+
+  const hideHeader = [
+    "/",
     "/Login",
     "/Register",
     "/reset",
@@ -88,7 +98,7 @@ function App() {
       anchorOrigin={{ vertical: "bottom", horizontal: "left" }}>
       <AlertProvider>
         <UserProfileProvider>
-          <Header />
+          {!hideHeader && <Header />}
           <NewConnectionProvider>
             <AnalyticsTracker />
           <div
@@ -97,14 +107,15 @@ function App() {
               flexDirection: "column",
               minHeight: "100vh",
             }}>
-            <div style={{ flex: 1, paddingBottom: hideBottomNav ? 0 : 56, paddingTop: 56 }}>
+            <div style={{ flex: 1, paddingBottom: hideBottomNav ? 0 : 56, paddingTop: hideHeader ? 0 : 56 }}>
               <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
+                  <Route path="/" element={<LandingPage />} />
                   <Route path="/Login" element={<Login />} />
                   <Route path="/Register" element={<Register />} />
                   <Route path="/ResendEmail" element={<ResendEmail />} />
                   <Route
-                    path="/"
+                    path="/profile"
                     element={
                       <Protected>
                         <SimpleTermsGuard>

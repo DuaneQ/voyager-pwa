@@ -10,6 +10,7 @@ export interface Itinerary {
   endDay?: number;      
   description?: string;
   activities?: string[];
+  age?: number; // User's age for filtering
   lowerRange?: number; 
   upperRange?: number;
   status?: string;

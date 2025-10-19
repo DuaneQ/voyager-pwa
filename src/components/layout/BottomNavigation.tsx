@@ -69,7 +69,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount = 0 }) => {
       />
       <StyledBottomNavigationAction
         label="Profile"
-        value="/"
+        value="/profile"
         icon={<AccountCircleIcon />}
       />
     </BottomNavigation>

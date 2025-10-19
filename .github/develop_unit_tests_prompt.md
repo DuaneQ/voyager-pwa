@@ -7,6 +7,43 @@ Purpose
 
 This prompt instructs an agent or developer to produce Jest unit tests and React Testing Library component tests for the Voyager PWA codebase.
 
+Policy: Do NOT change production code just to make tests pass
+
+  IMPORTANT: Changing production code solely to make unit tests pass is strictly prohibited.
+  Tests are the contract that verify product behavior; altering production code to satisfy a test
+  without addressing the underlying cause masks real bugs and undermines confidence in the
+  codebase. Follow the workflow below when tests are failing:
+
+  - Preferred fixes:
+    - Fix the test or its mocks. Tests should be updated when they are asserting incorrect
+      behavior, rely on fragile implementation details, or use incomplete/misaligned mocks.
+    - Improve test mocks to accurately represent real runtime shapes (for example, make
+      firebase/functions mocks behave like the real SDK or use the documented per-RPC global
+      handler pattern). Prefer fixing the test harness over changing production logic.
+
+  - When a production change is truly required:
+    1. Open an issue describing the failure, why a production change seems necessary, and the
+       proposed fix. Include failing test output and a minimal reproduction if possible.
+    2. Implement the fix in a feature branch and include a detailed PR body that documents
+       why the change is required, the impact, and any backward-compatibility considerations.
+    3. Add or update unit tests to explicitly cover the new/changed behavior.
+    4. Obtain at least one maintainer or repo-owner approval (code review) before merging.
+    5. If the change relaxes strict validation or alters user-facing behavior, coordinate a
+       rollback/backout plan and notify stakeholders.
+
+  - Small defensive adjustments allowed only with justification:
+    - Minor defensive guards that make code tolerant of test harness differences (for example
+      defensive handling of mock shapes) are acceptable if they are non-breaking, clearly
+      documented in the PR, and accompanied by tests that assert the intended behavior.
+    - Such changes must still follow the PR + review workflow above.
+
+  - Rationale and enforcement:
+    - This policy preserves the separation between production logic and test scaffolding.
+    - If you see code changes in a PR that only exist to satisfy tests, request the author
+      to either update tests/mocks or follow the required issue/PR workflow and obtain
+      explicit approval.
+
+
 Requirements
 
 - Produce clear, small, deterministic tests for utilities, hooks, and components.
@@ -42,6 +79,31 @@ Mocking guidance
 
 - Firebase: prefer `__mocks__/firebase.js` present in the repo. Mock Firestore `get`, `set`, and Auth `currentUser` behavior. Use dependency injection where helpful.
 - OpenAI: mock the client to return deterministic completions. Provide small JSON responses that match expected prompt outputs.
+
+- Firebase Functions: important testing pattern
+
+  - We use a manual Jest mock for `firebase/functions` in `__mocks__/firebase-functions.js` (repo root). That mock expects tests to set per-RPC global handlers named `global.__mock_httpsCallable_<rpcName>`.
+  - Example: to mock `createItinerary`, in your test set:
+    `(global as any).__mock_httpsCallable_createItinerary = jest.fn().mockResolvedValue({ data: { success: true, data: { id: 'it-123' } } });`
+  - If a test file uses `jest.mock('firebase/functions')` (recommended via `src/setupTests.ts`), add this small defensive shim in the test file to ensure the auto-mocked `httpsCallable` returns a callable function that consults those globals:
+
+```ts
+const { httpsCallable } = require('firebase/functions');
+if (httpsCallable && typeof httpsCallable.mockImplementation === 'function') {
+  httpsCallable.mockImplementation((functions: any, name: string) => {
+    return async (payload: any) => {
+      const handlerKey = `__mock_httpsCallable_${name}`;
+      if ((global as any)[handlerKey] && typeof (global as any)[handlerKey] === 'function') {
+        return (global as any)[handlerKey](payload);
+      }
+      if ((global as any).__mockHttpsCallableReturn) return (global as any).__mockHttpsCallableReturn;
+      return { data: { success: true, data: [] } };
+    };
+  });
+}
+```
+
+  - Prefer the global handler pattern since it avoids jest hoisting pitfalls (ReferenceError) and makes tests easier to reason about.
 - HTTP APIs: stub with `msw` or `fetch` mocks to return representative payloads for mapping functions.
 
 Templates

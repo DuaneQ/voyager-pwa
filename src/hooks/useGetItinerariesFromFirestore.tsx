@@ -1,12 +1,6 @@
 import { useState, useCallback } from "react";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  where,
-  query,
-} from "firebase/firestore";
-import { app } from "../environments/firebaseConfig";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { functions as firebaseFunctions } from '../environments/firebaseConfig';
 import { Itinerary } from "../types/Itinerary";
 import { getAuth } from "firebase/auth";
 
@@ -30,26 +24,26 @@ const useGetItinerariesFromFirestore = () => {
       }
     }
     try {
-      const db = getFirestore(app);
-
-      const userItinerariesCollection = query(
-        collection(db, `itineraries`),
-        where("userInfo.uid", "==", userUid)
-      );
-      const snapshot = await getDocs(userItinerariesCollection);
-      const fetchedItineraries = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Itinerary[];
-
-      // We only read from the canonical `itineraries` collection. AI generation
-      // writes should save final itineraries into `itineraries` so the UI can
-      // rely on a single authoritative source.
-      return fetchedItineraries as Itinerary[];
+      // Call the RPC directly. Do NOT fall back to Firestore — production
+      // must rely on the canonical Prisma-backed service.
+  // Use the shared Functions instance exported from our firebaseConfig so
+  // we don't accidentally create a differently-configured Functions instance
+  // which can lead to cross-origin / host mismatches.
+  const functions = firebaseFunctions || getFunctions();
+  const fn = httpsCallable(functions, 'listItinerariesForUser');
+      const res: any = await fn({ userId: userUid });
+      if (res?.data?.success && Array.isArray(res.data.data)) {
+        return res.data.data as Itinerary[];
+      }
+      // If RPC didn't return success, surface an error so the caller can
+      // handle it (do not silently fall back to Firestore).
+      const msg = res?.data?.error || 'Unexpected RPC response';
+      throw new Error(msg);
     } catch (err) {
-      console.error("Error fetching itineraries:", err);
-      setError("Failed to fetch itineraries. Please try again later.");
-      return [];
+      console.error('listItinerariesForUser RPC error:', err);
+      setError((err as any)?.message || 'Failed to fetch itineraries from service');
+      // Re-throw so calling components/tests can detect failure if needed
+      throw err;
     } finally {
       setLoading(false);
     }

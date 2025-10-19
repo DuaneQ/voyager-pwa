@@ -173,3 +173,48 @@ AI Generation → Multi-stage Progress → Save to itineraries → Display
 - **Planning Mode**: See README.md for structured development workflow with agents
 
 This codebase follows a **freemium model** with sophisticated usage tracking, premium AI features, and performance optimizations. Focus on preserving the usage tracking flows and Firebase integration patterns when making changes.
+
+## Unit Tests Prompt (Injected by developer request)
+
+The following testing guidance must be used by automated agents and developers when adding or updating unit tests in this repository. It emphasizes mocking discipline and explicitly forbids changing production code solely to make tests pass.
+
+---
+
+Policy: Do NOT change production code just to make tests pass
+
+IMPORTANT: Changing production code solely to make unit tests pass is strictly prohibited.
+Tests are the contract that verify product behavior; altering production code to satisfy a test
+without addressing the underlying cause masks real bugs and undermines confidence in the
+codebase. Follow the workflow below when tests are failing:
+
+- Preferred fixes:
+  - Fix the test or its mocks. Tests should be updated when they are asserting incorrect
+    behavior, rely on fragile implementation details, or use incomplete/misaligned mocks.
+  - Improve test mocks to accurately represent real runtime shapes (for example, make
+    firebase/functions mocks behave like the real SDK or use the documented per-RPC global
+    handler pattern). Prefer fixing the test harness over changing production logic.
+
+- When a production change is truly required:
+  1. Open an issue describing the failure, why a production change seems necessary, and the
+     proposed fix. Include failing test output and a minimal reproduction if possible.
+  2. Implement the fix in a feature branch and include a detailed PR body that documents
+     why the change is required, the impact, and any backward-compatibility considerations.
+  3. Add or update unit tests to explicitly cover the new/changed behavior.
+  4. Obtain at least one maintainer or repo-owner approval (code review) before merging.
+  5. If the change relaxes strict validation or alters user-facing behavior, coordinate a
+     rollback/backout plan and notify stakeholders.
+
+- Small defensive adjustments allowed only with justification:
+  - Minor defensive guards that make code tolerant of test harness differences (for example
+    defensive handling of mock shapes) are acceptable if they are non-breaking, clearly
+    documented in the PR, and accompanied by tests that assert the intended behavior.
+  - Such changes must still follow the PR + review workflow above.
+
+---
+
+Testing guidance (summary):
+- Use Jest + React Testing Library for unit/component tests.
+- Mock external services (Firebase, OpenAI, SerpAPI, Stripe) using `__mocks__` when available.
+- For Firebase Functions tests, prefer the `global.__mock_httpsCallable_<name>` pattern described in repository test utilities (`src/testUtils/installRpcShim.ts`).
+
+This prompt was appended by developer request to reduce accidental production changes driven by tests.

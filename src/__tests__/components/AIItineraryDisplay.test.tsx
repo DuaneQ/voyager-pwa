@@ -20,6 +20,12 @@ try {
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// Mock the useUpdateItinerary hook used by AIItineraryDisplay so tests don't call RPCs
+jest.mock('../../hooks/useUpdateItinerary', () => ({
+  __esModule: true,
+  default: () => ({ updateItinerary: jest.fn().mockResolvedValue(null), loading: false, error: null })
+}));
+
 import AIItineraryDisplay from '../../components/ai/AIItineraryDisplay';
 import PublicAIItineraryView from '../../components/ai/PublicAIItineraryView';
 import PublicAIItineraryPage from '../../components/pages/PublicAIItineraryPage';
@@ -35,6 +41,8 @@ jest.mock('firebase/firestore', () => {
     ...actual,
     getDoc: jest.fn(),
     doc: jest.fn(),
+    setDoc: jest.fn().mockResolvedValue(null),
+    serverTimestamp: jest.fn(() => ({})),
   };
 });
 

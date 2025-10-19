@@ -1,10 +1,22 @@
 import { renderHook, act } from '@testing-library/react';
 import useUpdateItinerary from '../../hooks/useUpdateItinerary';
 import useGetUserId from '../../hooks/useGetUserId';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
-import { app } from '../../environments/firebaseConfig';
 
-jest.mock('firebase/firestore');
+// Ensure httpsCallable returns a callable function that consults global handlers
+jest.mock('firebase/functions', () => ({
+  getFunctions: () => ({}),
+  httpsCallable: (functions: any, name: string) => {
+    return async (payload: any) => {
+      const handlerKey = `__mock_httpsCallable_${name}`;
+      if ((global as any)[handlerKey] && typeof (global as any)[handlerKey] === 'function') {
+        return (global as any)[handlerKey](payload);
+      }
+      if ((global as any).__mockHttpsCallableReturn) return (global as any).__mockHttpsCallableReturn;
+      return { data: { success: true, data: [] } };
+    };
+  },
+}));
+
 jest.mock('../../hooks/useGetUserId');
 
 describe('useUpdateItinerary', () => {
@@ -12,6 +24,20 @@ describe('useUpdateItinerary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     console.error = jest.fn();
+    // reset function mocks
+    (global as any).__mock_httpsCallable_updateItinerary = undefined;
+    (global as any).__mockHttpsCallableReturn = undefined;
+    try {
+      const mf: any = require('firebase/functions');
+      if (mf && mf.httpsCallable && typeof mf.httpsCallable.mockImplementation === 'function') {
+        mf.httpsCallable.mockImplementation((functions: any, name: string) => {
+          const handlerKey = `__mock_httpsCallable_${name}`;
+          if ((global as any)[handlerKey] && typeof (global as any)[handlerKey] === 'function') return (global as any)[handlerKey];
+          if (mf.__rpcMocks && typeof mf.__rpcMocks[name] === 'function') return mf.__rpcMocks[name];
+          return async (payload: any) => ({ data: { success: true, data: [] } });
+        });
+      }
+    } catch (e) {}
   });
   afterAll(() => {
     console.error = originalError;
@@ -19,9 +45,13 @@ describe('useUpdateItinerary', () => {
 
   it('updates itinerary successfully', async () => {
     (useGetUserId as jest.Mock).mockReturnValue('user-1');
-    (getFirestore as jest.Mock).mockReturnValue({});
-    (doc as jest.Mock).mockReturnValue({});
-    (updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+    // Provide a per-function handler that simulates successful RPC
+    const rpcHandler = jest.fn().mockResolvedValue({ data: { success: true, data: { id: 'it-1' } } });
+  (global as any).__mock_httpsCallable_updateItinerary = rpcHandler;
+  const mf: any = require('firebase/functions');
+  mf.__rpcMocks = mf.__rpcMocks || {};
+  mf.__rpcMocks.updateItinerary = rpcHandler;
 
     const { result } = renderHook(() => useUpdateItinerary());
 
@@ -29,9 +59,8 @@ describe('useUpdateItinerary', () => {
       await result.current.updateItinerary('it-1', { destination: 'New Place' } as any);
     });
 
-    expect(getFirestore).toHaveBeenCalledWith(app);
-    expect(doc).toHaveBeenCalledWith({}, 'itineraries', 'it-1');
-    expect(updateDoc).toHaveBeenCalledWith({}, { destination: 'New Place' });
+    // Ensure the RPC handler was called with expected payload
+    expect(rpcHandler).toHaveBeenCalledWith({ itineraryId: 'it-1', updates: { destination: 'New Place' } });
     expect(result.current.error).toBeNull();
   });
 
@@ -45,17 +74,19 @@ describe('useUpdateItinerary', () => {
     });
   });
 
-  it('sets error and rethrows when updateDoc fails', async () => {
+  it('sets error and rethrows when RPC fails', async () => {
     (useGetUserId as jest.Mock).mockReturnValue('user-1');
-    (getFirestore as jest.Mock).mockReturnValue({});
-    (doc as jest.Mock).mockReturnValue({});
-    const err = new Error('firestore down');
-    (updateDoc as jest.Mock).mockRejectedValue(err);
+    const err = new Error('rpc down');
+    const rpcHandler = jest.fn().mockRejectedValue(err);
+  (global as any).__mock_httpsCallable_updateItinerary = rpcHandler;
+  const mf2: any = require('firebase/functions');
+  mf2.__rpcMocks = mf2.__rpcMocks || {};
+  mf2.__rpcMocks.updateItinerary = rpcHandler;
 
     const { result } = renderHook(() => useUpdateItinerary());
 
     await act(async () => {
-      await expect(result.current.updateItinerary('it-2', { destination: 'Y' } as any)).rejects.toThrow('firestore down');
+      await expect(result.current.updateItinerary('it-2', { destination: 'Y' } as any)).rejects.toThrow('rpc down');
     });
 
     expect(result.current.error).toBeInstanceOf(Error);

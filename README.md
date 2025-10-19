@@ -4,6 +4,41 @@ A Progressive Web App (PWA) that connects travelers with similar interests, dest
 
 ## 🚀 Features
 
+## Cloud SQL + Prisma (itineraries)
+
+If you're developing locally and want to use Cloud SQL (Postgres) with Prisma for the `itineraries` table, follow these steps:
+
+1. Start the Cloud SQL Auth Proxy (recommended):
+
+```bash
+# download cloud_sql_proxy (see Google docs)
+./cloud_sql_proxy -instances=<PROJECT>:<REGION>:<INSTANCE>=tcp:5432
+```
+
+2. In `functions/.env` set `DATABASE_URL` to point to localhost:
+
+```env
+DATABASE_URL="postgresql://voyageruser:password@127.0.0.1:5432/voyager"
+```
+
+3. Install Prisma and generate client in `functions/`:
+
+```bash
+cd functions
+npm install prisma @prisma/client
+npx prisma generate
+npx prisma migrate dev --name init
+```
+
+4. Start the emulator for functions (or deploy):
+
+```bash
+firebase emulators:start --only functions
+```
+
+See `functions/README_CloudSQL.md` for more details.
+
+
 ### Core Functionality
 - **Travel Matching**: Swipe-based interface to like/pass on travel itineraries
 - **Smart Search**: Search for travel companions by destination, dates, and preferences

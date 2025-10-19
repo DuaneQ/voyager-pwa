@@ -142,6 +142,8 @@ describe('AddItineraryModal AI Prevention', () => {
   const aiGeneratedItinerary = {
     ...regularItinerary,
     id: '2',
+    destination: 'Paris, France',
+    description: 'Amazing AI-planned trip to Paris',
     ai_status: 'completed',
     aiGenerated: true,
     response: {
@@ -196,7 +198,7 @@ describe('AddItineraryModal AI Prevention', () => {
     expect(screen.getByDisplayValue('A classic Roman holiday')).toBeInTheDocument();
   });
 
-  test('prevents editing AI-generated itinerary with ai_status', async () => {
+  test('allows editing AI-generated itinerary with ai_status', async () => {
     
     
     render(
@@ -215,16 +217,15 @@ describe('AddItineraryModal AI Prevention', () => {
     const editButtons = screen.getAllByLabelText('Edit itinerary');
     await userEvent.click(editButtons[0]);
 
-    // Should show prevention alert
-    expect(window.alert).toHaveBeenCalledWith(
-      'AI-generated itineraries cannot be edited in this modal. Please use the AI Itinerary Display to edit AI itineraries.'
-    );
+    // Should NOT show prevention alert (AI itineraries can now be edited)
+    expect(window.alert).not.toHaveBeenCalled();
 
-    // Form should not be filled with AI itinerary data
-    expect(screen.queryByDisplayValue('Paris, France')).not.toBeInTheDocument();
+    // Form should be filled with AI itinerary data
+    expect(screen.getByTestId('destination-display')).toHaveTextContent('Paris, France');
+    expect(screen.getByDisplayValue('Amazing AI-planned trip to Paris')).toBeInTheDocument();
   });
 
-  test('prevents editing AI-generated itinerary with aiGenerated flag', async () => {
+  test('allows editing AI-generated itinerary with aiGenerated flag', async () => {
     
     
     const aiItineraryWithFlag = {
@@ -249,10 +250,11 @@ describe('AddItineraryModal AI Prevention', () => {
     const editButtons = screen.getAllByLabelText('Edit itinerary');
     await userEvent.click(editButtons[0]);
 
-    // Should show prevention alert
-    expect(window.alert).toHaveBeenCalledWith(
-      'AI-generated itineraries cannot be edited in this modal. Please use the AI Itinerary Display to edit AI itineraries.'
-    );
+    // Should NOT show prevention alert (AI itineraries can now be edited)
+    expect(window.alert).not.toHaveBeenCalled();
+    
+    // Form should be filled with itinerary data
+    expect(screen.getByTestId('destination-display')).toHaveTextContent('Rome, Italy');
   });
 
   test('allows editing when neither ai_status nor aiGenerated is set', async () => {
@@ -315,11 +317,10 @@ describe('AddItineraryModal AI Prevention', () => {
     // Clear previous alert calls
     jest.clearAllMocks();
     
-    // Try to edit second itinerary (AI) - should be prevented
+    // Try to edit second itinerary (AI) - should now also work
     await userEvent.click(editButtons[1]);
-    expect(window.alert).toHaveBeenCalledWith(
-      'AI-generated itineraries cannot be edited in this modal. Please use the AI Itinerary Display to edit AI itineraries.'
-    );
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(screen.getByTestId('destination-display')).toHaveTextContent('Paris, France');
   });
 
   test('no longer contains AI sync helper functions', () => {

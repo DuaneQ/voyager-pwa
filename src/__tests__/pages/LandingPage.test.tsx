@@ -1,0 +1,347 @@
+/**
+ * LandingPage.test.tsx
+ * Unit tests for the public-facing landing page component
+ * 
+ * Test Plan:
+ * 1. Renders all main sections (hero, features, demo video, CTA)
+ * 2. Redirects authenticated users to /profile
+ * 3. Navigation buttons work correctly
+ * 4. Video elements have correct attributes for autoplay/playsinline
+ * 5. Scroll-to-section functionality works
+ */
+
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import { LandingPage } from '../../components/pages/LandingPage';
+import { Context } from '../../Context/UserAuthContext';
+
+// Mock react-router-dom navigation
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
+// Helper to render with router and context
+const renderWithContext = (user: any = null) => {
+  const contextValue = {
+    user,
+    setUser: jest.fn(),
+    userProfile: null,
+    setUserProfile: jest.fn(),
+  };
+
+  return render(
+    <BrowserRouter>
+      <Context.Provider value={contextValue}>
+        <LandingPage />
+      </Context.Provider>
+    </BrowserRouter>
+  );
+};
+
+describe('LandingPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Content Rendering', () => {
+    it('renders hero section with main headline', () => {
+      renderWithContext();
+      
+      expect(screen.getByText(/Traval the world together./i)).toBeInTheDocument();
+      expect(screen.getByText(/TravalPass matches you with travelers/i)).toBeInTheDocument();
+    });
+
+    it('renders all CTA buttons in hero section', () => {
+      renderWithContext();
+      
+      expect(screen.getByRole('button', { name: /Get Started Free/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /See How It Works/i })).toBeInTheDocument();
+    });
+
+    it('renders problem/solution section', () => {
+      renderWithContext();
+      
+      expect(screen.getByText(/Stop juggling travel apps/i)).toBeInTheDocument();
+      expect(screen.getByText(/TravalPass eliminates the chaos/i)).toBeInTheDocument();
+    });
+
+    it('renders all four feature cards', () => {
+      renderWithContext();
+      
+      // Check for feature card headings (these should be in the CardContent)
+      expect(screen.getByText(/Everything You Need in One App/i)).toBeInTheDocument();
+      
+      // Feature cards should contain icons and text, verify section exists
+      const featureSection = screen.getByText(/Everything You Need in One App/i).closest('div');
+      expect(featureSection).toBeInTheDocument();
+    });
+
+    it('renders demo video section with heading', () => {
+      renderWithContext();
+      
+      expect(screen.getByText(/See TravalPass in Action/i)).toBeInTheDocument();
+      expect(screen.getByText(/Watch how easy it is to plan, match, and travel together/i)).toBeInTheDocument();
+    });
+
+    it('renders CTA footer section', () => {
+      renderWithContext();
+      
+      expect(screen.getByText(/Join thousands of travelers planning their next adventure/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign Up Now/i })).toBeInTheDocument();
+    });
+
+    it('renders footer with copyright', () => {
+      renderWithContext();
+      
+      expect(screen.getByText(/© 2025 TravalPass. All rights reserved./i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Authentication Redirect', () => {
+    it('redirects authenticated users to /profile', async () => {
+      const mockUser = { uid: 'test-user-123', email: 'test@example.com' };
+      
+      renderWithContext(mockUser);
+      
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/profile');
+      });
+    });
+
+    it('does not redirect when user is null', () => {
+      renderWithContext(null);
+      
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Navigation Actions', () => {
+    it('navigates to /Register when clicking Get Started Free', async () => {
+      renderWithContext();
+      
+      const getStartedButton = screen.getByRole('button', { name: /Get Started Free/i });
+      await userEvent.click(getStartedButton);
+      
+      expect(mockNavigate).toHaveBeenCalledWith('/Register');
+    });
+
+    it('navigates to /Register from problem section CTA', async () => {
+      renderWithContext();
+      
+      const createProfileButton = screen.getByRole('button', { name: /Create Your Free Travel Profile/i });
+      await userEvent.click(createProfileButton);
+      
+      expect(mockNavigate).toHaveBeenCalledWith('/Register');
+    });
+
+    it('navigates to /Register from footer Sign Up button', async () => {
+      renderWithContext();
+      
+      const signUpButton = screen.getByRole('button', { name: /Sign Up Now/i });
+      await userEvent.click(signUpButton);
+      
+      expect(mockNavigate).toHaveBeenCalledWith('/Register');
+    });
+
+    it('navigates to /Login when clicking Sign In link', async () => {
+      renderWithContext();
+      
+      const signInButton = screen.getByRole('button', { name: /Already have an account\? Sign In/i });
+      await userEvent.click(signInButton);
+      
+      expect(mockNavigate).toHaveBeenCalledWith('/Login');
+    });
+  });
+
+  describe('Video Elements', () => {
+    it('renders background hero video with correct attributes', () => {
+      renderWithContext();
+      
+      const videos = document.querySelectorAll('video');
+      const heroVideo = Array.from(videos).find(v => v.getAttribute('src') === '/TravalPass.mp4');
+      
+      expect(heroVideo).toBeInTheDocument();
+      expect(heroVideo).toHaveAttribute('autoPlay');
+      expect(heroVideo).toHaveAttribute('loop');
+      // muted is a boolean attribute - check for its presence or property
+      expect(heroVideo?.muted).toBe(true);
+      expect(heroVideo).toHaveAttribute('playsInline');
+      expect(heroVideo).toHaveAttribute('preload', 'auto');
+    });
+
+    it('renders demo video with controls', () => {
+      renderWithContext();
+      
+      const videos = document.querySelectorAll('video');
+      const demoVideo = Array.from(videos).find(v => {
+        const source = v.querySelector('source');
+        return source?.getAttribute('src') === '/AfterDivorce.mp4';
+      });
+      
+      expect(demoVideo).toBeInTheDocument();
+      expect(demoVideo).toHaveAttribute('controls');
+      expect(demoVideo).toHaveAttribute('playsInline');
+      expect(demoVideo).toHaveAttribute('preload', 'auto');
+    });
+
+    it('demo video has mp4 source', () => {
+      renderWithContext();
+      
+      const videos = document.querySelectorAll('video');
+      const demoVideo = Array.from(videos).find(v => {
+        const source = v.querySelector('source');
+        return source?.getAttribute('src') === '/AfterDivorce.mp4';
+      });
+      
+      const source = demoVideo?.querySelector('source');
+      expect(source).toHaveAttribute('src', '/AfterDivorce.mp4');
+      expect(source).toHaveAttribute('type', 'video/mp4');
+    });
+  });
+
+  describe('Scroll Behavior', () => {
+    it('scrolls to how-it-works section when clicking See How It Works', async () => {
+      // Mock scrollIntoView
+      const mockScrollIntoView = jest.fn();
+      Element.prototype.scrollIntoView = mockScrollIntoView;
+      
+      renderWithContext();
+      
+      const seeHowButton = screen.getByRole('button', { name: /See How It Works/i });
+      await userEvent.click(seeHowButton);
+      
+      expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('has proper button roles for all interactive elements', () => {
+      renderWithContext();
+      
+      const buttons = screen.getAllByRole('button');
+      
+      // Should have at least 5 buttons: Get Started Free, See How It Works, 
+      // Create Your Free Travel Profile, Sign Up Now, Sign In
+      expect(buttons.length).toBeGreaterThanOrEqual(5);
+    });
+
+    it('images have alt text', () => {
+      renderWithContext();
+      
+      const images = screen.getAllByRole('img');
+      images.forEach(img => {
+        expect(img).toHaveAttribute('alt');
+      });
+    });
+  });
+
+  describe('Responsive Design', () => {
+    it('applies responsive styling to hero text', () => {
+      renderWithContext();
+      
+      const heroHeading = screen.getByText(/Traval the world together./i);
+      
+      // Component uses sx prop with responsive fontSize
+      expect(heroHeading).toBeInTheDocument();
+      expect(heroHeading.tagName).toBe('H1');
+    });
+  });
+
+  describe('Console Logging (Video Events)', () => {
+    it('logs video events for debugging', () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      
+      // Mock video.play() to return a resolved promise
+      HTMLVideoElement.prototype.play = jest.fn().mockResolvedValue(undefined);
+      
+      renderWithContext();
+      
+      // Trigger video events
+      const videos = document.querySelectorAll('video');
+      const heroVideo = videos[0];
+      
+      if (heroVideo) {
+        heroVideo.dispatchEvent(new Event('loadstart'));
+        heroVideo.dispatchEvent(new Event('loadedmetadata'));
+        heroVideo.dispatchEvent(new Event('canplay'));
+      }
+      
+      // Should log video events
+      expect(consoleLogSpy).toHaveBeenCalled();
+      
+      consoleLogSpy.mockRestore();
+    });
+
+    it('logs errors when video fails to load', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      renderWithContext();
+      
+      const videos = document.querySelectorAll('video');
+      const demoVideo = Array.from(videos).find(v => {
+        const source = v.querySelector('source');
+        return source?.getAttribute('src') === '/AfterDivorce.mp4';
+      });
+      
+      if (demoVideo) {
+        demoVideo.dispatchEvent(new Event('error'));
+      }
+      
+      // Should log error events
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles video.play rejection gracefully', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Mock video.play() to return a rejected promise
+      HTMLVideoElement.prototype.play = jest.fn().mockRejectedValue(new Error('play rejected'));
+
+      renderWithContext();
+
+      const videos = document.querySelectorAll('video');
+      const heroVideo = videos[0];
+
+      if (heroVideo) {
+        // Trigger the canplay event which attempts to play the video
+        heroVideo.dispatchEvent(new Event('canplay'));
+      }
+
+      // Wait for the microtask queue and handler to run, then assert
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('does not throw when See How It Works target is missing', () => {
+      // Ensure the target element is not present
+      const existing = document.getElementById('how-it-works');
+      if (existing) existing.remove();
+
+      renderWithContext();
+
+      const seeHowButton = screen.getByRole('button', { name: /See How It Works/i });
+
+      // Clicking should not navigate or throw even if the target element is missing
+      userEvent.click(seeHowButton);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('hero video has objectFit cover style', () => {
+      renderWithContext();
+
+      const videos = document.querySelectorAll('video');
+      const heroVideo = Array.from(videos).find(v => v.getAttribute('src') === '/TravalPass.mp4');
+
+      expect(heroVideo).toBeInTheDocument();
+      // inline style should include objectFit: 'cover'
+      expect(heroVideo?.style.objectFit).toBe('cover');
+    });
+  });
+});

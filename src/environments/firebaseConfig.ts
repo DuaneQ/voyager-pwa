@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from 'firebase/functions';
 // App Check import temporarily removed for emergency hotfix
 // import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
@@ -27,21 +28,17 @@ const prodConfig = {
   measurementId: "G-P99K8KRBYJ"
 };
 
+// Only treat localhost and loopback as emulator hosts by default.
+// Hosted preview channels (mundo1-dev.web.app, etc.) will use the deployed
+// production functions unless you explicitly opt into the emulator with
+// localStorage.setItem('USE_FUNCTIONS_EMULATOR','1') in the browser.
 const devHosts = [
   "localhost",
   "127.0.0.1",
-  "mundo1-dev.web.app",
-  "mundo1-dev.firebaseapp.com",
 ];
 
-// Detect Firebase preview channels (e.g., mundo1-dev--pr52-*.web.app)
-const isDevPreview =
-  typeof window !== "undefined" &&
-  window.location.hostname.includes("mundo1-dev-");
+const isDevHost = typeof window !== "undefined" && devHosts.includes(window.location.hostname);
 
-const isDevHost =
-  typeof window !== "undefined" &&
-  (devHosts.includes(window.location.hostname) || isDevPreview);
 
 // Check if we're in Cypress
 const isCypress = typeof window !== "undefined" && (window as any).Cypress;
@@ -56,6 +53,16 @@ export const storage = getStorage(app);
 
 // Firestore instance with offline persistence
 export const db = getFirestore(app);
+
+// Export a Functions instance and connect to the emulator in dev
+// Always use deployed Cloud Functions (production/staging). Do NOT connect to
+// the local emulator from this runtime; remove any emulator wiring to ensure
+// client calls go to the production/staging functions.
+// Explicitly bind to the functions region used by our Cloud Functions
+// deployments. This avoids the client SDK selecting a different host/region
+// which can result in CORS/preflight failures when the request hits an
+// unexpected endpoint.
+export const functions = getFunctions(app, 'us-central1');
 
 // Detect Safari browser
 const isSafari = typeof window !== "undefined" && typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -113,3 +120,22 @@ export const getMessagingInstance = () => {
   }
   return null;
 };
+
+// DEV HELPER: expose common Firebase instances to window for manual token/debugging.
+// ONLY enable in non-production and browser environments. Remove before shipping.
+if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__FIREBASE__ = { auth, functions, db, app };
+    // small helper to retrieve id token quickly
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__getIdToken = async (forceRefresh = true) => {
+      const user = (window as any).__FIREBASE__.auth.currentUser;
+      if (!user) throw new Error('No user signed in');
+      return user.getIdToken(forceRefresh);
+    };
+    console.log('[DEV] Exposed __FIREBASE__ and __getIdToken() on window for debugging');
+  } catch (e) {
+    // ignore failures in weird environments
+  }
+}

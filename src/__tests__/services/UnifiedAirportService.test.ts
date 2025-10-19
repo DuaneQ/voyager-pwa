@@ -5,6 +5,19 @@ describe('UnifiedAirportService', () => {
 
   beforeEach(() => {
     service = new UnifiedAirportService();
+    // Ensure OpenFlights data is preloaded with curated fallback to avoid
+    // network calls/timeouts during tests. We access the private loader via
+    // `any` so we don't change production code.
+    try {
+      (service as any).openFlightsService.loadFallbackData();
+    } catch (e) {
+      // If the private method is not accessible for some reason, set a
+      // minimal airports array directly to ensure searches return quickly.
+      try {
+        (service as any).openFlightsService.airports = [];
+        (service as any).openFlightsService.isDataLoaded = true;
+      } catch (err) {}
+    }
   });
 
   describe('searchAirportsNearLocation', () => {

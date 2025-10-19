@@ -13,8 +13,7 @@
  */
 
 import { useState } from "react";
-import { getFirestore, doc, deleteDoc } from "firebase/firestore";
-import { app } from "../environments/firebaseConfig";
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import useGetUserId from "./useGetUserId";
 
 const useDeleteItinerary = () => {
@@ -28,18 +27,22 @@ const useDeleteItinerary = () => {
     setLoading(true);
     setError(null);
 
-    const db = getFirestore(app);
-    const itineraryRef = doc(db, 'itineraries', itineraryId);
-
     try {
-      await deleteDoc(itineraryRef);
+      const functions = getFunctions();
+      const fn = httpsCallable(functions, 'deleteItinerary');
+      const res: any = await fn({ itineraryId });
+      if (res?.data?.success) {
+        setLoading(false);
+        return;
+      }
+      throw new Error(res?.data?.error || 'Unexpected RPC response');
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Delete failed');
+      // Always surface RPC errors; tests should mock the functions SDK.
+      const error = err instanceof Error ? err : new Error('RPC delete failed');
       setError(error);
-      console.error("Error deleting itinerary:", error);
-      throw error;
-    } finally {
       setLoading(false);
+      console.error('deleteItinerary RPC error:', error);
+      throw error;
     }
   };
 

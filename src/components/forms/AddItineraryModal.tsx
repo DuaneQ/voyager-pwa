@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import usePostItineraryToFirestore from "../../hooks/usePostItineraryToFirestore";
 import useUpdateItinerary from "../../hooks/useUpdateItinerary";
@@ -36,6 +37,7 @@ interface AddItineraryModalProps {
   onItineraryAdded: (destination: string) => void;
   onRefresh: () => void;
   itineraries: Itinerary[];
+  isLoading?: boolean;
 }
 
 const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
@@ -44,6 +46,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   onItineraryAdded,
   onRefresh,
   itineraries,
+  isLoading = false,
 }) => {
   const { userProfile } = useContext(UserProfileContext);
   const { postItinerary } = usePostItineraryToFirestore();
@@ -159,7 +162,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       };
 
       if (editingItinerary) {
-        // Update existing itinerary
+        // Update existing itinerary (including AI-generated ones)
+        // Only the fields in itineraryData are updated; AI-specific fields
+        // (ai_status, aiGenerated, response) are preserved in the database
         await updateItinerary(editingItinerary.id, itineraryData);
         alert("Itinerary successfully updated!");
         setEditingItinerary(null);
@@ -228,17 +233,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   };
 
   const handleEditItinerary = (itinerary: Itinerary) => {
-    // Don't allow editing AI-generated itineraries in this modal
-    if (
-      (itinerary as any).ai_status === "completed" ||
-      (itinerary as any).aiGenerated
-    ) {
-      alert(
-        "AI-generated itineraries cannot be edited in this modal. Please use the AI Itinerary Display to edit AI itineraries."
-      );
-      return;
-    }
-
     setEditingItinerary(itinerary);
 
     // Ensure dates are in YYYY-MM-DD format for HTML date inputs
@@ -587,7 +581,11 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             <Typography variant="h6" gutterBottom>
               Your Itineraries
             </Typography>
-            {itineraries.length > 0 ? (
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                <CircularProgress size={40} />
+              </Box>
+            ) : itineraries.length > 0 ? (
               itineraries.map((itinerary) => (
                 <ItineraryCard
                   key={itinerary.id}
