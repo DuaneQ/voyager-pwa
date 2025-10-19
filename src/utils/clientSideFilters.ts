@@ -71,74 +71,34 @@ export const applyClientSideFilters = (results: Itinerary[], params: SearchParam
   
   const viewedItineraries = getViewedItineraries();
 
-  console.log('🧹 FILTER DEBUG: Starting client-side filtering');
-  console.log('🧹 FILTER DEBUG: Current user ID:', currentUserId);
-  console.log('🧹 FILTER DEBUG: Input results to filter:', results.map(r => ({ 
-    id: r.id, 
-    userUid: r.userInfo?.uid, 
-    username: r.userInfo?.username 
-  })));
-  console.log('🧹 FILTER DEBUG: User date range:', {
-    startDate: currentUserItinerary.startDate,
-    endDate: currentUserItinerary.endDate,
-    startDay: userStartDay,
-    endDay: userEndDay
-  });
-  console.log('🧹 FILTER DEBUG: Viewed itineraries:', viewedItineraries);
-
   const filteredResults = results.filter((itinerary) => {
-    console.log(`🧹 FILTER DEBUG: Checking itinerary ${itinerary.id} (${itinerary.userInfo?.username || 'No username'})`);
-    
-    // 1. Exclude current user's itineraries (must be done client-side due to Firestore limitations)
-    // Also exclude itineraries with missing/invalid userInfo
-    console.log(`🧹 FILTER DEBUG: User ID comparison for ${itinerary.id}:`, {
-      itineraryUserId: itinerary.userInfo?.uid,
-      currentUserId: currentUserId,
-      areEqual: itinerary.userInfo?.uid === currentUserId,
-      itineraryUserIdType: typeof itinerary.userInfo?.uid,
-      currentUserIdType: typeof currentUserId,
-      hasUserInfo: !!itinerary.userInfo
-    });
-    
     // Exclude if no userInfo at all
     if (!itinerary.userInfo) {
-      console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - missing userInfo`);
       return false;
     }
     
     // Exclude if no uid in userInfo
     if (!itinerary.userInfo.uid) {
-      console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - missing uid in userInfo`);
       return false;
     }
     
     if (itinerary.userInfo.uid === currentUserId) {
-      console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - same user (${itinerary.userInfo.uid} === ${currentUserId})`);
       return false;
     }
 
     // 2. Exclude already viewed itineraries
     if (viewedItineraries.includes(itinerary.id)) {
-      console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - already viewed`);
       return false;
     }
 
     // 3. Check precise date overlap (skip if current user has invalid dates)
     if (itinerary.startDay && itinerary.endDay && userStartDay !== null && userEndDay !== null) {
       const overlaps = datesOverlap(userStartDay, userEndDay, itinerary.startDay, itinerary.endDay);
-      console.log(`🧹 FILTER DEBUG: Date overlap check for ${itinerary.id}:`, {
-        itineraryStart: new Date(itinerary.startDay).toISOString(),
-        itineraryEnd: new Date(itinerary.endDay).toISOString(),
-        userStart: new Date(userStartDay).toISOString(),
-        userEnd: new Date(userEndDay).toISOString(),
-        overlaps
-      });
       if (!overlaps) {
-        console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - no date overlap`);
         return false;
       }
     } else if (userStartDay === null || userEndDay === null) {
-      console.log(`🧹 FILTER DEBUG: ⚠️ Skipping date overlap check for ${itinerary.id} - current user has invalid dates`);
+      console.log(`🧹 FILTER DEBUG: ⚠️ Skipping date overlap check - current user has invalid dates`);
     }
 
     // 4. Check age range compatibility
@@ -147,19 +107,10 @@ export const applyClientSideFilters = (results: Itinerary[], params: SearchParam
       
       // Skip age filtering if DOB is invalid
       if (otherUserAge === null) {
-        console.log(`🧹 FILTER DEBUG: ⚠️ Skipping age check for ${itinerary.id} - invalid DOB: ${itinerary.userInfo.dob}`);
+        console.log(`🧹 FILTER DEBUG: ⚠️ Skipping age check for `);
       } else {
         const ageInRange = otherUserAge >= currentUserItinerary.lowerRange && otherUserAge <= currentUserItinerary.upperRange;
-        
-        console.log(`🧹 FILTER DEBUG: Other user age check for ${itinerary.id}:`, {
-          otherUserDob: itinerary.userInfo.dob,
-          otherUserAge,
-          currentUserAgeRange: `${currentUserItinerary.lowerRange}-${currentUserItinerary.upperRange}`,
-          ageInRange
-        });
-        
         if (!ageInRange) {
-          console.log(`🧹 FILTER DEBUG: ❌ Excluded ${itinerary.id} - other user age ${otherUserAge} not in range ${currentUserItinerary.lowerRange}-${currentUserItinerary.upperRange}`);
           return false;
         }
       }
@@ -184,10 +135,8 @@ export const applyClientSideFilters = (results: Itinerary[], params: SearchParam
     //   }
     // }
     
-    console.log(`🧹 FILTER DEBUG: ✅ Included ${itinerary.id} - passed all filters`);
     return true;
   });
   
-  console.log(`🧹 FILTER DEBUG: Final results: ${filteredResults.length} passed filters out of ${results.length} input`);
   return filteredResults;
 };

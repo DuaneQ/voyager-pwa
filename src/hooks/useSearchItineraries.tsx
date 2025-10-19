@@ -40,14 +40,18 @@ const useSearchItineraries = () => {
   const fetchFromCloudSQL = async (currentUserItinerary: Itinerary, currentUserId: string): Promise<Itinerary[]> => {
     const PAGE_SIZE = 10;
     const rpcName = 'searchItineraries';
-    const handlerKey = `__mock_httpsCallable_${rpcName}`;
 
+    // Resolve the callable via firebase/functions. Tests install a resilient
+    // shim that makes `httpsCallable(functions, name)` return a function.
+    // If it's not present, fail fast so callers can show a clear "unavailable"
+    // message to the user. Do NOT consult test-only globals from production code.
     const searchFn = httpsCallable(functions, rpcName);
     const callRpc = async (payload: any) => {
-      if (typeof searchFn === 'function') return await searchFn(payload);
-      const globalHandler = (global as any)[handlerKey];
-      if (globalHandler && typeof globalHandler === 'function') return await globalHandler(payload);
-      throw new Error('httpsCallable not available');
+      if (typeof searchFn !== 'function') {
+        // This message is preserved to surface to users in the UI (see preservePatterns)
+        throw new Error('RPC unavailable: httpsCallable not available');
+      }
+      return await searchFn(payload);
     };
 
     const res: any = await callRpc({
@@ -92,7 +96,7 @@ const useSearchItineraries = () => {
       setCurrentIndex(0);
       if (results.length === 0) setHasMore(false);
     } catch (err: any) {
-      const preservePatterns = [/timeout/i, /network/i, /connection|ECONNREFUSED/i, /proxy/i, /first attempt/i, /constraint/i, /test error/i];
+  const preservePatterns = [/timeout/i, /network/i, /connection|ECONNREFUSED/i, /proxy/i, /first attempt/i, /constraint/i, /test error/i, /RPC unavailable/i, /httpsCallable not available/i];
       let message = 'Failed to search itineraries. Please try again later.';
       if (err instanceof Error && err.message && preservePatterns.some(r => r.test(err.message))) message = err.message;
       setError(message);
