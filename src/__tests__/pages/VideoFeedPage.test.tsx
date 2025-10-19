@@ -926,10 +926,11 @@ describe('VideoFeedPage', () => {
 
   describe('Video playback behavior', () => {
     it('should start videos in paused state for mobile compatibility', async () => {
-          (auth as any).currentUser = {
-            uid: 'test-user-id',
-            email: 'test@example.com'
-          };
+          // Ensure the mocked auth currentUser is set on the mocked module
+          Object.defineProperty(mockAuth, 'currentUser', {
+            value: { uid: 'test-user-id', email: 'test@example.com' },
+            writable: true,
+          });
           const testVideos = [
             {
               id: 'video-1',
