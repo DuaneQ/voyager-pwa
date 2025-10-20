@@ -235,15 +235,20 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       // behavior local to the component and avoids introducing a new hook.
       const id = selectedItinerary.id;
 
+      // Ensure we save the full itinerary structure including all nested data
+      // (response.data.recommendations, response.data.metadata, etc.)
       const payload = {
         ...selectedItinerary,
         id,
         createdAt: selectedItinerary.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),
+        // Explicitly preserve the response object to ensure recommendations and metadata are saved
+        response: selectedItinerary.response || {},
       } as any;
 
       const ref = doc(db, 'itineraries', id);
-      await setDoc(ref, payload, { merge: true });
+      // Use merge: false to ensure we write the complete document
+      await setDoc(ref, payload, { merge: false });
 
       // Update UI to reflect the persisted id and refresh the list
       setSelectedItinerary({ ...selectedItinerary, id } as any);
