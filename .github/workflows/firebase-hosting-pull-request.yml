@@ -37,15 +37,15 @@ jobs:
         run: |
           echo "🔍 Running security audit..."
           npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
-          
+
       - name: Security audit (fail on critical only)
         run: npm audit --audit-level=critical
-        
+
       - run: CI=false npm run build
         env:
           REACT_APP_ENV: development
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
-      
+
       - name: Preflight: check required secrets for preview deploy
         run: |
           missing=0
