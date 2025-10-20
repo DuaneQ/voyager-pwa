@@ -83,6 +83,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   );
   const [deletingItinerary, setDeletingItinerary] = useState(false);
 
+  // Ref for the modal content to enable scrolling
+  const modalContentRef = React.useRef<HTMLDivElement>(null);
+
   // Helper function to validate the itinerary
   const validateItinerary = (): string | null => {
     if (!userProfile?.dob || !userProfile?.gender) {
@@ -235,6 +238,14 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const handleEditItinerary = (itinerary: Itinerary) => {
     setEditingItinerary(itinerary);
 
+    // Scroll to top of modal so user sees the form
+    if (modalContentRef.current && modalContentRef.current.scrollTo) {
+      modalContentRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+
     // Ensure dates are in YYYY-MM-DD format for HTML date inputs
     const formatDateForInput = (
       dateValue: string | undefined,
@@ -318,6 +329,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     <Modal open={open} onClose={onClose}>
       <>
         <Box
+          ref={modalContentRef}
           sx={{
             position: "absolute",
             top: "50%",

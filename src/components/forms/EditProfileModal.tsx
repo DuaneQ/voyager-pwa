@@ -83,10 +83,41 @@ export const EditProfileModal = (props: any) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Validate required fields
+    if (!formData.username?.trim()) {
+      showAlert("error", "Username is required.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.dob) {
+      showAlert("error", "Date of birth is required.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Convert date string to Date object for validation
     const dobDate = new Date(formData.dob);
     if (!isUserOver18(dobDate)) {
       showAlert("error", "You must be over 18 years old or older.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.gender) {
+      showAlert("error", "Gender is required.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.status) {
+      showAlert("error", "Status is required.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.sexualOrientation) {
+      showAlert("error", "Sexual orientation is required.");
       setIsSubmitting(false);
       return;
     }
@@ -138,16 +169,21 @@ export const EditProfileModal = (props: any) => {
           >
             <Box sx={{ textAlign: "center", mb: 2 }}>
               <h2>Edit Profile</h2>
+              <p style={{ fontSize: "0.875rem", color: "#666", margin: "8px 0 0 0" }}>
+                * Required fields for creating itineraries
+              </p>
             </Box>
-            <FormControl>
+            <FormControl required>
               <TextField
                 id="username"
-                label="Username"
+                label="*Username"
                 value={formData.username}
                 name="username"
                 onChange={handleChange}
                 placeholder="Enter your username"
                 required
+                error={!formData.username?.trim()}
+                helperText={!formData.username?.trim() ? "Required" : ""}
               />
             </FormControl>
             <FormControl>
@@ -176,7 +212,7 @@ export const EditProfileModal = (props: any) => {
                 onChange={handleChange}
               />
             </FormControl>
-            <FormControl>
+            <FormControl required>
               <TextField
                 id="status"
                 value={formData.status}
@@ -184,8 +220,10 @@ export const EditProfileModal = (props: any) => {
                 required
                 fullWidth
                 name="status"
-                label="Status"
+                label="*Status"
                 onChange={handleChange}
+                error={!formData.status}
+                helperText={!formData.status ? "Required" : ""}
               >
                 {STATUS_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option.toLowerCase()}>
@@ -194,7 +232,7 @@ export const EditProfileModal = (props: any) => {
                 ))}
               </TextField>
             </FormControl>
-            <FormControl>
+            <FormControl required>
               <TextField
                 id="gender"
                 value={formData.gender}
@@ -202,8 +240,10 @@ export const EditProfileModal = (props: any) => {
                 required
                 fullWidth
                 name="gender"
-                label="Gender"
+                label="*Gender"
                 onChange={handleChange}
+                error={!formData.gender}
+                helperText={!formData.gender ? "Required" : ""}
               >
                 {GENDER_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option}>
@@ -212,7 +252,7 @@ export const EditProfileModal = (props: any) => {
                 ))}
               </TextField>
             </FormControl>
-            <FormControl>
+            <FormControl required>
               <TextField
                 id="sexualOrientation"
                 value={formData.sexualOrientation}
@@ -220,8 +260,10 @@ export const EditProfileModal = (props: any) => {
                 select
                 fullWidth
                 name="sexualOrientation"
-                label="Sexual Orientation"
+                label="*Sexual Orientation"
                 onChange={handleChange}
+                error={!formData.sexualOrientation}
+                helperText={!formData.sexualOrientation ? "Required" : ""}
               >
                 {SEXUAL_ORIENTATION_OPTIONS.map((option, index) => (
                   <MenuItem key={index} value={option.toLowerCase()}>

@@ -1,8 +1,11 @@
 import { ProfileForm } from "../forms/ProfileForm";
 import { PhotoGrid } from "../forms/PhotoGrid";
 import { VideoGrid } from "../forms/VideoGrid";
+import { EditProfileModal } from "../forms/EditProfileModal";
 import Box from "@mui/material/Box";
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
+import { UserProfileContext } from "../../Context/UserProfileContext";
+import { checkProfileCompleteness } from "../../utils/profileCompleteness";
 // import { useFCMToken } from "../../hooks/useFCMToken";
 import loginImage from "../../assets/images/login-image.jpeg";
 
@@ -12,6 +15,19 @@ export const Profile = React.memo(() => {
   // useFCMToken();
   
   const [currentTab, setCurrentTab] = useState(0);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const { userProfile } = useContext(UserProfileContext);
+  
+  // Check profile completeness on mount and when userProfile changes
+  useEffect(() => {
+    if (userProfile) {
+      const { isComplete } = checkProfileCompleteness(userProfile);
+      if (!isComplete) {
+        // Show the edit profile modal if profile is incomplete
+        setShowEditProfileModal(true);
+      }
+    }
+  }, [userProfile]);
 
   const handleTabChange = (newTab: number) => {
     setCurrentTab(newTab);
@@ -116,6 +132,12 @@ export const Profile = React.memo(() => {
           {/* <Chips /> */}
         </Box>
       </Box>
+      
+      {/* Edit Profile Modal - shown automatically if profile is incomplete */}
+      <EditProfileModal 
+        show={showEditProfileModal} 
+        close={() => setShowEditProfileModal(false)} 
+      />
     </Box>
   );
 });

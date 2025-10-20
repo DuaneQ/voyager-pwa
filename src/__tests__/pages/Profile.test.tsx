@@ -50,6 +50,14 @@ jest.mock("../../components/forms/PhotoGrid", () => {
   };
 });
 
+jest.mock("../../components/forms/EditProfileModal", () => {
+  return {
+    EditProfileModal: function MockEditProfileModal({ show }: any) {
+      return show ? <div data-testid="edit-profile-modal">Edit Profile Modal</div> : null;
+    },
+  };
+});
+
 // Add mock for Notification API
 Object.defineProperty(window, 'Notification', {
   value: {
@@ -171,6 +179,57 @@ describe("Profile Component", () => {
     const { container: container2 } = renderWithContext();
     
     expect(container1.innerHTML).toBe(container2.innerHTML);
+  });
+
+  it("shows EditProfileModal when profile is incomplete", async () => {
+    const incompleteProfile: UserProfile = {
+      uid: "user-123",
+      username: "TestUser",
+      email: "test@example.com",
+      // Missing: dob, gender, status, sexualOrientation
+    };
+
+    render(
+      <UserProfileContext.Provider
+        value={{
+          userProfile: incompleteProfile,
+          updateUserProfile: mockUpdateUserProfile,
+        }}
+      >
+        <Profile />
+      </UserProfileContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-profile-modal")).toBeInTheDocument();
+    });
+  });
+
+  it("does not show EditProfileModal when profile is complete", async () => {
+    const completeProfile: UserProfile = {
+      uid: "user-123",
+      username: "TestUser",
+      email: "test@example.com",
+      dob: "1990-01-01",
+      gender: "Male",
+      status: "single",
+      sexualOrientation: "straight",
+    };
+
+    render(
+      <UserProfileContext.Provider
+        value={{
+          userProfile: completeProfile,
+          updateUserProfile: mockUpdateUserProfile,
+        }}
+      >
+        <Profile />
+      </UserProfileContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("edit-profile-modal")).not.toBeInTheDocument();
+    });
   });
 
   // FCM test temporarily skipped - FCM is disabled to fix infinite update loop

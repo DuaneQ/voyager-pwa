@@ -696,6 +696,10 @@ describe("AddItineraryModal Component", () => {
     const editButtons = screen.getAllByLabelText(/edit itinerary/i);
     fireEvent.click(editButtons[0]);
 
+    // Set the destination (required field)
+    const destinationInput = screen.getByTestId("google-places-autocomplete");
+    fireEvent.change(destinationInput, { target: { value: "Paris" } });
+
     // Fill required fields with dates that won't trigger validation errors
     // Use dates further in the future to avoid conflicts with the mock itinerary's future dates
     const futureStart = new Date(Date.now() + 3690 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 10 years + 40 days from today
@@ -708,8 +712,9 @@ describe("AddItineraryModal Component", () => {
     const startDateInput = screen.getByLabelText(/start date/i);
     fireEvent.change(startDateInput, { target: { value: futureStart } });
 
-    // The dropdown fields should already be populated from the existing itinerary data
-    // No need to set them again in edit mode
+    // Note: The dropdown fields (gender, status, orientation) should already be populated 
+    // from the existing itinerary data when editing, so we don't need to manually set them
+    // unless the test specifically needs to change their values
 
     // Try to update
     const updateButton = screen.getByRole("button", { name: /update itinerary/i });
