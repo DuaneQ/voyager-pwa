@@ -40,6 +40,20 @@ export const ProfileHeader = () => {
 
   return (
     <>
+      {/* Error container outside constrained layout */}
+      <Box sx={{
+        position: 'fixed',
+        top: '80px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '90%',
+        maxWidth: '400px',
+        zIndex: 9999,
+        pointerEvents: 'none'
+      }}>
+        <ProfilePhoto errorOnly />
+      </Box>
+      
       <Box sx={{
         maxWidth: '300px',
         margin: '0 auto',
@@ -59,7 +73,7 @@ export const ProfileHeader = () => {
             width: { xs: '120px', sm: '140px' },
             height: { xs: '120px', sm: '140px' }
           }}>
-            <ProfilePhoto />
+            <ProfilePhoto hideError />
           </Box>
           <Box sx={{ 
             flexDirection: "column",

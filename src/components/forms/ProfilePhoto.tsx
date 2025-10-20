@@ -8,8 +8,12 @@ import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage
 import { validateImageFile } from "../../utils/validateImageFile";
 import CloseIcon from "@mui/icons-material/Close";
 
+interface ProfilePhotoProps {
+  errorOnly?: boolean;
+  hideError?: boolean;
+}
 
-export const ProfilePhoto = () => {
+export const ProfilePhoto = ({ errorOnly = false, hideError = false }: ProfilePhotoProps) => {
   const { uploadImage } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
   const { userProfile, updateUserProfile } = useContext(UserProfileContext);
@@ -88,6 +92,24 @@ export const ProfilePhoto = () => {
     setEnlargedPhoto(null);
   };
 
+  // If errorOnly mode, just show the error message
+  if (errorOnly) {
+    return error ? (
+      <Alert 
+        severity="error" 
+        sx={{ 
+          mt: 1, 
+          mb: 1, 
+          pointerEvents: 'auto',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          borderRadius: 2
+        }}
+      >
+        {error}
+      </Alert>
+    ) : null;
+  }
+
   return (
     <>
       <img
@@ -106,7 +128,9 @@ export const ProfilePhoto = () => {
           if (!loading) setMenuAnchor(event.currentTarget);
         }}
       />
-      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>}
+      {!hideError && error && (
+        <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>
+      )}
       <Input
         type="file"
         inputRef={fileRef}
