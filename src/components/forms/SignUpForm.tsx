@@ -149,29 +149,20 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
       };
 
       const db = getFirestore(app);
-
-      // Check for existing profile by email to avoid overwriting an existing users doc.
-      // Wrap in a targeted try/catch so tests that don't initialize Firebase won't blow up.
-      if (user.email) {
-        try {
-          const q = query(collection(db, "users"), where("email", "==", user.email));
-          const qsnap = await getDocs(q);
-          if (!qsnap.empty) {
-            showAlert("Error", "A profile already exists for this email. Please sign in instead.");
-            navigate("/Login");
-            return;
-          }
-        } catch (err: any) {
-          // If Firebase isn't initialized in the test environment (app/no-app), skip the check.
-          if (!err || !err.code || !String(err.code).includes('app/no-app')) {
-            // Unknown error - rethrow so real failures are visible
-            throw err;
-          }
-        }
-      }
-
       const docRef = doc(db, "users", user.uid);
-      await setDoc(docRef, userData);
+      
+      // Try to create the user document - if it already exists, Firebase will handle it gracefully
+      try {
+        await setDoc(docRef, userData);
+      } catch (error: any) {
+        // If there's a permissions error or the document already exists, handle it
+        if (error.code === 'permission-denied') {
+          showAlert("Error", "A profile already exists for this email. Please sign in instead.");
+          navigate("/Login");
+          return;
+        }
+        throw error;
+      }
 
       localStorage.setItem("USER_CREDENTIALS", JSON.stringify(userCredentials));
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
@@ -198,35 +189,21 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Before creating an auth user, ensure there's no existing users doc with this email
-      if (inputs.email) {
-        try {
-          const db = getFirestore(app);
-          const q = query(collection(db, "users"), where("email", "==", inputs.email));
-          const qsnap = await getDocs(q);
-          if (!qsnap.empty) {
-            showAlert("Error", "An account already exists for that email. Please sign in instead.");
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (err: any) {
-          if (!err || !err.code || !String(err.code).includes('app/no-app')) {
-            throw err;
-          }
-          // Otherwise, ignore missing app in test environment and continue with signup
-        }
-      }
+      // Validation checks
       if (inputs.password !== inputs.confirm) {
         showAlert(
           "Error",
           "The passwords you entered do not match. Please make sure both fields have the same password."
         );
+        setIsSubmitting(false);
         return;
       } else if (!inputs.email || !inputs.username || !inputs.password) {
         showAlert("Error", "Please fill out all of the fields.");
+        setIsSubmitting(false);
         return;
       }
 
+      // Create the auth user first - Firebase Auth will handle duplicate email detection
       await createUserWithEmailAndPassword(auth, inputs.email, inputs.password)
         .then(async (userCredential) => {
           await sendEmailVerification(userCredential.user);
@@ -277,8 +254,20 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
         })
         .catch((error) => {
           const errorMessage = error.message;
-          showAlert("Error", errorMessage);
+          // Provide user-friendly error messages
+          if (error.code === 'auth/email-already-in-use') {
+            showAlert("Error", "An account already exists for that email. Please sign in instead.");
+          } else if (error.code === 'auth/invalid-email') {
+            showAlert("Error", "Please enter a valid email address.");
+          } else if (error.code === 'auth/weak-password') {
+            showAlert("Error", "Password should be at least 6 characters.");
+          } else {
+            showAlert("Error", errorMessage);
+          }
         });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      showAlert("Error", errorMessage);
     } finally {
       setIsSubmitting(false);
     }

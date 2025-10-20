@@ -62,6 +62,46 @@ firebase use mundo1-1  # Switch to production project
 firebase deploy --only functions:searchItineraries,functions:listItinerariesForUser,functions:createItinerary,functions:updateItinerary,functions:deleteItinerary
 ```
 
+### Emergency buildpack fixes (2025-10-19)
+
+If you see Cloud Build failures with the error "lib/index.js does not exist" during Gen‑2 function deploys, perform the following checklist:
+
+- Ensure the functions package provides a `gcp-build` script so the Cloud Buildpack runs TypeScript compilation during remote builds. Example in `functions/package.json`:
+
+```json
+"scripts": {
+  "build": "tsc",
+  "gcp-build": "npm run build",
+  ...
+}
+```
+
+- The `functions/.gcloudignore` file includes an explicit allow for compiled artifacts so they can be uploaded when present:
+
+```
+!lib/**
+```
+
+- Emergency deploy option (fast recovery): locally build and upload the functions artifact (includes compiled `lib/`) and deploy from that GCS object. Example:
+
+```bash
+cd functions
+npm run gcp-build                 # produce lib/index.js
+zip -r /tmp/functions-deploy.zip .
+gsutil cp /tmp/functions-deploy.zip gs://gcf-v2-sources-$PROJECT-us-central1/functions-deploy-local.zip
+gcloud functions deploy createItinerary \
+  --gen2 --region=us-central1 --runtime=nodejs20 \
+  --entry-point=createItinerary \
+  --source=gs://gcf-v2-sources-$PROJECT-us-central1/functions-deploy-local.zip \
+  --set-secrets=DATABASE_URL=projects/$PROJECT/secrets/voyager-itinerary-db:latest \
+  --project=$PROJECT --quiet
+```
+
+This approach bypasses the remote TypeScript build step and is useful for hotfix recoveries when production is down.
+
+Make sure to revert any temporary changes or follow up with a proper CI-based artifact pipeline after recovery.
+
+
 ### Step 4: Deploy Frontend
 
 ```bash

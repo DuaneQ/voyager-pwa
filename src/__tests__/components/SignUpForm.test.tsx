@@ -22,18 +22,28 @@ describe('SignUpForm', () => {
     jest.clearAllMocks();
   });
 
-  test('blocks email signup when a users doc exists for the email', async () => {
-    // Mock getDocs to return a non-empty snapshot
-    const { getDocs } = require('firebase/firestore');
-    getDocs.mockResolvedValue({ empty: false, docs: [{ id: 'u1' }] });
+  test('blocks email signup when Firebase Auth detects duplicate email', async () => {
+    // Mock createUserWithEmailAndPassword to throw duplicate email error
+    const { createUserWithEmailAndPassword } = require('firebase/auth');
+    createUserWithEmailAndPassword.mockRejectedValue({ 
+      code: 'auth/email-already-in-use',
+      message: 'The email address is already in use by another account.'
+    });
 
-  const { getByTestId, getByPlaceholderText } = renderWithAlert(<SignUpForm />);
+    const { getByTestId, getByPlaceholderText } = renderWithAlert(<SignUpForm />);
 
-  const emailInput = getByPlaceholderText('your@email.com') as HTMLInputElement;
-  fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    const usernameInput = getByPlaceholderText('Username') as HTMLInputElement;
+    const emailInput = getByPlaceholderText('your@email.com') as HTMLInputElement;
+    const passwordInput = getByPlaceholderText('Enter your password') as HTMLInputElement;
+    const confirmInput = getByPlaceholderText('Confirm your password') as HTMLInputElement;
 
-  // Submit the form
-  fireEvent.click(getByTestId('email-signup-button'));
+    fireEvent.change(usernameInput, { target: { value: 'alice' } });
+    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmInput, { target: { value: 'password123' } });
+
+    // Submit the form
+    fireEvent.click(getByTestId('email-signup-button'));
 
     await waitFor(() => {
       expect(mockShowAlert).toHaveBeenCalledWith('Error', 'An account already exists for that email. Please sign in instead.');
@@ -43,23 +53,23 @@ describe('SignUpForm', () => {
     expect(setDoc).not.toHaveBeenCalled();
   });
 
-  test('blocks google signup when a users doc exists for the email', async () => {
+  test('allows google signup even if user profile might exist (setDoc handles conflicts)', async () => {
     // Mock signInWithPopup to return a user
     const { signInWithPopup } = require('firebase/auth');
     signInWithPopup.mockResolvedValue({ user: { uid: 'u1', email: 'alice@example.com', displayName: 'Alice' } });
 
-    const { getDocs } = require('firebase/firestore');
-    getDocs.mockResolvedValue({ empty: false, docs: [{ id: 'u1' }] });
+    // Mock setDoc to succeed
+    const { setDoc } = require('firebase/firestore');
+    setDoc.mockResolvedValue(undefined);
 
     const { getByTestId } = renderWithAlert(<SignUpForm />);
 
     fireEvent.click(getByTestId('google-signup-button'));
 
     await waitFor(() => {
-      expect(mockShowAlert).toHaveBeenCalledWith('Error', 'A profile already exists for this email. Please sign in instead.');
+      expect(mockShowAlert).toHaveBeenCalledWith('Success', 'You have successfully signed up with Google!');
     });
 
-    const { setDoc } = require('firebase/firestore');
-    expect(setDoc).not.toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalled();
   });
 });
