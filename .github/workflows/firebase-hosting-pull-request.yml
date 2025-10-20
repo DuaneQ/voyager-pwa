@@ -32,7 +32,7 @@ jobs:
           fi
       - run: npm init
       - run: npm install --save firebase --legacy-peer-deps
-      
+
       - name: Security audit (report only)
         run: |
           echo "🔍 Running security audit..."
@@ -45,7 +45,6 @@ jobs:
         env:
           REACT_APP_ENV: development
           REACT_APP_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
-
       - name: Preflight: check required secrets for preview deploy
         run: |
           missing=0
@@ -57,14 +56,12 @@ jobs:
             echo "Aborting: required secrets are missing for preview deploy."
             exit 1
           fi
-      
       - uses: FirebaseExtended/action-hosting-deploy@v0
         id: firebase_deploy
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
-          projectId: mundo1-dev
-      
+          with:
+            repoToken: ${{ secrets.GITHUB_TOKEN }}
+            firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+            projectId: mundo1-dev
       - name: Debug Firebase Deploy Outputs
         run: |
           echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
@@ -77,15 +74,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci --legacy-peer-deps
-      
+
       - name: Security audit (report only)
         run: |
           echo "🔍 Running security audit..."
           npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
-          
+
       - name: Security audit (fail on critical only)
         run: npm audit --audit-level=critical
-        
+
       - name: Debug Preview URL
         run: |
           if [ -z "$CYPRESS_BASE_URL" ]; then

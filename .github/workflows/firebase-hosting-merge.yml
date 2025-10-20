@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -36,15 +36,15 @@ jobs:
             echo "Aborting: required secrets are missing. See errors above."
             exit 1
           fi
-      
+
       - name: Security audit (report only)
         run: |
           echo "🔍 Running security audit..."
           npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
-          
+
       - name: Security audit (fail on critical only)
         run: npm audit --audit-level=critical
-      
+
       - name: Run Jest unit tests
         run: npm test -- --coverage --watchAll=false
         env:
