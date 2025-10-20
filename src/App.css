@@ -1395,7 +1395,7 @@ video[poster] {
   .video-upload-modal {
     max-width: 88%; /* Reduced width by 10% */
     width: 88%; /* Reduced width by 10% */
-    max-height: 57.4vh; /* Reduced by 15% from 67.5vh for small devices */
+    max-height:48.8vh; /* Reduced by 15% from 57.4vh for small devices */
     border-radius: 4px; /* Reduced from 6px */
   }
   
