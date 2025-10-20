@@ -111,13 +111,7 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
     }
 
     // Wait for service worker to be ready
-    await navigator.serviceWorker.ready;
-
-    // Register Firebase messaging service worker explicitly
-    const swRegistration = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js",
-      { scope: "/" }
-    );
+    const swRegistration = await navigator.serviceWorker.ready;
 
     // Get messaging instance with safety check
     let messaging;

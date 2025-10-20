@@ -3,12 +3,13 @@ import { PhotoGrid } from "../forms/PhotoGrid";
 import { VideoGrid } from "../forms/VideoGrid";
 import Box from "@mui/material/Box";
 import React, { useState } from "react";
-import { useFCMToken } from "../../hooks/useFCMToken";
+// import { useFCMToken } from "../../hooks/useFCMToken";
 import loginImage from "../../assets/images/login-image.jpeg";
 
 export const Profile = React.memo(() => {
   // Use the FCM token hook to handle notifications
-  useFCMToken();
+  // Temporarily disabled FCM to fix infinite update loop issue
+  // useFCMToken();
   
   const [currentTab, setCurrentTab] = useState(0);
 
