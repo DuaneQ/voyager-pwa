@@ -11,6 +11,18 @@ import { getPerformance } from "firebase/performance";
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { app } from "./environments/firebaseConfig";
 
+// Unregister any old FCM service workers that might be causing issues
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      if (registration.active?.scriptURL?.includes('firebase-messaging-sw')) {
+        console.log('[SW] Unregistering old FCM service worker:', registration.active.scriptURL);
+        registration.unregister();
+      }
+    });
+  });
+}
+
 // Suppress Google Maps API deprecation warnings
 if (process.env.NODE_ENV === 'development') {
   const originalConsoleWarn = console.warn;
@@ -65,12 +77,26 @@ serviceWorkerRegistration.register({
       const swUrl = registration?.waiting?.scriptURL || 'unknown-sw';
       const promptKey = `sw-update-prompted:${swUrl}`;
 
+      // Add cooldown period: don't show update prompt more than once every 30 minutes
+      const lastPromptTimeKey = 'sw-update-last-prompt-time';
+      const lastPromptTime = localStorage.getItem(lastPromptTimeKey);
+      const now = Date.now();
+      const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+      
+      if (lastPromptTime && (now - parseInt(lastPromptTime)) < COOLDOWN_MS) {
+        console.log('[SW] Update available but in cooldown period, skipping prompt');
+        return;
+      }
+
       // If we've already prompted for this exact waiting worker, don't prompt again
       if (localStorage.getItem(promptKey)) return;
 
       const confirmUpdate = window.confirm(
         'A new version of TravalPass is available. Would you like to update now?'
       );
+
+      // Record that we showed the prompt (regardless of user choice)
+      localStorage.setItem(lastPromptTimeKey, now.toString());
 
       if (!confirmUpdate) return;
 

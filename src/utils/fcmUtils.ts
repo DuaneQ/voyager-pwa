@@ -83,8 +83,16 @@ export const requestNotificationPermission = async (): Promise<{
 
 /**
  * Generate and validate FCM token
+ * TEMPORARILY DISABLED: FCM is disabled to fix infinite update loop issues
  */
 export const generateFCMToken = async (): Promise<FCMTokenResult> => {
+  // FCM temporarily disabled - return early
+  return {
+    success: false,
+    error: "FCM temporarily disabled",
+  };
+
+  /* DISABLED CODE - uncomment to re-enable FCM
   try {
     if (!isFCMSupported()) {
       return {
@@ -155,6 +163,7 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+  */
 };
 
 /**
@@ -188,8 +197,16 @@ export const saveFCMTokenToFirestore = async (
 
 /**
  * Setup FCM token for a user
+ * TEMPORARILY DISABLED: FCM is disabled to fix infinite update loop issues
  */
 export const setupFCMForUser = async (userId: string): Promise<FCMTokenResult> => {
+  // FCM temporarily disabled - return early
+  return {
+    success: false,
+    error: "FCM temporarily disabled",
+  };
+
+  /* DISABLED CODE - uncomment to re-enable FCM
   if (!userId) {
     return {
       success: false,
@@ -228,6 +245,7 @@ export const setupFCMForUser = async (userId: string): Promise<FCMTokenResult> =
   }
 
   return tokenResult;
+  */
 };
 
 /**
