@@ -8,8 +8,6 @@ import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
 import usePostUserProfileToStorage from "../../hooks/usePostUserProfileToStorage";
 import { validateImageFile } from "../../utils/validateImageFile";
 
-const IMAGE_SIZE = 120; // px
-
 export const PhotoGrid = () => {
   const { uploadImage } = useUploadImage();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -98,14 +96,16 @@ export const PhotoGrid = () => {
     <>
       <Grid container spacing={2} px={1}>
         {slots.map((slot, index) => (
-          <Grid item xs={6} key={slot} display="flex" justifyContent="center">
+          <Grid item xs={6} sm={4} md={3} key={slot} display="flex" justifyContent="center">
             <img
               src={userProfile?.photos?.[slot] ? userProfile.photos[slot] : profilePlaceholder}
               alt={userProfile?.photos?.[slot] ? slot : "Profile Placeholder"}
               loading="lazy"
               style={{
-                width: IMAGE_SIZE,
-                height: IMAGE_SIZE,
+                width: '100%',
+                maxWidth: '200px',
+                height: 'auto',
+                aspectRatio: '1',
                 objectFit: "cover",
                 borderRadius: 8,
                 background: "#eee",

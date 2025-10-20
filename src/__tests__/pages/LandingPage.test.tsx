@@ -14,6 +14,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { LandingPage } from '../../components/pages/LandingPage';
 import { Context } from '../../Context/UserAuthContext';
 
@@ -34,11 +35,13 @@ const renderWithContext = (user: any = null) => {
   };
 
   return render(
-    <BrowserRouter>
-      <Context.Provider value={contextValue}>
-        <LandingPage />
-      </Context.Provider>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <Context.Provider value={contextValue}>
+          <LandingPage />
+        </Context.Provider>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 };
 
@@ -51,32 +54,33 @@ describe('LandingPage', () => {
     it('renders hero section with main headline', () => {
       renderWithContext();
       
-      expect(screen.getByText(/Traval the world together./i)).toBeInTheDocument();
-      expect(screen.getByText(/TravalPass matches you with travelers/i)).toBeInTheDocument();
+      expect(screen.getByText(/Find Your Perfect Travel Companion/i)).toBeInTheDocument();
+      expect(screen.getByText(/Connect with travel buddies and vacation companions/i)).toBeInTheDocument();
     });
 
     it('renders all CTA buttons in hero section', () => {
       renderWithContext();
       
-      expect(screen.getByRole('button', { name: /Get Started Free/i })).toBeInTheDocument();
+      // The button has aria-label but displays "Get Started Free"
+      expect(screen.getByRole('button', { name: /Sign up for TravalPass/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /See How It Works/i })).toBeInTheDocument();
     });
 
     it('renders problem/solution section', () => {
       renderWithContext();
       
-      expect(screen.getByText(/Stop juggling travel apps/i)).toBeInTheDocument();
-      expect(screen.getByText(/TravalPass eliminates the chaos/i)).toBeInTheDocument();
+      expect(screen.getByText(/Stop Planning Alone/i)).toBeInTheDocument();
+      expect(screen.getByText(/Find Your Vacation Companion/i)).toBeInTheDocument();
     });
 
     it('renders all four feature cards', () => {
       renderWithContext();
       
       // Check for feature card headings (these should be in the CardContent)
-      expect(screen.getByText(/Everything You Need in One App/i)).toBeInTheDocument();
+      expect(screen.getByText(/Your Complete Travel Companion Platform/i)).toBeInTheDocument();
       
       // Feature cards should contain icons and text, verify section exists
-      const featureSection = screen.getByText(/Everything You Need in One App/i).closest('div');
+      const featureSection = screen.getByText(/Your Complete Travel Companion Platform/i).closest('div');
       expect(featureSection).toBeInTheDocument();
     });
 
@@ -123,7 +127,8 @@ describe('LandingPage', () => {
     it('navigates to /Register when clicking Get Started Free', async () => {
       renderWithContext();
       
-      const getStartedButton = screen.getByRole('button', { name: /Get Started Free/i });
+      // Button has aria-label "Sign up for TravalPass"
+      const getStartedButton = screen.getByRole('button', { name: /Sign up for TravalPass/i });
       await userEvent.click(getStartedButton);
       
       expect(mockNavigate).toHaveBeenCalledWith('/Register');
@@ -243,7 +248,7 @@ describe('LandingPage', () => {
     it('applies responsive styling to hero text', () => {
       renderWithContext();
       
-      const heroHeading = screen.getByText(/Traval the world together./i);
+      const heroHeading = screen.getByText(/Find Your Perfect Travel Companion/i);
       
       // Component uses sx prop with responsive fontSize
       expect(heroHeading).toBeInTheDocument();

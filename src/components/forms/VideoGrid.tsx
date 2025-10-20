@@ -10,8 +10,6 @@ import { db, storage, auth } from "../../environments/firebaseConfig";
 import { useVideoUpload } from "../../hooks/useVideoUpload";
 import { VideoUploadModal } from "../modals/VideoUploadModal";
 
-const VIDEO_SIZE = 120; // px
-
 export const VideoGrid = () => {
   const { uploadVideo, isUploading, uploadProgress } = useVideoUpload();
   const [error, setError] = useState<string | null>(null);
@@ -123,14 +121,14 @@ export const VideoGrid = () => {
     <>
       <Grid container spacing={2} px={1} pb={10}>
         {/* Upload Button - Always show first */}
-        <Grid item xs={6} display="flex" justifyContent="center">
+        <Grid item xs={6} sm={4} md={3} display="flex" justifyContent="center">
           <Button
             data-testid="add-video-button"
             disabled={loadingVideos || isUploading}
             onClick={handleUploadVideo}
             sx={{
-              width: VIDEO_SIZE,
-              height: VIDEO_SIZE,
+              width: { xs: 120, sm: 160, md: 200 },
+              height: { xs: 120, sm: 160, md: 200 },
               position: 'relative',
               borderRadius: 2,
               overflow: 'hidden',
@@ -154,7 +152,7 @@ export const VideoGrid = () => {
             }}
           >
             <Box sx={{ textAlign: 'center', color: '#666' }}>
-              <PlayArrowIcon sx={{ fontSize: '2rem', mb: 1 }} />
+              <PlayArrowIcon sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }, mb: 1 }} />
               <Box sx={{ fontSize: '0.75rem' }}>Add Video</Box>
             </Box>
           </Button>
@@ -162,11 +160,11 @@ export const VideoGrid = () => {
 
         {/* Dynamic Video Grid - Render all user videos */}
         {userVideos.map((video, index) => (
-          <Grid item xs={6} key={video.id} display="flex" justifyContent="center">
+          <Grid item xs={6} sm={4} md={3} key={video.id} display="flex" justifyContent="center">
             <Box
               sx={{
-                width: VIDEO_SIZE,
-                height: VIDEO_SIZE,
+                width: { xs: 120, sm: 160, md: 200 },
+                height: { xs: 120, sm: 160, md: 200 },
                 position: 'relative',
                 borderRadius: 2,
                 overflow: 'hidden',
@@ -178,7 +176,7 @@ export const VideoGrid = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onClick={(event) => handleVideoClick(event, video)}
+              onClick={(event: any) => handleVideoClick(event, video)}
               data-testid={`video-thumbnail-${video.id}`}
             >
               {/* Fallback thumbnail image for mobile */}
