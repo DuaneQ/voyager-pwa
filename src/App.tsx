@@ -14,6 +14,7 @@ import { SnackbarProvider, useSnackbar } from "notistack";
 import { getAnalytics, logEvent } from "firebase/analytics";
 import { getMessaging, onMessage } from "firebase/messaging";
 import { Suspense, useEffect } from "react";
+import { HelmetProvider } from "react-helmet-async";
 import "./App.css";
 // Import debug functions for testing Firestore connectivity
 import "./debug/testFirestore";
@@ -93,15 +94,16 @@ function App() {
   }, [enqueueSnackbar]);
 
   return (
-    <SnackbarProvider
-      maxSnack={2}
-      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}>
-      <AlertProvider>
-        <UserProfileProvider>
-          {!hideHeader && <Header />}
-          <NewConnectionProvider>
-            <AnalyticsTracker />
-          <div
+    <HelmetProvider>
+      <SnackbarProvider
+        maxSnack={2}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}>
+        <AlertProvider>
+          <UserProfileProvider>
+            {!hideHeader && <Header />}
+            <NewConnectionProvider>
+              <AnalyticsTracker />
+            <div
             style={{
               display: "flex",
               flexDirection: "column",
@@ -177,6 +179,7 @@ function App() {
         </UserProfileProvider>
       </AlertProvider>
     </SnackbarProvider>
+    </HelmetProvider>
   );
 }
 

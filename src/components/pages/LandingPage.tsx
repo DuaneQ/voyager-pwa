@@ -1,12 +1,14 @@
 /**
  * LandingPage - Main marketing page for TravalPass
  * Public-facing page that introduces the app and encourages signups
+ * SEO optimized for: travel companions, travel buddies, travel itineraries, travel tips
  */
 
 import { Box, Button, Typography, Container, Grid, Card, CardContent } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useContext, useEffect, useRef } from 'react';
 import { Context } from '../../Context/UserAuthContext';
+import { Helmet } from 'react-helmet-async';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import PeopleIcon from '@mui/icons-material/People';
 import HotelIcon from '@mui/icons-material/Hotel';
@@ -90,6 +92,13 @@ export const LandingPage = () => {
 
   return (
     <Box sx={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
+      {/* SEO Meta Tags for Landing Page */}
+      <Helmet>
+        <title>TravalPass – Find Your Perfect Travel Companion | Travel Buddies & Itineraries</title>
+        <meta name="description" content="Find your perfect travel companion, vacation buddy, or trip partner on TravalPass. Connect with like-minded travelers, share itineraries, discover travel tips, and explore the world together safely. Join our community of travel companions today!" />
+        <link rel="canonical" href="https://travalpass.com/" />
+      </Helmet>
+
       {/* Full-screen Video Background */}
       <Box
         sx={{
@@ -166,6 +175,7 @@ export const LandingPage = () => {
           }}
         >
           <Typography
+            component="h1"
             variant="h1"
             sx={{
               fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4.5rem' },
@@ -175,10 +185,11 @@ export const LandingPage = () => {
               fontFamily: "'Inter', sans-serif",
             }}
           >
-            Traval the world together.
+            Find Your Perfect Travel Companion
           </Typography>
           
           <Typography
+            component="h2"
             variant="h5"
             sx={{
               fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
@@ -189,7 +200,7 @@ export const LandingPage = () => {
               fontFamily: "'Inter', sans-serif",
             }}
           >
-            TravalPass matches you with travelers headed to the same destination during the same dates — and builds your AI itinerary in seconds.
+            Connect with travel buddies and vacation companions headed to the same destination. Build AI-powered itineraries in seconds. Get expert travel tips. Find your perfect travel partner and explore the world together safely.
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -197,6 +208,7 @@ export const LandingPage = () => {
               variant="contained"
               size="large"
               onClick={() => navigate('/Register')}
+              aria-label="Sign up for TravalPass"
               sx={{
                 fontSize: { xs: '1rem', sm: '1.2rem' },
                 py: { xs: 1.5, sm: 2 },
@@ -270,6 +282,7 @@ export const LandingPage = () => {
             
             <Grid item xs={12} md={6}>
               <Typography
+                component="h2"
                 variant="h3"
                 sx={{
                   fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
@@ -279,7 +292,7 @@ export const LandingPage = () => {
                   fontFamily: "'Inter', sans-serif",
                 }}
               >
-                Stop juggling travel apps.
+                Stop Planning Alone. Find Your Vacation Companion.
               </Typography>
               
               <Typography
@@ -291,13 +304,14 @@ export const LandingPage = () => {
                   lineHeight: 1.8,
                 }}
               >
-                TravalPass eliminates the chaos of planning by combining AI itineraries, traveler matching, and smart search in one place.
+                Whether you're a solo traveler seeking a travel buddy or planning a group adventure, TravalPass connects you with compatible vacation companions. Share travel tips, build collaborative itineraries with your travel partner, and explore destinations together safely. Join thousands who've found their perfect trip companion.
               </Typography>
               
               <Button
                 variant="contained"
                 size="large"
                 onClick={() => navigate('/Register')}
+                aria-label="Create your free travel profile to find travel companions"
                 sx={{
                   fontSize: '1.1rem',
                   py: 1.5,
@@ -321,6 +335,7 @@ export const LandingPage = () => {
       <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)' }}>
         <Container maxWidth="lg">
           <Typography
+            component="h2"
             variant="h3"
             align="center"
             sx={{
@@ -331,7 +346,7 @@ export const LandingPage = () => {
               fontFamily: "'Inter', sans-serif",
             }}
           >
-            Everything You Need in One App
+            Your Complete Travel Companion Platform
           </Typography>
 
           <Grid container spacing={4}>
@@ -350,12 +365,12 @@ export const LandingPage = () => {
                 }}
               >
                 <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                  <AutoAwesomeIcon sx={{ fontSize: 60, color: '#1976d2', mb: 2 }} />
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-                    AI Itineraries
+                  <AutoAwesomeIcon sx={{ fontSize: 60, color: '#1976d2', mb: 2 }} aria-hidden="true" />
+                  <Typography component="h3" variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    AI Travel Itineraries
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '1rem' }}>
-                    Personalized travel plans tailored to your style, preferences, and budget.
+                    Get personalized travel itineraries with destinations, activities, and tips powered by AI.
                   </Typography>
                 </CardContent>
               </Card>
@@ -376,12 +391,12 @@ export const LandingPage = () => {
                 }}
               >
                 <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                  <PeopleIcon sx={{ fontSize: 60, color: '#1976d2', mb: 2 }} />
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-                    Traveler Matching
+                  <PeopleIcon sx={{ fontSize: 60, color: '#1976d2', mb: 2 }} aria-hidden="true" />
+                  <Typography component="h3" variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    Find Travel Buddies
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '1rem' }}>
-                    Meet people going to the same destination at the same time.
+                    Connect with travel companions headed to the same destination during your travel dates.
                   </Typography>
                 </CardContent>
               </Card>
@@ -576,6 +591,86 @@ export const LandingPage = () => {
               Already have an account? Sign In
             </Button>
           </Box>
+        </Container>
+      </Box>
+
+      {/* FAQ Section for SEO */}
+      <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: 'rgba(245, 245, 245, 0.95)', backdropFilter: 'blur(10px)' }}>
+        <Container maxWidth="lg">
+          <Typography
+            component="h2"
+            variant="h3"
+            align="center"
+            sx={{
+              fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+              fontWeight: 700,
+              mb: 6,
+              color: '#1a1a1a',
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            Frequently Asked Questions
+          </Typography>
+
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  How do I find a travel companion on TravalPass?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  Simply create your free profile, enter your travel destination and dates, and our matching algorithm will connect you with compatible vacation companions heading to the same place. You can browse profiles, chat safely, and plan your adventure together.
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  Is TravalPass safe for solo travelers looking for travel buddies?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  Our secure chat system keeps your personal information private until you're ready to share. We also provide travel safety tips and best practices for meeting your trip companion.
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  What's the difference between a travel companion and a vacation buddy?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  They're essentially the same! Whether you call them travel companions, vacation buddies, trip partners, or adventure companions, TravalPass helps you find like-minded travelers to share experiences with. Our platform matches you based on travel style, interests, and destination preferences.
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  Can I find a travel partner for international trips?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  Yes! TravalPass connects travelers worldwide. Whether you're planning a European backpacking adventure, an Asian cultural tour, or a South American expedition, you can find compatible travel partners who share your destination and travel dates.
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  How does the AI itinerary planner work with my travel buddy?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  Our AI creates personalized itineraries based on both travelers' preferences. Share the itinerary with your vacation companion, collaborate on activities, and make real-time adjustments together. It's the perfect way to plan your trip with your travel partner.
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#1a1a1a' }}>
+                  Is TravalPass free for finding travel companions?
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#555', lineHeight: 1.8 }}>
+                  Yes! Basic features including profile creation, travel companion matching, and secure messaging are completely free. Premium features like AI-powered itinerary generation and unlimited matches are available with our affordable subscription plans.
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
         </Container>
       </Box>
 
