@@ -151,18 +151,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
       const db = getFirestore(app);
       const docRef = doc(db, "users", user.uid);
       
-      // Try to create the user document - if it already exists, Firebase will handle it gracefully
-      try {
-        await setDoc(docRef, userData);
-      } catch (error: any) {
-        // If there's a permissions error or the document already exists, handle it
-        if (error.code === 'permission-denied') {
-          showAlert("Error", "A profile already exists for this email. Please sign in instead.");
-          navigate("/Login");
-          return;
-        }
-        throw error;
-      }
+      // Use merge: true to prevent overwriting existing profile data
+      await setDoc(docRef, userData, { merge: true });
 
       localStorage.setItem("USER_CREDENTIALS", JSON.stringify(userCredentials));
       localStorage.setItem("PROFILE_INFO", JSON.stringify(userData));
@@ -247,7 +237,8 @@ export default function SignUpForm(props: { disableCustomTheme?: boolean }) {
 
           const db = getFirestore(app);
           const docRef = doc(db, "users", userCredential.user.uid);
-          await setDoc(docRef, userDataWithSubscription);
+          // Use merge: true to prevent overwriting existing data (defensive measure)
+          await setDoc(docRef, userDataWithSubscription, { merge: true });
         })
         .then(() => {
           navigate("/Login");
