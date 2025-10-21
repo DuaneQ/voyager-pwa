@@ -495,36 +495,20 @@ export const LandingPage = () => {
               minHeight: { xs: '400px', sm: '500px', md: '600px' },
             }}
           >
-            <video
-              controls
-              playsInline
-              preload="auto"
-              poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1080' height='1920'%3E%3Crect width='1080' height='1920' fill='%23000'/%3E%3C/svg%3E"
+            <iframe
+              src="https://www.youtube.com/embed/hyRvN9cHtRM"
+              title="TravalPass Tutorial - How to Find Travel Companions"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
               style={{
                 width: '100%',
                 maxWidth: '340px',
-                height: 'auto',
+                height: '600px',
                 borderRadius: '12px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                border: 0,
               }}
-              onError={(e) => {
-                console.error('Demo video error:', e);
-                const video = e.target as HTMLVideoElement;
-                console.error('Video error object:', video.error);
-                console.error('Video networkState:', video.networkState);
-                console.error('Video readyState:', video.readyState);
-                console.error('Video currentSrc:', video.currentSrc);
-              }}
-              onLoadStart={() => console.log('Demo video load started')}
-              onLoadedMetadata={(e) => {
-                const video = e.target as HTMLVideoElement;
-                console.log('Demo video metadata loaded - dimensions:', video.videoWidth, 'x', video.videoHeight);
-              }}
-              onCanPlay={() => console.log('Demo video can play')}
-            >
-              <source src="/AfterDivorce.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            />
           </Box>
         </Container>
       </Box>

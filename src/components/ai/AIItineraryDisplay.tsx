@@ -557,13 +557,27 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   🚗 Transportation Details
                 </Typography>
                 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 1, 
+                  flexWrap: 'wrap', 
+                  alignItems: 'center', 
+                  mb: 2,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
+                }}>
                   <Chip 
                     label={`Mode: ${transport?.mode}`}
                     size="small" 
                     sx={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      color: 'white'
+                      color: 'white',
+                      maxWidth: 'calc(50% - 4px)',
+                      '& .MuiChip-label': {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }
                     }}
                   />
                   
@@ -573,7 +587,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white'
+                        color: 'white',
+                        maxWidth: 'calc(50% - 4px)',
+                        '& .MuiChip-label': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }
                       }}
                     />
                   )}
@@ -584,7 +604,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white'
+                        color: 'white',
+                        maxWidth: 'calc(50% - 4px)',
+                        '& .MuiChip-label': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }
                       }}
                     />
                   )}
@@ -595,7 +621,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       size="small" 
                       sx={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white'
+                        color: 'white',
+                        maxWidth: 'calc(50% - 4px)',
+                        '& .MuiChip-label': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }
                       }}
                     />
                   )}

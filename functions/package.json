@@ -2,7 +2,8 @@
   "name": "functions",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
-    "build": "tsc",
+  "build": "tsc",
+  "gcp-build": "npm run build",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
@@ -11,14 +12,14 @@
     "logs": "firebase functions:log",
     "test": "jest",
     "test:watch": "jest --watch",
-    "postinstall": "prisma generate",
+  "postinstall": "prisma generate || true",
     "migrate:firestore-to-cloudsql": "ts-node scripts/migrate-firestore-to-cloudsql.ts",
     "migrate:dry-run": "ts-node scripts/migrate-firestore-to-cloudsql.ts --dry-run",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev"
   },
   "engines": {
-    "node": "20"
+    "node": "18"
   },
   "main": "lib/index.js",
   "dependencies": {
