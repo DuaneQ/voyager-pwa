@@ -498,7 +498,6 @@ export const LandingPage = () => {
             <iframe
               src="https://www.youtube.com/embed/hyRvN9cHtRM"
               title="TravalPass Tutorial - How to Find Travel Companions"
-              frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               style={{
@@ -507,6 +506,7 @@ export const LandingPage = () => {
                 height: '600px',
                 borderRadius: '12px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                border: 0,
               }}
             />
           </Box>

@@ -186,7 +186,7 @@ describe('LandingPage', () => {
       expect(iframe).toBeInTheDocument();
       expect(iframe).toHaveAttribute('src', 'https://www.youtube.com/embed/hyRvN9cHtRM');
       expect(iframe).toHaveAttribute('allowFullScreen');
-      expect(iframe).toHaveAttribute('frameBorder', '0');
+      expect(iframe).toHaveStyle('border: 0px');
     });
 
     it('YouTube iframe has proper accessibility attributes', () => {
