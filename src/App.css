@@ -1300,14 +1300,15 @@ video[poster] {
   .video-upload-modal-overlay {
     padding: 6px; /* Reduced from 8px (25% reduction) */
     align-items: flex-start;
-    padding-top: 18vh; /* Moved down from 16px (15% down from top) */
+    padding-top: 8vh; /* Moved higher to avoid bottom nav */
+    padding-bottom: 12vh; /* Add bottom padding for browser nav */
   }
   
   .video-upload-modal {
     margin: 0;
     max-width: 90%; /* Reduced from 100% (10% width reduction) */
     width: 90%; /* Reduced from 100% (10% width reduction) */
-    max-height: 70vh; /* Reduced height to compensate for lower position */
+    max-height: 75vh; /* Increased slightly since we're positioning higher */
     border-radius: 6px; /* Reduced from 8px */
   }
   
@@ -1389,14 +1390,17 @@ video[poster] {
 @media (max-width: 375px) {
   .video-upload-modal-overlay {
     padding: 3px; /* Reduced from 4px */
-    padding-top: 15vh; /* Moved down to maintain 15% positioning */
+    padding-top: 10vh; /* Moved higher to avoid bottom nav */
+    padding-bottom: 15vh; /* Add bottom padding for browser nav */
+    align-items: flex-start; /* Position at top instead of center */
   }
   
   .video-upload-modal {
     max-width: 88%; /* Reduced width by 10% */
     width: 88%; /* Reduced width by 10% */
-    max-height:48.8vh; /* Reduced by 15% from 57.4vh for small devices */
+    max-height: 50vh; /* Increased from 48.8vh but with top positioning */
     border-radius: 4px; /* Reduced from 6px */
+    margin-top: 0; /* Ensure it starts at the top of the available space */
   }
   
   .modal-header {
