@@ -85,6 +85,7 @@ export const PhotoGrid = () => {
   };
 
   const handleEnlargePhoto = (photoUrl: string) => {
+    setMenuAnchor(null); // Close menu first
     setEnlargedPhoto(photoUrl);
   };
 
@@ -94,6 +95,22 @@ export const PhotoGrid = () => {
 
   return (
     <>
+      {error && (
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ 
+            mb: 2,
+            mx: 1,
+            position: 'relative',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            borderRadius: 2
+          }}
+        >
+          {error}
+        </Alert>
+      )}
       <Grid container spacing={2} px={1}>
         {slots.map((slot, index) => (
           <Grid item xs={6} sm={4} md={3} key={slot} display="flex" justifyContent="center">
@@ -118,7 +135,6 @@ export const PhotoGrid = () => {
           </Grid>
         ))}
       </Grid>
-      {error && <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>}
       <Input
         type="file"
         inputRef={fileRef}
@@ -136,22 +152,74 @@ export const PhotoGrid = () => {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         transformOrigin={{ vertical: "top", horizontal: "center" }}
         autoFocus={false}
+        disableAutoFocus={true}
+        disableEnforceFocus={true}
+        disableRestoreFocus={true}
+        MenuListProps={{
+          autoFocus: false,
+          autoFocusItem: false,
+        }}
+        slotProps={{
+          root: {
+            'aria-hidden': false,
+          }
+        }}
       >
         {loading ? (
           <MenuItem disabled>
             <CircularProgress size={24} />
           </MenuItem>
         ) : [
-          <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
-          <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
-          <MenuItem key="view" onClick={() => {
-            if (selectedSlot && userProfile?.photos?.[selectedSlot]) {
-              handleEnlargePhoto(userProfile.photos[selectedSlot]);
-            }
-          }}>
+          <MenuItem 
+            key="upload" 
+            onClick={handleUploadPic}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleUploadPic();
+              }
+            }}
+          >
+            Upload Pic
+          </MenuItem>,
+          <MenuItem 
+            key="delete" 
+            onClick={handleDeletePic}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleDeletePic();
+              }
+            }}
+          >
+            Delete Pic
+          </MenuItem>,
+          <MenuItem 
+            key="view" 
+            onClick={() => {
+              if (selectedSlot && userProfile?.photos?.[selectedSlot]) {
+                handleEnlargePhoto(userProfile.photos[selectedSlot]);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (selectedSlot && userProfile?.photos?.[selectedSlot]) {
+                  handleEnlargePhoto(userProfile.photos[selectedSlot]);
+                }
+              }
+            }}
+          >
             View Photo
           </MenuItem>,
-          <MenuItem key="cancel" onClick={() => setMenuAnchor(null)}>Cancel</MenuItem>,
+          <MenuItem 
+            key="cancel" 
+            onClick={() => setMenuAnchor(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setMenuAnchor(null);
+              }
+            }}
+          >
+            Cancel
+          </MenuItem>,
         ]}
       </Menu>
       <Modal

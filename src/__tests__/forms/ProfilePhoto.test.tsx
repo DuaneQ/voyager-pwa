@@ -192,19 +192,4 @@ describe("ProfilePhoto Component", () => {
       expect(screen.queryByText("Upload Pic")).not.toBeInTheDocument();
     });
   });
-
-  test("should render only error message when errorOnly prop is true", () => {
-    // Arrange & Act
-    renderComponent({ errorOnly: true });
-
-    // Assert - should not render image when errorOnly is true and no error
-    expect(screen.queryByAltText("Profile Placeholder")).not.toBeInTheDocument();
-  });
-
-  test("should hide error when hideError prop is true", () => {
-    // This test would need to simulate an error state to fully test
-    // For now, just ensure the component renders without error
-    renderComponent({ hideError: true });
-    expect(screen.getByAltText("Profile Placeholder")).toBeInTheDocument();
-  });
 });

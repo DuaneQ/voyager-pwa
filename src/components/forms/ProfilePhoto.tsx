@@ -1,6 +1,6 @@
 import profilePlaceholder from "../../assets/images/imagePH.png";
 import { Menu, MenuItem, CircularProgress, Input, Alert, Modal, Box, IconButton } from "@mui/material";
-import { useContext, useRef, useState } from "react";
+import { useContext, useRef, useState, useCallback } from "react";
 import useUploadImage from "../../hooks/useUploadImage";
 import { UserProfileContext } from "../../Context/UserProfileContext";
 import usePostUserProfileToDb from "../../hooks/usePostUserProfileToDb";
@@ -84,53 +84,68 @@ export const ProfilePhoto = ({ errorOnly = false, hideError = false }: ProfilePh
     setMenuAnchor(null);
   }
 
-  const handleEnlargePhoto = (photoUrl: string) => {
+  const handleEnlargePhoto = useCallback((photoUrl: string) => {
+    setMenuAnchor(null); // Close menu first
     setEnlargedPhoto(photoUrl);
-  };
+  }, []);
 
   const handleCloseEnlargedPhoto = () => {
     setEnlargedPhoto(null);
   };
 
-  // If errorOnly mode, just show the error message
-  if (errorOnly) {
-    return error ? (
-      <Alert 
-        severity="error" 
-        sx={{ 
-          mt: 1, 
-          mb: 1, 
-          pointerEvents: 'auto',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          borderRadius: 2
-        }}
-      >
-        {error}
-      </Alert>
-    ) : null;
-  }
+  const handleImageClick = (event: React.MouseEvent<HTMLImageElement>) => {
+    if (!loading) {
+      setMenuAnchor(event.currentTarget);
+    }
+  };
+
+  const handleMenuClose = () => {
+    if (!loading) {
+      setMenuAnchor(null);
+    }
+  };
 
   return (
     <>
-      <img
-        src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
-        alt={userProfile?.photos?.profile ? "profile" : "Profile Placeholder"}
-        loading="lazy"
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.5 : 1,
-          borderRadius: "8px"
-        }}
-        onClick={(event) => {
-          if (!loading) setMenuAnchor(event.currentTarget);
-        }}
-      />
-      {!hideError && error && (
-        <Alert severity="error" sx={{ mt: 2, mb: 1 }}>{error}</Alert>
-      )}
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <img
+          id="profile-photo-menu"
+          src={userProfile?.photos?.profile ? userProfile.photos.profile : profilePlaceholder}
+          alt={userProfile?.photos?.profile ? "profile" : "Profile Placeholder"}
+          loading="lazy"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.5 : 1,
+            borderRadius: "8px"
+          }}
+          onClick={handleImageClick}
+        />
+        {!hideError && error && (
+          <Alert 
+            severity="error" 
+            onClose={() => setError(null)}
+            sx={{ 
+              mt: 1,
+              mb: 1,
+              fontSize: '0.75rem',
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '280px',
+              maxWidth: '90vw',
+              zIndex: 10000,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              borderRadius: 2
+            }}
+          >
+            {error}
+          </Alert>
+        )}
+      </div>
       <Input
         type="file"
         inputRef={fileRef}
@@ -144,26 +159,79 @@ export const ProfilePhoto = ({ errorOnly = false, hideError = false }: ProfilePh
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => !loading && setMenuAnchor(null)}
+        onClose={handleMenuClose}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         transformOrigin={{ vertical: "top", horizontal: "center" }}
         autoFocus={false}
+        disableAutoFocus={true}
+        disableEnforceFocus={true}
+        disableRestoreFocus={true}
+        MenuListProps={{
+          'aria-labelledby': 'profile-photo-menu',
+          autoFocus: false,
+          autoFocusItem: false,
+        }}
+        slotProps={{
+          root: {
+            'aria-hidden': false,
+          }
+        }}
       >
         {loading ? (
           <MenuItem disabled>
             <CircularProgress size={24} />
           </MenuItem>
         ) : [
-          <MenuItem key="upload" onClick={handleUploadPic}>Upload Pic</MenuItem>,
-          <MenuItem key="delete" onClick={handleDeletePic}>Delete Pic</MenuItem>,
-          <MenuItem key="view" onClick={() => {
-            if (userProfile?.photos?.profile) {
-              handleEnlargePhoto(userProfile.photos.profile);
-            }
-          }}>
+          <MenuItem 
+            key="upload" 
+            onClick={handleUploadPic}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleUploadPic();
+              }
+            }}
+          >
+            Upload Pic
+          </MenuItem>,
+          <MenuItem 
+            key="delete" 
+            onClick={handleDeletePic}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleDeletePic();
+              }
+            }}
+          >
+            Delete Pic
+          </MenuItem>,
+          <MenuItem 
+            key="view" 
+            onClick={() => {
+              if (userProfile?.photos?.profile) {
+                handleEnlargePhoto(userProfile.photos.profile);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (userProfile?.photos?.profile) {
+                  handleEnlargePhoto(userProfile.photos.profile);
+                }
+              }
+            }}
+          >
             View Photo
           </MenuItem>,
-          <MenuItem key="cancel" onClick={handleCancel}>Cancel</MenuItem>,
+          <MenuItem 
+            key="cancel" 
+            onClick={handleCancel}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleCancel();
+              }
+            }}
+          >
+            Cancel
+          </MenuItem>,
         ]}
       </Menu>
       <Modal

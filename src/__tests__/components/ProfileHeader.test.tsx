@@ -5,12 +5,7 @@ import userEvent from '@testing-library/user-event';
 // Mocks for internals used by ProfileHeader
 jest.mock('../../hooks/useGetUserProfile', () => jest.fn());
 jest.mock('../../components/forms/ProfilePhoto', () => ({ 
-  ProfilePhoto: ({ errorOnly = false, hideError = false }: any) => {
-    // Only render the main profile photo element for testing (not the error-only version)
-    if (errorOnly) return null;
-    if (hideError) return <div data-testid="profile-photo" />;
-    return <div data-testid="profile-photo-default" />;
-  }
+  ProfilePhoto: () => <div data-testid="profile-photo" />
 }));
 jest.mock('../../components/forms/EditProfileModal', () => ({ EditProfileModal: ({ show }: any) => show ? <div data-testid="edit-modal" /> : null }));
 
