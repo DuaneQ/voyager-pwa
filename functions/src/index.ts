@@ -536,7 +536,7 @@ function createCampaignEmailContent(userEmail: string, campaignId: string, usern
             </p>
 
             <p style="color: #1976d2; font-size: 16px; font-weight: 500; margin: 20px 0 0 0;">
-              – The Team at TravalPass ✈️
+              — The Team at TravalPass ✈️
             </p>
           </div>
 
