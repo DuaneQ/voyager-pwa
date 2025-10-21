@@ -312,46 +312,8 @@ const ActivityCard: React.FC<{
           gap: 1,
           mb: 2
         }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {isEditing ? (
-              <Box sx={{ flex: 1, mr: 2 }}>
-                <TextField
-                  value={activity.name || 'Activity'}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    onFieldUpdate(dayIndex, activityIndex, 'name', e.target.value);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  variant="standard"
-                  fullWidth
-                  sx={{
-                    '& .MuiInputBase-input': {
-                      color: 'white',
-                      fontSize: '1.25rem',
-                      fontWeight: 600,
-                      padding: '4px 0',
-                      backgroundColor: 'transparent'
-                    },
-                    '& .MuiInput-underline:before': {
-                      borderBottomColor: 'transparent'
-                    },
-                    '& .MuiInput-underline:hover:before': {
-                      borderBottomColor: 'rgba(255, 255, 255, 0.3)'
-                    },
-                    '& .MuiInput-underline:after': {
-                      borderBottomColor: 'rgba(76, 175, 80, 0.8)'
-                    }
-                  }}
-                />
-              </Box>
-            ) : (
-              <Typography variant="h6" component="h3" sx={{ 
-                color: 'white',
-                flex: 1
-              }}>
-                {activity.name || 'Activity'}
-              </Typography>
-            )}
-            
+          {/* Category chip above the name */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Chip 
               label={activity.category || 'Activity'} 
               size="small" 
@@ -360,9 +322,48 @@ const ActivityCard: React.FC<{
               sx={{ 
                 borderColor: 'rgba(255, 255, 255, 0.3)',
                 color: 'white',
-                flexShrink: 0
+                alignSelf: 'flex-start'
               }}
             />
+          </Box>
+          
+          {/* Activity name */}
+          <Box sx={{ width: '100%' }}>
+            {isEditing ? (
+              <TextField
+                value={activity.name || 'Activity'}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  onFieldUpdate(dayIndex, activityIndex, 'name', e.target.value);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                variant="standard"
+                fullWidth
+                sx={{
+                  '& .MuiInputBase-input': {
+                    color: 'white',
+                    fontSize: '1.25rem',
+                    fontWeight: 600,
+                    padding: '4px 0',
+                    backgroundColor: 'transparent'
+                  },
+                  '& .MuiInput-underline:before': {
+                    borderBottomColor: 'transparent'
+                  },
+                  '& .MuiInput-underline:hover:before': {
+                    borderBottomColor: 'rgba(255, 255, 255, 0.3)'
+                  },
+                  '& .MuiInput-underline:after': {
+                    borderBottomColor: 'rgba(76, 175, 80, 0.8)'
+                  }
+                }}
+              />
+            ) : (
+              <Typography variant="h6" component="h3" sx={{ 
+                color: 'white'
+              }}>
+                {activity.name || 'Activity'}
+              </Typography>
+            )}
           </Box>
         </Box>
         

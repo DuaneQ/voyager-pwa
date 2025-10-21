@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions/v1';
 
 // Minimal callable function: accept origin, destination, transportType, call OpenAI, return assistant output.
 // WARNING: Hardcoded API key embedded by user request.
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY : '';
 
 export async function _generateItineraryWithAIImpl(data: any, context: any) {
   const payload = (data && data.data) ? data.data : data || {};

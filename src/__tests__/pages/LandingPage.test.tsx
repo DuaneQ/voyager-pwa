@@ -178,33 +178,24 @@ describe('LandingPage', () => {
       expect(heroVideo).toHaveAttribute('preload', 'auto');
     });
 
-    it('renders demo video with controls', () => {
+    it('renders demo video as YouTube iframe', () => {
       renderWithContext();
       
-      const videos = document.querySelectorAll('video');
-      const demoVideo = Array.from(videos).find(v => {
-        const source = v.querySelector('source');
-        return source?.getAttribute('src') === '/AfterDivorce.mp4';
-      });
+      const iframe = screen.getByTitle('TravalPass Tutorial - How to Find Travel Companions');
       
-      expect(demoVideo).toBeInTheDocument();
-      expect(demoVideo).toHaveAttribute('controls');
-      expect(demoVideo).toHaveAttribute('playsInline');
-      expect(demoVideo).toHaveAttribute('preload', 'auto');
+      expect(iframe).toBeInTheDocument();
+      expect(iframe).toHaveAttribute('src', 'https://www.youtube.com/embed/hyRvN9cHtRM');
+      expect(iframe).toHaveAttribute('allowFullScreen');
+      expect(iframe).toHaveAttribute('frameBorder', '0');
     });
 
-    it('demo video has mp4 source', () => {
+    it('YouTube iframe has proper accessibility attributes', () => {
       renderWithContext();
       
-      const videos = document.querySelectorAll('video');
-      const demoVideo = Array.from(videos).find(v => {
-        const source = v.querySelector('source');
-        return source?.getAttribute('src') === '/AfterDivorce.mp4';
-      });
+      const iframe = screen.getByTitle('TravalPass Tutorial - How to Find Travel Companions');
       
-      const source = demoVideo?.querySelector('source');
-      expect(source).toHaveAttribute('src', '/AfterDivorce.mp4');
-      expect(source).toHaveAttribute('type', 'video/mp4');
+      expect(iframe).toHaveAttribute('title', 'TravalPass Tutorial - How to Find Travel Companions');
+      expect(iframe).toHaveAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
     });
   });
 
@@ -281,23 +272,20 @@ describe('LandingPage', () => {
       consoleLogSpy.mockRestore();
     });
 
-    it('logs errors when video fails to load', () => {
+    it('YouTube iframe loads correctly without errors', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       
       renderWithContext();
       
-      const videos = document.querySelectorAll('video');
-      const demoVideo = Array.from(videos).find(v => {
-        const source = v.querySelector('source');
-        return source?.getAttribute('src') === '/AfterDivorce.mp4';
-      });
+      const iframe = screen.getByTitle('TravalPass Tutorial - How to Find Travel Companions');
       
-      if (demoVideo) {
-        demoVideo.dispatchEvent(new Event('error'));
-      }
+      // YouTube iframe should load without JavaScript errors
+      expect(iframe).toBeInTheDocument();
+      expect(iframe.getAttribute('src')).toContain('youtube.com/embed');
       
-      // Should log error events
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      // No console errors should be logged during iframe render
+      // (Note: YouTube iframe handles its own loading states)
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
       
       consoleErrorSpy.mockRestore();
     });

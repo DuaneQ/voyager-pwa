@@ -184,26 +184,57 @@ export const AIItineraryHeader: React.FC<AIItineraryHeaderProps> = ({
         
         {/* Metadata */}
         {metadata && (
-          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ 
+            mt: 2, 
+            display: 'flex', 
+            gap: 1, 
+            flexWrap: 'wrap',
+            maxWidth: '100%',
+            overflow: 'hidden'
+          }}>
             {metadata.confidence !== undefined && metadata.confidence !== null && !isNaN(metadata.confidence) && (
               <Chip 
                 label={`Confidence: ${Math.round(metadata.confidence * 100)}%`} 
                 size="small" 
-                color="primary" 
+                color="primary"
+                sx={{
+                  maxWidth: '150px',
+                  '& .MuiChip-label': {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }
+                }}
               />
             )}
             {metadata.aiModel && (
               <Chip 
                 label={`${metadata.aiModel}`} 
                 size="small" 
-                variant="outlined" 
+                variant="outlined"
+                sx={{
+                  maxWidth: '150px',
+                  '& .MuiChip-label': {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }
+                }}
               />
             )}
             {metadata.processingTime !== undefined && metadata.processingTime !== null && !isNaN(metadata.processingTime) && (
               <Chip 
                 label={`Generated in ${Math.round(metadata.processingTime / 1000)}s`} 
                 size="small" 
-                variant="outlined" 
+                variant="outlined"
+                sx={{
+                  maxWidth: '200px',
+                  '& .MuiChip-label': {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }
+                }}
               />
             )}
             {/* Filtering metadata (optional) - shows when server/search returned filtering hints */}
