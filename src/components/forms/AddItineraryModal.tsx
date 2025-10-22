@@ -82,6 +82,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     null
   );
   const [deletingItinerary, setDeletingItinerary] = useState(false);
+  const [savingItinerary, setSavingItinerary] = useState(false);
 
   // Ref for the modal content to enable scrolling
   const modalContentRef = React.useRef<HTMLDivElement>(null);
@@ -144,6 +145,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       return;
     }
 
+    setSavingItinerary(true);
+
     try {
       const userInfo = {
         username: userProfile?.username || "Anonymous",
@@ -186,6 +189,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           editingItinerary ? "updating" : "saving"
         } the itinerary. Please try again.`
       );
+    } finally {
+      setSavingItinerary(false);
     }
   };
 
@@ -326,7 +331,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal open={open} onClose={() => { if (!savingItinerary) onClose(); }}>
       <>
         <Box
           ref={modalContentRef}
@@ -577,8 +582,17 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             fullWidth
             sx={{ mt: 2 }}
             onClick={handleSaveItinerary}
+            disabled={savingItinerary}
+            aria-busy={savingItinerary}
           >
-            {editingItinerary ? "Update Itinerary" : "Save Itinerary"}
+            {savingItinerary ? (
+              <>
+                <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} />
+                {editingItinerary ? "Updating..." : "Saving..."}
+              </>
+            ) : (
+              editingItinerary ? "Update Itinerary" : "Save Itinerary"
+            )}
           </Button>
           <Button
             variant="outlined"
@@ -586,6 +600,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             fullWidth
             sx={{ mt: 2 }}
             onClick={editingItinerary ? handleCancelEdit : onClose}
+            disabled={savingItinerary}
           >
             Cancel
           </Button>
