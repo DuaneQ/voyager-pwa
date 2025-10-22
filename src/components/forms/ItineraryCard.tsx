@@ -8,6 +8,7 @@ import {
   CardActions,
   Avatar,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -40,6 +41,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   // Returns the profile slot photo
   const profilePhoto = useGetUserProfilePhoto(itinerary.userInfo?.uid);
   const currentUserId = auth.currentUser?.uid;
+  const [processingReaction, setProcessingReaction] = useState(false);
 
   // Fix timezone issue by creating date at noon UTC to avoid day shifting
   // Robust date parsing: accept Date instances, epoch numbers, ISO datetimes, or YYYY-MM-DD
@@ -270,14 +272,31 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
                   padding: 0,
                   minWidth: "auto",
                 }}
-                onClick={() => onDislike(itinerary)}
-                aria-label="Dislike">
-                <img
-                  src={noLikeIcon}
-                  alt="No Like Icon"
-                  loading="lazy"
-                  style={{ width: "40px", height: "40px" }} // smaller on mobile
-                />
+                onClick={async () => {
+                  if (processingReaction) return;
+                  try {
+                    setProcessingReaction(true);
+                    const res: any = onDislike?.(itinerary);
+                    if (res && typeof res.then === 'function') await res;
+                  } catch (err) {
+                    // swallow — parent handles errors or tests will assert
+                  } finally {
+                    setProcessingReaction(false);
+                  }
+                }}
+                aria-label="Dislike"
+                disabled={processingReaction}
+              >
+                {processingReaction ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <img
+                    src={noLikeIcon}
+                    alt="No Like Icon"
+                    loading="lazy"
+                    style={{ width: "40px", height: "40px" }} // smaller on mobile
+                  />
+                )}
               </Button>
               <Button
                 sx={{
@@ -285,13 +304,30 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
                   padding: 0,
                   minWidth: "auto",
                 }}
-                onClick={() => onLike(itinerary)}
-                aria-label="Like">
-                <img
-                  src={favicon}
-                  alt="Favicon Icon"
-                  style={{ width: "40px", height: "40px" }} // smaller on mobile
-                />
+                onClick={async () => {
+                  if (processingReaction) return;
+                  try {
+                    setProcessingReaction(true);
+                    const res: any = onLike?.(itinerary);
+                    if (res && typeof res.then === 'function') await res;
+                  } catch (err) {
+                    // swallow
+                  } finally {
+                    setProcessingReaction(false);
+                  }
+                }}
+                aria-label="Like"
+                disabled={processingReaction}
+              >
+                {processingReaction ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <img
+                    src={favicon}
+                    alt="Favicon Icon"
+                    style={{ width: "40px", height: "40px" }} // smaller on mobile
+                  />
+                )}
               </Button>
             </>
           )}
