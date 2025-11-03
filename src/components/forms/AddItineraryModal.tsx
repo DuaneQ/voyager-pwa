@@ -30,6 +30,7 @@ import {
 } from "../shared-strings/constants";
 import ItineraryCard from "../forms/ItineraryCard";
 import DOMPurify from "dompurify";
+import { calculateAge } from "../../utils/calculateAge";
 
 interface AddItineraryModalProps {
   open: boolean;
@@ -158,6 +159,10 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         sexualOrientation: userProfile?.sexualOrientation || "not specified",
         blocked: userProfile?.blocked || [],
       };
+      
+      // Calculate age from user's date of birth for filtering
+      const userAge = userProfile?.dob ? calculateAge(userProfile.dob) : 0;
+      
       const itineraryData = {
         ...newItinerary,
         description: DOMPurify.sanitize(newItinerary.description),
@@ -165,6 +170,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           DOMPurify.sanitize(activity)
         ),
         userInfo,
+        age: userAge, // Include calculated age for efficient search filtering
       };
 
       if (editingItinerary) {

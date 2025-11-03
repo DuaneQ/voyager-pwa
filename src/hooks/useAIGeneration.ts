@@ -5,6 +5,7 @@ import { auth } from '../environments/firebaseConfig';
 import { UserProfileContext } from '../Context/UserProfileContext';
 import { AIGenerationRequest } from '../types/AIGeneration';
 import buildAIPayload from './buildAIPayload';
+import { calculateAge } from '../utils/calculateAge';
 
 interface ItineraryResult {
   id: string | null;
@@ -366,6 +367,9 @@ export const useAIGeneration = () => {
         return Array.from(new Set(activities));
       };
 
+      // Calculate user age for matching/filtering
+      const userAge = userProfile?.dob ? calculateAge(userProfile.dob) : 0;
+      
       let itineraryData: any = {
         id: generationId,
         destination: request.destination,
@@ -377,6 +381,7 @@ export const useAIGeneration = () => {
         lowerRange: 18,
         upperRange: 100,
         likes: [],
+        age: userAge, // Include age for searchItineraries filtering
         userInfo: {
           username: userProfile?.username || 'Anonymous',
           gender: userProfile?.gender || 'Any',
@@ -465,6 +470,7 @@ export const useAIGeneration = () => {
             sexualOrientation: 'No Preference',
             lowerRange: 18,
             upperRange: 110,
+            age: userAge, // Include age for searchItineraries filtering
             likes: [],
             userInfo: {
               username: userProfile?.username || 'Anonymous',
@@ -512,6 +518,7 @@ export const useAIGeneration = () => {
               endDate: request.endDate,
               gender: 'No Preference',
               sexualOrientation: 'No Preference',
+              age: userAge, // Include age for searchItineraries filtering
               likes: [],
               userInfo: {
                 username: userProfile?.username || 'Anonymous',
