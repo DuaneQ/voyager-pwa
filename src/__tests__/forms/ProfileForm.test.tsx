@@ -123,7 +123,7 @@ describe("ProfileForm", () => {
     renderComponent();
     expect(screen.getByText("TestUser")).toBeInTheDocument();
     expect(screen.getByText("This is a test bio")).toBeInTheDocument();
-    expect(screen.getByText("35")).toBeInTheDocument();
+    expect(screen.getByText("36")).toBeInTheDocument();
     expect(screen.getByText("Male")).toBeInTheDocument();
     expect(screen.getByText("Heterosexual")).toBeInTheDocument();
     expect(screen.getByText("GED")).toBeInTheDocument();

@@ -44,6 +44,18 @@ function getOtherItinerary(connection: Connection, userId: string) {
   );
 }
 
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+  // Avoid timezone shifts for date-only strings by forcing midday (noon) UTC
+  const dateInput = dateString.includes('T') ? dateString : `${dateString}T12:00:00`;
+  const date = new Date(dateInput);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+}
 
 export const ChatListItem: React.FC<{
   conn: Connection;
@@ -108,7 +120,7 @@ export const ChatListItem: React.FC<{
                     marginLeft: 6,
                   }}>
                   {otherItinerary?.startDate && otherItinerary?.endDate
-                    ? `(${otherItinerary.startDate} - ${otherItinerary.endDate})`
+                    ? `(${formatDate(otherItinerary.startDate)} - ${formatDate(otherItinerary.endDate)})`
                     : ""}
                 </span>
               </span>
