@@ -120,13 +120,6 @@ export class OpenFlightsAirportService implements IAirportService {
       // Fallback to limited hardcoded data if fetch fails
       this.loadFallbackData();
     }
-
-    // Ensure there is always fallback data available if previous attempts didn't load any
-    if (!this.isDataLoaded) {
-      // Defensive guard: load curated fallback data synchronously so callers can rely on it
-      console.warn('openFlights: no remote data loaded, using curated fallback data');
-      this.loadFallbackData();
-    }
   }
 
   /**
