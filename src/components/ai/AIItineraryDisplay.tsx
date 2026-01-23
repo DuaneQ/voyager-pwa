@@ -100,7 +100,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   useEffect(() => {
     if (selectedId && itineraries && itineraries.length > 0) {
       const found = itineraries.find(i => i.id === selectedId);
-      if (found) setSelectedItinerary(found);
+      if (found) {
+        setSelectedItinerary(found);
+      }
     } else if (!selectedId && itineraries && itineraries.length > 0) {
       // Auto-select the first itinerary if none is selected
       const firstItinerary = itineraries[0];
@@ -108,16 +110,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       setSelectedItinerary(firstItinerary);
     }
   }, [selectedId, itineraries]);
-
-  // Log for debugging: which user and how many itineraries the UI received
-  useEffect(() => {
-    try {
-  const uid = auth.currentUser?.uid || (itineraries && (itineraries[0] as any)?.userInfo?.uid) || 'unknown';
-      console.info('[AIItineraryDisplay] user:', uid, 'itinerariesReceived:', Array.isArray(itineraries) ? itineraries.length : 0);
-    } catch (e) {
-      console.info('[AIItineraryDisplay] itinerariesUpdated', Array.isArray(itineraries) ? itineraries.length : 0);
-    }
-  }, [itineraries]);
 
   // Use editingData when in edit mode, otherwise use selectedItinerary
   const currentItinerary = isEditing && editingData ? editingData : selectedItinerary;
@@ -444,6 +436,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         // Transportation may be stored directly under response.data.transportation (preferred)
         // or under response.data.recommendations.transportation (older payloads). Check both.
         const rawTransport = (currentItinerary?.response?.data?.transportation ?? currentItinerary?.response?.data?.recommendations?.transportation) as any;
+        
         // Normalize multiple possible shapes so tests and UI can rely on a single shape
         const transport = rawTransport ? {
           mode: rawTransport.mode,

@@ -103,6 +103,26 @@ describe('LandingPage', () => {
       
       expect(screen.getByText(/© 2025 TravalPass. All rights reserved./i)).toBeInTheDocument();
     });
+
+    it('renders App Store download link with correct attributes', () => {
+      renderWithContext();
+      
+      const appStoreLink = screen.getByRole('link', { name: /Download TravalPass on the App Store/i });
+      
+      expect(appStoreLink).toBeInTheDocument();
+      expect(appStoreLink).toHaveAttribute('href', 'https://apps.apple.com/us/app/travalpass-traval-together/id6756789856');
+      expect(appStoreLink).toHaveAttribute('target', '_blank');
+      expect(appStoreLink).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('renders App Store badge image', () => {
+      renderWithContext();
+      
+      const appStoreBadge = screen.getByAltText(/Download on the App Store/i);
+      
+      expect(appStoreBadge).toBeInTheDocument();
+      expect(appStoreBadge).toHaveAttribute('src', 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg');
+    });
   });
 
   describe('Authentication Redirect', () => {
@@ -132,6 +152,15 @@ describe('LandingPage', () => {
       await userEvent.click(getStartedButton);
       
       expect(mockNavigate).toHaveBeenCalledWith('/Register');
+    });
+
+    it('navigates to /login when clicking Sign In in header', async () => {
+      renderWithContext();
+      
+      const signInButton = screen.getByRole('button', { name: /^Sign In$/i });
+      await userEvent.click(signInButton);
+      
+      expect(mockNavigate).toHaveBeenCalledWith('/login');
     });
 
     it('navigates to /Register from problem section CTA', async () => {

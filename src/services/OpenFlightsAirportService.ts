@@ -457,8 +457,8 @@ export class OpenFlightsAirportService implements IAirportService {
     const internationalAirports = nearbyAirports.filter(({ airport }) => this.isInternationalAirport(airport));
     const domesticAirports = nearbyAirports.filter(({ airport }) => !this.isInternationalAirport(airport));
     
-    // Select 3 closest international and 2 closest domestic airports
-    const selectedInternational = internationalAirports.slice(0, 3);
+  // Select 5 closest international and 2 closest domestic airports
+  const selectedInternational = internationalAirports.slice(0, 5);
     const selectedDomestic = domesticAirports.slice(0, 2);
     
     // Combine and sort by distance again

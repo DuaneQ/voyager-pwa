@@ -107,6 +107,11 @@ service cloud.firestore {
           (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt', 'likes'])
           )
+          ||
+          // OR authenticated users can update viewCount only (for tracking)
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          )
         );
       
       // Allow users to delete their own videos

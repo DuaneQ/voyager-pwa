@@ -99,6 +99,51 @@ export const LandingPage = () => {
         <link rel="canonical" href="https://travalpass.com/" />
       </Helmet>
 
+      {/* Top Navigation Bar with Sign In */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          px: { xs: 2, sm: 4 },
+          py: 2,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)',
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'white',
+            fontWeight: 700,
+            fontFamily: "'Inter', sans-serif",
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+          }}
+        >
+          TravalPass
+        </Typography>
+        <Button
+          variant="text"
+          onClick={() => navigate('/login')}
+          sx={{
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '1rem',
+            textTransform: 'none',
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.1)',
+            },
+          }}
+        >
+          Sign In
+        </Button>
+      </Box>
+
       {/* Full-screen Video Background */}
       <Box
         sx={{
@@ -252,6 +297,29 @@ export const LandingPage = () => {
             >
               See How It Works
             </Button>
+          </Box>
+
+          {/* App Store Download Button */}
+          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+            <a
+              href="https://apps.apple.com/us/app/travalpass-traval-together/id6756789856"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Download TravalPass on the App Store"
+            >
+              <Box
+                component="img"
+                src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                alt="Download on the App Store"
+                sx={{
+                  height: { xs: 45, sm: 50 },
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                  },
+                }}
+              />
+            </a>
           </Box>
         </Container>
       </Box>

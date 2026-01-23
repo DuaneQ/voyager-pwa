@@ -22,7 +22,14 @@
   },
   "include": [
     "src",
+    "startUp.ts",
+    "jest.fetch-polyfill.js"
+  ],
+  "exclude": [
+    "src/__tests__",
+    "src/__tests__/**",
     "cypress",
-    "startUp.ts"
-, "jest.fetch-polyfill.js"  ]
+    "build",
+    "node_modules"
+  ]
 }

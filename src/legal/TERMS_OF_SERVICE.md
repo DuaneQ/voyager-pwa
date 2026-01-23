@@ -155,8 +155,7 @@ You agree to indemnify, defend, and hold harmless TravalPass, its officers, dire
 ## 14. CONTACT INFORMATION
 
 For questions about these Terms, contact us at:
-- Email: legal@travalpass.com
-- Address: [Your Business Address]
+- Email: feedback@travalpass.com
 
 ---
 
