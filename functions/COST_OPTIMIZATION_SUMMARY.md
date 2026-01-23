@@ -39,12 +39,12 @@ mundo1-1-sand
 
 ### Development (mundo1-dev)
 - **Secret Version:** 5
-- **Connection String:** `postgresql://voyageruser:TravalPassWins1_@localhost/traval-dev?host=/cloudsql/mundo1-1:us-central1:mundo1-1-sand&sslmode=disable`
+- **Connection String:** `postgresql://voyageruser:YOUR_PASSWORD_HERE@localhost/traval-dev?host=/cloudsql/mundo1-1:us-central1:mundo1-1-sand&sslmode=disable`
 - **Cloud Run Services:** All 5 services updated with new instance attachment
 
 ### Production (mundo1-1)
 - **Secret Version:** 14
-- **Connection String:** `postgresql://voyageruser:TravalPassWins1_@localhost/traval?host=/cloudsql/mundo1-1:us-central1:mundo1-1-sand&sslmode=disable`
+- **Connection String:** `postgresql://voyageruser:YOUR_PASSWORD_HERE@localhost/traval?host=/cloudsql/mundo1-1:us-central1:mundo1-1-sand&sslmode=disable`
 - **Runtime:** Upgraded from Node.js 18 to Node.js 20
 
 ## Cost Analysis
