@@ -80,26 +80,7 @@ describe("usePostItineraryToFirestore", () => {
     mockedFunctions.__rpcMocks = mockedFunctions.__rpcMocks || {};
     mockedFunctions.__rpcMocks.createItinerary = rpcHandler;
 
-    // Debug: inspect the mocked httpsCallable and registered rpcMocks
-    // eslint-disable-next-line no-console
-    console.log('DEBUG httpsCallable type:', typeof require('firebase/functions').httpsCallable);
-    // eslint-disable-next-line no-console
-    console.log('DEBUG rpcMock for createItinerary:', require('firebase/functions').__rpcMocks && typeof require('firebase/functions').__rpcMocks.createItinerary);
-    try {
-      const mf = require('firebase/functions');
-      // eslint-disable-next-line no-console
-      console.log('DEBUG httpsCallable source:', mf.httpsCallable && mf.httpsCallable.toString && mf.httpsCallable.toString().slice(0,200));
-      // eslint-disable-next-line no-console
-      console.log('DEBUG module rpcMocks keys:', mf.__rpcMocks && Object.keys(mf.__rpcMocks));
-      // eslint-disable-next-line no-console
-      console.log('DEBUG module rpcMock createItinerary value typeof:', mf.__rpcMocks && typeof mf.__rpcMocks.createItinerary);
-      const maybeFn = mf.httpsCallable(mf.getFunctions(), 'createItinerary');
-      // eslint-disable-next-line no-console
-      console.log('DEBUG result of calling httpsCallable:', typeof maybeFn, maybeFn && (maybeFn.name || maybeFn.toString && maybeFn.toString().slice(0,100)));
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG calling httpsCallable threw', e && (e as any).message);
-    }
+    // (debug logging removed)
   const { result } = renderHook(() => usePostItineraryToFirestore());
 
     // Act
@@ -130,24 +111,7 @@ describe("usePostItineraryToFirestore", () => {
     mockedFunctionsFail.__rpcMocks = mockedFunctionsFail.__rpcMocks || {};
     mockedFunctionsFail.__rpcMocks.createItinerary = rpcHandler;
 
-    // Debug: inspect the mocked httpsCallable and registered rpcMocks
-    // eslint-disable-next-line no-console
-    console.log('DEBUG httpsCallable type (fail):', typeof require('firebase/functions').httpsCallable);
-    // eslint-disable-next-line no-console
-    console.log('DEBUG rpcMock for createItinerary (fail):', require('firebase/functions').__rpcMocks && typeof require('firebase/functions').__rpcMocks.createItinerary);
-    try {
-      const mf = require('firebase/functions');
-      // eslint-disable-next-line no-console
-      console.log('DEBUG httpsCallable source (fail):', mf.httpsCallable && mf.httpsCallable.toString && mf.httpsCallable.toString().slice(0,200));
-      // eslint-disable-next-line no-console
-      console.log('DEBUG module rpcMocks keys (fail):', mf.__rpcMocks && Object.keys(mf.__rpcMocks));
-      const maybeFnFail = mf.httpsCallable(mf.getFunctions(), 'createItinerary');
-      // eslint-disable-next-line no-console
-      console.log('DEBUG result of calling httpsCallable (fail):', typeof maybeFnFail, maybeFnFail && (maybeFnFail.name || maybeFnFail.toString && maybeFnFail.toString().slice(0,100)));
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG calling httpsCallable (fail) threw', e && (e as any).message);
-    }
+    // (debug logging removed)
   const { result } = renderHook(() => usePostItineraryToFirestore());
 
     // Act & Assert

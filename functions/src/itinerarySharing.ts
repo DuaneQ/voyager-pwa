@@ -655,7 +655,7 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
               </div>
               <div id="hotels-panel" class="accordion-content" hidden>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-              ${accommodationsList.slice(0, 6).map((accommodation: any) => {
+              ${accommodationsList.map((accommodation: any) => {
                 // Match React app price structure exactly: only render a numeric price when present
                 const priceAmount = accommodation.pricePerNight?.amount ?? accommodation.price?.amount ?? accommodation.priceAmount;
                 const priceCurrency = accommodation.pricePerNight?.currency ?? accommodation.price?.currency ?? 'USD';

@@ -632,3 +632,13 @@ Hi Fellow Travelers,
 I hope this message finds you well! I wanted to personally reach out and share something close to my heart: TravalPass.com was created after my own journey of rediscovery. When I found myself without a travel companion, I realized how many others love to travel but don’t always have someone to share the adventure with. That inspired me to build a platform where solo travelers, couples, and groups can connect with like-minded people heading to the same destinations.
 If you think TravalPass.com could help your community, I’d love for you and your members to try it out at TravalPass.com.  TravalPass.info is an information site that explains TravalPass in detail. There’s a feedback button right in the app—early feedback from your group would be invaluable in shaping TravalPass.com to better serve real travelers like you.
 Thank you for all you do to bring travelers together!
+
+
+GOOGLE TAG MGR ->
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KQ63GC84');</script>
+<!-- End Google Tag Manager -->

@@ -1,6 +1,7 @@
 import { parseAssistantJSON } from '../utils/ai/parsers';
 import { auth } from '../environments/firebaseConfig';
 import logger from '../utils/logger';
+import { calculateAge } from '../utils/calculateAge';
 
 export function parseAIServerResponse(params: {
   aiSettled: any;
@@ -64,6 +65,9 @@ export function parseAIServerResponse(params: {
           }
         }
       } else if ((aiData as any).itinerary || (aiData as any).response?.data?.itinerary || (aiData as any).data?.itinerary) {
+        // Calculate user age for filtering (same logic as in useAIGeneration)
+        const userAge = userProfile?.dob ? calculateAge(userProfile.dob) : 0;
+        
         serverToSave = {
           id: generationId,
           userId: auth.currentUser?.uid || null,
@@ -75,6 +79,7 @@ export function parseAIServerResponse(params: {
           endDate: request.endDate,
           lowerRange: 18,
           upperRange: 110,
+          age: userAge, // Include age for searchItineraries filtering
           ai_status: "completed",
           userInfo: {
             username: userProfile?.username || 'Anonymous',
