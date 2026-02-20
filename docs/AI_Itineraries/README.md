@@ -46,7 +46,7 @@ This directory contains comprehensive documentation for the AI-powered itinerary
 - Core itinerary handling and display logic
 
 ## 🧩 **Legacy & Specific Fixes**
-- **[User Story Generated Itineraries](USERSTORY_GENERATED_ITINERARIES.md)** - Flight search user story with Amadeus integration
+- **[User Story Generated Itineraries](USERSTORY_GENERATED_ITINERARIES.md)** - Flight search user story (⚠️ Historical - actual implementation uses SerpAPI, not Amadeus)
 - **[Travel Preferences MUI Select Fix](TRAVEL_PREFERENCES_MUI_SELECT_FIX.md)** - Specific UI component fix
 - **[AI Itinerary Display Refactoring](AI_ITINERARY_DISPLAY_REFACTORING.md)** - Component refactoring documentation
 

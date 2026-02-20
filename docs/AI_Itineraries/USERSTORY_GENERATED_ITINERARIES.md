@@ -1,5 +1,7 @@
 # User Story: Flight Search Integration for AI Itineraries
 
+> ⚠️ **DOCUMENTATION NOTICE (Updated Jan 2025)**: This document was written as a specification for an Amadeus integration that was **never implemented**. The actual production system uses **SerpAPI Google Flights**. See `functions/src/searchFlights.ts` for the actual implementation. This document is retained for historical reference only.
+
 ## Title
 Search Flights (Round-Trip) using user preferences with Stops & Airline filters
 
@@ -8,11 +10,11 @@ As a traveler using the AI Itinerary Generator
 I want the system to retrieve flight options from a flight API based on my preferences (airports, dates, cabin, preferred airlines, stops)  
 So that I can review relevant flight options before finalizing my itinerary.
 
-## Implementation Status: ✅ **COMPLETED**
-- **Provider**: Amadeus Self-Service Flight Offers Search (/v2/shopping/flight-offers) 
-- **Integration**: Part of `generateItineraryWithAI` function
-- **Current Implementation**: Parallel processing with 45-second timeout
-- **Fallback Strategy**: Mock flight data on API failures
+## Implementation Status: ✅ **COMPLETED** (Different Provider)
+- **Provider**: SerpAPI Google Flights (NOT Amadeus as originally planned)
+- **Integration**: `searchFlights` callable function in `functions/src/searchFlights.ts`
+- **Current Implementation**: SerpAPI integration with caching
+- **Fallback Strategy**: Returns empty array on API failures
 
 ## Scope (v1 - Implemented)
 

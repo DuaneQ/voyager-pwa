@@ -1,10 +1,11 @@
 import * as functions from 'firebase-functions/v1';
 import logger from './utils/logger';
+import { placesApiLogger } from './utils/placesApiLogger';
 
 // Use global fetch available in Node 18+ runtime
 const fetch = globalThis.fetch as typeof globalThis.fetch;
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_PLACES_API_KEY = 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8';
 const PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
 
 interface ActivitiesSearchParams {
@@ -31,10 +32,25 @@ interface ActivitiesSearchParams {
   mustAvoid?: string[];
   specialRequests?: string;
   tripType?: string;
+  // COST CONTROL: Skip expensive Place Details API calls (~$0.017/call)
+  // Set to true to use AI-generated data instead of Google Place Details
+  skipPlaceDetailsEnrichment?: boolean;
 }
 
 // Fetch a single text search page
-async function fetchTextSearch(url: string): Promise<any> {
+async function fetchTextSearch(url: string, functionName: string = 'searchActivities'): Promise<any> {
+  // Extract query from URL for logging
+  const urlObj = new URL(url);
+  const query = urlObj.searchParams.get('query') || urlObj.searchParams.get('input') || 'unknown';
+  const pageToken = urlObj.searchParams.get('pagetoken');
+  
+  // Log EXPENSIVE Text Search API call
+  placesApiLogger.logTextSearch({
+    query,
+    functionName,
+    pageToken: pageToken || undefined,
+  });
+  
   const res = await fetch(url);
   if (!res.ok) {
     const t = await res.text().catch(() => '');
@@ -44,7 +60,7 @@ async function fetchTextSearch(url: string): Promise<any> {
   return res.json();
 }
 
-async function fetchAllTextSearchResults(initialUrl: string, maxResults: number = 20): Promise<any[]> {
+async function fetchAllTextSearchResults(initialUrl: string, maxResults: number = 20, functionName: string = 'searchActivities'): Promise<any[]> {
   const places: any[] = [];
   try {
     let url = initialUrl;
@@ -53,7 +69,7 @@ async function fetchAllTextSearchResults(initialUrl: string, maxResults: number 
 
     do {
       attempts++;
-      const json = await fetchTextSearch(url);
+      const json = await fetchTextSearch(url, functionName);
       if (!json) break;
       if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
       logger.error('[searchActivities] Places API status:', json.status, json.error_message);
@@ -409,11 +425,16 @@ export async function _searchActivitiesImpl(data: any, context: any) {
       };
 
       // Perform Place Details enrichment based on trip days, but limit to a small cap
-        if (tripDays > 0) {
+      // COST CONTROL: Skip Place Details if explicitly disabled (~$0.017 per call saved)
+      const skipEnrichment = params.skipPlaceDetailsEnrichment === true;
+      
+      if (tripDays > 0 && !skipEnrichment) {
           const enrichmentCount = Math.min(tripDays, 6); // cap enrichment to control quota
-
+          logger.info(`[searchActivities] Enriching ${enrichmentCount} activities with Place Details`);
           // Enrich activities for the capped number
           await enrichWithPlaceDetails(activities, enrichmentCount, 'activities');
+        } else if (skipEnrichment) {
+          logger.info('[searchActivities] ⚡ Skipping Place Details enrichment (cost control mode)');
         }
 
     // Map and dedupe food places
@@ -429,9 +450,13 @@ export async function _searchActivitiesImpl(data: any, context: any) {
     }
 
     // Enrich restaurants with Place Details for the capped number of days
-    if (tripDays > 0 && restaurants.length > 0) {
+    // COST CONTROL: Skip Place Details if explicitly disabled (~$0.017 per call saved)
+    if (tripDays > 0 && restaurants.length > 0 && !skipEnrichment) {
       const enrichmentCount = Math.min(tripDays, 6);
+      logger.info(`[searchActivities] Enriching ${enrichmentCount} restaurants with Place Details`);
       await enrichWithPlaceDetails(restaurants, enrichmentCount, 'restaurants');
+    } else if (skipEnrichment && restaurants.length > 0) {
+      logger.info('[searchActivities] ⚡ Skipping restaurant Place Details enrichment (cost control mode)');
     }
 
     // --- Post-filtering and hint processing (mustAvoid first, then mustInclude boosting) ---

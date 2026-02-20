@@ -24,9 +24,8 @@ export OPENAI_API_KEY="sk-your-openai-api-key"
 # Google Places API (REQUIRED)
 export GOOGLE_PLACES_API_KEY="your-google-places-api-key"
 
-# Optional (with fallbacks)
-export AMADEUS_API_KEY="your-amadeus-api-key"
-export AMADEUS_API_SECRET="your-amadeus-secret"
+# SerpAPI for Flight Search (REQUIRED)
+export SERPAPI_API_KEY="your-serpapi-api-key"
 ```
 
 #### Firebase Configuration
@@ -92,57 +91,32 @@ const result = await generateItinerary({ data: {
 // Response: { success: true, generationId: "...", savedDocId: "..." }
 ```
 
-#### 2. estimateItineraryCost
-**Type**: Firebase Callable Function  
-**Description**: Quick cost estimation without full generation  
-**Authentication**: Required  
-**Authorization**: Available to all authenticated users  
-**Rate Limit**: More lenient than full generation  
-
-**Usage Example**:
-```javascript
-const estimateCost = httpsCallable(functions, 'estimateItineraryCost');
-
-const result = await estimateCost({ data: {
-  destination: "Paris, France",
-  startDate: "2025-08-01", 
-  endDate: "2025-08-07",
-  groupSize: 2,
-  tripType: "leisure"
-}});
-```
-
-#### 3. getGenerationStatus
-**Type**: Firebase Callable Function  
-**Description**: Check progress of ongoing generation  
-**Authentication**: Required  
-
-**Usage Example**:
-```javascript
-const getStatus = httpsCallable(functions, 'getGenerationStatus');
-
-const result = await getStatus({ data: {
-  generationId: "gen_1234567890_abcdefgh"
-}});
-```
+> ⚠️ **Note**: The following functions documented in older versions do NOT exist:
+> - `estimateItineraryCost` - Not implemented
+> - `getGenerationStatus` - Not implemented (progress tracked client-side only)
 
 ### Helper Search Functions
 
-#### 4. searchFlights
-**Type**: HTTPS Function (also callable)  
-**Description**: Search flight options using Amadeus API  
+#### 2. searchFlights
+**Type**: Firebase Callable Function  
+**Description**: Search flight options using SerpAPI Google Flights  
+**Provider**: SerpAPI (NOT Amadeus)
 
 **HTTP Usage**:
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d '{"data":{"destination":"Paris","startDate":"2025-08-01","endDate":"2025-08-07"}}' \
+  -d '{"data":{"departureAirportCode":"ATL","destinationAirportCode":"CDG","departureDate":"2025-08-01","returnDate":"2025-08-07"}}' \
   http://localhost:5001/YOUR_PROJECT/us-central1/searchFlights
 ```
 
-#### 5. searchAccommodations
-**Type**: HTTPS Function (also callable)  
+#### 3. searchAccommodations
+**Type**: Firebase Callable Function  
 **Description**: Search hotels using Google Places API  
+
+#### 4. searchActivities
+**Type**: Firebase Callable Function  
+**Description**: Search activities and restaurants using Google Places API  
 
 ### Function Call Pattern
 **Important**: All Firebase Functions expect requests in the format:

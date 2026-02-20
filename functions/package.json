@@ -2,8 +2,8 @@
   "name": "functions",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
-  "build": "tsc",
-  "gcp-build": "npm run build",
+    "build": "tsc",
+    "gcp-build": "npm run build",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
@@ -11,12 +11,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "jest",
-    "test:watch": "jest --watch",
-  "postinstall": "prisma generate || true",
-    "migrate:firestore-to-cloudsql": "ts-node scripts/migrate-firestore-to-cloudsql.ts",
-    "migrate:dry-run": "ts-node scripts/migrate-firestore-to-cloudsql.ts --dry-run",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:migrate:dev": "prisma migrate dev"
+    "test:watch": "jest --watch"
   },
   "engines": {
     "node": "20"
@@ -24,7 +19,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",
-    "@prisma/client": "^6.17.1",
+    "@mux/mux-node": "^12.8.1",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "body-parser": "^2.2.0",
@@ -32,8 +27,6 @@
     "express": "^5.1.0",
     "firebase-admin": "^13.5.0",
     "firebase-functions": "^6.5.0",
-    "pg": "^8.16.3",
-    "prisma": "^6.17.1",
     "stripe": "^12.18.0"
   },
   "devDependencies": {

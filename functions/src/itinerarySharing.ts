@@ -41,7 +41,8 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
   const destination = itineraryData?.destination || itinerary.destination || 'Travel Itinerary';
   const startDate = itineraryData?.startDate || itinerary.startDate;
   const endDate = itineraryData?.endDate || itinerary.endDate;
-  const description = itineraryData?.description || `AI-generated travel itinerary for ${destination}`;
+  // Use the personalized description if available (could be at multiple locations)
+  const description = itineraryData?.description || itinerary.description || itinerary.personalizedMessage || `AI-generated travel itinerary for ${destination}`;
   const dailyData = itineraryData?.days || itineraryData?.dailyPlans;
 
   const formatDate = (dateString: string) => {
@@ -112,7 +113,12 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
   const assumptions = itinerary?.response?.data?.assumptions;
 
   // Use the same transport access the frontend uses and render properties directly
-  const rawTransport = (itinerary?.response?.data?.transportation ?? itinerary?.response?.data?.recommendations?.transportation) as any;
+  let rawTransport = (itinerary?.response?.data?.transportation ?? itinerary?.response?.data?.recommendations?.transportation) as any;
+  
+  // Handle nested transportation format where transportation object contains another transportation object
+  if (rawTransport && rawTransport.transportation && typeof rawTransport.transportation === 'object') {
+    rawTransport = rawTransport.transportation;
+  }
 
   // Normalize a variety of key names that the AI or saved docs might use
   const getFirst = (obj: any, ...keys: string[]) => {
@@ -147,7 +153,46 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
   const tips = getFirst(rawTransport, 'tips');
 
   let transportHTML = '';
-    if (rawTransport && mode && String(mode).toLowerCase() !== 'flight') {
+    // Show Travel Recommendations if:
+    // 1. Transport data exists with useful content (steps/tips/providers), regardless of mode
+    // 2. OR assumptions exist with content
+    // 3. OR transport has a mode that's not 'flight'
+    
+    const transportProviders = providers && (Array.isArray(providers) ? providers : [providers]) || [];
+    const transportTips = tips && (Array.isArray(tips) ? tips : [tips]) || [];
+    const transportSteps = rawTransport && Array.isArray(rawTransport.steps) ? rawTransport.steps : [];
+    
+    const hasTransportContent = Boolean(
+      rawTransport && (
+        transportProviders.length > 0 ||
+        transportTips.length > 0 ||
+        transportSteps.length > 0 ||
+        (mode && String(mode).toLowerCase() !== 'flight')
+      )
+    );
+    
+    const hasAssumptionsContent = Boolean(
+      assumptions && (
+        (assumptions.providers && assumptions.providers.length > 0) ||
+        (assumptions.steps && assumptions.steps.length > 0) ||
+        (assumptions.tips && assumptions.tips.length > 0)
+      )
+    );
+    
+    const shouldShowRecommendations = hasTransportContent || hasAssumptionsContent;
+    
+    logger.info('[itineraryShare] Transport data check:', {
+      hasRawTransport: !!rawTransport,
+      mode: mode,
+      transportProvidersCount: transportProviders.length,
+      transportTipsCount: transportTips.length,
+      transportStepsCount: transportSteps.length,
+      hasTransportContent,
+      hasAssumptionsContent,
+      shouldShowRecommendations
+    });
+    
+    if (shouldShowRecommendations) {
     // If the generator saved additional assumptions on the itinerary, prefer showing
     // those provider/steps/tips alongside any transport-level providers. Do not
     // surface assumptions when there's no transport — they should appear with
@@ -743,6 +788,27 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
                   const activityLocationAddress = activity.location?.address || null;
                   const activityDuration = activity.duration || activity.timing?.duration || null;
                   const activityRating = activity.rating ?? null;
+                  
+                  // Extract insider tips - check both snake_case and camelCase
+                  const insiderTip = activity.insider_tip || activity.insiderTip || (activity.tips && Array.isArray(activity.tips) && activity.tips.length > 0 ? activity.tips[0] : activity.tips) || (activity.recommendations && activity.recommendations.length > 0 ? activity.recommendations[0] : null);
+                  
+                  // Generate Google Maps link if we have location data
+                  // Check multiple possible field names for place ID (place_id, placeId, external.place_id)
+                  let googleMapsLink = null;
+                  const placeId = activity.place_id || activity.placeId || activity.external?.place_id || null;
+                  if (placeId) {
+                    googleMapsLink = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+                  } else if (activity.location?.coordinates?.lat && activity.location?.coordinates?.lng) {
+                    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${activity.location.coordinates.lat},${activity.location.coordinates.lng}`;
+                  } else if (activity.external?.coordinates?.lat && activity.external?.coordinates?.lng) {
+                    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${activity.external.coordinates.lat},${activity.external.coordinates.lng}`;
+                  } else if (activityLocationAddress) {
+                    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activityLocationAddress)}`;
+                  } else if (activity.location?.name) {
+                    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location.name)}`;
+                  } else if (activity.name) {
+                    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.name + ' ' + destination)}`;
+                  }
 
                   return `
                     <div class="activity-card">
@@ -759,10 +825,12 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
                         ${activityLocationName ? ` • ${activityLocationName}` : ''}
                         ${activityLocationAddress ? ` • ${activityLocationAddress}` : ''}
                       </div>
-                      ${activityWebsite ? `<div style="margin-top: 8px;"><a href="${activityWebsite}" target="_blank" rel="noopener noreferrer" class="website-link">🌐 Visit Website</a></div>` : ''}
-                      ${activityBookingUrl ? `<div style="margin-top: 4px;"><a href="${activityBookingUrl}" target="_blank" rel="noopener noreferrer" class="website-link">🎫 Book Now</a></div>` : ''}
                       ${activityDuration ? `<div class="card-details" style="margin-top: 4px;">Duration: ${activityDuration}</div>` : ''}
                       ${activityRating ? `<div class="card-details" style="margin-top: 4px;">Rating: ${activityRating}</div>` : ''}
+                      ${googleMapsLink ? `<div style="margin-top: 8px;"><a href="${googleMapsLink}" target="_blank" rel="noopener noreferrer" class="website-link">📍 View on Google Maps</a></div>` : ''}
+                      ${activityWebsite ? `<div style="margin-top: 4px;"><a href="${activityWebsite}" target="_blank" rel="noopener noreferrer" class="website-link">🌐 Visit Website</a></div>` : ''}
+                      ${activityBookingUrl ? `<div style="margin-top: 4px;"><a href="${activityBookingUrl}" target="_blank" rel="noopener noreferrer" class="website-link">🎫 Book Now</a></div>` : ''}
+                      ${insiderTip ? `<div style="margin-top: 12px; padding: 12px; background: rgba(255, 152, 0, 0.15); border-left: 3px solid #ff9800; border-radius: 4px;"><div style="color: #ff9800; font-weight: bold; margin-bottom: 4px; font-size: 0.85rem;">💡 Insider tip:</div><div style="color: rgba(255, 255, 255, 0.9); font-size: 0.9rem;">${insiderTip}</div></div>` : ''}
                     </div>
                     `;
                 }).join('') : ''}
@@ -773,6 +841,24 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
                     const restaurantPhone = restaurant.phone || meal.bookingInfo?.phone || null;
                     const restaurantWebsite = restaurant.website || meal.bookingInfo?.website || null;
                     const restaurantBooking = restaurant.bookingUrl || meal.bookingInfo?.reservationUrl || null;
+                    const restaurantLocation = restaurant.location || meal.location || null;
+                    
+                    // Generate Google Maps link for restaurant
+                    let googleMapsLink = null;
+                    const mealPlaceId = restaurant.place_id || meal.place_id || restaurant.placeId || meal.placeId || restaurant.external?.place_id || null;
+                    if (mealPlaceId) {
+                      googleMapsLink = `https://www.google.com/maps/place/?q=place_id:${mealPlaceId}`;
+                    } else if (restaurantLocation?.coordinates?.lat && restaurantLocation?.coordinates?.lng) {
+                      googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${restaurantLocation.coordinates.lat},${restaurantLocation.coordinates.lng}`;
+                    } else if (restaurant.external?.coordinates?.lat && restaurant.external?.coordinates?.lng) {
+                      googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${restaurant.external.coordinates.lat},${restaurant.external.coordinates.lng}`;
+                    } else if (restaurantLocation?.address || restaurant.address) {
+                      const address = restaurantLocation?.address || restaurant.address;
+                      googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                    } else if (restaurant.name || meal.name) {
+                      const name = restaurant.name || meal.name;
+                      googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + destination)}`;
+                    }
 
                     return `
                   <div class="meal-card">
@@ -787,9 +873,11 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
                       ${meal.timing?.time || meal.time || ''}
                       ${restaurant.cuisine ? ` • ${restaurant.cuisine} Cuisine` : ''}
                       ${restaurant.priceRange ? ` • ${restaurant.priceRange}` : ''}
+                      ${restaurantLocation?.address || restaurant.address ? ` • ${restaurantLocation?.address || restaurant.address}` : ''}
                     </div>
                     <div style="margin-top:8px;">
-                      ${restaurantPhone ? `<a href="tel:${restaurantPhone}" class="website-link">📞 Call</a>` : ''}
+                      ${googleMapsLink ? `<a href="${googleMapsLink}" target="_blank" rel="noopener noreferrer" class="website-link">📍 View on Google Maps</a>` : ''}
+                      ${restaurantPhone ? ` <a href="tel:${restaurantPhone}" class="website-link">📞 Call</a>` : ''}
                       ${restaurantWebsite ? ` <a href="${restaurantWebsite}" target="_blank" rel="noopener noreferrer" class="website-link">🌐 Website</a>` : ''}
                       ${restaurantBooking ? ` <a href="${restaurantBooking}" target="_blank" rel="noopener noreferrer" class="website-link">🎫 Book</a>` : ''}
                     </div>

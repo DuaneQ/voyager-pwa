@@ -35,8 +35,7 @@ graph TB
     subgraph "External APIs"
         OpenAI[OpenAI GPT-4o-mini]
         Places[Google Places API]
-        Flights[Amadeus Flight API]
-        Weather[Weather API]
+        Flights[SerpAPI Google Flights]
     end
     
     subgraph "Firebase Firestore"
@@ -56,7 +55,6 @@ graph TB
     APIs --> OpenAI
     APIs --> Places
     APIs --> Flights
-    APIs --> Weather
     Generate --> AI
     AI --> Storage
     Storage --> Itineraries
@@ -65,7 +63,10 @@ graph TB
     Storage --> Analytics
 ```
 
-## Complete Process Flow (4 Stages)
+## Complete Process Flow (6 Stages)
+
+> **Note**: The client-side useAIGeneration hook tracks 6 progress stages:
+> 1. Initializing (10%) 2. Searching (30%) 3. Activities (50%) 4. AI Generation (75%) 5. Saving (90%) 6. Done (100%)
 
 ```mermaid
 sequenceDiagram
@@ -101,9 +102,7 @@ sequenceDiagram
     and
         S->>G: Find activities & attractions  
     and
-        S->>Flights: Search flight options
-    and
-        S->>Weather: Get weather forecast
+        S->>Flights: Search flight options (SerpAPI)
     end
     S->>H: Progress: "Gathering activities..."
     H->>UI: Update progress bar (45%)
