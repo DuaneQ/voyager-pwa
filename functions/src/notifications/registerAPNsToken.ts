@@ -24,9 +24,14 @@ const BUNDLE_ID = 'com.travalpass.app';
  * Cloud Functions have automatic access to Application Default Credentials.
  */
 async function getAccessToken(): Promise<string> {
-  const credential = admin.credential.applicationDefault();
-  const tokenResult = await credential.getAccessToken();
-  return tokenResult.access_token;
+  try {
+    const credential = admin.credential.applicationDefault();
+    const tokenResult = await credential.getAccessToken();
+    return tokenResult.access_token;
+  } catch (error) {
+    logger.error('Failed to get access token', { error });
+    throw new HttpsError('internal', 'Failed to authenticate with Google services');
+  }
 }
 
 export const registerAPNsToken = onCall(async (request) => {

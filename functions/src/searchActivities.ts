@@ -5,7 +5,7 @@ import { placesApiLogger } from './utils/placesApiLogger';
 // Use global fetch available in Node 18+ runtime
 const fetch = globalThis.fetch as typeof globalThis.fetch;
 
-const GOOGLE_PLACES_API_KEY = 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8';
+const GOOGLE_PLACES_API_KEY = '';
 const PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
 
 interface ActivitiesSearchParams {

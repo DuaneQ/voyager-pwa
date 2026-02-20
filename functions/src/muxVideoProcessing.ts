@@ -196,7 +196,12 @@ export const muxWebhook = onRequest(
       .update(payload)
       .digest("hex");
 
-    if (computedSignatureDev !== expectedSignature && computedSignatureProd !== expectedSignature) {
+    const expectedBuf = Buffer.from(expectedSignature, "hex");
+    const devBuf = Buffer.from(computedSignatureDev, "hex");
+    const prodBuf = Buffer.from(computedSignatureProd, "hex");
+    const isValidDev = expectedBuf.length === devBuf.length && crypto.timingSafeEqual(expectedBuf, devBuf);
+    const isValidProd = expectedBuf.length === prodBuf.length && crypto.timingSafeEqual(expectedBuf, prodBuf);
+    if (!isValidDev && !isValidProd) {
       console.error("[Mux Webhook] Signature mismatch");
       res.status(401).send("Invalid signature");
       return;

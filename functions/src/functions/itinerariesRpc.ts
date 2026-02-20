@@ -48,6 +48,19 @@ const normalizeToTimestamp = (val: any): admin.firestore.Timestamp | null => {
   return null;
 };
 
+/**
+ * Safely convert a value to a number. Returns null if the result is NaN or not finite.
+ * Prevents Number(null)=0, Number("abc")=NaN from silently corrupting Firestore data.
+ */
+const toValidNumber = (val: any): number | null => {
+  if (val == null) return null;
+  const n = Number(val);
+  if (!isFinite(n) || isNaN(n)) {
+    throw new HttpsError('invalid-argument', `Expected a valid number but received: ${val}`);
+  }
+  return n;
+};
+
 // ─── Create or upsert an itinerary ────────────────────────────────────────────
 export const createItinerary = onCall(async (req) => {
   try {
@@ -67,12 +80,12 @@ export const createItinerary = onCall(async (req) => {
       startDate: normalizeToTimestamp(incoming.startDate),
       endDate: normalizeToTimestamp(incoming.endDate),
       // Ensure startDay/endDay are numbers (epoch ms) for range queries
-      startDay: incoming.startDay != null ? Number(incoming.startDay) : null,
-      endDay: incoming.endDay != null ? Number(incoming.endDay) : null,
+      startDay: toValidNumber(incoming.startDay),
+      endDay: toValidNumber(incoming.endDay),
       // Ensure numeric fields are numbers
-      age: incoming.age != null ? Number(incoming.age) : null,
-      lowerRange: incoming.lowerRange != null ? Number(incoming.lowerRange) : null,
-      upperRange: incoming.upperRange != null ? Number(incoming.upperRange) : null,
+      age: toValidNumber(incoming.age),
+      lowerRange: toValidNumber(incoming.lowerRange),
+      upperRange: toValidNumber(incoming.upperRange),
       updatedAt: now,
     };
 
@@ -118,12 +131,12 @@ export const updateItinerary = onCall(async (req) => {
     // Normalize date fields if present
     if (updates.startDate) updates.startDate = normalizeToTimestamp(updates.startDate);
     if (updates.endDate) updates.endDate = normalizeToTimestamp(updates.endDate);
-    // Ensure numeric fields are numbers
-    if (updates.startDay != null) updates.startDay = Number(updates.startDay);
-    if (updates.endDay != null) updates.endDay = Number(updates.endDay);
-    if (updates.age != null) updates.age = Number(updates.age);
-    if (updates.lowerRange != null) updates.lowerRange = Number(updates.lowerRange);
-    if (updates.upperRange != null) updates.upperRange = Number(updates.upperRange);
+    // Ensure numeric fields are numbers (throws HttpsError on NaN/invalid)
+    if (updates.startDay != null) updates.startDay = toValidNumber(updates.startDay);
+    if (updates.endDay != null) updates.endDay = toValidNumber(updates.endDay);
+    if (updates.age != null) updates.age = toValidNumber(updates.age);
+    if (updates.lowerRange != null) updates.lowerRange = toValidNumber(updates.lowerRange);
+    if (updates.upperRange != null) updates.upperRange = toValidNumber(updates.upperRange);
 
     updates.updatedAt = admin.firestore.Timestamp.now();
 
