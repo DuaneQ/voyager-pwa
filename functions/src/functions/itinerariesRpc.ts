@@ -1,27 +1,67 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import prisma from '../db/prismaClient';
+import * as admin from 'firebase-admin';
 
-// Convert values that Prisma may return (BigInt, Date, etc.) into JSON-safe types
+// Firestore collection name for itineraries
+const ITINERARIES_COLLECTION = 'itineraries';
+
+/**
+ * Get Firestore instance (admin.initializeApp() is called in index.ts)
+ */
+const getDb = () => admin.firestore();
+
+/**
+ * Convert Firestore Timestamps to ISO strings and other Firestore types to JSON-safe values.
+ * Replaces the old Prisma sanitizeDeep that handled BigInt/Date.
+ */
 const sanitizeDeep = (value: any): any => {
   if (value === null || value === undefined) return null;
-  if (typeof value === 'bigint') {
-    // epochs are returned as BigInt from Prisma; convert to number (safe for epoch ms)
-    return Number(value);
-  }
+  if (typeof value === 'bigint') return Number(value);
+  // Firestore Timestamp → ISO string
+  if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map((v) => sanitizeDeep(v));
   if (typeof value === 'object') {
-    // Plain object or nested model
     const out: any = {};
     for (const [k, v] of Object.entries(value)) {
-      out[k] = sanitizeDeep((v as any));
+      out[k] = sanitizeDeep(v as any);
     }
     return out;
   }
   return value;
 };
 
-// Create or upsert an itinerary
+/**
+ * Normalize a date value to a Firestore Timestamp.
+ * Accepts: string, number (epoch ms), Date, Firestore Timestamp, or null.
+ */
+const normalizeToTimestamp = (val: any): admin.firestore.Timestamp | null => {
+  if (!val) return null;
+  if (val && typeof val.toDate === 'function') return val; // Already a Timestamp
+  if (typeof val === 'string' || typeof val === 'number') {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return admin.firestore.Timestamp.fromDate(d);
+  }
+  if (val instanceof Date) {
+    return admin.firestore.Timestamp.fromDate(val);
+  }
+  return null;
+};
+
+/**
+ * Safely convert a value to a number. Returns null if the result is NaN or not finite.
+ * Prevents Number(null)=0, Number("abc")=NaN from silently corrupting Firestore data.
+ */
+const toValidNumber = (val: any): number | null => {
+  if (val == null) return null;
+  const n = Number(val);
+  if (!isFinite(n) || isNaN(n)) {
+    throw new HttpsError('invalid-argument', `Expected a valid number but received: ${val}`);
+  }
+  return n;
+};
+
+// ─── Create or upsert an itinerary ────────────────────────────────────────────
 export const createItinerary = onCall(async (req) => {
   try {
     const auth = req.auth;
@@ -31,44 +71,52 @@ export const createItinerary = onCall(async (req) => {
 
     const data = req.data || {};
     const incoming = data.itinerary || data;
-
-    // Ensure userId comes from auth when not supplied
     const userId = incoming.userId || auth.uid;
 
-    // Normalize dates if provided as strings
-    const normalize = (val: any) => {
-      if (!val) return null;
-      if (typeof val === 'string' || typeof val === 'number') return new Date(val);
-      if (val.toDate) return val.toDate();
-      return val;
-    };
-
+    const now = admin.firestore.Timestamp.now();
     const payload: any = {
       ...incoming,
       userId,
-      startDate: normalize(incoming.startDate),
-      endDate: normalize(incoming.endDate),
+      startDate: normalizeToTimestamp(incoming.startDate),
+      endDate: normalizeToTimestamp(incoming.endDate),
+      // Ensure startDay/endDay are numbers (epoch ms) for range queries
+      startDay: toValidNumber(incoming.startDay),
+      endDay: toValidNumber(incoming.endDay),
+      // Ensure numeric fields are numbers
+      age: toValidNumber(incoming.age),
+      lowerRange: toValidNumber(incoming.lowerRange),
+      upperRange: toValidNumber(incoming.upperRange),
+      updatedAt: now,
     };
 
-    // If an id was provided, upsert so migrations / replays work
+    const db = getDb();
+
     if (incoming.id) {
-      const created = await prisma.itinerary.upsert({
-        where: { id: incoming.id },
-        create: { id: incoming.id, ...payload },
-        update: { ...payload },
-      });
-      return { success: true, data: sanitizeDeep(created) };
+      // Upsert: set with merge to handle both create and update
+      const docRef = db.collection(ITINERARIES_COLLECTION).doc(incoming.id);
+      const existingDoc = await docRef.get();
+      if (existingDoc.exists) {
+        await docRef.update(payload);
+      } else {
+        payload.createdAt = now;
+        await docRef.set(payload);
+      }
+      const updated = await docRef.get();
+      return { success: true, data: sanitizeDeep({ id: updated.id, ...updated.data() }) };
     }
 
-    const created = await prisma.itinerary.create({ data: payload });
-    return { success: true, data: sanitizeDeep(created) };
+    // Create with auto-generated ID
+    payload.createdAt = now;
+    const docRef = await db.collection(ITINERARIES_COLLECTION).add(payload);
+    const created = await docRef.get();
+    return { success: true, data: sanitizeDeep({ id: created.id, ...created.data() }) };
   } catch (err: any) {
     console.error('createItinerary error', err);
     throw new HttpsError('internal', err?.message || String(err));
   }
 });
 
-// Update an itinerary
+// ─── Update an itinerary ──────────────────────────────────────────────────────
 export const updateItinerary = onCall(async (req) => {
   try {
     const auth = req.auth;
@@ -77,22 +125,37 @@ export const updateItinerary = onCall(async (req) => {
     }
     const data = req.data || {};
     const id: string = data.itineraryId || data.id;
-    const updates: any = data.updates || data;
+    const updates: any = { ...(data.updates || data) };
     if (!id) throw new HttpsError('invalid-argument', 'itinerary id required');
 
     // Normalize date fields if present
-    if (updates.startDate) updates.startDate = new Date(updates.startDate);
-    if (updates.endDate) updates.endDate = new Date(updates.endDate);
+    if (updates.startDate) updates.startDate = normalizeToTimestamp(updates.startDate);
+    if (updates.endDate) updates.endDate = normalizeToTimestamp(updates.endDate);
+    // Ensure numeric fields are numbers (throws HttpsError on NaN/invalid)
+    if (updates.startDay != null) updates.startDay = toValidNumber(updates.startDay);
+    if (updates.endDay != null) updates.endDay = toValidNumber(updates.endDay);
+    if (updates.age != null) updates.age = toValidNumber(updates.age);
+    if (updates.lowerRange != null) updates.lowerRange = toValidNumber(updates.lowerRange);
+    if (updates.upperRange != null) updates.upperRange = toValidNumber(updates.upperRange);
 
-    const updated = await prisma.itinerary.update({ where: { id }, data: updates });
-    return { success: true, data: sanitizeDeep(updated) };
+    updates.updatedAt = admin.firestore.Timestamp.now();
+
+    // Remove id/itineraryId from updates to avoid overwriting the doc ID field
+    delete updates.id;
+    delete updates.itineraryId;
+
+    const db = getDb();
+    const docRef = db.collection(ITINERARIES_COLLECTION).doc(id);
+    await docRef.update(updates);
+    const updated = await docRef.get();
+    return { success: true, data: sanitizeDeep({ id: updated.id, ...updated.data() }) };
   } catch (err: any) {
     console.error('updateItinerary error', err);
     throw new HttpsError('internal', err?.message || String(err));
   }
 });
 
-// Delete an itinerary
+// ─── Delete an itinerary ──────────────────────────────────────────────────────
 export const deleteItinerary = onCall(async (req) => {
   try {
     const auth = req.auth;
@@ -103,7 +166,8 @@ export const deleteItinerary = onCall(async (req) => {
     const id: string = data.itineraryId || data.id;
     if (!id) throw new HttpsError('invalid-argument', 'itinerary id required');
 
-    await prisma.itinerary.delete({ where: { id } });
+    const db = getDb();
+    await db.collection(ITINERARIES_COLLECTION).doc(id).delete();
     return { success: true };
   } catch (err: any) {
     console.error('deleteItinerary error', err);
@@ -111,7 +175,7 @@ export const deleteItinerary = onCall(async (req) => {
   }
 });
 
-// List itineraries for a user (simple)
+// ─── List itineraries for a user ──────────────────────────────────────────────
 export const listItinerariesForUser = onCall(async (req) => {
   try {
     const auth = req.auth;
@@ -121,26 +185,34 @@ export const listItinerariesForUser = onCall(async (req) => {
 
     const data = req.data || {};
     const userId = data.userId || auth.uid;
-    // Base filter: only return itineraries for this user
-    const where: any = { userId };
 
-    // Exclude itineraries that have already ended (endDay < now).
-    // All itineraries have an endDay, so require endDay >= now.
-    // Use BigInt for comparison because `endDay` is stored as BigInt in Prisma.
-    try {
-      const now = Date.now();
-      where.AND = where.AND || [];
-      // Only include itineraries whose endDay is greater than or equal to now.
-      where.AND.push({ endDay: { gte: BigInt(now) } });
-    } catch (e) {
-      // If BigInt isn't supported for some reason, fall back to not filtering
-      console.warn('[listItinerariesForUser] could not apply endDay filter, continuing without it:', (e as Error).message);
+    const db = getDb();
+    let query: admin.firestore.Query = db.collection(ITINERARIES_COLLECTION)
+      .where('userId', '==', userId);
+
+    // Exclude itineraries that have already ended (endDay < now)
+    const now = Date.now();
+    query = query.where('endDay', '>=', now);
+
+    // Optional ai_status filter
+    if (data.ai_status) {
+      query = query.where('ai_status', '==', data.ai_status);
     }
 
-    // Optional filters
-    if (data.ai_status) where.ai_status = data.ai_status;
+    // Order by endDay ascending (required by Firestore when filtering on endDay with >=)
+    // We'll re-sort by createdAt descending in post-processing
+    query = query.orderBy('endDay', 'asc');
 
-    const items = await prisma.itinerary.findMany({ where, orderBy: { createdAt: 'desc' } });
+    const snapshot = await query.get();
+    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Sort by createdAt descending (post-processing since Firestore orderBy is on endDay)
+    items.sort((a: any, b: any) => {
+      const aTime = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0);
+      const bTime = b.createdAt?.toDate?.() ?? new Date(b.createdAt ?? 0);
+      return bTime.getTime() - aTime.getTime();
+    });
+
     return { success: true, data: sanitizeDeep(items) };
   } catch (err: any) {
     console.error('listItinerariesForUser error', err);
@@ -148,104 +220,98 @@ export const listItinerariesForUser = onCall(async (req) => {
   }
 });
 
-// Basic search endpoint - supports a subset of filters used in client side hooks
+// ─── Search for matching itineraries ──────────────────────────────────────────
 export const searchItineraries = onCall(async (req) => {
   try {
     const data = req.data || {};
-    // public search - authentication optional, but preferred for rate limiting
-    const filters: any = {};
-    if (data.destination) filters.destination = data.destination;
-    if (data.gender && data.gender !== 'No Preference') filters.gender = data.gender;
-    if (data.status && data.status !== 'No Preference') filters.status = data.status;
-    if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') filters.sexualOrientation = data.sexualOrientation;
+    const db = getDb();
+    let query: admin.firestore.Query = db.collection(ITINERARIES_COLLECTION);
 
-    // Date overlap filtering: Candidate's trip must overlap with user's search dates
-    // For overlap: candidate.endDate >= user.startDate AND candidate.startDate <= user.endDate
-    if (data.minStartDay && data.maxEndDay) {
-      const userStartDate = new Date(Number(data.minStartDay));
-      const userEndDate = new Date(Number(data.maxEndDay));
-      filters.startDate = { lte: userEndDate }; // Candidate starts before or during user's trip
-      filters.endDate = { gte: userStartDate }; // Candidate ends during or after user's trip
-    } else if (data.minStartDay) {
-      // Fallback: if only minStartDay provided, use legacy behavior
-      filters.startDate = { gte: new Date(Number(data.minStartDay)) };
+    // Equality filters (Firestore handles these natively with composite indexes)
+    if (data.destination) {
+      query = query.where('destination', '==', data.destination);
+    }
+    if (data.gender && data.gender !== 'No Preference') {
+      query = query.where('gender', '==', data.gender);
+    }
+    if (data.status && data.status !== 'No Preference') {
+      query = query.where('status', '==', data.status);
+    }
+    if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') {
+      query = query.where('sexualOrientation', '==', data.sexualOrientation);
     }
 
-    // Age filtering: Candidate's age must be within user's preferred range
-    if (data.lowerRange != null && data.upperRange != null) {
-      const userLower = Number(data.lowerRange);
-      const userUpper = Number(data.upperRange);
-      
-      // Candidate's age must be in [userLower, userUpper]
-      filters.age = { gte: userLower, lte: userUpper };
-    }
+    // Date overlap filtering using startDay/endDay (epoch ms numbers)
+    // For overlap: candidate.endDay >= user.startDay AND candidate.startDay <= user.endDay
+    // Firestore supports inequalities on multiple fields (added 2024).
+    //
+    // IMPORTANT: Always apply both range filters (with sensible defaults when not provided)
+    // so that ALL queries hit the composite indexes that include both endDay + startDay.
+    // Without this, queries like destination+gender+orderBy(endDay) would need separate
+    // indexes without the startDay field, doubling the index count.
+    const userStartDay = data.minStartDay ? Number(data.minStartDay) : 0;
+    const userEndDay = data.maxEndDay ? Number(data.maxEndDay) : Number.MAX_SAFE_INTEGER;
+    query = query.where('endDay', '>=', userStartDay);   // candidate ends after user starts (or endDay >= 0 = all)
+    query = query.where('startDay', '<=', userEndDay);    // candidate starts before user ends (or startDay <= MAX = all)
 
-    // Exclude viewed itineraries from results
-    if (Array.isArray(data.excludedIds) && data.excludedIds.length > 0) {
-      filters.id = { notIn: data.excludedIds };
-    }
+    // Order by endDay ascending (Firestore requires orderBy on the first inequality field;
+    // endDay >= is our first range filter, so orderBy must match it for composite index usage)
+    query = query.orderBy('endDay', 'asc');
 
-    // Bidirectional blocking filter:
-    // 1. Exclude itineraries from users that current user has blocked (data.blockedUserIds)
-    // 2. Exclude itineraries where current user is in the candidate's blocked array
-    // Note: We handle #2 in post-processing since Prisma can't filter on JSON array contains
+    // Fetch more than needed to account for post-processing filters
+    const take = Math.min(100, Number(data.pageSize || 50));
+    const overFetch = take * 3; // Fetch extra to filter in post-processing
+    query = query.limit(overFetch);
+
+    const snapshot = await query.get();
+    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // ── Post-processing filters ──────────────────────────────────────────────
+    // Filters that Firestore can't handle natively in a single compound query
+
     const currentUserId = data.currentUserId;
     const currentUserBlockedIds = Array.isArray(data.blockedUserIds) ? data.blockedUserIds : [];
-    
-    // Filter #1: Exclude itineraries from users current user has blocked
-    // Since userId is stored in userInfo JSON field, we need to fetch all and filter in-memory
-    // OR if you have a top-level userId field in Prisma schema, use: filters.userId = { notIn: currentUserBlockedIds }
+    const excludedIds = new Set(Array.isArray(data.excludedIds) ? data.excludedIds : []);
 
-    const take = Math.min(100, Number(data.pageSize || 50));
-    const items = await prisma.itinerary.findMany({ where: filters, orderBy: { startDate: 'asc' }, take });
-    
-    // Parse JSON fields if they're strings (Prisma sometimes returns JSON as strings)
-    const parsedItems = items.map((item: any) => {
-      const parsed = { ...item };
-      
-      // Parse userInfo if it's a string
-      if (typeof parsed.userInfo === 'string') {
-        try {
-          parsed.userInfo = JSON.parse(parsed.userInfo);
-        } catch (e) {
-          console.error('Failed to parse userInfo for item:', parsed.id, e);
-        }
+    // Age range filter (post-processing to avoid needing additional composite indexes)
+    const hasAgeFilter = data.lowerRange != null && data.upperRange != null;
+    const lowerRange = hasAgeFilter ? Number(data.lowerRange) : null;
+    const upperRange = hasAgeFilter ? Number(data.upperRange) : null;
+
+    items = items.filter((item: any) => {
+      // Exclude current user's own itineraries
+      if (currentUserId && item.userId === currentUserId) return false;
+
+      // Exclude viewed/excluded itineraries
+      if (excludedIds.has(item.id)) return false;
+
+      // Age range filter
+      if (hasAgeFilter && item.age != null) {
+        const age = Number(item.age);
+        if (age < lowerRange! || age > upperRange!) return false;
       }
-      
-      // Parse other JSON fields if needed
-      ['likes', 'activities', 'response', 'metadata', 'externalData', 'recommendations', 
-       'costBreakdown', 'dailyPlans', 'days', 'flights', 'accommodations'].forEach(field => {
-        if (typeof (parsed as any)[field] === 'string') {
-          try {
-            (parsed as any)[field] = JSON.parse((parsed as any)[field]);
-          } catch (e) {
-            // Ignore parse errors for optional fields
-          }
-        }
-      });
-      
-      return parsed;
-    });
-    
-    // Apply bidirectional blocking filter (post-processing since userInfo is JSON)
-    const filteredItems = parsedItems.filter((item: any) => {
+
+      // Bidirectional blocking
       const candidateUserId = item.userInfo?.uid;
       const candidateBlockedList = Array.isArray(item.userInfo?.blocked) ? item.userInfo.blocked : [];
-      
+
       // Exclude if current user blocked this candidate
       if (currentUserId && candidateUserId && currentUserBlockedIds.includes(candidateUserId)) {
         return false;
       }
-      
-      // Exclude if candidate blocked current user (bidirectional)
+
+      // Exclude if candidate blocked current user
       if (currentUserId && candidateBlockedList.includes(currentUserId)) {
         return false;
       }
-      
+
       return true;
     });
-    
-    return { success: true, data: sanitizeDeep(filteredItems) };
+
+    // Trim to requested page size
+    const finalItems = items.slice(0, take);
+
+    return { success: true, data: sanitizeDeep(finalItems) };
   } catch (err: any) {
     console.error('searchItineraries error', err);
     throw new HttpsError('internal', err?.message || String(err));

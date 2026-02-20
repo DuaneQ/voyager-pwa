@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions/v1';
 
 // Minimal callable function: accept origin, destination, transportType, call OpenAI, return assistant output.
 // WARNING: Hardcoded API key embedded by user request.
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY : '';
+const OPENAI_API_KEY = '';
 
 export async function _generateItineraryWithAIImpl(data: any, context: any) {
   const payload = (data && data.data) ? data.data : data || {};
@@ -47,7 +47,16 @@ Requirements:
   - assumptions: object (e.g. average speed, route assumptions, transfer times)
   - confidence: number (0.0-1.0 indicating how confident the estimate is)
 
-Focus the response on the requested transportType when provided. Use reasonable routing/speed assumptions for calculations (e.g., average driving speed 55 mph on highways, train speeds for intercity service). Be concise and factual.`;
+CRITICAL: Evaluate if the requested transport mode is physically possible and practical:
+- Walking/cycling across oceans, seas, or distances >200 miles is NOT practical
+- Driving/cars cannot cross oceans - they require roads, bridges, or ferries
+- Trains cannot cross oceans without underwater tunnels or ferries
+- ANY land-based transport (walk, bike, drive, train, bus) cannot cross water without ferries/bridges
+- If origin and destination are on different continents or separated by ocean, ONLY flying or cruise ships are practical
+- If the mode is impractical, the FIRST item in the "steps" array MUST be a warning starting with "⚠️ WARNING:" that explains why the requested mode doesn't work and suggests the best alternative (e.g., "⚠️ WARNING: Driving is not possible for this route as it requires crossing the Atlantic Ocean. Consider flying instead - it's the only viable option for traveling between continents.")
+- When providing this warning, still include the practical alternative mode's data in the other fields
+
+Focus the response on the requested transportType when provided. Use reasonable routing/speed assumptions for calculations. Be concise and factual.`;
   console.log('system prompt', systemPrompt);
 
   const startDateLine = payload.startDate ? `StartDate: ${payload.startDate}\n` : '';
@@ -81,6 +90,8 @@ Focus the response on the requested transportType when provided. Use reasonable 
 
   const json = await res.json();
   const assistant = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.text || '';
+
+  console.log('[generateItineraryWithAI] OpenAI response:', assistant);
 
   // Return the raw assistant output unchanged.
   return { success: true, data: { assistant } };

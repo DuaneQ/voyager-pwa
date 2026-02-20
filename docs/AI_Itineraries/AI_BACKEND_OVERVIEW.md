@@ -24,26 +24,31 @@ High-level flow
 
 Callable Functions (production names)
 - generateItineraryWithAI (https.onCall)
-  - Purpose: Full itinerary generation. May call OpenAI and other search helpers (flights/hotels/activities) in parallel.
-  - Input: { destination, startDate, endDate, preferenceProfile?: object|id, generationId?: string, tripType?, mustInclude?, mustAvoid?, flightPreferences?, transportType? }
-  - Output: { success: true, generationId, savedDocId? } or structured error: { success: false, error: { code, message } }
-  - Errors: unauthenticated, permission-denied (premium), invalid-argument, resource-exhausted (rate limit), internal
-  - Important: Accepts both canonical request shape and a transport-specific shape (origin + destination + transportType).
+  - Purpose: Transportation recommendations when transportType is not airplane/flight. Called by client after search results are gathered.
+  - Input: { destination, startDate, endDate, origin?, transportType, preferenceProfile?, generationId?, tripType?, mustInclude?, mustAvoid? }
+  - Output: { success: true, data: { assistant: string } } - Returns transportation JSON from OpenAI
+  - Errors: unauthenticated, invalid-argument (missing transportType or destination), failed-precondition (no API key), internal
+  - Note: Only called when transportType !== 'airplane'/'flight'/'air'. Flight searches use searchFlights instead.
 
-- estimateItineraryCost (https.onCall)
-  - Purpose: Lightweight cost estimates; lower rate limits than full generation.
-  - Input: minimal dates/destination/groupSize
-  - Output: { success, estimate: { total, perPerson, byCategory } }
+- searchFlights (https.onCall)
+  - Purpose: Search for flight options using SerpAPI Google Flights.
+  - Input: { departureAirportCode, destinationAirportCode, departureDate, returnDate?, cabinClass?, stops?, preferredAirlines?, maxResults? }
+  - Output: { success: true, flights: Flight[] } or structured error
+  - Provider: SerpAPI (not Amadeus)
 
-- getGenerationStatus (https.onCall)
-  - Purpose: Polling endpoint; returns stored status for generationId.
-  - Input: { generationId }
-  - Output: { status: 'pending'|'processing'|'completed'|'failed', progress?: { stage, percent, message }, error?: { code, message } }
+- searchAccommodations (https.onCall)
+  - Purpose: Search for hotels using Google Places API.
+  - Input: { destination, destinationLatLng?, startDate, endDate, accommodationType?, starRating?, minUserRating?, accessibility?, maxResults? }
+  - Output: { success: true, hotels: Hotel[] } or structured error
 
-HTTP Functions (helpers)
-- searchFlights (https.onCall/http)
-- searchAccommodations (https.onCall/http)
-  - Purpose: Helper endpoints used by generateItineraryWithAI and by the UI. They map provider responses to compact shapes consumed by the AI prompt and by the UI.
+- searchActivities (https.onCall)
+  - Purpose: Search for activities and restaurants using Google Places API with optional Place Details enrichment.
+  - Input: { destination, destinationLatLng?, keywords?, days?, tripType?, mustInclude?, mustAvoid?, specialRequests?, food? }
+  - Output: { success: true, activities: Activity[], restaurants: Restaurant[], metadata?: { filtering } }
+
+> **Deprecated/Non-existent functions**: The following functions mentioned in older docs do NOT exist:
+> - `estimateItineraryCost` - Not implemented
+> - `getGenerationStatus` - Not implemented (progress is tracked client-side only)
 
 Data shapes (summary)
 - AIGenerationRequest (client -> function) — minimal authoritative shape

@@ -51,10 +51,312 @@ function isRestrictedInAppBrowser(userAgent: string): boolean {
   return restrictedPatterns.some(pattern => pattern.test(userAgent));
 }
 
+// Helper to get base URL based on environment
+function getBaseUrl(): string {
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || '';
+  if (projectId.includes('mundo1-dev')) {
+    return 'https://mundo1-dev.web.app';
+  }
+  return 'https://travalpass.com';
+}
+
+// Generate HTML with inline video player for public videos (no login required)
+function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
+  const baseUrl = getBaseUrl();
+  const videoUrl = `${baseUrl}/video/${videoId}`;
+  const shareUrl = `${baseUrl}/video-share/${videoId}`;
+
+  const title = video.title
+    ? `${video.title} - TravalPass`
+    : 'Video - TravalPass';
+  const description = video.description
+    ? video.description.substring(0, 160)
+    : 'Watch this video on TravalPass';
+  const imageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
+
+  // Get the Mux playback ID to construct proper URLs
+  const muxPlaybackUrl = video.muxPlaybackUrl || '';
+  const muxPlaybackId = muxPlaybackUrl.includes('stream.mux.com/')
+    ? muxPlaybackUrl.split('stream.mux.com/')[1]?.replace('.m3u8', '')
+    : null;
+
+  // Mux URLs: HLS for Safari/HLS.js, MP4 for direct playback
+  const hlsUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : '';
+  const mp4Url = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}/high.mp4` : video.videoUrl;
+  const playbackUrl = mp4Url || video.videoUrl;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- Primary Meta Tags -->
+  <title>${title}</title>
+  <meta name="title" content="${title}">
+  <meta name="description" content="${description}">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="video.other">
+  <meta property="og:url" content="${shareUrl}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="TravalPass">
+  ${playbackUrl ? `<meta property="og:video" content="${playbackUrl}">` : ''}
+  ${playbackUrl ? `<meta property="og:video:secure_url" content="${playbackUrl}">` : ''}
+  ${playbackUrl ? `<meta property="og:video:type" content="video/mp4">` : ''}
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="player">
+  <meta property="twitter:url" content="${shareUrl}">
+  <meta property="twitter:title" content="${title}">
+  <meta property="twitter:description" content="${description}">
+  <meta property="twitter:image" content="${imageUrl}">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="${baseUrl}/favicon.ico">
+  <link rel="apple-touch-icon" href="${baseUrl}/logo192.png">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .logo:hover {
+      opacity: 0.9;
+    }
+    .cta-button {
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .cta-button:hover {
+      background: #0056b3;
+    }
+    .video-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .video-wrapper {
+      max-width: 800px;
+      width: 100%;
+      background: black;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    video {
+      width: 100%;
+      height: auto;
+      max-height: 70vh;
+      display: block;
+    }
+    .video-info {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+    }
+    .video-title {
+      color: white;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .video-description {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .share-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .share-button {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .share-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .footer {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px 20px;
+      text-align: center;
+    }
+    .footer-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+    }
+    .footer-link {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .error-state {
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+    .error-state h2 {
+      margin-bottom: 10px;
+    }
+    .error-state p {
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .video-wrapper {
+        border-radius: 0;
+      }
+      .video-container {
+        padding: 0;
+      }
+      .header {
+        padding: 12px 15px;
+      }
+      .video-title {
+        font-size: 18px;
+      }
+    }
+  </style>
+  <!-- HLS.js for non-Safari browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+</head>
+<body>
+  <header class="header">
+    <a href="${baseUrl}" class="logo">✈️ TravalPass</a>
+    <a href="${baseUrl}/" class="cta-button">Join Free</a>
+  </header>
+
+  <main class="video-container">
+    <div class="video-wrapper">
+      ${playbackUrl ? `
+        <video 
+          id="videoPlayer"
+          controls 
+          playsinline 
+          preload="auto"
+          poster="${imageUrl}"
+        >
+          Your browser does not support the video tag.
+        </video>
+      ` : `
+        <div class="error-state">
+          <h2>Video Unavailable</h2>
+          <p>This video is currently being processed. Please try again later.</p>
+          <a href="${baseUrl}" class="cta-button">Explore TravalPass</a>
+        </div>
+      `}
+      
+      <div class="video-info">
+        <h1 class="video-title">${video.title || 'Travel Video'}</h1>
+        ${video.description ? `<p class="video-description">${description}</p>` : ''}
+        
+        <div class="share-section">
+          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}" target="_blank" class="share-button">
+            📘 Share on Facebook
+          </a>
+          <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}" target="_blank" class="share-button">
+            🐦 Share on Twitter
+          </a>
+          <a href="https://wa.me/?text=${encodeURIComponent(title + ' ' + shareUrl)}" target="_blank" class="share-button">
+            💬 WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-text">
+      Discover amazing travel experiences on <a href="${baseUrl}" class="footer-link">TravalPass</a> — 
+      Match with fellow travelers, share adventures, and plan your next trip!
+    </p>
+  </footer>
+
+  <script>
+    const video = document.getElementById('videoPlayer');
+    const hlsUrl = '${hlsUrl}';
+    const mp4Url = '${mp4Url}';
+    
+    if (video && (hlsUrl || mp4Url)) {
+      // Check if browser natively supports HLS (Safari)
+      if (video.canPlayType('application/vnd.apple.mpegurl') && hlsUrl) {
+        video.src = hlsUrl;
+        video.load();
+      } 
+      // Use HLS.js for other browsers
+      else if (typeof Hls !== 'undefined' && Hls.isSupported() && hlsUrl) {
+        const hls = new Hls({
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60
+        });
+        hls.loadSource(hlsUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          console.error('HLS error:', data);
+          // Fallback to MP4 on error
+          if (mp4Url && data.fatal) {
+            console.log('Falling back to MP4');
+            video.src = mp4Url;
+            video.load();
+          }
+        });
+      }
+      // Fallback to MP4 for browsers without HLS support
+      else if (mp4Url) {
+        video.src = mp4Url;
+        video.load();
+      }
+    }
+  </script>
+</body>
+</html>`;
+}
+
 // Generate HTML with video-specific meta tags
 function generateVideoHTML(video: any, videoId: string): string {
-  // Use production domain for TravalPass
-  const baseUrl = 'https://travalpass.com';
+  const baseUrl = getBaseUrl();
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
 
@@ -163,7 +465,7 @@ function generateVideoHTML(video: any, videoId: string): string {
 
 // Generate HTML for Facebook in-app browser (better user experience)
 function generateFacebookInAppHTML(video: any, videoId: string): string {
-  const baseUrl = 'https://travalpass.com';
+  const baseUrl = getBaseUrl();
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
 
@@ -316,7 +618,7 @@ function generateFacebookInAppHTML(video: any, videoId: string): string {
 
 // Generate HTML for private videos (limited preview)
 function generatePrivateVideoHTML(video: any, videoId: string): string {
-  const baseUrl = 'https://travalpass.com';
+  const baseUrl = getBaseUrl();
   const videoUrl = `${baseUrl}/video/${videoId}`;
 
   const title = 'Private Video - TravalPass';
@@ -389,7 +691,7 @@ app.get('/video-share/:videoId', async (req, res) => {
         <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
           <h1>Video Not Found</h1>
           <p>The video you're looking for doesn't exist or has been removed.</p>
-          <a href="https://travalpass.com" style="color: #007bff; text-decoration: none;">← Back to TravalPass</a>
+          <a href="${getBaseUrl()}" style="color: #007bff; text-decoration: none;">← Back to TravalPass</a>
         </body>
         </html>
       `);
@@ -411,7 +713,7 @@ app.get('/video-share/:videoId', async (req, res) => {
         res.send(html);
       } else {
         // Redirect users to the app where they can authenticate and check access
-        res.redirect(302, `https://travalpass.com/video/${videoId}`);
+        res.redirect(302, `${getBaseUrl()}/video/${videoId}`);
       }
       return;
     }
@@ -432,9 +734,10 @@ app.get('/video-share/:videoId', async (req, res) => {
       res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
       res.send(html);
     } else {
-      // For regular users, redirect to the client-side video route
-
-      res.redirect(302, `https://travalpass.com/video/${videoId}`);
+      // For regular users viewing public videos, show inline video player (NO LOGIN REQUIRED)
+      const html = generatePublicVideoPlayerHTML(videoData, videoId);
+      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      res.send(html);
     }
 
   } catch (error) {
@@ -449,7 +752,7 @@ app.get('/video-share/:videoId', async (req, res) => {
       <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
         <h1>Something went wrong</h1>
         <p>We're having trouble loading this video. Please try again later.</p>
-        <a href="https://travalpass.com" style="color: #007bff; text-decoration: none;">← Back to TravalPass</a>
+        <a href="${getBaseUrl()}" style="color: #007bff; text-decoration: none;">← Back to TravalPass</a>
       </body>
       </html>
     `);
@@ -467,28 +770,28 @@ app.get('/video/:videoId', async (req, res) => {
     // If it's a social media crawler, redirect to the sharing URL for proper meta tags
     if (isSocialMediaCrawler(userAgent)) {
 
-      return res.redirect(301, `https://travalpass.com/video-share/${videoId}`);
+      return res.redirect(301, `${getBaseUrl()}/video-share/${videoId}`);
     }
 
     // If it's a Facebook in-app browser, also redirect to sharing URL for special handling
     if (isFacebookInAppBrowser(userAgent)) {
-      return res.redirect(302, `https://travalpass.com/video-share/${videoId}`);
+      return res.redirect(302, `${getBaseUrl()}/video-share/${videoId}`);
     }
 
     // For regular users, serve the client-side app
     // This should be handled by your hosting, but if it reaches here, redirect to main app
     console.log('Redirecting regular user to client app');
-    res.redirect(302, `https://travalpass.com`);
+    res.redirect(302, getBaseUrl());
 
   } catch (error) {
     console.error('Error handling video route:', error);
-    res.redirect(302, `https://travalpass.com`);
+    res.redirect(302, getBaseUrl());
   }
 });
 
 // Default route
 app.get('/', (req, res) => {
-  res.redirect('https://travalpass.com');
+  res.redirect(getBaseUrl());
 });
 
 export const videoShare = functions.https.onRequest(app);

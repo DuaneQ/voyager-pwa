@@ -11,6 +11,7 @@
 
 import * as functions from 'firebase-functions/v1';
 import logger from './utils/logger';
+import { placesApiLogger } from './utils/placesApiLogger';
 
 // Use global fetch available in Node 18+ runtime used by Functions
 const fetch = globalThis.fetch as typeof globalThis.fetch;
@@ -50,7 +51,7 @@ interface Hotel {
 }
 
 // Google Places API configuration: prefer environment variable for testing, fallback to embedded key
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_PLACES_API_KEY = '';
 const PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
 
 // Helper: map accommodation type to Places API query
@@ -113,6 +114,19 @@ async function fetchAllTextSearchResults(initialUrl: string, maxResults: number 
 
     do {
       attempts++;
+      
+      // Extract query from URL for logging
+      const urlObj = new URL(url);
+      const query = urlObj.searchParams.get('query') || urlObj.searchParams.get('input') || 'unknown';
+      const pageToken = urlObj.searchParams.get('pagetoken');
+      
+      // Log EXPENSIVE Text Search API call
+      placesApiLogger.logTextSearch({
+        query,
+        functionName: 'searchAccommodations',
+        pageToken: pageToken || undefined,
+      });
+      
       const res = await fetch(url);
       if (!res.ok) {
         const t = await res.text().catch(() => '');
@@ -140,8 +154,10 @@ async function fetchAllTextSearchResults(initialUrl: string, maxResults: number 
         pagedUrl.searchParams.set('pagetoken', String(nextPageToken));
         url = pagedUrl.toString();
       }
-      // Safety: do not loop indefinitely; Text Search supports up to 3 pages
-    } while (nextPageToken && attempts < 4 && places.length < maxResults);
+      // COST OPTIMIZATION: With maxResults=10 and 2x multiplier, raw cap is 20.
+      // Google returns ~20 per page, so 20 >= 20 → no pagination → 1 API call.
+      // Previously: 4 pages ($0.128) → 2 pages ($0.064) → now 1 page ($0.032)
+    } while (nextPageToken && attempts < 2 && places.length < maxResults);
   } catch (err) {
     logger.error('[searchAccommodations] pagination error', err);
   }
@@ -197,11 +213,19 @@ function mapPlaceToHotel(place: any, originLat?: number, originLng?: number): Ho
   }
 }
 
-export const searchAccommodations = functions.https.onCall(async (data, context) => {
+export const searchAccommodations = functions
+  .runWith({
+    timeoutSeconds: 90,  // 90 seconds for accommodation search
+    memory: '256MB'
+  })
+  .https.onCall(async (data, context) => {
+  const startTime = Date.now();
   try {
     // Accept either the callable-wrapped shape ({ data: { ... } }) or raw body ({ ... })
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const params: AccommodationSearchParams = normalized as AccommodationSearchParams;
+
+    logger.info('[searchAccommodations] ⏱️ START', { destination: params.destination });
 
     // Basic validation
     if (!params.destination) {
@@ -213,8 +237,10 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     }
 
     // Set defaults
-    // Use 20 as default to match one full initial Places Text Search page
-    const maxResults = params.maxResults || 20;
+    // COST OPTIMIZATION (Feb 17, 2026): Reduced from 20 to 10 results.
+    // With 2x over-fetch multiplier, this caps raw fetch at 20 (= 1 TextSearch page).
+    // Eliminates pagination → 1 API call instead of 2 → saves $0.032/generation.
+    const maxResults = params.maxResults || 10;
 
     // Use explicit minUserRating from params; do NOT derive server-side.
     // Defaults: ensure a concrete value so downstream filtering is deterministic.
@@ -227,25 +253,25 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
       effectiveMinUserRating = DEFAULT_MIN_USER_RATING;
     }
 
-    // Build Google Places Text Search request
-    // Per request: do not perform server-side post-processing filters. Instead, include
-    // human-readable hints in the query so Places may prefer matching results.
-    // Examples: '4-star hotel in Seattle', 'hotel in Paris rating 4 and up'
+    // Build Google Places Text Search request with user preference filters
+    // IMPORTANT: Google Places Text Search API has LIMITED filtering capabilities:
+    // - Accommodation type: ✅ Supported via query text (hotel, hostel, resort, vacation rental)
+    // - User rating filter: ❌ NOT supported as API parameter - must filter client-side after fetch
+    // - Star rating filter: ❌ NOT supported - Google rarely provides star_rating field
+    // We include hints in the query to influence results, then hard-filter by minUserRating after fetch
     let query = getPlacesQuery(params.accommodationType, params.destination);
 
-    // Append star rating hint when provided
+    // Append star rating hint when provided (influences Google's results but doesn't guarantee match)
+    // NOTE: Hotels may not have star_rating field populated, so this is a SOFT filter
     if (params.starRating && params.starRating >= 1 && params.starRating <= 5) {
-      // Prefer the common phrasing like '4-star' which the place search may weight
       query = `${params.starRating}-star ${query}`;
-      console.log('[searchAccommodations] Appending star rating hint to query:', `${params.starRating}-star`);
     }
 
-    // Append min user rating hint when provided
+    // Append min user rating hint when provided (we'll also hard-filter after fetch)
     if (params.minUserRating !== undefined && params.minUserRating !== null) {
       const minR = Number(params.minUserRating);
       if (!Number.isNaN(minR) && minR > 0 && minR <= 5) {
         query = `${query} rating ${minR} and up`;
-        console.log('[searchAccommodations] Appending minUserRating hint to query:', minR);
       }
     }
     const searchUrl = new URL(`${PLACES_BASE}/textsearch/json`);
@@ -262,14 +288,21 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     }
 
     // No price-based filtering applied here. We only use explicit starRating and minUserRating.
-    // Use pagination helper to collect multiple pages of Text Search results up to maxResults
-    const allPlaces = await fetchAllTextSearchResults(searchUrl.toString(), maxResults * 3);
+    // Use pagination helper to collect Text Search results up to maxResults * 2 (over-fetch for filtering)
+    // With maxResults=10, this fetches up to 20 results = exactly 1 Google page = 1 API call
+    const searchStartTime = Date.now();
+    logger.info('[searchAccommodations] ⏱️ Calling Google Places...');
+    const allPlaces = await fetchAllTextSearchResults(searchUrl.toString(), maxResults * 2);
+    logger.info(`[searchAccommodations] ⏱️ CHECKPOINT 1 - Places API returned ${allPlaces.length} results in ${Date.now() - searchStartTime}ms`);
 
-    // Map places to hotel objects. Perform dedupe and optional sorting (both non-invasive)
+    // Map places to hotel objects. Perform dedupe and hard filtering by user preferences
     let hotels: Hotel[] = [];
     const seenPlaceIds = new Set<string>();
+    let totalProcessed = 0;
+    let filteredByRating = 0;
 
     for (const place of allPlaces.slice(0, maxResults * 6)) {
+      totalProcessed++;
       const hotel = mapPlaceToHotel(
         place,
         params.destinationLatLng?.lat,
@@ -283,8 +316,21 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
       }
       if (hotel.placeId) seenPlaceIds.add(hotel.placeId);
 
+      // HARD FILTER: Apply minimum user rating filter (Google API doesn't support this natively)
+      if (effectiveMinUserRating > 0 && hotel.rating) {
+        if (hotel.rating < effectiveMinUserRating) {
+          filteredByRating++;
+          continue; // Skip hotels below minimum rating
+        }
+      }
+
       hotels.push(hotel);
       if (hotels.length >= maxResults) break;
+    }
+
+    // Log filtering statistics
+    if (filteredByRating > 0) {
+      logger.info(`[searchAccommodations] Filtered out ${filteredByRating} hotels below rating ${effectiveMinUserRating}`);
     }
 
     // Always sort by popularity (userRatingsTotal desc) then rating (desc)
@@ -303,6 +349,9 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
     const searchId = `hotels_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
 
     const priceFilteringApplied = false;
+    
+    const totalTime = Date.now() - startTime;
+    logger.info(`[searchAccommodations] ⏱️ COMPLETE - Total time: ${totalTime}ms, found ${hotels.length} hotels (filtered ${filteredByRating} by rating)`);
 
     return {
       success: true,
@@ -316,17 +365,23 @@ export const searchAccommodations = functions.https.onCall(async (data, context)
         query,
         pagesFetched: Math.min(3, Math.ceil(allPlaces.length / 20)),
         filters: {
-          starRating: params.starRating,
           accommodationType: params.accommodationType,
-          starRatingFilterApplied: !!(params.starRating && params.starRating >= 1 && params.starRating <= 5),
+          starRating: params.starRating,
+          minUserRating: effectiveMinUserRating,
+          // Filter application status
+          accommodationTypeApplied: true, // Applied via query
+          starRatingFilterApplied: !!(params.starRating && params.starRating >= 1 && params.starRating <= 5), // Soft filter (query hint)
+          minUserRatingFilterApplied: true, // Hard filter (post-fetch)
           priceFilteringApplied,
-          effectiveMinUserRating: effectiveMinUserRating,
-          minUserRatingDerived: false,
-          starRatingInferred: false,
+          // Statistics
           totalPlacesProcessed: allPlaces.length,
+          totalProcessed,
+          filteredByRating,
           deduplicated: true,
           sortBy: 'popularity_then_rating',
-          sortApplied: true
+          sortApplied: true,
+          // Notes
+          limitationNote: 'Star rating filter is soft (query hint) - Google rarely provides star_rating field. User rating filter is hard (post-fetch).'
         }
       }
     };

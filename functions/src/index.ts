@@ -24,6 +24,19 @@ import express from "express";
 export { itineraryShare } from './itinerarySharing';
 // Export RPCs implemented under functions so they are included in the Cloud Functions bundle
 export * from './functions/itinerariesRpc';
+// Export Stripe checkout and portal session functions
+export { createStripeCheckoutSession } from './createStripeCheckoutSession';
+export { createStripePortalSession } from './createStripePortalSession';
+// Export Mux video processing functions
+export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux } from './muxVideoProcessing';
+// Export Contact Discovery functions
+export { matchContactsWithUsers } from './matchContactsWithUsers';
+export { sendContactInvite } from './sendContactInvite';
+// Export Push Notification functions
+export { sendMatchNotification } from './notifications/sendMatchNotification';
+export { sendChatNotification } from './notifications/sendChatNotification';
+export { sendVideoCommentNotification } from './notifications/sendVideoCommentNotification';
+export { registerAPNsToken } from './notifications/registerAPNsToken';
 import bodyParser from "body-parser";
 
 /**
@@ -95,65 +108,10 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
   return null;
 });
 
-export const sendNewMessageNotification = onDocumentCreated("connections/{connectionId}/messages/{messageId}", async (event) => {
-  const snap = event.data;
-  const message = snap && typeof (snap as any).data === 'function' ? (snap as any).data() : snap;
-  const connectionId = event.params?.connectionId;
-
-  if (!message) {
-    return null;
-  }
-
-  // Get the connection document to find both users
-  const connectionRef = db.collection("connections").doc(connectionId as string);
-  const connectionSnap = await connectionRef.get();
-  const connection = connectionSnap.data();
-  if (!connection || !connection.users || !Array.isArray(connection.users)) {
-    return null;
-  }
-
-  // Find the recipient UID (the user who is NOT the sender)
-  const recipientUid = connection.users.find(
-    (uid: string) => uid !== message.sender
-  );
-  if (!recipientUid) {
-    return null;
-  }
-
-  // Get the recipient's FCM token from their user profile
-  const userDoc = await db.collection("users").doc(recipientUid).get();
-  const userData = userDoc.data();
-  const fcmToken = userData && userData.fcmToken;
-
-  if (fcmToken) {
-    try {
-      await admin.messaging().send({
-        token: fcmToken,
-        notification: {
-          title: "New Message",
-          body: message.text || "You have a new message!",
-        },
-        data: {
-          connectionId: connectionId as string,
-        },
-      });
-    } catch (error: any) {
-      // If the token is invalid, remove it from the user document
-      if (error.code === 'messaging/invalid-registration-token' || 
-          error.code === 'messaging/registration-token-not-registered') {
-        await db.collection("users").doc(recipientUid).update({
-          fcmToken: admin.firestore.FieldValue.delete(),
-          invalidTokenRemovedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastTokenError: error.message
-        });
-      }
-    }
-  } else {
-    console.log(`No FCM token found for user ${recipientUid}. User document exists: ${userDoc.exists}. Check if user has logged in recently and granted notification permissions.`);
-  }
-
-  return null;
-});
+// NOTE: Legacy sendNewMessageNotification removed on Feb 14, 2026.
+// It was a duplicate of sendChatNotification (both triggered on same Firestore path).
+// sendChatNotification handles all chat message notifications using the modern
+// fcmTokens[] array and sendEachForMulticast() API.
 
 export const notifyFeedbackSubmission = onDocumentCreated("feedback/{feedbackId}", async (event) => {
   const snap = event.data;
@@ -721,7 +679,7 @@ export const notifyViolationReport = onDocumentCreated("violations/{violationId}
   }
 });
 
-const stripe = new Stripe(process.env.STRIPE_API_KEY ? process.env.STRIPE_API_KEY : '', { apiVersion: '2022-11-15' });
+const stripe = new Stripe('', { apiVersion: '2022-11-15' });
 
 const app = express();
 
@@ -735,7 +693,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig as string,
-      process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET : ''
+      'STRIPEWEBHOOK'
     );
     console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
@@ -966,5 +924,6 @@ export { searchFlights } from './searchFlights';
 export { searchAccommodations } from './searchAccommodations';
 export { searchActivities } from './searchActivities';
 export { generateItineraryWithAI } from './generateItineraryWithAI';
+export { generateFullItinerary } from './generateFullItinerary';
 export { placeSearch, geocodePlace } from './placeProxy';
 export { openFlightsGetAll, openFlightsSearch, openFlightsHttp } from './openFlightsProxy';
