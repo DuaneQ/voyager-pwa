@@ -25,10 +25,10 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // Mux credentials (hardcoded per project convention - see index.ts comment)
-const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID!;
-const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET!;
-const MUX_WEBHOOK_SECRET_DEV = process.env.MUX_WEBHOOK_DEV_SIGNING_SECRET!;
-const MUX_WEBHOOK_SECRET_PROD = process.env.MUX_WEBHOOK_PROD_SIGNING_SECRET!
+const MUX_TOKEN_ID = "a08a323c-83c3-4689-9e01-3d0c9ddebd47";
+const MUX_TOKEN_SECRET = "Ahl+1R8js47EC/eVooJuM6FQnArjefTruvw1VAu4HszknS6uJrryeIpiVd/cDI5yop7WxMgs07N";
+const MUX_WEBHOOK_SECRET_DEV = "v3ob3vqdg4pskfr80t24v4hu4se7kr5e";
+const MUX_WEBHOOK_SECRET_PROD = "9hb8dk3t5tfb7bh8nlep286l9qj39dov";
 
 // Initialize Mux client
 const mux = new Mux({
@@ -230,22 +230,6 @@ export const muxWebhook = onRequest(
 
           console.log(`[Mux Webhook] Asset ready: ${assetId}, playbackUrl: ${muxPlaybackUrl}`);
 
-          // Check if this asset belongs to an ad campaign
-          let passthrough: Record<string, any> = {};
-          try { passthrough = JSON.parse(asset.passthrough || '{}'); } catch {}
-
-          if (passthrough.type === 'ad' && passthrough.campaignId) {
-            await db.collection("ads_campaigns").doc(passthrough.campaignId).update({
-              muxPlaybackUrl,
-              muxThumbnailUrl,
-              muxPlaybackId: playbackId,
-              muxStatus: "ready",
-              muxReadyAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            console.log(`[Mux Webhook] Updated ad campaign ${passthrough.campaignId} with HLS URL`);
-            break;
-          }
-
           // Try to find video doc by muxAssetId
           const videosQuery = await db
             .collection("videos")
@@ -303,20 +287,6 @@ export const muxWebhook = onRequest(
           const errorMessage = asset.errors?.messages?.join(", ") || "Unknown error";
 
           console.error(`[Mux Webhook] Asset errored: ${assetId}, error: ${errorMessage}`);
-
-          // Check if this asset belongs to an ad campaign
-          let passthroughErr: Record<string, any> = {};
-          try { passthroughErr = JSON.parse(asset.passthrough || '{}'); } catch {}
-
-          if (passthroughErr.type === 'ad' && passthroughErr.campaignId) {
-            await db.collection("ads_campaigns").doc(passthroughErr.campaignId).update({
-              muxStatus: "errored",
-              muxError: errorMessage,
-              muxErrorAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            console.log(`[Mux Webhook] Updated ad campaign ${passthroughErr.campaignId} with error status`);
-            break;
-          }
 
           // Update video doc with error status
           const videosQuery = await db
@@ -503,86 +473,6 @@ export const migrateVideosToMux = onCall(
       };
     } catch (error) {
       console.error(`[Mux Migration] Error:`, error);
-      throw error;
-    }
-  }
-);
-
-/**
- * Trigger Mux transcoding for a voyager-ads video_feed ad creative.
- *
- * Called by voyager-ads immediately after the campaign document is created.
- * Generates a signed Storage URL, submits it to Mux, and writes the Mux
- * asset ID + "preparing" status to the campaign document.
- *
- * The muxWebhook function updates the campaign document to "ready" (with
- * muxPlaybackUrl) or "errored" once Mux finishes transcoding.
- *
- * @param data.campaignId  Firestore ID of the ads_campaigns document
- * @param data.storagePath  Firebase Storage object path (e.g. ads/{uid}/{ts}_file.mp4)
- */
-export const processAdVideoWithMux = onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-  },
-  async (request) => {
-    if (!request.auth) {
-      throw new Error("Authentication required");
-    }
-
-    const { campaignId, storagePath } = request.data as {
-      campaignId: string;
-      storagePath: string;
-    };
-
-    if (!campaignId || !storagePath) {
-      throw new Error("campaignId and storagePath are required");
-    }
-
-    console.log(`[Mux Ad] Processing ad video: campaignId=${campaignId}, path=${storagePath}`);
-
-    try {
-      // Generate a signed URL Mux can fetch (valid 1 hour)
-      const bucket = admin.storage().bucket();
-      const file = bucket.file(storagePath);
-      const [signedUrl] = await file.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 3600 * 1000,
-      });
-
-      // Submit to Mux; passthrough carries the campaign ID so the webhook
-      // knows which Firestore document to update.
-      const asset = await mux.video.assets.create({
-        inputs: [{ url: signedUrl }],
-        playback_policy: ["public"],
-        encoding_tier: "baseline",
-        max_resolution_tier: "1080p",
-        passthrough: JSON.stringify({
-          type: "ad",
-          campaignId,
-          uid: request.auth.uid,
-        }),
-      });
-
-      console.log(`[Mux Ad] Asset created: ${asset.id} for campaign ${campaignId}`);
-
-      // Write "preparing" status so the client can show a processing indicator
-      await db.collection("ads_campaigns").doc(campaignId).update({
-        muxAssetId: asset.id,
-        muxStatus: "preparing",
-        muxProcessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return { success: true, assetId: asset.id };
-    } catch (error) {
-      console.error(`[Mux Ad] Error processing ad video for campaign ${campaignId}:`, error);
-      // Write error status so the advertiser is not left waiting
-      await db.collection("ads_campaigns").doc(campaignId).update({
-        muxStatus: "errored",
-        muxError: error instanceof Error ? error.message : "Unknown Mux error",
-      }).catch(() => {}); // Don't throw if the status update itself fails
       throw error;
     }
   }
