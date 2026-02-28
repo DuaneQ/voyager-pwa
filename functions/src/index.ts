@@ -28,7 +28,7 @@ export * from './functions/itinerariesRpc';
 export { createStripeCheckoutSession } from './createStripeCheckoutSession';
 export { createStripePortalSession } from './createStripePortalSession';
 // Export Mux video processing functions
-export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux } from './muxVideoProcessing';
+export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux, processAdVideoWithMux } from './muxVideoProcessing';
 // Export Contact Discovery functions
 export { matchContactsWithUsers } from './matchContactsWithUsers';
 export { sendContactInvite } from './sendContactInvite';
@@ -37,6 +37,9 @@ export { sendMatchNotification } from './notifications/sendMatchNotification';
 export { sendChatNotification } from './notifications/sendChatNotification';
 export { sendVideoCommentNotification } from './notifications/sendVideoCommentNotification';
 export { registerAPNsToken } from './notifications/registerAPNsToken';
+// Export Ads admin functions
+export { reviewCampaign } from './reviewCampaign';
+export { getPendingCampaigns } from './getPendingCampaigns';
 import bodyParser from "body-parser";
 
 /**
@@ -112,6 +115,76 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
 // It was a duplicate of sendChatNotification (both triggered on same Firestore path).
 // sendChatNotification handles all chat message notifications using the modern
 // fcmTokens[] array and sendEachForMulticast() API.
+
+// ── Ads: notify admin when a new campaign is submitted for review ─────────────
+export const notifyNewAdCampaign = onDocumentCreated("ads_campaigns/{campaignId}", async (event) => {
+  const snap = event.data;
+  const campaign = snap && typeof (snap as any).data === 'function' ? (snap as any).data() : snap;
+
+  if (!campaign || !campaign.isUnderReview) {
+    // Only notify when the document is created with isUnderReview: true
+    return null;
+  }
+
+  const adminEmailEnv: string = process.env.ADMIN_EMAIL ?? '';
+  if (!adminEmailEnv) {
+    console.error('[notifyNewAdCampaign] ADMIN_EMAIL env var is not set — skipping notification.');
+    return null;
+  }
+
+  // Support comma-separated list of admin emails
+  const adminEmails = adminEmailEnv.split(',').map(e => e.trim()).filter(Boolean);
+  const campaignId = event.params?.campaignId as string;
+
+  const mailDoc = {
+    to: adminEmails,
+    from: 'no-reply@travalpass.com',
+    message: {
+      subject: `[Voyager Ads] New campaign pending review: "${campaign.name}"`,
+      text: `A new ad campaign has been submitted and is awaiting your review.
+
+Campaign: ${campaign.name}
+Advertiser: ${campaign.userEmail}
+Placement: ${campaign.placement}
+Objective: ${campaign.objective}
+Budget: ${campaign.budgetType} $${campaign.budgetAmount}
+
+Review it in the admin panel: https://ads.travalpass.com/admin`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">📋 New Ad Campaign Pending Review</h1>
+          </div>
+          <div style="background: white; padding: 24px; border: 1px solid #e0e0e0; border-radius: 0 0 8px 8px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr><td style="padding: 8px; color: #666; width: 140px;">Campaign name</td><td style="padding: 8px; font-weight: 600;">${campaign.name}</td></tr>
+              <tr style="background:#f9f9f9"><td style="padding: 8px; color: #666;">Advertiser</td><td style="padding: 8px;">${campaign.userEmail}</td></tr>
+              <tr><td style="padding: 8px; color: #666;">Placement</td><td style="padding: 8px;">${campaign.placement}</td></tr>
+              <tr style="background:#f9f9f9"><td style="padding: 8px; color: #666;">Objective</td><td style="padding: 8px;">${campaign.objective}</td></tr>
+              <tr><td style="padding: 8px; color: #666;">Budget</td><td style="padding: 8px;">${campaign.budgetType} — $${campaign.budgetAmount}</td></tr>
+              <tr style="background:#f9f9f9"><td style="padding: 8px; color: #666;">Dates</td><td style="padding: 8px;">${campaign.startDate} → ${campaign.endDate}</td></tr>
+            </table>
+            <div style="text-align: center;">
+              <a href="https://ads.travalpass.com/admin"
+                 style="display: inline-block; background: #1976d2; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600;"
+              >Review Campaign</a>
+            </div>
+            <p style="margin-top: 20px; font-size: 12px; color: #999; text-align: center;">Campaign ID: ${campaignId}</p>
+          </div>
+        </div>
+      `,
+    },
+  };
+
+  try {
+    const mailRef = await db.collection('mail').add(mailDoc);
+    console.log(`[notifyNewAdCampaign] Mail doc written at mail/${mailRef.id} for campaign ${campaignId}`);
+  } catch (err) {
+    console.error('[notifyNewAdCampaign] Failed to write mail doc:', err);
+  }
+
+  return null;
+});
 
 export const notifyFeedbackSubmission = onDocumentCreated("feedback/{feedbackId}", async (event) => {
   const snap = event.data;
@@ -679,7 +752,7 @@ export const notifyViolationReport = onDocumentCreated("violations/{violationId}
   }
 });
 
-const stripe = new Stripe('', { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: '2022-11-15' });
 
 const app = express();
 
@@ -693,7 +766,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig as string,
-      'STRIPEWEBHOOK'
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
     console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
@@ -922,7 +995,6 @@ export const stripeWebhook = onRequest(app);
 export { videoShare } from './videoSharing';
 export { searchFlights } from './searchFlights';
 export { searchAccommodations } from './searchAccommodations';
-export { searchActivities } from './searchActivities';
 export { generateItineraryWithAI } from './generateItineraryWithAI';
 export { generateFullItinerary } from './generateFullItinerary';
 export { placeSearch, geocodePlace } from './placeProxy';

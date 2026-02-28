@@ -306,7 +306,7 @@ describe('searchItineraries RPC (Firestore)', () => {
       );
     });
 
-    it('maps minStartDay-only to startDay >= query', async () => {
+    it('maps minStartDay-only to endDay >= query using overlap semantics', async () => {
       const now = Date.now();
       mockQuery = createMockQuery([]);
       mockCollection.mockImplementation(() => ({
@@ -316,8 +316,12 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, minStartDay: now }, 'u'));
-      const startDayWhere = mockQuery._wheres.filter((w: any) => w.field === 'startDay');
-      expect(startDayWhere).toEqual([{ field: 'startDay', op: '>=', value: now }]);
+      // Overlap semantics: a candidate overlaps a user's start date if its endDay >= userStartDay.
+      // When maxEndDay is not provided, startDay defaults to <= MAX_SAFE_INTEGER (no constraint).
+      const endDayWhere = mockQuery._wheres.filter((w: any) => w.field === 'endDay');
+      expect(endDayWhere).toEqual(expect.arrayContaining([
+        expect.objectContaining({ field: 'endDay', op: '>=', value: now }),
+      ]));
     });
   });
 

@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 
-const stripe = new Stripe('', { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: '2022-11-15' });
 
 export const createStripeCheckoutSession = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -33,7 +33,7 @@ export const createStripeCheckoutSession = functions.https.onCall(async (data, c
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'subscription',
-    line_items: [{ price: 'price_1RiHWhG6dAx1lfRxg9pC0brh', quantity: 1 }],
+    line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
     customer: stripeCustomerId,
     metadata: { uid },
     success_url: `${origin}/search?checkout=success`,

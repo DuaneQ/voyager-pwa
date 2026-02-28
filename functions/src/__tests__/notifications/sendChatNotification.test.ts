@@ -88,7 +88,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           text: 'Hello! How are you?',
           type: 'text',
@@ -140,7 +140,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           // No senderName field
           text: 'Hello!',
         }),
@@ -166,7 +166,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           imageUrl: 'https://example.com/photo.jpg',
           type: 'image',
@@ -190,7 +190,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           videoUrl: 'https://example.com/video.mp4',
           type: 'video',
@@ -216,7 +216,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           text: longText,
         }),
@@ -243,7 +243,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           text: 'Hello!',
         }),
       },
@@ -267,7 +267,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           text: 'Hello!',
         }),
       },
@@ -335,7 +335,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           text: 'Hello everyone!',
         }),
@@ -371,7 +371,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           senderName: 'Alice',
           text: 'Hello!',
         }),
@@ -412,7 +412,7 @@ describe('sendChatNotification', () => {
       },
       data: {
         data: () => ({
-          senderId: 'user1',
+          sender: 'user1',
           text: 'Hello!',
         }),
       },

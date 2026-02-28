@@ -14,7 +14,7 @@
 import * as functions from 'firebase-functions/v1';
 import logger from './utils/logger';
 
-const OPENAI_API_KEY = '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
 // ============================================================================
 // Type Definitions

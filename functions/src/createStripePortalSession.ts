@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import logger from './utils/logger';
 
 // Use a valid Stripe API version (e.g., 2024-05-01)
-const stripe = new Stripe('', { apiVersion: '2022-11-15' });
+const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: '2022-11-15' });
 
 // Expects authenticated user and their Stripe customer ID in Firestore
 export const createStripePortalSession = functions.https.onCall(async (data, context) => {

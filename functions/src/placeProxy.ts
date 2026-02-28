@@ -4,7 +4,7 @@ import * as functions from 'firebase-functions/v1';
 const fetch = globalThis.fetch as typeof globalThis.fetch;
 
 // IMPORTANT: per project conventions, API keys are embedded in source
-const GOOGLE_PLACES_API_KEY = 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8';
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const PLACES_BASE = 'https://maps.googleapis.com/maps/api/place';
 const GEOCODE_BASE = 'https://maps.googleapis.com/maps/api/geocode/json';
 
