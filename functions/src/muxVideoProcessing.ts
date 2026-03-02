@@ -24,11 +24,13 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Mux credentials (hardcoded per project convention - see index.ts comment)
-const MUX_TOKEN_ID = "a08a323c-83c3-4689-9e01-3d0c9ddebd47";
-const MUX_TOKEN_SECRET = "Ahl+1R8js47EC/eVooJuM6FQnArjefTruvw1VAu4HszknS6uJrryeIpiVd/cDI5yop7WxMgs07N";
-const MUX_WEBHOOK_SECRET_DEV = "v3ob3vqdg4pskfr80t24v4hu4se7kr5e";
-const MUX_WEBHOOK_SECRET_PROD = "9hb8dk3t5tfb7bh8nlep286l9qj39dov";
+// Mux credentials — loaded from environment variables (.env / .env.mundo1-1).
+// Never hardcode these. Set MUX_TOKEN_ID, MUX_TOKEN_SECRET,
+// MUX_WEBHOOK_DEV_SIGNING_SECRET, MUX_WEBHOOK_PROD_SIGNING_SECRET in .env.
+const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID ?? '';
+const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET ?? '';
+const MUX_WEBHOOK_SECRET_DEV = process.env.MUX_WEBHOOK_DEV_SIGNING_SECRET ?? '';
+const MUX_WEBHOOK_SECRET_PROD = process.env.MUX_WEBHOOK_PROD_SIGNING_SECRET ?? '';
 
 // Initialize Mux client
 const mux = new Mux({
