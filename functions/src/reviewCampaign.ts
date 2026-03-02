@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions/v1'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import * as admin from 'firebase-admin'
 
 const COLLECTION = 'ads_campaigns'
@@ -7,42 +7,44 @@ const COLLECTION = 'ads_campaigns'
  * Admin-only callable that approves or rejects an ad campaign.
  *
  * Caller must be authenticated and their UID must match the ADMIN_UID
- * environment variable set via:
- *   firebase functions:config:set admin.uid="YOUR_UID"
- * or (Functions v2 / Secret Manager) as an env var ADMIN_UID.
+ * environment variable (set in .env / .env.mundo1-1).
  *
  * Approve: sets status → 'active', isUnderReview → false
  * Reject:  sets status → 'paused', isUnderReview → false, reviewNote → note
  */
-export const reviewCampaign = functions.https.onCall(async (data, context) => {
+export const reviewCampaign = onCall({ region: 'us-central1' }, async (request) => {
   // ── Auth check ──────────────────────────────────────────────────────────────
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.')
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in.')
   }
 
-  const adminUid: string = process.env.ADMIN_UID ?? functions.config().admin?.uid ?? ''
-  if (!adminUid || context.auth.uid !== adminUid) {
-    throw new functions.https.HttpsError('permission-denied', 'Admin access required.')
+  const adminUids = (process.env.ADMIN_UIDS ?? process.env.ADMIN_UID ?? '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+  if (adminUids.length === 0 || !adminUids.includes(request.auth.uid)) {
+    throw new HttpsError('permission-denied', 'Admin access required.')
   }
 
   // ── Input validation ────────────────────────────────────────────────────────
-  const { campaignId, action, note } = data as {
+  const { campaignId, action, note } = request.data as {
     campaignId?: string
     action?: string
     note?: string
   }
 
   if (!campaignId || typeof campaignId !== 'string') {
-    throw new functions.https.HttpsError('invalid-argument', 'campaignId is required.')
+    throw new HttpsError('invalid-argument', 'campaignId is required.')
   }
   if (action !== 'approve' && action !== 'reject') {
-    throw new functions.https.HttpsError('invalid-argument', 'action must be "approve" or "reject".')
+    throw new HttpsError('invalid-argument', 'action must be "approve" or "reject".')
   }
   if (action === 'reject' && (!note || !note.trim())) {
-    throw new functions.https.HttpsError('invalid-argument', 'A rejection note is required.')
+    throw new HttpsError('invalid-argument', 'A rejection note is required.')
   }
 
   // ── Update ──────────────────────────────────────────────────────────────────
+  const db = admin.firestore()
   const update: Record<string, unknown> = {
     isUnderReview: false,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -50,12 +52,24 @@ export const reviewCampaign = functions.https.onCall(async (data, context) => {
 
   if (action === 'approve') {
     update.status = 'active'
+
+    // ── Set budgetCents for atomic budget tracking ─────────────────────────
+    // The advertiser portal stores budgetAmount as a dollar string ("50").
+    // Convert to integer cents (5000) so logAdEvents can use
+    // FieldValue.increment(-N) without floating-point issues.
+    const preSnap = await db.collection(COLLECTION).doc(campaignId).get()
+    const preData = preSnap.data()
+    if (preData?.budgetAmount) {
+      const dollars = parseFloat(preData.budgetAmount)
+      if (!isNaN(dollars) && dollars > 0) {
+        update.budgetCents = Math.round(dollars * 100)
+      }
+    }
   } else {
     update.status = 'paused'
     update.reviewNote = note!.trim()
   }
 
-  const db = admin.firestore()
   await db.collection(COLLECTION).doc(campaignId).update(update)
 
   // ── Email notification to advertiser ────────────────────────────────────────

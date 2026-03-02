@@ -15,7 +15,7 @@
  */
 
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { onRequest, onCall } from "firebase-functions/v2/https";
+import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import express from "express";
@@ -28,7 +28,7 @@ export * from './functions/itinerariesRpc';
 export { createStripeCheckoutSession } from './createStripeCheckoutSession';
 export { createStripePortalSession } from './createStripePortalSession';
 // Export Mux video processing functions
-export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux, processAdVideoWithMux } from './muxVideoProcessing';
+export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux } from './muxVideoProcessing';
 // Export Contact Discovery functions
 export { matchContactsWithUsers } from './matchContactsWithUsers';
 export { sendContactInvite } from './sendContactInvite';
@@ -40,15 +40,28 @@ export { registerAPNsToken } from './notifications/registerAPNsToken';
 // Export Ads admin functions
 export { reviewCampaign } from './reviewCampaign';
 export { getPendingCampaigns } from './getPendingCampaigns';
+// Export Ads delivery functions (consumer-side)
+export { selectAds } from './selectAds';
+export { logAdEvents } from './logAdEvents';
 import bodyParser from "body-parser";
 
 /**
- * IMPORTANT DEVELOPER NOTE:
- * Do NOT remove hardcoded API keys from Cloud Functions in this codebase.
- * Firebase Functions (v1/v2) do NOT support secure environment variables for secrets at runtime.
- * The only supported method is hardcoding or using Firebase config (which is not secure for secrets).
- * Removing hardcoded keys will break production integrations (e.g., Stripe, Amadeus, OpenAI).
+ * ENVIRONMENT VARIABLES
+ * All secrets (API keys, webhook secrets, admin UIDs) are loaded from environment
+ * variables via .env (development) and .env.mundo1-1 (production overrides).
+ * Firebase Functions v2 reads these files at deploy time.
  * See: https://firebase.google.com/docs/functions/config-env
+ *
+ * Required variables (set in .env and .env.mundo1-1 as needed):
+ *   STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID
+ *   OPENAI_API_KEY
+ *   GOOGLE_PLACES_API_KEY
+ *   SERPAPI_KEY
+ *   MUX_TOKEN_ID, MUX_TOKEN_SECRET
+ *   MUX_WEBHOOK_DEV_SIGNING_SECRET, MUX_WEBHOOK_PROD_SIGNING_SECRET
+ *   ADMIN_UID, ADMIN_EMAIL
+ *
+ * NEVER hardcode secrets in source files.
  */
 
 admin.initializeApp();
@@ -369,7 +382,7 @@ export const sendEmailCampaign = onCall(async (request) => {
   const { campaignId, testEmail } = request.data;
   
   if (!campaignId) {
-    throw new Error("Campaign ID is required");
+    throw new HttpsError('invalid-argument', 'Campaign ID is required');
   }
 
   console.log(`[EMAIL CAMPAIGN] Starting campaign: ${campaignId}`);
@@ -468,7 +481,8 @@ export const sendEmailCampaign = onCall(async (request) => {
 
   } catch (error) {
     console.error(`[EMAIL CAMPAIGN] Error in campaign ${campaignId}:`, error);
-    throw new Error(`Failed to send email campaign: ${error}`);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', `Failed to send email campaign: ${error}`);
   }
 });
 
@@ -623,7 +637,7 @@ TravalPass.com | Find Travel Companions | © 2025 TravalPass
 
   const campaign = campaigns[campaignId];
   if (!campaign) {
-    throw new Error(`Unknown campaign ID: ${campaignId}`);
+    throw new HttpsError('not-found', `Unknown campaign ID: ${campaignId}`);
   }
 
   return {
