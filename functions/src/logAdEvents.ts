@@ -333,7 +333,12 @@ export const logAdEvents = onCall(
 
       for (const dateKey of allDateKeys) {
         const metricsRef = campaignRef.collection(DAILY_METRICS_SUB).doc(dateKey)
-        const metricsUpdate: Record<string, unknown> = {}
+        const metricsUpdate: Record<string, unknown> = {
+          // Always write the date so the client-side chart can key snapshots by date.
+          // batch.set(...merge) only creates missing fields, so this is safe
+          // to include on every update — it will not overwrite an existing value.
+          date: dateKey,
+        }
 
         const dayImp = dailyImpressions.get(dateKey) ?? 0
         const dayClk = dailyClicks.get(dateKey) ?? 0

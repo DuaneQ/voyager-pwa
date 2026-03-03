@@ -52,6 +52,12 @@ export interface SelectAdsRequest {
   limit?: number
   /** Optional targeting context from the user's active itinerary. */
   userContext?: UserAdContext
+  /**
+   * Campaign IDs the viewer has already seen (current session or stored locally).
+   * The server applies a -5 ranking penalty per seen campaign so fresh ads
+   * surface ahead of repeat exposures.
+   */
+  seenCampaignIds?: string[]
 }
 
 /**

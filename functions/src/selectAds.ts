@@ -301,6 +301,16 @@ export const selectAds = onCall(
     }
     limit = Math.min(limit, MAX_LIMIT)
 
+    // Resolve seen campaign IDs sent by the client for this session.
+    // Capped at 100 to prevent oversized payloads; non-string values are dropped.
+    const seenSet = new Set<string>(
+      Array.isArray(data.seenCampaignIds)
+        ? (data.seenCampaignIds as unknown[])
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+            .slice(0, 100)
+        : [],
+    )
+
     // Validate userContext fields (defensive — don't trust client)
     const ctx = data.userContext
     if (ctx) {
@@ -408,7 +418,11 @@ export const selectAds = onCall(
       // Hard filter: must have a renderable creative
       if (!doc.assetUrl && !doc.muxPlaybackUrl) continue
 
-      const score = scoreCampaign(doc, ctx)
+      const rawScore = scoreCampaign(doc, ctx)
+      // Deprioritise campaigns the viewer has already seen this session.
+      // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
+      // (max targeting score ≈ 14, so a seen ad caps at 14-5=9).
+      const score = seenSet.has(snap.id) ? rawScore - 5 : rawScore
       scored.push({ id: snap.id, doc, score })
     }
 

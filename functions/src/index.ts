@@ -28,7 +28,7 @@ export * from './functions/itinerariesRpc';
 export { createStripeCheckoutSession } from './createStripeCheckoutSession';
 export { createStripePortalSession } from './createStripePortalSession';
 // Export Mux video processing functions
-export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux } from './muxVideoProcessing';
+export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux, processAdVideoWithMux } from './muxVideoProcessing';
 // Export Contact Discovery functions
 export { matchContactsWithUsers } from './matchContactsWithUsers';
 export { sendContactInvite } from './sendContactInvite';
