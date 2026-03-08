@@ -252,6 +252,9 @@ function campaignToAdUnit(id: string, doc: CampaignDoc): AdUnit {
     phone: doc.phone,
     email: doc.email,
     promoCode: doc.promoCode,
+    // Include run dates so the client can guard against stale cached ads
+    startDate: doc.startDate,
+    endDate: doc.endDate,
   }
 }
 

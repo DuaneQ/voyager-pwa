@@ -48,6 +48,14 @@ const CPM_RATE_CENTS = 500 // $5.00 per 1000 impressions
 const CPC_RATE_CENTS = 50 // $0.50 per click
 
 /**
+ * Impression floor rate for CPC campaigns, in cents per 1,000 impressions.
+ * $0.50 CPM floor ensures CPC budgets deplete even when the click-through
+ * rate is zero, preventing indefinite free brand impression delivery.
+ * Set at 10% of the full CPM_RATE_CENTS ($5.00) = $0.50 per 1,000 impressions.
+ */
+const CPC_IMPRESSION_FLOOR_RATE_CENTS = 50 // $0.50 per 1,000 impressions
+
+/**
  * Convert epoch ms timestamp to a YYYY-MM-DD string in UTC.
  * Used for daily_metrics document IDs.
  */
@@ -252,8 +260,11 @@ export const logAdEvents = onCall(
         // Use fractional math: (impressions * CPM_RATE) / 1000, rounded
         chargeCents = Math.round((impressionCount * CPM_RATE_CENTS) / 1000)
       } else if (billingModel === 'cpc') {
-        // CPC: charge per click
-        chargeCents = clickCount * CPC_RATE_CENTS
+        // CPC: charge per click PLUS a small impression floor so that budgets
+        // deplete even when CTR is zero (preventing indefinite free delivery).
+        // Floor rate: $0.50 per 1,000 impressions (CPC_IMPRESSION_FLOOR_RATE_CENTS).
+        const cpcFloorCents = Math.round((impressionCount * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000)
+        chargeCents = cpcFloorCents + clickCount * CPC_RATE_CENTS
       }
 
       // ── Batched Firestore writes ──────────────────────────────────────
@@ -302,9 +313,32 @@ export const logAdEvents = onCall(
 
       if (chargeCents > 0) {
         if (billingModel === 'cpc') {
-          // CPC is exact (integer * integer), no rounding issue
+          // CPC: exact click charge per day + proportionally distributed
+          // impression floor so daily totals sum to chargeCents exactly.
           for (const dk of dateKeysArray) {
             dayChargeMap.set(dk, (dailyClicks.get(dk) ?? 0) * CPC_RATE_CENTS)
+          }
+          // Proportion-allocate the impression floor across days (same
+          // technique as CPM) to avoid per-day rounding divergence.
+          const totalFloorCents = Math.round((impressionCount * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000)
+          if (totalFloorCents > 0 && impressionCount > 0) {
+            let floorAllocated = 0
+            let largestFloorDay = ''
+            let largestFloorImp = 0
+            for (const dk of dateKeysArray) {
+              const dayImp = dailyImpressions.get(dk) ?? 0
+              const share = Math.floor((dayImp / impressionCount) * totalFloorCents)
+              dayChargeMap.set(dk, (dayChargeMap.get(dk) ?? 0) + share)
+              floorAllocated += share
+              if (dayImp > largestFloorImp) {
+                largestFloorImp = dayImp
+                largestFloorDay = dk
+              }
+            }
+            const floorRemainder = totalFloorCents - floorAllocated
+            if (floorRemainder > 0 && largestFloorDay) {
+              dayChargeMap.set(largestFloorDay, (dayChargeMap.get(largestFloorDay) ?? 0) + floorRemainder)
+            }
           }
         } else if (billingModel === 'cpm') {
           // CPM: distribute chargeCents proportionally by impression count
@@ -403,4 +437,65 @@ export const _testing = {
   MAX_FUTURE_DRIFT_MS,
   CPM_RATE_CENTS,
   CPC_RATE_CENTS,
+  CPC_IMPRESSION_FLOOR_RATE_CENTS,
 }
+
+// ─── One-time migration ───────────────────────────────────────────────────────
+
+/**
+ * backfillDailyMetricsDates — Admin-only callable that sets the `date` field on
+ * every existing daily_metrics document that is missing it.
+ *
+ * The document ID is the YYYY-MM-DD date string, so:
+ *   date = docRef.id
+ *
+ * Safe to run multiple times (skips docs that already have the field).
+ * Requires the caller to be authenticated.
+ */
+export const backfillDailyMetricsDates = onCall(
+  { region: 'us-central1', memory: '512MiB', timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required')
+    }
+
+    const db = admin.firestore()
+    const campaignsSnap = await db.collection(COLLECTION).get()
+
+    let totalUpdated = 0
+    let totalSkipped = 0
+
+    for (const campaignDoc of campaignsSnap.docs) {
+      const metricsSnap = await campaignDoc.ref.collection(DAILY_METRICS_SUB).get()
+
+      let batch = db.batch()
+      let batchCount = 0
+
+      for (const metricDoc of metricsSnap.docs) {
+        const data = metricDoc.data()
+        if (data.date) {
+          totalSkipped++
+          continue
+        }
+        // Doc ID is the YYYY-MM-DD string
+        batch.update(metricDoc.ref, { date: metricDoc.id })
+        batchCount++
+        totalUpdated++
+
+        // Firestore batch limit is 500 writes — commit and start a fresh batch
+        if (batchCount === 499) {
+          await batch.commit()
+          batch = db.batch()
+          batchCount = 0
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit()
+      }
+    }
+
+    console.log(`[backfillDailyMetricsDates] updated=${totalUpdated} skipped=${totalSkipped}`)
+    return { updated: totalUpdated, skipped: totalSkipped }
+  },
+)

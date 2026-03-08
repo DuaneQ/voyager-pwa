@@ -453,7 +453,7 @@ export const processAdVideoWithMux = onCall(
     if (!campaignSnap.exists) {
       throw new Error(`Campaign ${campaignId} not found`);
     }
-    if (campaignSnap.data()?.advertiserId !== request.auth.uid) {
+    if (campaignSnap.data()?.uid !== request.auth.uid) {
       throw new Error("Unauthorized: caller does not own this campaign");
     }
 
@@ -461,7 +461,8 @@ export const processAdVideoWithMux = onCall(
 
     try {
       // Generate a signed URL that Mux can fetch (valid for 1 hour).
-      const bucket = admin.storage().bucket("mundo1-1.appspot.com");
+      // Use the default bucket so this works on both dev and prod projects.
+      const bucket = admin.storage().bucket();
       const file = bucket.file(storagePath);
       const [signedUrl] = await file.getSignedUrl({
         action: "read",

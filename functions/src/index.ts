@@ -42,7 +42,7 @@ export { reviewCampaign } from './reviewCampaign';
 export { getPendingCampaigns } from './getPendingCampaigns';
 // Export Ads delivery functions (consumer-side)
 export { selectAds } from './selectAds';
-export { logAdEvents } from './logAdEvents';
+export { logAdEvents, backfillDailyMetricsDates } from './logAdEvents';
 import bodyParser from "body-parser";
 
 /**

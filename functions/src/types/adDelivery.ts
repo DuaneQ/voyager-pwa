@@ -87,6 +87,13 @@ export interface AdUnit {
   promoCode?: string
   /** Offer details for AI-slot promotions. */
   offerDetails?: string
+  /**
+   * Campaign run dates (YYYY-MM-DD) — included in the AdUnit so the client
+   * can perform a secondary expiry check for ads that were cached before
+   * midnight and would otherwise be stale for the rest of the session.
+   */
+  startDate?: string
+  endDate?: string
 }
 
 export interface SelectAdsResponse {

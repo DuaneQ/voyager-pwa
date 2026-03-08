@@ -3,6 +3,19 @@ import * as admin from 'firebase-admin'
 
 const COLLECTION = 'ads_campaigns'
 
+// ---------- Pure helpers (exported for unit testing) ----------
+
+/** Split a comma-separated string of admin UIDs into a trimmed, non-empty array. */
+function parseAdminUids(raw: string): string[] {
+  return raw.split(',').map((u) => u.trim()).filter(Boolean)
+}
+
+/** Convert a dollar amount to integer cents (rounds half-up). Returns null for invalid input. */
+function dollarsTobudgetCents(dollars: number): number | null {
+  if (!isFinite(dollars) || isNaN(dollars) || dollars <= 0) return null
+  return Math.round(dollars * 100)
+}
+
 /**
  * Admin-only callable that approves or rejects an ad campaign.
  *
@@ -18,10 +31,7 @@ export const reviewCampaign = onCall({ region: 'us-central1' }, async (request) 
     throw new HttpsError('unauthenticated', 'You must be signed in.')
   }
 
-  const adminUids = (process.env.ADMIN_UIDS ?? process.env.ADMIN_UID ?? '')
-    .split(',')
-    .map((u) => u.trim())
-    .filter(Boolean)
+  const adminUids = parseAdminUids(process.env.ADMIN_UIDS ?? process.env.ADMIN_UID ?? '')
   if (adminUids.length === 0 || !adminUids.includes(request.auth.uid)) {
     throw new HttpsError('permission-denied', 'Admin access required.')
   }
@@ -60,9 +70,9 @@ export const reviewCampaign = onCall({ region: 'us-central1' }, async (request) 
     const preSnap = await db.collection(COLLECTION).doc(campaignId).get()
     const preData = preSnap.data()
     if (preData?.budgetAmount) {
-      const dollars = parseFloat(preData.budgetAmount)
-      if (!isNaN(dollars) && dollars > 0) {
-        update.budgetCents = Math.round(dollars * 100)
+      const cents = dollarsTobudgetCents(parseFloat(preData.budgetAmount))
+      if (cents !== null) {
+        update.budgetCents = cents
       }
     }
   } else {
@@ -140,3 +150,6 @@ export const reviewCampaign = onCall({ region: 'us-central1' }, async (request) 
 
   return { success: true }
 })
+
+// Pure helpers exposed for unit testing only — do not use in production code.
+export const _testing = { parseAdminUids, dollarsTobudgetCents }

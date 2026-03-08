@@ -16,6 +16,7 @@ const {
   MAX_FUTURE_DRIFT_MS,
   CPM_RATE_CENTS,
   CPC_RATE_CENTS,
+  CPC_IMPRESSION_FLOOR_RATE_CENTS,
 } = _testing
 
 // ─── epochToDateKey ─────────────────────────────────────────────────────────
@@ -245,6 +246,12 @@ describe('billing constants', () => {
     expect(CPC_RATE_CENTS).toBe(50)
   })
 
+  it('should have CPC impression floor rate of $0.50 per 1,000 impressions (50 cents)', () => {
+    expect(CPC_IMPRESSION_FLOOR_RATE_CENTS).toBe(50)
+    // Floor is 10% of CPM_RATE_CENTS ($5.00)
+    expect(CPC_IMPRESSION_FLOOR_RATE_CENTS).toBe(CPM_RATE_CENTS / 10)
+  })
+
   it('should have max events per request of 50', () => {
     expect(MAX_EVENTS_PER_REQUEST).toBe(50)
   })
@@ -282,13 +289,36 @@ describe('billing computation edge cases', () => {
     expect(computeCharge(0)).toBe(0)
   })
 
-  it('should compute CPC charge correctly for various click counts', () => {
-    const computeCharge = (clicks: number) => clicks * CPC_RATE_CENTS
+  it('should compute CPC charge correctly — clicks only (zero impressions)', () => {
+    const computeCharge = (clicks: number, impressions: number) =>
+      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
 
-    expect(computeCharge(0)).toBe(0)
-    expect(computeCharge(1)).toBe(50) // $0.50
-    expect(computeCharge(10)).toBe(500) // $5.00
-    expect(computeCharge(100)).toBe(5000) // $50.00
+    expect(computeCharge(0, 0)).toBe(0)
+    expect(computeCharge(1, 0)).toBe(50) // $0.50 per click, no floor
+    expect(computeCharge(10, 0)).toBe(500) // $5.00 in clicks
+    expect(computeCharge(100, 0)).toBe(5000) // $50.00 in clicks
+  })
+
+  it('should compute CPC charge correctly — impressions only (zero clicks)', () => {
+    const computeCharge = (clicks: number, impressions: number) =>
+      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
+
+    // 1,000 impressions × $0.50 / 1,000 = $0.50 floor
+    expect(computeCharge(0, 1000)).toBe(50)
+    // 0 impressions → 0 charge
+    expect(computeCharge(0, 0)).toBe(0)
+    // 500 impressions → Math.round(500 * 50 / 1000) = Math.round(25) = 25 cents
+    expect(computeCharge(0, 500)).toBe(25)
+  })
+
+  it('should compute CPC charge correctly — combined clicks and impressions', () => {
+    const computeCharge = (clicks: number, impressions: number) =>
+      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
+
+    // 5 clicks + 1,000 impressions → (50) + (5 × 50) = 50 + 250 = 300 cents
+    expect(computeCharge(5, 1000)).toBe(300)
+    // 1 click + 2,000 impressions → (100) + (50) = 150 cents
+    expect(computeCharge(1, 2000)).toBe(150)
   })
 })
 
