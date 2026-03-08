@@ -106,6 +106,16 @@ function normalizeString(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+/** Score an airport record against a normalised query string.
+ *  Exact IATA match = 100, name contains = 50, city contains = 30. */
+function scoreAirport(a: OFAirportRaw, nq: string): number {
+  return (
+    (a.iata && a.iata.toLowerCase() === nq ? 100 : 0) +
+    (normalizeString(a.name).includes(nq) ? 50 : 0) +
+    (normalizeString(a.city).includes(nq) ? 30 : 0)
+  );
+}
+
 export const openFlightsGetAll = functions.https.onCall(async (data, context) => {
   const airports = await loadAirports();
   // Return trimmed set to keep payload reasonable
@@ -173,7 +183,7 @@ export const openFlightsSearch = functions.https.onCall(async (data, context) =>
     const airports = await loadAirports();
     const nq = normalizeString(q);
     const results = airports
-      .map(a => ({ a, score: ((a.iata && a.iata.toLowerCase() === nq) ? 100 : 0) + (normalizeString(a.name).includes(nq) ? 50 : 0) + (normalizeString(a.city).includes(nq) ? 30 : 0) }))
+      .map(a => ({ a, score: scoreAirport(a, nq) }))
       .filter(r => r.score > 0)
       .sort((x, y) => y.score - x.score)
       .slice(0, maxResults)
@@ -185,5 +195,8 @@ export const openFlightsSearch = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError('internal', err.message || String(err));
   }
 });
+
+// Pure helpers exposed for unit testing only — do not use in production code.
+export const _testing = { parseCSVLine, normalizeString, scoreAirport };
 
 export default {};
