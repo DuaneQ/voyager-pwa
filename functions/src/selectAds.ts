@@ -83,17 +83,23 @@ function dateRangesOverlap(
  * (date range, budget, review status) are checked before this function is
  * called — only eligible campaigns reach scoring.
  *
- * Scoring:
- * - +3  Exact destination (placeId) match
- * - +2  Destination string match (fallback when no placeId)
- * - +2  Travel date overlap
+ * Scoring (all placements):
  * - +2  Age within campaign's ageFrom–ageTo range
  * - +1  Gender match
+ *
+ * Intent-based placements only (itinerary_feed, ai_slot):
+ * - +10 Exact destination (placeId) match
+ * - +8  Destination string match (fallback when no placeId)
+ * - +2  Travel date overlap
  * - +1  At least one trip type overlap
  * - +1  At least one activity preference overlap
  * - +1  At least one travel style overlap
  * - +1  At least one interest keyword overlap
+ *
  * - +0  No targeting constraint on that field (matches everyone)
+ *
+ * video_feed only scores age and gender — the user is passively browsing and
+ * has no active travel intent attached to the session.
  *
  * No hard filters — a campaign with no targeting fields will score 0 and still
  * be eligible.  Only date range and budget are hard constraints (checked
@@ -107,43 +113,110 @@ function scoreCampaign(
 
   let score = 0
 
-  // ── Destination ───────────────────────────────────────────────────────────
-  // itinerary_feed stores destination in targetDestination/targetPlaceId;
-  // video_feed and ai_slot store it in the `location` field.
-  // Resolve whichever is populated.
-  const campDestStr = campaign.targetDestination || campaign.location || ''
-  const campPlaceId = campaign.targetPlaceId || ''
+  // Intent-based placements score destination, dates, preferences, and interests.
+  // video_feed is passive browsing — only age and gender are scored there.
+  const isIntentBased = campaign.placement === 'itinerary_feed' || campaign.placement === 'ai_slot'
 
-  if (campPlaceId && userContext.placeId) {
-    if (campPlaceId === userContext.placeId) {
-      score += 3
+  if (isIntentBased) {
+    // ── Destination ───────────────────────────────────────────────────────────
+    // itinerary_feed stores destination in targetDestination/targetPlaceId;
+    // ai_slot stores it in the `location` field.
+    // Resolve whichever is populated.
+    const campDestStr = campaign.targetDestination || campaign.location || ''
+    const campPlaceId = campaign.targetPlaceId || ''
+
+    if (campPlaceId && userContext.placeId) {
+      if (campPlaceId === userContext.placeId) {
+        score += 10
+      }
+      // If placeIds are present but don't match, no points but not disqualified
+    } else if (campDestStr && userContext.destination) {
+      // Fallback: case-insensitive string includes (city names can vary)
+      const campDest = campDestStr.toLowerCase().trim()
+      const userDest = userContext.destination.toLowerCase().trim()
+      if (campDest === userDest || campDest.includes(userDest) || userDest.includes(campDest)) {
+        score += 8
+      }
     }
-    // If placeIds are present but don't match, no points but not disqualified
-  } else if (campDestStr && userContext.destination) {
-    // Fallback: case-insensitive string includes (city names can vary)
-    const campDest = campDestStr.toLowerCase().trim()
-    const userDest = userContext.destination.toLowerCase().trim()
-    if (campDest === userDest || campDest.includes(userDest) || userDest.includes(campDest)) {
-      score += 2
+
+    // ── Travel date overlap ────────────────────────────────────────────────
+    if (campaign.targetTravelStartDate && campaign.targetTravelEndDate) {
+      if (userContext.travelStartDate && userContext.travelEndDate) {
+        const campStart = parseDateToNoonUTC(campaign.targetTravelStartDate)
+        const campEnd = parseDateToNoonUTC(campaign.targetTravelEndDate)
+        const userStart = parseDateToNoonUTC(userContext.travelStartDate)
+        const userEnd = parseDateToNoonUTC(userContext.travelEndDate)
+
+        if (campStart && campEnd && userStart && userEnd) {
+          if (dateRangesOverlap(campStart, campEnd, userStart, userEnd)) {
+            score += 2
+          }
+        }
+      }
+      // If user has no dates, campaign still eligible (no penalty)
     }
-  }
 
-  // ── Travel date overlap ──────────────────────────────────────────────────
-  if (campaign.targetTravelStartDate && campaign.targetTravelEndDate) {
-    if (userContext.travelStartDate && userContext.travelEndDate) {
-      const campStart = parseDateToNoonUTC(campaign.targetTravelStartDate)
-      const campEnd = parseDateToNoonUTC(campaign.targetTravelEndDate)
-      const userStart = parseDateToNoonUTC(userContext.travelStartDate)
-      const userEnd = parseDateToNoonUTC(userContext.travelEndDate)
+    // ── Trip types (array overlap) ────────────────────────────────────────
+    if (campaign.targetTripTypes && campaign.targetTripTypes.length > 0) {
+      if (userContext.tripTypes && userContext.tripTypes.length > 0) {
+        const campSet = new Set(campaign.targetTripTypes.map((t) => t.toLowerCase()))
+        const hasOverlap = userContext.tripTypes.some((t) => campSet.has(t.toLowerCase()))
+        if (hasOverlap) score += 1
+      }
+    }
 
-      if (campStart && campEnd && userStart && userEnd) {
-        if (dateRangesOverlap(campStart, campEnd, userStart, userEnd)) {
-          score += 2
+    // ── Activity preferences (array overlap) ──────────────────────────────
+    if (campaign.targetActivityPreferences && campaign.targetActivityPreferences.length > 0) {
+      if (userContext.activityPreferences && userContext.activityPreferences.length > 0) {
+        const campSet = new Set(campaign.targetActivityPreferences.map((a) => a.toLowerCase()))
+        const hasOverlap = userContext.activityPreferences.some((a) => campSet.has(a.toLowerCase()))
+        if (hasOverlap) score += 1
+      }
+    }
+
+    // ── Travel styles (array overlap) ────────────────────────────────────
+    if (campaign.targetTravelStyles && campaign.targetTravelStyles.length > 0) {
+      if (userContext.travelStyles && userContext.travelStyles.length > 0) {
+        const campSet = new Set(campaign.targetTravelStyles.map((s) => s.toLowerCase()))
+        const hasOverlap = userContext.travelStyles.some((s) => campSet.has(s.toLowerCase()))
+        if (hasOverlap) score += 1
+      }
+    }
+
+    // ── Interests (keyword overlap) ────────────────────────────────────────
+    // Campaign stores interests as a comma-separated string.
+    // We tokenise both sides and check for at least one shared keyword.
+    if (campaign.interests && typeof campaign.interests === 'string') {
+      const campKeywords = campaign.interests
+        .split(',')
+        .map((k) => k.trim().toLowerCase())
+        .filter(Boolean)
+      if (campKeywords.length > 0) {
+        // User context may carry interests via activityPreferences, tripTypes, or travelStyles.
+        const userKeywords = new Set<string>()
+        if (userContext.activityPreferences) {
+          userContext.activityPreferences.forEach((a) => userKeywords.add(a.toLowerCase()))
+        }
+        if (userContext.tripTypes) {
+          userContext.tripTypes.forEach((t) => userKeywords.add(t.toLowerCase()))
+        }
+        if (userContext.travelStyles) {
+          userContext.travelStyles.forEach((s) => userKeywords.add(s.toLowerCase()))
+        }
+        if (userContext.destination) {
+          userKeywords.add(userContext.destination.toLowerCase())
+        }
+        if (userKeywords.size > 0) {
+          const hasOverlap = campKeywords.some(
+            (kw) =>
+              userKeywords.has(kw) ||
+              [...userKeywords].some((uk) => uk.includes(kw) || kw.includes(uk)),
+          )
+          if (hasOverlap) score += 1
         }
       }
     }
-    // If user has no dates, campaign still eligible (no penalty)
-  }
+  } // end isIntentBased
 
   // ── Gender ──────────────────────────────────────────────────────────────
   if (campaign.targetGender && campaign.targetGender !== '') {
@@ -162,68 +235,6 @@ function scoreCampaign(
       const ageTo = campaign.ageTo === '65+' ? 120 : parseInt(campaign.ageTo, 10)
       if (!isNaN(ageFrom) && !isNaN(ageTo) && userContext.age >= ageFrom && userContext.age <= ageTo) {
         score += 2
-      }
-    }
-  }
-
-  // ── Trip types (array overlap) ──────────────────────────────────────────
-  if (campaign.targetTripTypes && campaign.targetTripTypes.length > 0) {
-    if (userContext.tripTypes && userContext.tripTypes.length > 0) {
-      const campSet = new Set(campaign.targetTripTypes.map((t) => t.toLowerCase()))
-      const hasOverlap = userContext.tripTypes.some((t) => campSet.has(t.toLowerCase()))
-      if (hasOverlap) score += 1
-    }
-  }
-
-  // ── Activity preferences (array overlap) ────────────────────────────────
-  if (campaign.targetActivityPreferences && campaign.targetActivityPreferences.length > 0) {
-    if (userContext.activityPreferences && userContext.activityPreferences.length > 0) {
-      const campSet = new Set(campaign.targetActivityPreferences.map((a) => a.toLowerCase()))
-      const hasOverlap = userContext.activityPreferences.some((a) => campSet.has(a.toLowerCase()))
-      if (hasOverlap) score += 1
-    }
-  }
-
-  // ── Travel styles (array overlap) ───────────────────────────────────────
-  if (campaign.targetTravelStyles && campaign.targetTravelStyles.length > 0) {
-    if (userContext.travelStyles && userContext.travelStyles.length > 0) {
-      const campSet = new Set(campaign.targetTravelStyles.map((s) => s.toLowerCase()))
-      const hasOverlap = userContext.travelStyles.some((s) => campSet.has(s.toLowerCase()))
-      if (hasOverlap) score += 1
-    }
-  }
-
-  // ── Interests (keyword overlap) ──────────────────────────────────────
-  // Campaign stores interests as a comma-separated string (e.g. 'beach, adventure, family travel').
-  // We tokenise both sides and check for at least one shared keyword.
-  if (campaign.interests && typeof campaign.interests === 'string') {
-    const campKeywords = campaign.interests
-      .split(',')
-      .map((k) => k.trim().toLowerCase())
-      .filter(Boolean)
-    if (campKeywords.length > 0) {
-      // User context may carry interests via activityPreferences, tripTypes, or travelStyles
-      // Merge them all into a single keyword bag for broad matching.
-      const userKeywords = new Set<string>()
-      if (userContext.activityPreferences) {
-        userContext.activityPreferences.forEach((a) => userKeywords.add(a.toLowerCase()))
-      }
-      if (userContext.tripTypes) {
-        userContext.tripTypes.forEach((t) => userKeywords.add(t.toLowerCase()))
-      }
-      if (userContext.travelStyles) {
-        userContext.travelStyles.forEach((s) => userKeywords.add(s.toLowerCase()))
-      }
-      if (userContext.destination) {
-        userKeywords.add(userContext.destination.toLowerCase())
-      }
-      if (userKeywords.size > 0) {
-        const hasOverlap = campKeywords.some(
-          (kw) =>
-            userKeywords.has(kw) ||
-            [...userKeywords].some((uk) => uk.includes(kw) || kw.includes(uk)),
-        )
-        if (hasOverlap) score += 1
       }
     }
   }

@@ -205,76 +205,85 @@ describe('scoreCampaign', () => {
     expect(scoreCampaign(campaign, {})).toBe(0)
   })
 
-  it('should score +3 for exact placeId match', () => {
-    const campaign = makeCampaign({ targetPlaceId: 'ChIJ12345' })
-    expect(scoreCampaign(campaign, { placeId: 'ChIJ12345' })).toBe(3)
+  it('should score +10 for exact placeId match', () => {
+    const campaign = makeCampaign({ placement: 'itinerary_feed', targetPlaceId: 'ChIJ12345' })
+    expect(scoreCampaign(campaign, { placeId: 'ChIJ12345' })).toBe(10)
   })
 
   it('should NOT score placeId for partial match', () => {
-    const campaign = makeCampaign({ targetPlaceId: 'ChIJ12345' })
+    const campaign = makeCampaign({ placement: 'itinerary_feed', targetPlaceId: 'ChIJ12345' })
     expect(scoreCampaign(campaign, { placeId: 'ChIJ12345_extra' })).toBe(0)
   })
 
-  it('should score +2 for destination string match (exact)', () => {
-    const campaign = makeCampaign({ targetDestination: 'Paris' })
-    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(2)
+  it('should score +8 for destination string match (exact)', () => {
+    const campaign = makeCampaign({ placement: 'itinerary_feed', targetDestination: 'Paris' })
+    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(8)
   })
 
-  it('should score +2 for destination string match (case-insensitive)', () => {
-    const campaign = makeCampaign({ targetDestination: 'paris' })
-    expect(scoreCampaign(campaign, { destination: 'PARIS' })).toBe(2)
+  it('should score +8 for destination string match (case-insensitive)', () => {
+    const campaign = makeCampaign({ placement: 'itinerary_feed', targetDestination: 'paris' })
+    expect(scoreCampaign(campaign, { destination: 'PARIS' })).toBe(8)
   })
 
-  it('should score +2 for destination substring match (campaign contains user)', () => {
-    const campaign = makeCampaign({ targetDestination: 'Paris, France' })
-    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(2)
+  it('should score +8 for destination substring match (campaign contains user)', () => {
+    const campaign = makeCampaign({ placement: 'itinerary_feed', targetDestination: 'Paris, France' })
+    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(8)
   })
 
   it('should prefer placeId over destination when both are present', () => {
     const campaign = makeCampaign({
+      placement: 'itinerary_feed',
       targetPlaceId: 'ChIJ12345',
       targetDestination: 'Paris',
     })
-    // When placeId matches, it's +3 and destination is not checked
-    expect(scoreCampaign(campaign, { placeId: 'ChIJ12345', destination: 'Paris' })).toBe(3)
+    // When placeId matches, it's +10 and destination is not checked
+    expect(scoreCampaign(campaign, { placeId: 'ChIJ12345', destination: 'Paris' })).toBe(10)
   })
 
-  // ── Location field fallback (video_feed / ai_slot) ───────────────────────
+  // ── Location field fallback (ai_slot) ─────────────────────────────────────
 
-  it('should score +2 for location field string match (video_feed/ai_slot fallback)', () => {
-    const campaign = makeCampaign({ location: 'Tokyo, Japan' })
-    expect(scoreCampaign(campaign, { destination: 'Tokyo' })).toBe(2)
+  it('should score +8 for location field string match (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', location: 'Tokyo, Japan' })
+    expect(scoreCampaign(campaign, { destination: 'Tokyo' })).toBe(8)
   })
 
-  it('should score +2 for location field exact match', () => {
-    const campaign = makeCampaign({ location: 'Barcelona' })
-    expect(scoreCampaign(campaign, { destination: 'Barcelona' })).toBe(2)
+  it('should score +8 for location field exact match (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', location: 'Barcelona' })
+    expect(scoreCampaign(campaign, { destination: 'Barcelona' })).toBe(8)
   })
 
-  it('should prefer targetDestination over location when both present', () => {
+  it('should prefer targetDestination over location when both present (ai_slot)', () => {
     const campaign = makeCampaign({
+      placement: 'ai_slot',
       targetDestination: 'Paris',
       location: 'London',
     })
     // targetDestination is resolved first, so "Paris" matches the user's "Paris"
-    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(2)
+    expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(8)
   })
 
-  it('should fall back to location if targetDestination is empty', () => {
+  it('should fall back to location if targetDestination is empty (ai_slot)', () => {
     const campaign = makeCampaign({
+      placement: 'ai_slot',
       targetDestination: '',
       location: 'Rome, Italy',
     })
-    expect(scoreCampaign(campaign, { destination: 'Rome' })).toBe(2)
+    expect(scoreCampaign(campaign, { destination: 'Rome' })).toBe(8)
   })
 
-  it('should NOT score location when there is no user destination', () => {
-    const campaign = makeCampaign({ location: 'Tokyo' })
+  it('should NOT score location when there is no user destination (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', location: 'Tokyo' })
     expect(scoreCampaign(campaign, { gender: 'female' })).toBe(0)
   })
 
-  it('should score +2 for date overlap', () => {
+  it('should NOT score location for video_feed placement', () => {
+    const campaign = makeCampaign({ placement: 'video_feed', location: 'Tokyo' })
+    expect(scoreCampaign(campaign, { destination: 'Tokyo' })).toBe(0)
+  })
+
+  it('should score +2 for date overlap (itinerary_feed)', () => {
     const campaign = makeCampaign({
+      placement: 'itinerary_feed',
       targetTravelStartDate: '2025-06-01',
       targetTravelEndDate: '2025-06-30',
     })
@@ -286,8 +295,9 @@ describe('scoreCampaign', () => {
     ).toBe(2)
   })
 
-  it('should NOT score date overlap when ranges do not overlap', () => {
+  it('should NOT score date overlap when ranges do not overlap (itinerary_feed)', () => {
     const campaign = makeCampaign({
+      placement: 'itinerary_feed',
       targetTravelStartDate: '2025-06-01',
       targetTravelEndDate: '2025-06-30',
     })
@@ -299,12 +309,22 @@ describe('scoreCampaign', () => {
     ).toBe(0)
   })
 
-  it('should NOT penalize when campaign has dates but user does not', () => {
+  it('should NOT penalize when campaign has dates but user does not (itinerary_feed)', () => {
     const campaign = makeCampaign({
+      placement: 'itinerary_feed',
       targetTravelStartDate: '2025-06-01',
       targetTravelEndDate: '2025-06-30',
     })
     expect(scoreCampaign(campaign, { destination: 'Paris' })).toBe(0)
+  })
+
+  it('should NOT score travel dates for video_feed placement', () => {
+    const campaign = makeCampaign({
+      placement: 'video_feed',
+      targetTravelStartDate: '2025-06-01',
+      targetTravelEndDate: '2025-06-30',
+    })
+    expect(scoreCampaign(campaign, { travelStartDate: '2025-06-15', travelEndDate: '2025-06-20' })).toBe(0)
   })
 
   it('should score +1 for gender match', () => {
@@ -322,29 +342,44 @@ describe('scoreCampaign', () => {
     expect(scoreCampaign(campaign, { gender: 'female' })).toBe(0)
   })
 
-  it('should score +1 for trip type overlap', () => {
-    const campaign = makeCampaign({ targetTripTypes: ['adventure', 'romantic'] })
+  it('should score +1 for trip type overlap (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', targetTripTypes: ['adventure', 'romantic'] })
     expect(scoreCampaign(campaign, { tripTypes: ['adventure'] })).toBe(1)
   })
 
-  it('should score +1 for trip type overlap (case-insensitive)', () => {
-    const campaign = makeCampaign({ targetTripTypes: ['Adventure'] })
+  it('should score +1 for trip type overlap (case-insensitive, ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', targetTripTypes: ['Adventure'] })
     expect(scoreCampaign(campaign, { tripTypes: ['adventure'] })).toBe(1)
   })
 
-  it('should NOT score trip types when no overlap', () => {
-    const campaign = makeCampaign({ targetTripTypes: ['adventure'] })
+  it('should NOT score trip types when no overlap (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', targetTripTypes: ['adventure'] })
     expect(scoreCampaign(campaign, { tripTypes: ['romantic'] })).toBe(0)
   })
 
-  it('should score +1 for activity preference overlap', () => {
-    const campaign = makeCampaign({ targetActivityPreferences: ['Cultural', 'Nightlife'] })
+  it('should NOT score trip types for video_feed placement', () => {
+    const campaign = makeCampaign({ placement: 'video_feed', targetTripTypes: ['adventure'] })
+    expect(scoreCampaign(campaign, { tripTypes: ['adventure'] })).toBe(0)
+  })
+
+  it('should score +1 for activity preference overlap (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', targetActivityPreferences: ['Cultural', 'Nightlife'] })
     expect(scoreCampaign(campaign, { activityPreferences: ['Nightlife'] })).toBe(1)
   })
 
-  it('should score +1 for travel style overlap', () => {
-    const campaign = makeCampaign({ targetTravelStyles: ['luxury', 'mid-range'] })
+  it('should NOT score activity preferences for video_feed placement', () => {
+    const campaign = makeCampaign({ placement: 'video_feed', targetActivityPreferences: ['Nightlife'] })
+    expect(scoreCampaign(campaign, { activityPreferences: ['Nightlife'] })).toBe(0)
+  })
+
+  it('should score +1 for travel style overlap (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', targetTravelStyles: ['luxury', 'mid-range'] })
     expect(scoreCampaign(campaign, { travelStyles: ['luxury'] })).toBe(1)
+  })
+
+  it('should NOT score travel styles for video_feed placement', () => {
+    const campaign = makeCampaign({ placement: 'video_feed', targetTravelStyles: ['luxury'] })
+    expect(scoreCampaign(campaign, { travelStyles: ['luxury'] })).toBe(0)
   })
 
   // ── Age range scoring ────────────────────────────────────────────────────
@@ -389,40 +424,46 @@ describe('scoreCampaign', () => {
 
   // ── Interests scoring ────────────────────────────────────────────────────
 
-  it('should score +1 when campaign interests overlap with user activity preferences', () => {
-    const campaign = makeCampaign({ interests: 'beach, adventure, nightlife' })
+  it('should score +1 when campaign interests overlap with user activity preferences (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'beach, adventure, nightlife' })
     expect(scoreCampaign(campaign, { activityPreferences: ['Nightlife'] })).toBe(1)
   })
 
-  it('should score +1 when campaign interests overlap with user trip types', () => {
-    const campaign = makeCampaign({ interests: 'adventure, romantic' })
+  it('should score +1 when campaign interests overlap with user trip types (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'adventure, romantic' })
     expect(scoreCampaign(campaign, { tripTypes: ['adventure'] })).toBe(1)
   })
 
-  it('should score +1 when campaign interests overlap with user travel styles', () => {
-    const campaign = makeCampaign({ interests: 'luxury, beach' })
+  it('should score +1 when campaign interests overlap with user travel styles (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'luxury, beach' })
     expect(scoreCampaign(campaign, { travelStyles: ['luxury'] })).toBe(1)
   })
 
-  it('should score +1 for partial keyword match in interests', () => {
-    const campaign = makeCampaign({ interests: 'beach travel, family' })
+  it('should score +1 for partial keyword match in interests (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'beach travel, family' })
     expect(scoreCampaign(campaign, { tripTypes: ['family'] })).toBe(1)
   })
 
-  it('should NOT score interests when no overlap', () => {
-    const campaign = makeCampaign({ interests: 'shopping, spa' })
+  it('should NOT score interests when no overlap (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'shopping, spa' })
     expect(scoreCampaign(campaign, { tripTypes: ['adventure'], activityPreferences: ['Nightlife'] })).toBe(0)
   })
 
-  it('should NOT score interests when user has no context', () => {
-    const campaign = makeCampaign({ interests: 'beach, adventure' })
+  it('should NOT score interests when user has no context (ai_slot)', () => {
+    const campaign = makeCampaign({ placement: 'ai_slot', interests: 'beach, adventure' })
     expect(scoreCampaign(campaign, { gender: 'male' })).toBe(0)
+  })
+
+  it('should NOT score interests for video_feed placement', () => {
+    const campaign = makeCampaign({ placement: 'video_feed', interests: 'beach, adventure' })
+    expect(scoreCampaign(campaign, { activityPreferences: ['adventure'], tripTypes: ['adventure'] })).toBe(0)
   })
 
   // ── Full accumulation with age + interests ────────────────────────────────
 
-  it('should accumulate scores across all matching fields', () => {
+  it('should accumulate scores across all matching fields (ai_slot)', () => {
     const campaign = makeCampaign({
+      placement: 'ai_slot',
       targetPlaceId: 'ChIJ12345',
       targetTravelStartDate: '2025-06-01',
       targetTravelEndDate: '2025-06-30',
@@ -444,13 +485,14 @@ describe('scoreCampaign', () => {
       activityPreferences: ['Cultural'],
       travelStyles: ['luxury'],
     }
-    // +3 (placeId) +2 (dates) +1 (gender) +2 (age) +1 (trip) +1 (activity) +1 (style) +1 (interests) = 12
-    expect(scoreCampaign(campaign, ctx)).toBe(12)
+    // +10 (placeId) +2 (dates) +1 (gender) +2 (age) +1 (trip) +1 (activity) +1 (style) +1 (interests) = 19
+    expect(scoreCampaign(campaign, ctx)).toBe(19)
   })
 
-  it('should accumulate scores using location field instead of targetDestination', () => {
-    // Simulates a video_feed campaign that stores destination in `location`
+  it('should only score age and gender for video_feed (not location, interests, preferences)', () => {
+    // video_feed is passive — only demographic signals are scored
     const campaign = makeCampaign({
+      placement: 'video_feed',
       location: 'Tokyo, Japan',
       targetGender: 'male',
       ageFrom: '18',
@@ -463,8 +505,8 @@ describe('scoreCampaign', () => {
       age: 25,
       activityPreferences: ['food'],
     }
-    // +2 (location→destination string) +1 (gender) +2 (age) +1 (interests via activityPreferences) = 6
-    expect(scoreCampaign(campaign, ctx)).toBe(6)
+    // +1 (gender) +2 (age) = 3 — location and interests not scored for video_feed
+    expect(scoreCampaign(campaign, ctx)).toBe(3)
   })
 
   it('should NOT crash on campaign with undefined targeting arrays', () => {
