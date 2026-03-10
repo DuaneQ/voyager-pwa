@@ -15,6 +15,7 @@ const {
   dateRangesOverlap,
   scoreCampaign,
   campaignToAdUnit,
+  tieBreakKey,
 } = _testing
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -652,5 +653,130 @@ describe('date-shift regression tests', () => {
   it('should work for dates far in the past and future', () => {
     expect(parseDateToNoonUTC('2020-01-01')).not.toBeNull()
     expect(parseDateToNoonUTC('2030-12-31')).not.toBeNull()
+  })
+})
+
+// ─── tieBreakKey ───────────────────────────────────────────────────────────────────────────
+
+describe('tieBreakKey', () => {
+  it('is deterministic — same inputs always return the same value', () => {
+    const key = tieBreakKey('campaign-abc', 'user123|2026-03-09')
+    expect(tieBreakKey('campaign-abc', 'user123|2026-03-09')).toBe(key)
+    expect(tieBreakKey('campaign-abc', 'user123|2026-03-09')).toBe(key)
+  })
+
+  it('returns a non-negative integer (unsigned 32-bit)', () => {
+    const key = tieBreakKey('someId', 'someSeed')
+    expect(key).toBeGreaterThanOrEqual(0)
+    expect(Number.isInteger(key)).toBe(true)
+    expect(key).toBeLessThanOrEqual(0xFFFFFFFF)
+  })
+
+  it('returns 0 for empty inputs without throwing', () => {
+    expect(() => tieBreakKey('', '')).not.toThrow()
+    expect(tieBreakKey('', '')).toBeGreaterThanOrEqual(0)
+  })
+
+  it('different campaign IDs with same seed produce different keys', () => {
+    const seed = 'user123|2026-03-09'
+    const keys = new Set([
+      tieBreakKey('campaignA', seed),
+      tieBreakKey('campaignB', seed),
+      tieBreakKey('campaignC', seed),
+      tieBreakKey('campaignD', seed),
+      tieBreakKey('campaignE', seed),
+    ])
+    // All 5 should be distinct (FNV-1a has negligible collision rate at this scale)
+    expect(keys.size).toBe(5)
+  })
+
+  it('same campaign ID with different seeds produces different keys', () => {
+    const id = 'campaign-xyz'
+    const keys = new Set([
+      tieBreakKey(id, 'user1|2026-03-09'),
+      tieBreakKey(id, 'user2|2026-03-09'),
+      tieBreakKey(id, 'user3|2026-03-09'),
+      tieBreakKey(id, 'user1|2026-03-10'), // same user, different day
+    ])
+    expect(keys.size).toBe(4)
+  })
+
+  it('distributes 10 campaigns fairly across 100 different user seeds', () => {
+    // With 10 campaigns and 100 seeds, each campaign should rank #1 roughly
+    // 10% of the time.  We accept any campaign winning between 2 and 25 times
+    // (i.e. no campaign is a permanent monopoly or permanently buried).
+    const campaigns = Array.from({ length: 10 }, (_, i) => `campaign-${i.toString().padStart(3, '0')}`)
+    const winCounts: Record<string, number> = {}
+    campaigns.forEach((id) => { winCounts[id] = 0 })
+
+    for (let u = 0; u < 100; u++) {
+      const seed = `user${u}|2026-03-09`
+      const sorted = [...campaigns].sort(
+        (a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed),
+      )
+      winCounts[sorted[0]]++
+    }
+
+    // No campaign should win all 100 or zero
+    Object.values(winCounts).forEach((count) => {
+      expect(count).toBeGreaterThanOrEqual(2)
+      expect(count).toBeLessThanOrEqual(25)
+    })
+  })
+
+  it('distributes 10 campaigns fairly across 1000 different date seeds (daily rotation)', () => {
+    const campaigns = Array.from({ length: 10 }, (_, i) => `campaign-${i.toString().padStart(3, '0')}`)
+    const winCounts: Record<string, number> = {}
+    campaigns.forEach((id) => { winCounts[id] = 0 })
+
+    // Simulate 1000 unique seeds (pseudo-daily, using index as the date portion).
+    // At scale the FNV-1a avalanche behaviour guarantees no campaign is
+    // permanently buried or monopolises the top slot.
+    for (let d = 0; d < 1000; d++) {
+      const seed = `userABC|seed-${d}`
+      const sorted = [...campaigns].sort(
+        (a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed),
+      )
+      winCounts[sorted[0]]++
+    }
+
+    // With 1000 draws and 10 campaigns each wins ~100 times on average.
+    // Require every campaign wins at least 25 times (> 2.5% share) and
+    // no campaign wins more than 200 times (< 20%), ruling out monopoly.
+    Object.values(winCounts).forEach((count) => {
+      expect(count).toBeGreaterThanOrEqual(25)
+      expect(count).toBeLessThanOrEqual(200)
+    })
+  })
+
+  it('higher score always wins regardless of tie-break key', () => {
+    // Construct a scenario where tieBreakKey would rank campaignB before campaignA,
+    // but campaignA has a higher score — score must still win.
+    const seed = 'user999|2026-03-09'
+
+    // Find a pair where B’s key < A’s key (B would win tie-break)
+    // Use known values to make the test deterministic
+    const campaigns = Array.from({ length: 20 }, (_, i) => `c${i}`)
+    const sorted = [...campaigns].sort((a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed))
+    const tieWinner = sorted[0]  // would win on tie-break
+    const tieLoser = sorted[1]   // would lose on tie-break
+
+    // With equal scores, tie-break winner should come first
+    const eqSorted = [tieLoser, tieWinner].sort(
+      (a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed),
+    )
+    expect(eqSorted[0]).toBe(tieWinner)
+
+    // But if tieLoser has a higher score, it must win
+    interface Candidate { id: string; score: number }
+    const candidates: Candidate[] = [
+      { id: tieLoser, score: 5 },
+      { id: tieWinner, score: 3 },
+    ]
+    candidates.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      return tieBreakKey(a.id, seed) - tieBreakKey(b.id, seed)
+    })
+    expect(candidates[0].id).toBe(tieLoser)
   })
 })

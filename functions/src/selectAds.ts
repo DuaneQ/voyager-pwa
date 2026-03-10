@@ -269,6 +269,33 @@ function campaignToAdUnit(id: string, doc: CampaignDoc): AdUnit {
   }
 }
 
+/**
+ * FNV-1a 32-bit hash used as a per-user, per-day tie-breaker when two
+ * campaigns have identical relevance scores.
+ *
+ * Using the caller's uid + today's date as the seed means:
+ * - Two different users see a different ordering of same-score campaigns,
+ *   distributing impressions across the full eligible inventory.
+ * - The same user sees a consistent order within the same calendar day
+ *   (important for UX predictability and de-duplication logic).
+ * - Order rotates every midnight UTC, providing daily freshness even
+ *   without resetting the seen-campaign store.
+ *
+ * FNV-1a is chosen because it is simple, branchless, and has excellent
+ * avalanche behaviour — a one-character difference in the seed produces
+ * a completely different rank.
+ */
+export function tieBreakKey(campaignId: string, seed: string): number {
+  let h = 0x811c9dc5
+  const str = campaignId + '|' + seed
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    // Unsigned 32-bit multiply — `>>> 0` keeps the value non-negative
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h
+}
+
 // ─── Cloud Function ─────────────────────────────────────────────────────────
 
 /**
@@ -401,6 +428,9 @@ export const selectAds = onCall(
     }
 
     const today = todayYYYYMMDD()
+    // Seed the tie-breaker with userId + date so equal-scored campaigns are
+    // ordered differently per user and rotate daily.
+    const userSeed = (request.auth?.uid ?? '') + '|' + today
 
     // ── Filter + Score ────────────────────────────────────────────────────
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
@@ -443,7 +473,9 @@ export const selectAds = onCall(
     // ── Sort by score (desc), then by id for stable ordering ──────────────
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
-      return a.id.localeCompare(b.id) // deterministic tie-break
+      // Per-user, per-day hash tie-break: distributes equal-scored campaigns
+      // across users so the same ad doesn't monopolise all impressions.
+      return tieBreakKey(a.id, userSeed) - tieBreakKey(b.id, userSeed)
     })
 
     // ── Return top N ──────────────────────────────────────────────────────
@@ -460,4 +492,5 @@ export const _testing = {
   dateRangesOverlap,
   scoreCampaign,
   campaignToAdUnit,
+  tieBreakKey,
 }
