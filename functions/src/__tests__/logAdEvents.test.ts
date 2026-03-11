@@ -235,6 +235,14 @@ describe('validateEvent', () => {
 
 // ─── Billing constants ──────────────────────────────────────────────────────
 
+// ─── Billing constant sync guard ───────────────────────────────────────────
+// These tests pin the three rate constants exported by logAdEvents.ts.
+// If any value changes here it MUST also be updated in the ads portal:
+//   voyager-ads/src/config/pricingConstants.ts
+//     CPM_RATE_CENTS          ↔  price.CPM * 100        (currently 500)
+//     CPC_RATE_CENTS          ↔  price.CPC * 100        (currently 50)
+//     CPC_IMPRESSION_FLOOR_RATE_CENTS  ↔  CPC_IMPRESSION_FLOOR_CPM * 100  (currently 50)
+// ─────────────────────────────────────────────────────────────────────────────
 describe('billing constants', () => {
   it('should have CPM rate of $5.00 (500 cents per 1000 impressions)', () => {
     expect(CPM_RATE_CENTS).toBe(500)

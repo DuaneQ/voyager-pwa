@@ -38,12 +38,20 @@ const MAX_FUTURE_DRIFT_MS = 30 * 1000
 /**
  * Cost per thousand impressions in cents.
  * $5.00 CPM = 500 cents per 1000 impressions = 0.5 cents per impression.
+ *
+ * ⚠️  SYNC GUARD: this value must match `price.CPM * 100` in
+ * voyager-ads/src/config/pricingConstants.ts.
+ * The billing constants test in src/__tests__/logAdEvents.test.ts pins
+ * this value and will fail if it changes without a matching portal update.
  */
 const CPM_RATE_CENTS = 500 // $5.00 per 1000 impressions
 
 /**
  * Cost per click in cents.
  * $0.50 CPC = 50 cents per click.
+ *
+ * ⚠️  SYNC GUARD: this value must match `price.CPC * 100` in
+ * voyager-ads/src/config/pricingConstants.ts.
  */
 const CPC_RATE_CENTS = 50 // $0.50 per click
 
@@ -52,6 +60,9 @@ const CPC_RATE_CENTS = 50 // $0.50 per click
  * $0.50 CPM floor ensures CPC budgets deplete even when the click-through
  * rate is zero, preventing indefinite free brand impression delivery.
  * Set at 10% of the full CPM_RATE_CENTS ($5.00) = $0.50 per 1,000 impressions.
+ *
+ * ⚠️  SYNC GUARD: this value must match `CPC_IMPRESSION_FLOOR_CPM * 100` in
+ * voyager-ads/src/config/pricingConstants.ts.
  */
 const CPC_IMPRESSION_FLOOR_RATE_CENTS = 50 // $0.50 per 1,000 impressions
 
