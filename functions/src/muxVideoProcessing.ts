@@ -1,14 +1,70 @@
 /**
  * Mux Video Processing Functions
- * 
+ *
  * Handles video transcoding via Mux for universal Android/iOS compatibility.
- * 
+ *
  * Flow:
  * 1. User uploads video to Firebase Storage (existing flow)
  * 2. onVideoUploaded trigger detects new video in Storage
  * 3. Send video URL to Mux for transcoding
  * 4. Mux webhook notifies when transcoding completes
  * 5. Update Firestore with Mux playback URL
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TODO (Story A): Auto-delete raw uploads from Firebase Storage after 30 days
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Why: Once Mux finishes transcoding (video.asset.ready webhook), the original
+ * Storage file is never served to users — Mux CDN handles all playback via
+ * stream.mux.com/{playbackId}.m3u8. Keeping the Storage copy indefinitely is
+ * pure cost with no user-facing benefit.
+ *
+ * Recommended approach: Firebase Storage Object Lifecycle rule (free, no code).
+ * In firebase.json (or the Firebase Console → Storage → Rules → Lifecycle):
+ *
+ *   {
+ *     "lifecycle": {
+ *       "rule": [{
+ *         "action": { "type": "Delete" },
+ *         "condition": {
+ *           "age": 30,
+ *           "matchesStorageClass": ["STANDARD"]
+ *         }
+ *       }]
+ *     }
+ *   }
+ *
+ * Scope the rule to the bucket prefix `users/` to avoid deleting other assets.
+ * 30-day window gives a re-transcode safety net (e.g. if we switch from Mux or
+ * need to reprocess at a higher quality tier) without paying for permanent storage.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TODO (Story B): Delete Mux asset when a user deletes their video
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Why: VideoService.deleteVideo() (voyager-RN/src/services/video/VideoService.ts)
+ * currently deletes the Firebase Storage file and the Firestore `videos/{id}`
+ * document but does NOT call mux.video.assets.delete(muxAssetId). This means:
+ *   • The transcoded video remains accessible at stream.mux.com/{playbackId}.m3u8
+ *     even after the user deletes it — a privacy/GDPR concern.
+ *   • Mux charges for stored asset minutes on orphaned assets indefinitely.
+ *
+ * Implementation plan:
+ *   Option 1 (client-side, simpler): In VideoService.deleteVideo(), read
+ *   `video.muxAssetId` before deleting the Firestore doc, then call a new
+ *   Cloud Function `deleteMuxAsset({ muxAssetId })` that calls
+ *   mux.video.assets.delete(muxAssetId). The Cloud Function holds the Mux
+ *   credentials — never expose them to the client.
+ *
+ *   Option 2 (server-side, safer): Add a Firestore onDocumentDeleted trigger
+ *   on `videos/{videoId}` that reads the deleted doc snapshot, extracts
+ *   muxAssetId, and calls mux.video.assets.delete(). Fully automatic — no
+ *   client changes needed.
+ *
+ *   Recommendation: Option 2. It catches deletions from any surface (PWA, RN,
+ *   admin scripts, account deletion flow) without needing each caller to know
+ *   about Mux.
+ *
+ * Same gap applies to ad campaigns: if an ads_campaigns doc is deleted while
+ * muxAssetId is set, the asset should also be removed from Mux.
  */
 
 import { onObjectFinalized } from "firebase-functions/v2/storage";
