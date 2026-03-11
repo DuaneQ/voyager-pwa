@@ -58,6 +58,12 @@ export interface SelectAdsRequest {
    * surface ahead of repeat exposures.
    */
   seenCampaignIds?: string[]
+  /**
+   * Client-generated session ID (UUID v4) for anonymous users.
+   * Folded into the tie-breaker seed so different anonymous sessions see
+   * different ad orderings instead of all sharing the same empty-UID hash.
+   */
+  sessionId?: string
 }
 
 /**

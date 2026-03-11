@@ -13,6 +13,21 @@ const VALID_PLACEMENTS: Placement[] = ['video_feed', 'itinerary_feed', 'ai_slot'
 const DEFAULT_LIMIT = 5
 const MAX_LIMIT = 20
 
+// ─── In-memory campaign cache ─────────────────────────────────────────────────
+// Cloud Functions instances are reused across invocations.  Caching the active
+// campaigns list avoids a full Firestore collection scan on every selectAds call.
+// At 100K calls/day with 50 campaigns, this cuts reads from ~5M/day to ~1K/day.
+
+interface CachedCampaigns {
+  placement: string
+  docs: Array<{ id: string; data: CampaignDoc }>
+  fetchedAt: number
+}
+
+/** Cache TTL: 5 minutes.  Active campaigns change infrequently (admin approval). */
+const CACHE_TTL_MS = 5 * 60 * 1000
+const campaignCache = new Map<string, CachedCampaigns>()
+
 /**
  * Parse a YYYY-MM-DD string as a local-date noon-UTC epoch ms.
  *
@@ -415,31 +430,56 @@ export const selectAds = onCall(
       }
     }
 
-    // ── Firestore query ───────────────────────────────────────────────────
+    // ── Firestore query (with in-memory cache) ─────────────────────────────
     const db = admin.firestore()
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('status', '==', 'active')
-      .where('placement', '==', placement)
-      .get()
+    const now = Date.now()
+    const cacheKey = placement
+    const cached = campaignCache.get(cacheKey)
 
-    if (snapshot.empty) {
+    let campaignDocs: Array<{ id: string; data: CampaignDoc }>
+
+    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
+      campaignDocs = cached.docs
+      console.log(`[selectAds] cache HIT for placement=${placement} (${campaignDocs.length} docs, age=${Math.round((now - cached.fetchedAt) / 1000)}s)`)
+    } else {
+      const snapshot = await db
+        .collection(COLLECTION)
+        .where('status', '==', 'active')
+        .where('placement', '==', placement)
+        .get()
+
+      campaignDocs = snapshot.docs.map((snap) => ({
+        id: snap.id,
+        data: snap.data() as CampaignDoc,
+      }))
+
+      campaignCache.set(cacheKey, {
+        placement,
+        docs: campaignDocs,
+        fetchedAt: now,
+      })
+      console.log(`[selectAds] cache MISS for placement=${placement} — fetched ${campaignDocs.length} docs`)
+    }
+
+    if (campaignDocs.length === 0) {
       return { ads: [] }
     }
 
     const today = todayYYYYMMDD()
-    // Seed the tie-breaker with userId + date so equal-scored campaigns are
-    // ordered differently per user and rotate daily.
-    const userSeed = (request.auth?.uid ?? '') + '|' + today
+    // Seed the tie-breaker with userId (or sessionId for anonymous) + date so
+    // equal-scored campaigns are ordered differently per user and rotate daily.
+    const clientSessionId =
+      typeof data.sessionId === 'string' && data.sessionId.length > 0
+        ? data.sessionId
+        : ''
+    const userSeed = (request.auth?.uid ?? clientSessionId) + '|' + today
 
-    console.log(`[selectAds] placement=${placement} today=${today} queryDocs=${snapshot.docs.length} ctx=${JSON.stringify({ destination: ctx?.destination, travelStartDate: ctx?.travelStartDate, travelEndDate: ctx?.travelEndDate, age: ctx?.age, gender: ctx?.gender })}`)
+    console.log(`[selectAds] placement=${placement} today=${today} queryDocs=${campaignDocs.length} ctx=${JSON.stringify({ destination: ctx?.destination, travelStartDate: ctx?.travelStartDate, travelEndDate: ctx?.travelEndDate, age: ctx?.age, gender: ctx?.gender })}`)
 
     // ── Filter + Score ────────────────────────────────────────────────────
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
 
-    for (const snap of snapshot.docs) {
-      const doc = snap.data() as CampaignDoc
-      const id = snap.id
+    for (const { id, data: doc } of campaignDocs) {
 
       // Hard filter: must not be under review
       if (doc.isUnderReview) {
@@ -484,9 +524,9 @@ export const selectAds = onCall(
       // Deprioritise campaigns the viewer has already seen this session.
       // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
       // (max targeting score ≈ 14, so a seen ad caps at 14-5=9).
-      const score = seenSet.has(snap.id) ? rawScore - 5 : rawScore
+      const score = seenSet.has(id) ? rawScore - 5 : rawScore
       console.log(`[selectAds] PASS ${id} rawScore=${rawScore} score=${score}`)
-      scored.push({ id: snap.id, doc, score })
+      scored.push({ id, doc, score })
     }
 
     console.log(`[selectAds] eligible=${scored.length} returning=${Math.min(scored.length, limit)}`)
@@ -514,4 +554,7 @@ export const _testing = {
   scoreCampaign,
   campaignToAdUnit,
   tieBreakKey,
+  /** Clear the in-memory campaign cache (for testing or admin use). */
+  clearCampaignCache: () => campaignCache.clear(),
+  CACHE_TTL_MS,
 }

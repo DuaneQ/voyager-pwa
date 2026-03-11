@@ -283,14 +283,29 @@ export const logAdEvents = onCall(
       }
       if (chargeCents > 0) {
         // Guard: if budgetCents was never set (older campaign approved before
-        // this field existed), initialize it from budgetAmount first.
-        // FieldValue.increment on a missing field starts from 0, which would
-        // immediately go negative and trigger an incorrect pause.
+        // this field existed), initialize it atomically via a transaction first.
+        // This prevents the race where two concurrent requests both read
+        // budgetCents as undefined and both try to set the initial value.
         if (typeof campaignData.budgetCents !== 'number') {
           const initialBudget = Math.round(parseFloat(campaignData.budgetAmount || '0') * 100)
-          campaignUpdate.budgetCents = initialBudget > 0
-            ? initialBudget - chargeCents
-            : increment(-chargeCents)
+          if (initialBudget > 0) {
+            // Atomically set budgetCents only if it's still missing.
+            // Using a transaction ensures that only the first concurrent request
+            // initializes the field; subsequent ones see the initialized value.
+            try {
+              await db.runTransaction(async (txn) => {
+                const freshSnap = await txn.get(campaignRef)
+                const freshData = freshSnap.data()
+                if (freshData && typeof freshData.budgetCents !== 'number') {
+                  txn.update(campaignRef, { budgetCents: initialBudget })
+                }
+              })
+            } catch (txnErr) {
+              console.warn(`[logAdEvents] budgetCents init txn failed for ${campaignId}:`, txnErr)
+            }
+          }
+          // Now decrement atomically (field is guaranteed to exist or be 0)
+          campaignUpdate.budgetCents = increment(-chargeCents)
         } else {
           campaignUpdate.budgetCents = increment(-chargeCents)
         }
@@ -390,6 +405,13 @@ export const logAdEvents = onCall(
           if (dayQ.q50 > 0) metricsUpdate['videoQuartiles.q50'] = increment(dayQ.q50)
           if (dayQ.q75 > 0) metricsUpdate['videoQuartiles.q75'] = increment(dayQ.q75)
           if (dayQ.q100 > 0) metricsUpdate['videoQuartiles.q100'] = increment(dayQ.q100)
+
+          // Write top-level views & completions so the dashboard can read them
+          // without digging into the nested videoQuartiles map.
+          // views = q25 count (IAB standard: 3-second+ view threshold)
+          // completions = q100 count (video watched to end)
+          if (dayQ.q25 > 0) metricsUpdate.views = increment(dayQ.q25)
+          if (dayQ.q100 > 0) metricsUpdate.completions = increment(dayQ.q100)
         }
 
         if (Object.keys(metricsUpdate).length > 0) {

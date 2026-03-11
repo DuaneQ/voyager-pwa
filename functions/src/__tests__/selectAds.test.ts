@@ -16,6 +16,8 @@ const {
   scoreCampaign,
   campaignToAdUnit,
   tieBreakKey,
+  clearCampaignCache,
+  CACHE_TTL_MS,
 } = _testing
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -778,5 +780,69 @@ describe('tieBreakKey', () => {
       return tieBreakKey(a.id, seed) - tieBreakKey(b.id, seed)
     })
     expect(candidates[0].id).toBe(tieLoser)
+  })
+})
+
+// ─── Campaign cache ────────────────────────────────────────────────────────────
+
+describe('campaign cache utilities', () => {
+  it('clearCampaignCache should be a callable function', () => {
+    expect(typeof clearCampaignCache).toBe('function')
+    // Should not throw
+    clearCampaignCache()
+  })
+
+  it('CACHE_TTL_MS should be 5 minutes (300000 ms)', () => {
+    expect(CACHE_TTL_MS).toBe(5 * 60 * 1000)
+  })
+})
+
+// ─── sessionId / anonymous user tie-breaking ─────────────────────────────────
+
+describe('tieBreakKey with sessionId-based seeds', () => {
+  it('produces different orderings for different sessionIds (anonymous users)', () => {
+    const campaigns = Array.from({ length: 10 }, (_, i) => `c-${i}`)
+
+    const sortForSeed = (seed: string) =>
+      [...campaigns].sort((a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed))
+
+    const orderA = sortForSeed('session-aaa|2026-01-01')
+    const orderB = sortForSeed('session-bbb|2026-01-01')
+
+    // With high probability these should differ (FNV-1a avalanche).
+    // This is a probabilistic test — with 10 items the chance of identical order
+    // is 1/10! ≈ 1 in 3.6 million.
+    expect(orderA).not.toEqual(orderB)
+  })
+
+  it('produces different orderings on different days for the same session', () => {
+    const campaigns = Array.from({ length: 10 }, (_, i) => `c-${i}`)
+
+    const sortForSeed = (seed: string) =>
+      [...campaigns].sort((a, b) => tieBreakKey(a, seed) - tieBreakKey(b, seed))
+
+    const day1 = sortForSeed('session-xxx|2026-01-01')
+    const day2 = sortForSeed('session-xxx|2026-01-02')
+
+    expect(day1).not.toEqual(day2)
+  })
+
+  it('anonymous sessions (no userId) still get varied ordering', () => {
+    // Previously all anonymous users had the same empty-string seed
+    // Now they get a per-session ID
+    const campaigns = ['ad-A', 'ad-B', 'ad-C', 'ad-D', 'ad-E']
+
+    // Simulate the old bug: empty string seed
+    const oldBugOrder = [...campaigns].sort(
+      (a, b) => tieBreakKey(a, '|2026-01-01') - tieBreakKey(b, '|2026-01-01'),
+    )
+
+    // Simulate the fix: session ID in seed
+    const fixedOrder = [...campaigns].sort(
+      (a, b) => tieBreakKey(a, 'sess-12345|2026-01-01') - tieBreakKey(b, 'sess-12345|2026-01-01'),
+    )
+
+    // The orders should differ (the fix produces a different hash)
+    expect(oldBugOrder).not.toEqual(fixedOrder)
   })
 })
