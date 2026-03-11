@@ -31,8 +31,85 @@ function isSocialMediaCrawler(userAgent: string): boolean {
   return crawlerPatterns.some(pattern => pattern.test(userAgent));
 }
 
+/**
+ * Query Firestore for the best active ai_slot campaign matching the given destination.
+ * Returns the ad unit (a subset of CampaignDoc fields) or null when no eligible
+ * campaign is available.
+ *
+ * Scoring mirrors selectAds.ts:
+ *  +8  destination string match
+ *  +10 exact placeId match
+ * Hard constraints: status == 'active', placement == 'ai_slot',
+ *   !isUnderReview, budgetCents > 0, dates cover today, has assetUrl.
+ */
+async function pickAiSlotAd(destination: string, placeId?: string): Promise<any | null> {
+  try {
+    const today = new Date();
+    const ymd = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+
+    const snapshot = await db
+      .collection('ads_campaigns')
+      .where('status', '==', 'active')
+      .where('placement', '==', 'ai_slot')
+      .get();
+
+    if (snapshot.empty) return null;
+
+    const candidates: Array<{ score: number; doc: any; id: string }> = [];
+
+    for (const docSnap of snapshot.docs) {
+      const d = docSnap.data();
+
+      // Hard filters
+      if (d.isUnderReview) continue;
+      if (!d.budgetCents || d.budgetCents <= 0) continue;
+      if (!d.assetUrl) continue; // must have a visual
+
+      // Date range — campaign must be active today
+      if (d.startDate && d.startDate > ymd) continue; // not started yet
+      if (d.endDate && d.endDate < ymd) continue;     // already ended
+
+      // Score by destination relevance
+      let score = 0;
+      const campDest = (d.targetDestination || d.location || '').toLowerCase().trim();
+      const campPlaceId = d.targetPlaceId || '';
+
+      if (placeId && campPlaceId && campPlaceId === placeId) {
+        score += 10;
+      } else if (campDest && destination) {
+        const userDest = destination.toLowerCase().trim();
+        if (campDest === userDest || campDest.includes(userDest) || userDest.includes(campDest)) {
+          score += 8;
+        }
+      }
+
+      candidates.push({ score, doc: d, id: docSnap.id });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by score descending; break ties deterministically by campaignId
+    candidates.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
+    const winner = candidates[0];
+    const d = winner.doc;
+    return {
+      campaignId: winner.id,
+      assetUrl: d.assetUrl ?? '',
+      primaryText: d.primaryText ?? '',
+      cta: d.cta ?? 'Learn More',
+      landingUrl: d.landingUrl ?? '',
+      businessName: d.name ?? '',
+      promoCode: d.promoCode ?? null,
+    };
+  } catch (err) {
+    logger.warn('[itineraryShare] pickAiSlotAd failed — no promo rendered', err);
+    return null;
+  }
+}
+
 // Helper function to generate HTML for itinerary sharing
-function generateItineraryHTML(itinerary: any, itineraryId: string): string {
+function generateItineraryHTML(itinerary: any, itineraryId: string, promoAd: any | null = null): string {
   const itineraryData = itinerary?.response?.data?.itinerary;
   const costBreakdown = itinerary?.response?.data?.costBreakdown;
   const metadata = itinerary?.response?.data?.metadata;
@@ -890,6 +967,18 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
           </div>
         ` : ''}
 
+        <!-- Promo Slot (ai_slot) -->
+        ${promoAd ? `
+        <div class="details-section" style="border: 1px solid rgba(25, 118, 210, 0.35); background: rgba(25, 118, 210, 0.06); padding: 20px;">
+          <div style="font-size: 0.7rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;">Sponsored</div>
+          ${promoAd.assetUrl ? `<img src="${promoAd.assetUrl}" alt="${promoAd.businessName || 'Sponsored'}" style="width:100%; border-radius:8px; margin-bottom:14px; object-fit:cover; max-height:260px; display:block;">` : ''}
+          ${promoAd.primaryText ? `<div style="font-size: 1rem; font-weight: 600; color: white; margin-bottom: 6px; line-height:1.4;">${promoAd.primaryText}</div>` : ''}
+          ${promoAd.businessName ? `<div style="font-size: 0.85rem; color: rgba(255,255,255,0.55); margin-bottom: 12px;">${promoAd.businessName}</div>` : ''}
+          ${promoAd.promoCode ? `<div style="background: rgba(255,255,255,0.07); border: 1px dashed rgba(255,255,255,0.3); border-radius: 6px; padding: 8px 14px; font-family: monospace; font-size: 0.9rem; color: white; margin-bottom: 14px; display:inline-block;">🎟 ${promoAd.promoCode}</div>` : ''}
+          ${promoAd.landingUrl ? `<div><a href="${promoAd.landingUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display:inline-block; background: #1976d2; color: white; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.95rem;">${promoAd.cta || 'Learn More'}</a></div>` : ''}
+        </div>
+        ` : ''}
+
         <!-- Call to Action -->
           <div class="cta-section">
           <div class="cta-title">✨ Create Your Own AI Travel Itinerary</div>
@@ -1011,9 +1100,27 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
     }
 
     const itinerary = itineraryDoc.data();
+
+    // Resolve destination for ad targeting
+    const shareDestination =
+      itinerary?.response?.data?.itinerary?.destination ||
+      itinerary?.destination ||
+      '';
+    const sharePlaceId = itinerary?.placeId ?? undefined;
+
+    // Fetch the best matching ai_slot promo (non-blocking — falls back to null)
+    const promoAd = await pickAiSlotAd(shareDestination, sharePlaceId);
+
+    if (promoAd) {
+      logger.info('[itineraryShare] Promo selected', {
+        itineraryId,
+        campaignId: promoAd.campaignId,
+        destination: shareDestination,
+      });
+    }
     
     // Generate and serve the HTML page
-    const html = generateItineraryHTML(itinerary, itineraryId);
+    const html = generateItineraryHTML(itinerary, itineraryId, promoAd);
     
     // Set caching headers
     res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes

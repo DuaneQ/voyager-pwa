@@ -432,19 +432,31 @@ export const selectAds = onCall(
     // ordered differently per user and rotate daily.
     const userSeed = (request.auth?.uid ?? '') + '|' + today
 
+    console.log(`[selectAds] placement=${placement} today=${today} queryDocs=${snapshot.docs.length} ctx=${JSON.stringify({ destination: ctx?.destination, travelStartDate: ctx?.travelStartDate, travelEndDate: ctx?.travelEndDate, age: ctx?.age, gender: ctx?.gender })}`)
+
     // ── Filter + Score ────────────────────────────────────────────────────
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
 
     for (const snap of snapshot.docs) {
       const doc = snap.data() as CampaignDoc
+      const id = snap.id
 
       // Hard filter: must not be under review
-      if (doc.isUnderReview) continue
+      if (doc.isUnderReview) {
+        console.log(`[selectAds] DROP ${id} isUnderReview=true`)
+        continue
+      }
 
       // Hard filter: campaign date range must include today
       // Uses string comparison — YYYY-MM-DD sorts lexicographically
-      if (doc.startDate && doc.startDate > today) continue // hasn't started yet
-      if (doc.endDate && doc.endDate < today) continue // already ended
+      if (doc.startDate && doc.startDate > today) {
+        console.log(`[selectAds] DROP ${id} startDate=${doc.startDate} > today=${today}`)
+        continue
+      }
+      if (doc.endDate && doc.endDate < today) {
+        console.log(`[selectAds] DROP ${id} endDate=${doc.endDate} < today=${today}`)
+        continue
+      }
 
       // Hard filter: must have remaining budget
       // budgetCents is set on approval; if absent fall back to parsing budgetAmount.
@@ -457,18 +469,27 @@ export const selectAds = onCall(
           : Number.isFinite(parsedBudget)
             ? Math.round(parsedBudget * 100)
             : 0
-      if (budgetCents <= 0) continue
+      if (budgetCents <= 0) {
+        console.log(`[selectAds] DROP ${id} budgetCents=${budgetCents} budgetAmount=${doc.budgetAmount}`)
+        continue
+      }
 
       // Hard filter: must have a renderable creative
-      if (!doc.assetUrl && !doc.muxPlaybackUrl) continue
+      if (!doc.assetUrl && !doc.muxPlaybackUrl) {
+        console.log(`[selectAds] DROP ${id} no creative (assetUrl and muxPlaybackUrl both absent)`)
+        continue
+      }
 
       const rawScore = scoreCampaign(doc, ctx)
       // Deprioritise campaigns the viewer has already seen this session.
       // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
       // (max targeting score ≈ 14, so a seen ad caps at 14-5=9).
       const score = seenSet.has(snap.id) ? rawScore - 5 : rawScore
+      console.log(`[selectAds] PASS ${id} rawScore=${rawScore} score=${score}`)
       scored.push({ id: snap.id, doc, score })
     }
+
+    console.log(`[selectAds] eligible=${scored.length} returning=${Math.min(scored.length, limit)}`)
 
     // ── Sort by score (desc), then by id for stable ordering ──────────────
     scored.sort((a, b) => {
