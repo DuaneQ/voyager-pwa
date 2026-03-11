@@ -31,8 +31,97 @@ function isSocialMediaCrawler(userAgent: string): boolean {
   return crawlerPatterns.some(pattern => pattern.test(userAgent));
 }
 
+/**
+ * Query Firestore for the best active ai_slot campaign for the given destination.
+ *
+ * Itinerary documents store a `destination` string (e.g. "Los Angeles, CA, USA")
+ * but do NOT store a top-level placeId — so targeting is destination-string only.
+ *
+ * Query strategy (two reads max):
+ *  1. Destination-targeted   → WHERE targetDestination == destination, limit 10
+ *     Campaigns that explicitly targeted this destination are preferred (score +8).
+ *  2. Generic fallback        → campaigns with no targetDestination set, limit 20
+ *     Only runs when query 1 returns zero eligible candidates.
+ *     Advertisers who leave targetDestination blank opt into all destinations.
+ *
+ * Hard constraints applied in-memory after fetch:
+ *   status == 'active', placement == 'ai_slot', !isUnderReview,
+ *   budgetCents > 0, assetUrl present, date range covers today.
+ */
+async function pickAiSlotAd(destination: string): Promise<any | null> {
+  try {
+    const today = new Date();
+    const ymd = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+
+    const baseQuery = db
+      .collection('ads_campaigns')
+      .where('status', '==', 'active')
+      .where('placement', '==', 'ai_slot');
+
+    const isEligible = (d: any): boolean => {
+      if (d.isUnderReview) return false;
+      if (!d.budgetCents || d.budgetCents <= 0) return false;
+      if (!d.assetUrl) return false;
+      if (d.startDate && d.startDate > ymd) return false;
+      if (d.endDate && d.endDate < ymd) return false;
+      return true;
+    };
+
+    // ── Query 1: destination-targeted campaigns ────────────────────────────────
+    let candidates: Array<{ score: number; doc: any; id: string }> = [];
+
+    if (destination) {
+      const targetedSnap = await baseQuery
+        .where('targetDestination', '==', destination)
+        .limit(10)
+        .get();
+
+      for (const docSnap of targetedSnap.docs) {
+        const d = docSnap.data();
+        if (!isEligible(d)) continue;
+        candidates.push({ score: 8, doc: d, id: docSnap.id });
+      }
+    }
+
+    // ── Query 2: generic (no destination) fallback ─────────────────────────────
+    // Only runs when no destination-targeted candidates passed eligibility.
+    if (candidates.length === 0) {
+      const genericSnap = await baseQuery
+        .where('targetDestination', '==', '')
+        .limit(20)
+        .get();
+
+      for (const docSnap of genericSnap.docs) {
+        const d = docSnap.data();
+        if (!isEligible(d)) continue;
+        candidates.push({ score: 0, doc: d, id: docSnap.id });
+      }
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by score desc; break ties deterministically by campaignId
+    candidates.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
+    const winner = candidates[0];
+    const d = winner.doc;
+    return {
+      campaignId: winner.id,
+      assetUrl: d.assetUrl ?? '',
+      primaryText: d.primaryText ?? '',
+      cta: d.cta ?? 'Learn More',
+      landingUrl: d.landingUrl ?? '',
+      businessName: d.name ?? '',
+      promoCode: d.promoCode ?? null,
+    };
+  } catch (err) {
+    logger.warn('[itineraryShare] pickAiSlotAd failed — no promo rendered', err);
+    return null;
+  }
+}
+
 // Helper function to generate HTML for itinerary sharing
-function generateItineraryHTML(itinerary: any, itineraryId: string): string {
+function generateItineraryHTML(itinerary: any, itineraryId: string, promoAd: any | null = null): string {
   const itineraryData = itinerary?.response?.data?.itinerary;
   const costBreakdown = itinerary?.response?.data?.costBreakdown;
   const metadata = itinerary?.response?.data?.metadata;
@@ -890,6 +979,18 @@ function generateItineraryHTML(itinerary: any, itineraryId: string): string {
           </div>
         ` : ''}
 
+        <!-- Promo Slot (ai_slot) -->
+        ${promoAd ? `
+        <div class="details-section" style="border: 1px solid rgba(25, 118, 210, 0.35); background: rgba(25, 118, 210, 0.06); padding: 20px;">
+          <div style="font-size: 0.7rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;">Sponsored</div>
+          ${promoAd.assetUrl ? `<img src="${promoAd.assetUrl}" alt="${promoAd.businessName || 'Sponsored'}" style="width:100%; border-radius:8px; margin-bottom:14px; object-fit:cover; max-height:260px; display:block;">` : ''}
+          ${promoAd.primaryText ? `<div style="font-size: 1rem; font-weight: 600; color: white; margin-bottom: 6px; line-height:1.4;">${promoAd.primaryText}</div>` : ''}
+          ${promoAd.businessName ? `<div style="font-size: 0.85rem; color: rgba(255,255,255,0.55); margin-bottom: 12px;">${promoAd.businessName}</div>` : ''}
+          ${promoAd.promoCode ? `<div style="background: rgba(255,255,255,0.07); border: 1px dashed rgba(255,255,255,0.3); border-radius: 6px; padding: 8px 14px; font-family: monospace; font-size: 0.9rem; color: white; margin-bottom: 14px; display:inline-block;">🎟 ${promoAd.promoCode}</div>` : ''}
+          ${promoAd.landingUrl ? `<div><a href="${promoAd.landingUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display:inline-block; background: #1976d2; color: white; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.95rem;">${promoAd.cta || 'Learn More'}</a></div>` : ''}
+        </div>
+        ` : ''}
+
         <!-- Call to Action -->
           <div class="cta-section">
           <div class="cta-title">✨ Create Your Own AI Travel Itinerary</div>
@@ -1011,9 +1112,25 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
     }
 
     const itinerary = itineraryDoc.data();
+
+    // Resolve destination for ad targeting
+    const shareDestination =
+      itinerary?.response?.data?.itinerary?.destination ||
+      itinerary?.destination ||
+      '';
+    // Fetch the best matching ai_slot promo (non-blocking — falls back to null)
+    const promoAd = await pickAiSlotAd(shareDestination);
+
+    if (promoAd) {
+      logger.info('[itineraryShare] Promo selected', {
+        itineraryId,
+        campaignId: promoAd.campaignId,
+        destination: shareDestination,
+      });
+    }
     
     // Generate and serve the HTML page
-    const html = generateItineraryHTML(itinerary, itineraryId);
+    const html = generateItineraryHTML(itinerary, itineraryId, promoAd);
     
     // Set caching headers
     res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes

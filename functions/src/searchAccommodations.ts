@@ -392,4 +392,7 @@ export const searchAccommodations = functions
   }
 });
 
+// Pure helpers exposed for unit testing only — do not use in production code.
+export const _testing = { getPlacesQuery, extractAmenities, mapPlaceToHotel };
+
 export default {};

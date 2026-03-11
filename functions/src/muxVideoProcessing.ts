@@ -1,14 +1,70 @@
 /**
  * Mux Video Processing Functions
- * 
+ *
  * Handles video transcoding via Mux for universal Android/iOS compatibility.
- * 
+ *
  * Flow:
  * 1. User uploads video to Firebase Storage (existing flow)
  * 2. onVideoUploaded trigger detects new video in Storage
  * 3. Send video URL to Mux for transcoding
  * 4. Mux webhook notifies when transcoding completes
  * 5. Update Firestore with Mux playback URL
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TODO (Story A): Auto-delete raw uploads from Firebase Storage after 30 days
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Why: Once Mux finishes transcoding (video.asset.ready webhook), the original
+ * Storage file is never served to users — Mux CDN handles all playback via
+ * stream.mux.com/{playbackId}.m3u8. Keeping the Storage copy indefinitely is
+ * pure cost with no user-facing benefit.
+ *
+ * Recommended approach: Firebase Storage Object Lifecycle rule (free, no code).
+ * In firebase.json (or the Firebase Console → Storage → Rules → Lifecycle):
+ *
+ *   {
+ *     "lifecycle": {
+ *       "rule": [{
+ *         "action": { "type": "Delete" },
+ *         "condition": {
+ *           "age": 30,
+ *           "matchesStorageClass": ["STANDARD"]
+ *         }
+ *       }]
+ *     }
+ *   }
+ *
+ * Scope the rule to the bucket prefix `users/` to avoid deleting other assets.
+ * 30-day window gives a re-transcode safety net (e.g. if we switch from Mux or
+ * need to reprocess at a higher quality tier) without paying for permanent storage.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TODO (Story B): Delete Mux asset when a user deletes their video
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Why: VideoService.deleteVideo() (voyager-RN/src/services/video/VideoService.ts)
+ * currently deletes the Firebase Storage file and the Firestore `videos/{id}`
+ * document but does NOT call mux.video.assets.delete(muxAssetId). This means:
+ *   • The transcoded video remains accessible at stream.mux.com/{playbackId}.m3u8
+ *     even after the user deletes it — a privacy/GDPR concern.
+ *   • Mux charges for stored asset minutes on orphaned assets indefinitely.
+ *
+ * Implementation plan:
+ *   Option 1 (client-side, simpler): In VideoService.deleteVideo(), read
+ *   `video.muxAssetId` before deleting the Firestore doc, then call a new
+ *   Cloud Function `deleteMuxAsset({ muxAssetId })` that calls
+ *   mux.video.assets.delete(muxAssetId). The Cloud Function holds the Mux
+ *   credentials — never expose them to the client.
+ *
+ *   Option 2 (server-side, safer): Add a Firestore onDocumentDeleted trigger
+ *   on `videos/{videoId}` that reads the deleted doc snapshot, extracts
+ *   muxAssetId, and calls mux.video.assets.delete(). Fully automatic — no
+ *   client changes needed.
+ *
+ *   Recommendation: Option 2. It catches deletions from any surface (PWA, RN,
+ *   admin scripts, account deletion flow) without needing each caller to know
+ *   about Mux.
+ *
+ * Same gap applies to ad campaigns: if an ads_campaigns doc is deleted while
+ * muxAssetId is set, the asset should also be removed from Mux.
  */
 
 import { onObjectFinalized } from "firebase-functions/v2/storage";
@@ -24,11 +80,13 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Mux credentials (hardcoded per project convention - see index.ts comment)
-const MUX_TOKEN_ID = "a08a323c-83c3-4689-9e01-3d0c9ddebd47";
-const MUX_TOKEN_SECRET = "Ahl+1R8js47EC/eVooJuM6FQnArjefTruvw1VAu4HszknS6uJrryeIpiVd/cDI5yop7WxMgs07N";
-const MUX_WEBHOOK_SECRET_DEV = "v3ob3vqdg4pskfr80t24v4hu4se7kr5e";
-const MUX_WEBHOOK_SECRET_PROD = "9hb8dk3t5tfb7bh8nlep286l9qj39dov";
+// Mux credentials — loaded from environment variables (.env / .env.mundo1-1).
+// Never hardcode these. Set MUX_TOKEN_ID, MUX_TOKEN_SECRET,
+// MUX_WEBHOOK_DEV_SIGNING_SECRET, MUX_WEBHOOK_PROD_SIGNING_SECRET in .env.
+const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID ?? '';
+const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET ?? '';
+const MUX_WEBHOOK_SECRET_DEV = process.env.MUX_WEBHOOK_DEV_SIGNING_SECRET ?? '';
+const MUX_WEBHOOK_SECRET_PROD = process.env.MUX_WEBHOOK_PROD_SIGNING_SECRET ?? '';
 
 // Initialize Mux client
 const mux = new Mux({
@@ -230,6 +288,28 @@ export const muxWebhook = onRequest(
 
           console.log(`[Mux Webhook] Asset ready: ${assetId}, playbackUrl: ${muxPlaybackUrl}`);
 
+          // Route to the correct Firestore collection based on passthrough metadata.
+          // Ad campaigns set type:'ad' and campaignId; organic videos set videoId.
+          let passthrough: Record<string, unknown> = {};
+          try {
+            passthrough = asset.passthrough ? JSON.parse(asset.passthrough as string) : {};
+          } catch {
+            console.warn(`[Mux Webhook] Could not parse passthrough for asset ${assetId}`);
+          }
+
+          if (passthrough.type === "ad" && typeof passthrough.campaignId === "string") {
+            const campaignId = passthrough.campaignId;
+            await db.collection("ads_campaigns").doc(campaignId).update({
+              muxPlaybackUrl,
+              muxThumbnailUrl,
+              muxPlaybackId: playbackId,
+              muxStatus: "ready",
+              muxReadyAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.log(`[Mux Webhook] Updated ads_campaigns/${campaignId} with playback URL`);
+            break;
+          }
+
           // Try to find video doc by muxAssetId
           const videosQuery = await db
             .collection("videos")
@@ -287,6 +367,24 @@ export const muxWebhook = onRequest(
           const errorMessage = asset.errors?.messages?.join(", ") || "Unknown error";
 
           console.error(`[Mux Webhook] Asset errored: ${assetId}, error: ${errorMessage}`);
+
+          // Route ad campaign errors to ads_campaigns collection
+          let errorPassthrough: Record<string, unknown> = {};
+          try {
+            errorPassthrough = asset.passthrough ? JSON.parse(asset.passthrough as string) : {};
+          } catch {
+            console.warn(`[Mux Webhook] Could not parse passthrough for errored asset ${assetId}`);
+          }
+
+          if (errorPassthrough.type === "ad" && typeof errorPassthrough.campaignId === "string") {
+            await db.collection("ads_campaigns").doc(errorPassthrough.campaignId).update({
+              muxStatus: "errored",
+              muxError: errorMessage,
+              muxErrorAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.error(`[Mux Webhook] Updated ads_campaigns/${errorPassthrough.campaignId} with error status`);
+            break;
+          }
 
           // Update video doc with error status
           const videosQuery = await db
@@ -371,6 +469,91 @@ export const processVideoWithMux = onCall(
       };
     } catch (error) {
       console.error(`[Mux] Error processing video ${videoId}:`, error);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Process an ad campaign video with Mux.
+ *
+ * Called from the voyager-ads advertiser UI after a video creative has been
+ * uploaded to Firebase Storage.  The function:
+ *   1. Validates that the authenticated caller owns the campaign.
+ *   2. Generates a short-lived signed URL for the Storage object.
+ *   3. Creates a Mux asset (baseline encoding, ≤ 1080p).
+ *   4. Writes muxAssetId / muxStatus:'preparing' to ads_campaigns/{campaignId}.
+ *
+ * The muxWebhook function completes the flow when Mux fires video.asset.ready.
+ */
+export const processAdVideoWithMux = onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new Error("Authentication required");
+    }
+
+    const { campaignId, storagePath } = request.data as { campaignId?: string; storagePath?: string };
+
+    if (!campaignId || !storagePath) {
+      throw new Error("campaignId and storagePath are required");
+    }
+
+    // Verify the authenticated caller owns this campaign.
+    const campaignRef = db.collection("ads_campaigns").doc(campaignId);
+    const campaignSnap = await campaignRef.get();
+    if (!campaignSnap.exists) {
+      throw new Error(`Campaign ${campaignId} not found`);
+    }
+    if (campaignSnap.data()?.uid !== request.auth.uid) {
+      throw new Error("Unauthorized: caller does not own this campaign");
+    }
+
+    console.log(`[Mux Ads] Processing ad video: campaignId=${campaignId}, storagePath=${storagePath}`);
+
+    try {
+      // Generate a signed URL that Mux can fetch (valid for 1 hour).
+      // Use the default bucket so this works on both dev and prod projects.
+      const bucket = admin.storage().bucket();
+      const file = bucket.file(storagePath);
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 3600 * 1000,
+      });
+
+      // Create the Mux asset; embed campaignId in passthrough so the webhook
+      // can route video.asset.ready to ads_campaigns (not videos).
+      const asset = await mux.video.assets.create({
+        inputs: [{ url: signedUrl }],
+        playback_policy: ["public"],
+        encoding_tier: "baseline",
+        max_resolution_tier: "1080p",
+        passthrough: JSON.stringify({
+          campaignId,
+          type: "ad",
+        }),
+      });
+
+      await campaignRef.update({
+        muxAssetId: asset.id,
+        muxStatus: "preparing",
+        muxPlaybackId: asset.playback_ids?.[0]?.id || null,
+        muxProcessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`[Mux Ads] Asset created: ${asset.id} for campaign ${campaignId}`);
+
+      return {
+        success: true,
+        assetId: asset.id,
+        status: asset.status,
+      };
+    } catch (error) {
+      console.error(`[Mux Ads] Error processing campaign ${campaignId}:`, error);
       throw error;
     }
   }

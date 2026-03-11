@@ -32,7 +32,7 @@ export const createStripePortalSession = functions.https.onCall(async (data, con
     return { url: session.url };
   } catch (err: any) {
     logger.error('[STRIPE PORTAL] Error creating portal session:', err);
-    // Return a more descriptive error to the frontend
+    if (err instanceof functions.https.HttpsError) throw err;
     throw new functions.https.HttpsError('internal', err?.message || 'Failed to create Stripe portal session');
   }
 });
