@@ -32,63 +32,75 @@ function isSocialMediaCrawler(userAgent: string): boolean {
 }
 
 /**
- * Query Firestore for the best active ai_slot campaign matching the given destination.
- * Returns the ad unit (a subset of CampaignDoc fields) or null when no eligible
- * campaign is available.
+ * Query Firestore for the best active ai_slot campaign for the given destination.
  *
- * Scoring mirrors selectAds.ts:
- *  +8  destination string match
- *  +10 exact placeId match
- * Hard constraints: status == 'active', placement == 'ai_slot',
- *   !isUnderReview, budgetCents > 0, dates cover today, has assetUrl.
+ * Itinerary documents store a `destination` string (e.g. "Los Angeles, CA, USA")
+ * but do NOT store a top-level placeId — so targeting is destination-string only.
+ *
+ * Query strategy (two reads max):
+ *  1. Destination-targeted   → WHERE targetDestination == destination, limit 10
+ *     Campaigns that explicitly targeted this destination are preferred (score +8).
+ *  2. Generic fallback        → campaigns with no targetDestination set, limit 20
+ *     Only runs when query 1 returns zero eligible candidates.
+ *     Advertisers who leave targetDestination blank opt into all destinations.
+ *
+ * Hard constraints applied in-memory after fetch:
+ *   status == 'active', placement == 'ai_slot', !isUnderReview,
+ *   budgetCents > 0, assetUrl present, date range covers today.
  */
-async function pickAiSlotAd(destination: string, placeId?: string): Promise<any | null> {
+async function pickAiSlotAd(destination: string): Promise<any | null> {
   try {
     const today = new Date();
     const ymd = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
 
-    const snapshot = await db
+    const baseQuery = db
       .collection('ads_campaigns')
       .where('status', '==', 'active')
-      .where('placement', '==', 'ai_slot')
-      .get();
+      .where('placement', '==', 'ai_slot');
 
-    if (snapshot.empty) return null;
+    const isEligible = (d: any): boolean => {
+      if (d.isUnderReview) return false;
+      if (!d.budgetCents || d.budgetCents <= 0) return false;
+      if (!d.assetUrl) return false;
+      if (d.startDate && d.startDate > ymd) return false;
+      if (d.endDate && d.endDate < ymd) return false;
+      return true;
+    };
 
-    const candidates: Array<{ score: number; doc: any; id: string }> = [];
+    // ── Query 1: destination-targeted campaigns ────────────────────────────────
+    let candidates: Array<{ score: number; doc: any; id: string }> = [];
 
-    for (const docSnap of snapshot.docs) {
-      const d = docSnap.data();
+    if (destination) {
+      const targetedSnap = await baseQuery
+        .where('targetDestination', '==', destination)
+        .limit(10)
+        .get();
 
-      // Hard filters
-      if (d.isUnderReview) continue;
-      if (!d.budgetCents || d.budgetCents <= 0) continue;
-      if (!d.assetUrl) continue; // must have a visual
-
-      // Date range — campaign must be active today
-      if (d.startDate && d.startDate > ymd) continue; // not started yet
-      if (d.endDate && d.endDate < ymd) continue;     // already ended
-
-      // Score by destination relevance
-      let score = 0;
-      const campDest = (d.targetDestination || d.location || '').toLowerCase().trim();
-      const campPlaceId = d.targetPlaceId || '';
-
-      if (placeId && campPlaceId && campPlaceId === placeId) {
-        score += 10;
-      } else if (campDest && destination) {
-        const userDest = destination.toLowerCase().trim();
-        if (campDest === userDest || campDest.includes(userDest) || userDest.includes(campDest)) {
-          score += 8;
-        }
+      for (const docSnap of targetedSnap.docs) {
+        const d = docSnap.data();
+        if (!isEligible(d)) continue;
+        candidates.push({ score: 8, doc: d, id: docSnap.id });
       }
+    }
 
-      candidates.push({ score, doc: d, id: docSnap.id });
+    // ── Query 2: generic (no destination) fallback ─────────────────────────────
+    // Only runs when no destination-targeted candidates passed eligibility.
+    if (candidates.length === 0) {
+      const genericSnap = await baseQuery
+        .where('targetDestination', '==', '')
+        .limit(20)
+        .get();
+
+      for (const docSnap of genericSnap.docs) {
+        const d = docSnap.data();
+        if (!isEligible(d)) continue;
+        candidates.push({ score: 0, doc: d, id: docSnap.id });
+      }
     }
 
     if (candidates.length === 0) return null;
 
-    // Sort by score descending; break ties deterministically by campaignId
+    // Sort by score desc; break ties deterministically by campaignId
     candidates.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 
     const winner = candidates[0];
@@ -1106,10 +1118,8 @@ app.get('/share-itinerary/:itineraryId', async (req, res) => {
       itinerary?.response?.data?.itinerary?.destination ||
       itinerary?.destination ||
       '';
-    const sharePlaceId = itinerary?.placeId ?? undefined;
-
     // Fetch the best matching ai_slot promo (non-blocking — falls back to null)
-    const promoAd = await pickAiSlotAd(shareDestination, sharePlaceId);
+    const promoAd = await pickAiSlotAd(shareDestination);
 
     if (promoAd) {
       logger.info('[itineraryShare] Promo selected', {
