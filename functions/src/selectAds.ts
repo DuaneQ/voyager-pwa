@@ -520,6 +520,19 @@ export const selectAds = onCall(
         continue
       }
 
+      // Hard filter: video creatives must have a Mux HLS URL.
+      // Raw Firebase Storage files (.mov/.mp4) have the moov atom at the end of
+      // the file, requiring AVFoundation to download the entire file before
+      // playback starts (~30 MB+ = multi-second stall). On iOS this also
+      // saturates the AVFoundation HTTP/2 connection pool → CoreMediaErrorDomain
+      // -12889 on all other videos in the feed.
+      // muxPlaybackUrl is only written by the webhook once muxStatus = 'ready',
+      // so this guard is equivalent to: drop if Mux transcoding is not complete.
+      if (doc.creativeType === 'video' && !doc.muxPlaybackUrl) {
+        console.log(`[selectAds] DROP ${id} video creative but muxPlaybackUrl absent (Mux not ready)`)
+        continue
+      }
+
       const rawScore = scoreCampaign(doc, ctx)
       // Deprioritise campaigns the viewer has already seen this session.
       // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
