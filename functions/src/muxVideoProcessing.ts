@@ -148,6 +148,8 @@ export const onVideoUploaded = onObjectFinalized(
         // Encoding settings for universal compatibility
         encoding_tier: "baseline", // Use baseline for fastest encoding
         max_resolution_tier: "1080p", // Cap at 1080p for mobile
+        // Standard MP4 renditions (free) so og:video works for Facebook/social sharing
+        mp4_support: "standard",
         // Add metadata for tracking
         passthrough: JSON.stringify({
           userId,
@@ -446,6 +448,7 @@ export const processVideoWithMux = onCall(
         playback_policy: ["public"],
         encoding_tier: "baseline",
         max_resolution_tier: "1080p",
+        mp4_support: "standard",
         passthrough: JSON.stringify({
           videoId,
           userId: request.auth.uid,
@@ -532,6 +535,7 @@ export const processAdVideoWithMux = onCall(
         playback_policy: ["public"],
         encoding_tier: "baseline",
         max_resolution_tier: "1080p",
+        mp4_support: "standard",
         passthrough: JSON.stringify({
           campaignId,
           type: "ad",
@@ -620,6 +624,7 @@ export const migrateVideosToMux = onCall(
             playback_policy: ["public"],
             encoding_tier: "baseline",
             max_resolution_tier: "1080p",
+            mp4_support: "standard",
             passthrough: JSON.stringify({
               videoId: video.id,
               userId: video.userId,
