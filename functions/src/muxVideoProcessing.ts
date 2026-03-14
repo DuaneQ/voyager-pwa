@@ -100,7 +100,7 @@ const mux = new Mux({
  */
 export const onVideoUploaded = onObjectFinalized(
   {
-    bucket: "mundo1-1.appspot.com", // Production bucket
+    // bucket: "mundo1-1.appspot.com", // Production bucket - REMOVED to allow default bucket in any env
     region: "us-central1",
     memory: "256MiB",
     timeoutSeconds: 60,
