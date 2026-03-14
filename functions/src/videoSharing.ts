@@ -278,6 +278,8 @@ function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
           preload="auto"
           poster="${imageUrl}"
         >
+          ${mp4Url ? `<source src="${mp4Url}" type="video/mp4">` : ''}
+          ${hlsUrl ? `<source src="${hlsUrl}" type="application/x-mpegURL">` : ''}
           Your browser does not support the video tag.
         </video>
       ` : `
@@ -376,6 +378,17 @@ function generateVideoHTML(video: any, videoId: string): string {
   // Facebook often doesn't display video previews reliably for non-partner domains
   const fbOptimizedImageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
 
+  // Extract Mux playback ID so og:video uses the public Mux MP4 URL.
+  // Firebase Storage URLs may require auth tokens that expire; Mux MP4 URLs are
+  // always publicly accessible and are the correct format for social media.
+  const muxPlaybackUrl = video.muxPlaybackUrl || '';
+  const muxPlaybackId = muxPlaybackUrl.includes('stream.mux.com/')
+    ? muxPlaybackUrl.split('stream.mux.com/')[1]?.replace('.m3u8', '')
+    : null;
+  const ogVideoUrl = muxPlaybackId
+    ? `https://stream.mux.com/${muxPlaybackId}/high.mp4`
+    : video.videoUrl; // fallback for legacy videos without Mux
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -399,12 +412,13 @@ function generateVideoHTML(video: any, videoId: string): string {
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:site_name" content="TravalPass">
   
-  <!-- Video meta tags (may work for some platforms) -->
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video" content="${video.videoUrl}">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:secure_url" content="${video.videoUrl}">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:type" content="video/mp4">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:width" content="1280">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:height" content="720">` : ''}
+  <!-- Video meta tags — uses Mux MP4 URL (publicly accessible) when available,
+       falls back to videoUrl for legacy videos -->
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video" content="${ogVideoUrl}">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:secure_url" content="${ogVideoUrl}">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:type" content="video/mp4">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:width" content="1280">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:height" content="720">` : ''}
   ${video.duration ? `<meta property="video:duration" content="${video.duration}">` : ''}
   
   <!-- Facebook App ID (replace with your actual app ID) -->
