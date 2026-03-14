@@ -16,6 +16,7 @@ const {
   scoreCampaign,
   campaignToAdUnit,
   tieBreakKey,
+  checkCampaignEligibility,
   clearCampaignCache,
   CACHE_TTL_MS,
 } = _testing
@@ -844,5 +845,40 @@ describe('tieBreakKey with sessionId-based seeds', () => {
 
     // The orders should differ (the fix produces a different hash)
     expect(oldBugOrder).not.toEqual(fixedOrder)
+  })
+})
+
+// ─── checkCampaignEligibility ────────────────────────────────────────────────
+
+describe('checkCampaignEligibility', () => {
+  it('should drop campaigns with zero budget', () => {
+    const doc = makeCampaign({ budgetAmount: '0' })
+    expect(checkCampaignEligibility(doc, 0)).toMatch(/budgetCents=0/)
+  })
+
+  it('should drop campaigns with no creative', () => {
+    // Both assetUrl and muxPlaybackUrl undefined/null
+    const doc = makeCampaign({ assetUrl: '', creativeType: 'image' })
+    delete (doc as any).muxPlaybackUrl
+    expect(checkCampaignEligibility(doc, 5000)).toMatch(/no creative/)
+  })
+
+  it('should drop video campaigns without Mux URL (not ready)', () => {
+    // Only assetUrl present (raw file), no Mux URL
+    const doc = makeCampaign({
+      creativeType: 'video',
+      assetUrl: 'https://firebasestorage.com/raw.mp4',
+    })
+    delete (doc as any).muxPlaybackUrl
+    expect(checkCampaignEligibility(doc, 5000)).toMatch(/video creative but muxPlaybackUrl absent/)
+  })
+
+  it('should pass video campaigns with Mux URL', () => {
+    const doc = makeCampaign({
+      creativeType: 'video',
+      assetUrl: 'https://firebasestorage.com/raw.mp4',
+      muxPlaybackUrl: 'https://stream.mux.com/abc.m3u8',
+    })
+    expect(checkCampaignEligibility(doc, 5000)).toBeNull()
   })
 })
