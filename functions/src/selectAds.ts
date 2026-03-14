@@ -331,6 +331,36 @@ export function tieBreakKey(campaignId: string, seed: string): number {
  * 3. Score each passing campaign against user context
  * 4. Sort by score desc, return top N
  */
+
+/**
+ * Check if a campaign is eligible to run (has budget, valid creative, etc).
+ * Returns null if eligible, or a string reason if dropped.
+ */
+function checkCampaignEligibility(doc: any, budgetCents: number): string | null {
+  if (budgetCents <= 0) {
+    return `budgetCents=${budgetCents} budgetAmount=${doc.budgetAmount}`
+  }
+
+  // Hard filter: must have a renderable creative
+  if (!doc.assetUrl && !doc.muxPlaybackUrl) {
+    return 'no creative (assetUrl and muxPlaybackUrl both absent)'
+  }
+
+  // Hard filter: video creatives must have a Mux HLS URL.
+  // Raw Firebase Storage files (.mov/.mp4) have the moov atom at the end of
+  // the file, requiring AVFoundation to download the entire file before
+  // playback starts (~30 MB+ = multi-second stall). On iOS this also
+  // saturates the AVFoundation HTTP/2 connection pool → CoreMediaErrorDomain
+  // -12889 on all other videos in the feed.
+  // muxPlaybackUrl is only written by the webhook once muxStatus = 'ready',
+  // so this guard is equivalent to: drop if Mux transcoding is not complete.
+  if (doc.creativeType === 'video' && !doc.muxPlaybackUrl) {
+    return 'video creative but muxPlaybackUrl absent (Mux not ready)'
+  }
+
+  return null
+}
+
 export const selectAds = onCall(
   {
     region: 'us-central1',
@@ -509,14 +539,10 @@ export const selectAds = onCall(
           : Number.isFinite(parsedBudget)
             ? Math.round(parsedBudget * 100)
             : 0
-      if (budgetCents <= 0) {
-        console.log(`[selectAds] DROP ${id} budgetCents=${budgetCents} budgetAmount=${doc.budgetAmount}`)
-        continue
-      }
 
-      // Hard filter: must have a renderable creative
-      if (!doc.assetUrl && !doc.muxPlaybackUrl) {
-        console.log(`[selectAds] DROP ${id} no creative (assetUrl and muxPlaybackUrl both absent)`)
+      const dropReason = checkCampaignEligibility(doc, budgetCents)
+      if (dropReason) {
+        console.log(`[selectAds] DROP ${id} ${dropReason}`)
         continue
       }
 
@@ -554,6 +580,7 @@ export const _testing = {
   scoreCampaign,
   campaignToAdUnit,
   tieBreakKey,
+  checkCampaignEligibility,
   /** Clear the in-memory campaign cache (for testing or admin use). */
   clearCampaignCache: () => campaignCache.clear(),
   CACHE_TTL_MS,

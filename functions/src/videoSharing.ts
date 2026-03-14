@@ -11,7 +11,7 @@ const db = admin.firestore();
 const app = express();
 
 // Helper function to detect social media crawlers
-function isSocialMediaCrawler(userAgent: string): boolean {
+export function isSocialMediaCrawler(userAgent: string): boolean {
   const crawlerPatterns = [
     /facebookexternalhit/i,
     /twitterbot/i,
@@ -32,7 +32,7 @@ function isSocialMediaCrawler(userAgent: string): boolean {
 }
 
 // Helper function to detect Facebook's in-app browser
-function isFacebookInAppBrowser(userAgent: string): boolean {
+export function isFacebookInAppBrowser(userAgent: string): boolean {
   // Facebook in-app browser patterns
   return /FBAN|FBAV|FBSV|FBID/i.test(userAgent) ||
     (/Mobile.*Facebook/i.test(userAgent) && !/facebookexternalhit/i.test(userAgent));
@@ -52,7 +52,7 @@ function isRestrictedInAppBrowser(userAgent: string): boolean {
 }
 
 // Helper to get base URL based on environment
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || '';
   if (projectId.includes('mundo1-dev')) {
     return 'https://mundo1-dev.web.app';
@@ -61,7 +61,7 @@ function getBaseUrl(): string {
 }
 
 // Generate HTML with inline video player for public videos (no login required)
-function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
+export function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
   const baseUrl = getBaseUrl();
   const videoUrl = `${baseUrl}/video/${videoId}`;
   const shareUrl = `${baseUrl}/video-share/${videoId}`;
@@ -75,10 +75,9 @@ function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
   const imageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
 
   // Get the Mux playback ID to construct proper URLs
-  const muxPlaybackUrl = video.muxPlaybackUrl || '';
-  const muxPlaybackId = muxPlaybackUrl.includes('stream.mux.com/')
-    ? muxPlaybackUrl.split('stream.mux.com/')[1]?.replace('.m3u8', '')
-    : null;
+  const muxPlaybackId = video.muxPlaybackId || (video.muxPlaybackUrl && video.muxPlaybackUrl.includes('stream.mux.com/')
+    ? video.muxPlaybackUrl.split('stream.mux.com/')[1]?.replace('.m3u8', '')
+    : null);
 
   // Mux URLs: HLS for Safari/HLS.js, MP4 for direct playback
   const hlsUrl = muxPlaybackId ? `https://stream.mux.com/${muxPlaybackId}.m3u8` : '';
@@ -278,6 +277,8 @@ function generatePublicVideoPlayerHTML(video: any, videoId: string): string {
           preload="auto"
           poster="${imageUrl}"
         >
+          ${hlsUrl ? `<source src="${hlsUrl}" type="application/vnd.apple.mpegurl">` : ''}
+          ${mp4Url ? `<source src="${mp4Url}" type="video/mp4">` : ''}
           Your browser does not support the video tag.
         </video>
       ` : `
@@ -376,6 +377,17 @@ function generateVideoHTML(video: any, videoId: string): string {
   // Facebook often doesn't display video previews reliably for non-partner domains
   const fbOptimizedImageUrl = video.thumbnailUrl || `${baseUrl}/og-image.png`;
 
+  // Prefer the canonical muxPlaybackId persisted by the Mux webhook, and only
+  // fall back to parsing the playback URL for legacy documents that may not
+  // have the ID stored separately.
+  const muxPlaybackId = video.muxPlaybackId || (video.muxPlaybackUrl && video.muxPlaybackUrl.includes('stream.mux.com/')
+    ? video.muxPlaybackUrl.split('stream.mux.com/')[1]?.replace('.m3u8', '')
+    : null);
+
+  const ogVideoUrl = muxPlaybackId
+    ? `https://stream.mux.com/${muxPlaybackId}/high.mp4`
+    : video.videoUrl; // fallback for legacy videos without Mux
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -399,12 +411,13 @@ function generateVideoHTML(video: any, videoId: string): string {
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:site_name" content="TravalPass">
   
-  <!-- Video meta tags (may work for some platforms) -->
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video" content="${video.videoUrl}">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:secure_url" content="${video.videoUrl}">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:type" content="video/mp4">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:width" content="1280">` : ''}
-  ${video.videoUrl && video.isPublic ? `<meta property="og:video:height" content="720">` : ''}
+  <!-- Video meta tags — uses Mux MP4 URL (publicly accessible) when available,
+       falls back to videoUrl for legacy videos -->
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video" content="${ogVideoUrl}">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:secure_url" content="${ogVideoUrl}">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:type" content="video/mp4">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:width" content="1280">` : ''}
+  ${ogVideoUrl && video.isPublic ? `<meta property="og:video:height" content="720">` : ''}
   ${video.duration ? `<meta property="video:duration" content="${video.duration}">` : ''}
   
   <!-- Facebook App ID (replace with your actual app ID) -->
