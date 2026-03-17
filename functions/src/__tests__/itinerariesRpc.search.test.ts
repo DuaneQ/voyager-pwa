@@ -6,6 +6,8 @@
  * preference-to-query mapping (gender, status, sexualOrientation, dates).
  */
 
+export {};
+
 jest.resetModules();
 
 // ─── Mock firebase-admin ──────────────────────────────────────────────────────

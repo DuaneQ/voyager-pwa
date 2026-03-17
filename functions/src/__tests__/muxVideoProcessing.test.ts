@@ -11,6 +11,8 @@
  * - migrateVideosToMux dry-run must not call mux.video.assets.create.
  */
 
+export {};
+
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockAssetsCreate = jest.fn();

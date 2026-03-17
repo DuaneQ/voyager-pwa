@@ -8,6 +8,11 @@
  * - Edge: no users array → exits gracefully with no mail
  * - Edge: all emails blank strings → exits with no mail
  * - Edge: duplicate emails → only one mail doc written per unique address
+ */
+
+export {};
+
+/**
  * - Error: Firestore add() throws → error logged, function resolves (doesn't rethrow)
  * - Shape: mail document has correct fields
  */

@@ -6,6 +6,8 @@
  * fetch is mocked globally; no real Google Places calls are made.
  */
 
+export {};
+
 // ─── Mocks ─────────────────────────────────────────────────────────────────
 
 jest.mock('firebase-functions/v1', () => ({
