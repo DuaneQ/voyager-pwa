@@ -70,20 +70,59 @@ const db = admin.firestore();
 
 // Use v2 Firestore onDocumentCreated trigger
 export const notifyNewConnection = onDocumentCreated("connections/{connectionId}", async (event) => {
+  const connectionId = event.params?.connectionId;
+  console.log(`[notifyNewConnection] FIRED for connectionId: ${connectionId}`);
+
   const snap = event.data;
   // In v2 the event.data is a DocumentSnapshot-like object. Call data() if available.
   const connection = snap && typeof (snap as any).data === 'function' ? (snap as any).data() : snap;
-  if (
-    !connection ||
-    !connection.emails ||
-    !Array.isArray(connection.emails)
-  ) {
-    console.log("No emails found in connection doc:", connection);
+
+  console.log(`[notifyNewConnection] connection.users:`, JSON.stringify(connection?.users));
+  console.log(`[notifyNewConnection] connection.emails (from doc):`, JSON.stringify(connection?.emails));
+
+  if (!connection) {
+    console.error(`[notifyNewConnection] No connection data found for connectionId: ${connectionId}`);
     return null;
   }
 
-  // Remove duplicate emails and filter out empty strings
-  const uniqueEmails = Array.from(new Set(connection.emails)).filter(Boolean);
+  // Build email list: start from the emails array saved on the connection doc,
+  // then fall back to looking up each user's email from users/{uid} to handle
+  // cases where userInfo.email was not populated on the itinerary at match time.
+  const docEmails: string[] = Array.isArray(connection.emails)
+    ? (connection.emails as string[]).filter(Boolean)
+    : [];
+
+  const userIds: string[] = Array.isArray(connection.users)
+    ? (connection.users as string[]).filter(Boolean)
+    : [];
+
+  console.log(`[notifyNewConnection] docEmails: ${JSON.stringify(docEmails)}, userIds: ${JSON.stringify(userIds)}`);
+
+  let resolvedEmails = [...docEmails];
+
+  // If the doc is missing emails (or has fewer than the number of users), fetch from users collection
+  if (resolvedEmails.length < userIds.length) {
+    console.log(`[notifyNewConnection] docEmails count (${resolvedEmails.length}) < userIds count (${userIds.length}) — fetching from users collection`);
+    const userFetches = await Promise.all(
+      userIds.map(uid => db.collection('users').doc(uid).get())
+    );
+    for (const userDoc of userFetches) {
+      const email = userDoc.data()?.email;
+      if (email && !resolvedEmails.includes(email)) {
+        resolvedEmails.push(email);
+        console.log(`[notifyNewConnection] Fetched email from users/${userDoc.id}: ${email}`);
+      }
+    }
+  }
+
+  // Remove duplicates and blanks
+  const uniqueEmails = (Array.from(new Set(resolvedEmails)) as string[]).filter(Boolean);
+  console.log(`[notifyNewConnection] Sending to ${uniqueEmails.length} unique emails:`, uniqueEmails);
+
+  if (uniqueEmails.length === 0) {
+    console.error(`[notifyNewConnection] No valid emails found — neither connection doc nor users collection had emails. userIds: ${JSON.stringify(userIds)}`);
+    return null;
+  }
 
   const mailPromises = uniqueEmails.map(async (email) => {
     const mailDoc = {
@@ -110,17 +149,14 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
 
     try {
       const mailRef = await db.collection("mail").add(mailDoc);
-      console.log(`Mail doc written for ${email} at mail/${mailRef.id}`);
+      console.log(`[notifyNewConnection] Mail doc written for ${email} at mail/${mailRef.id}`);
     } catch (err) {
-      console.error(`Failed to write mail doc for ${email}:`, err);
+      console.error(`[notifyNewConnection] Failed to write mail doc for ${email}:`, err);
     }
   });
 
   await Promise.all(mailPromises);
-  console.log(
-    "All mail promises resolved for connectionId:",
-    event.params?.connectionId
-  );
+  console.log(`[notifyNewConnection] All mail promises resolved for connectionId: ${connectionId}`);
   return null;
 });
 

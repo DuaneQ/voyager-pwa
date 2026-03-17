@@ -227,6 +227,19 @@ export const searchItineraries = onCall(async (req) => {
     const db = getDb();
     let query: admin.firestore.Query = db.collection(ITINERARIES_COLLECTION);
 
+    console.log('[SEARCH CF] ── searchItineraries CALLED ──────────────────────');
+    console.log('[SEARCH CF] caller uid:', req.auth?.uid ?? 'unauthenticated');
+    console.log('[SEARCH CF] data.currentUserId:', data.currentUserId);
+    console.log('[SEARCH CF] data.destination:', data.destination);
+    console.log('[SEARCH CF] data.gender:', data.gender);
+    console.log('[SEARCH CF] data.status:', data.status);
+    console.log('[SEARCH CF] data.sexualOrientation:', data.sexualOrientation);
+    console.log('[SEARCH CF] data.minStartDay:', data.minStartDay, '→', data.minStartDay ? new Date(Number(data.minStartDay)).toISOString() : 'N/A');
+    console.log('[SEARCH CF] data.maxEndDay:', data.maxEndDay, '→', data.maxEndDay ? new Date(Number(data.maxEndDay)).toISOString() : 'N/A');
+    console.log('[SEARCH CF] data.lowerRange:', data.lowerRange, 'data.upperRange:', data.upperRange);
+    console.log('[SEARCH CF] data.excludedIds:', JSON.stringify(data.excludedIds));
+    console.log('[SEARCH CF] data.blockedUserIds:', JSON.stringify(data.blockedUserIds));
+
     // Equality filters (Firestore handles these natively with composite indexes)
     if (data.destination) {
       query = query.where('destination', '==', data.destination);
@@ -241,75 +254,76 @@ export const searchItineraries = onCall(async (req) => {
       query = query.where('userInfo.sexualOrientation', '==', data.sexualOrientation);
     }
 
-    // Date overlap filtering using startDay/endDay (epoch ms numbers)
-    // For overlap: candidate.endDay >= user.startDay AND candidate.startDay <= user.endDay
-    // Firestore supports inequalities on multiple fields (added 2024).
-    //
-    // IMPORTANT: Always apply both range filters (with sensible defaults when not provided)
-    // so that ALL queries hit the composite indexes that include both endDay + startDay.
-    // Without this, queries like destination+gender+orderBy(endDay) would need separate
-    // indexes without the startDay field, doubling the index count.
     const userStartDay = data.minStartDay ? Number(data.minStartDay) : 0;
     const userEndDay = data.maxEndDay ? Number(data.maxEndDay) : Number.MAX_SAFE_INTEGER;
-    query = query.where('endDay', '>=', userStartDay);   // candidate ends after user starts (or endDay >= 0 = all)
-    query = query.where('startDay', '<=', userEndDay);    // candidate starts before user ends (or startDay <= MAX = all)
-
-    // Order by endDay ascending (Firestore requires orderBy on the first inequality field;
-    // endDay >= is our first range filter, so orderBy must match it for composite index usage)
+    console.log('[SEARCH CF] Firestore range: endDay >=', userStartDay, ' AND startDay <=', userEndDay);
+    query = query.where('endDay', '>=', userStartDay);
+    query = query.where('startDay', '<=', userEndDay);
     query = query.orderBy('endDay', 'asc');
 
-    // Fetch more than needed to account for post-processing filters
     const take = Math.min(100, Number(data.pageSize || 50));
-    const overFetch = take * 3; // Fetch extra to filter in post-processing
+    const overFetch = take * 3;
     query = query.limit(overFetch);
 
     const snapshot = await query.get();
-    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log('[SEARCH CF] Firestore snapshot size (before post-filter):', snapshot.size);
+    snapshot.docs.forEach((doc, i) => {
+      const d = doc.data() as any;
+      console.log(`[SEARCH CF] doc[${i}]: id=${doc.id} destination=${d.destination} userId=${d.userId} userInfo.uid=${d.userInfo?.uid} startDay=${d.startDay} endDay=${d.endDay} age=${d.age}`);
+    });
 
-    // ── Post-processing filters ──────────────────────────────────────────────
-    // Filters that Firestore can't handle natively in a single compound query
+    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const currentUserId = data.currentUserId;
     const currentUserBlockedIds = Array.isArray(data.blockedUserIds) ? data.blockedUserIds : [];
     const excludedIds = new Set(Array.isArray(data.excludedIds) ? data.excludedIds : []);
 
-    // Age range filter (post-processing to avoid needing additional composite indexes)
     const hasAgeFilter = data.lowerRange != null && data.upperRange != null;
     const lowerRange = hasAgeFilter ? Number(data.lowerRange) : null;
     const upperRange = hasAgeFilter ? Number(data.upperRange) : null;
 
     items = items.filter((item: any) => {
       // Exclude current user's own itineraries
-      if (currentUserId && item.userId === currentUserId) return false;
+      if (currentUserId && item.userId === currentUserId) {
+        console.log(`[SEARCH CF] EXCLUDED (own itinerary): id=${item.id} userId=${item.userId}`);
+        return false;
+      }
 
       // Exclude viewed/excluded itineraries
-      if (excludedIds.has(item.id)) return false;
+      if (excludedIds.has(item.id)) {
+        console.log(`[SEARCH CF] EXCLUDED (in excludedIds): id=${item.id}`);
+        return false;
+      }
 
       // Age range filter
       if (hasAgeFilter && item.age != null) {
         const age = Number(item.age);
-        if (age < lowerRange! || age > upperRange!) return false;
+        if (age < lowerRange! || age > upperRange!) {
+          console.log(`[SEARCH CF] EXCLUDED (age ${age} outside [${lowerRange},${upperRange}]): id=${item.id}`);
+          return false;
+        }
       }
 
-      // Bidirectional blocking
       const candidateUserId = item.userInfo?.uid;
       const candidateBlockedList = Array.isArray(item.userInfo?.blocked) ? item.userInfo.blocked : [];
 
-      // Exclude if current user blocked this candidate
       if (currentUserId && candidateUserId && currentUserBlockedIds.includes(candidateUserId)) {
+        console.log(`[SEARCH CF] EXCLUDED (current user blocked candidate): id=${item.id} candidateUid=${candidateUserId}`);
         return false;
       }
 
-      // Exclude if candidate blocked current user
       if (currentUserId && candidateBlockedList.includes(currentUserId)) {
+        console.log(`[SEARCH CF] EXCLUDED (candidate blocked current user): id=${item.id} candidateUid=${candidateUserId}`);
         return false;
       }
 
       return true;
     });
 
-    // Trim to requested page size
+    console.log('[SEARCH CF] items after post-filter:', items.length);
+
     const finalItems = items.slice(0, take);
+    console.log('[SEARCH CF] finalItems returned:', finalItems.length);
 
     return { success: true, data: sanitizeDeep(finalItems) };
   } catch (err: any) {
