@@ -160,12 +160,12 @@ describe('searchItineraries RPC (Firestore)', () => {
     expect(res).toHaveProperty('success', true);
     expect(res.data.map((d: any) => d.id)).toEqual(['match-1']);
 
-    // Verify Firestore .where() was called with destination and status
+    // Verify Firestore .where() was called with destination and userInfo.status
     const whereArgs = mockQuery._wheres;
     expect(whereArgs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: 'destination', op: '==', value: 'Paris' }),
-        expect.objectContaining({ field: 'status', op: '==', value: 'Couple' }),
+        expect.objectContaining({ field: 'userInfo.status', op: '==', value: 'Couple' }),
       ])
     );
   });
@@ -243,11 +243,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, gender: g }, 'u'));
-      const genderWheres = mockQuery._wheres.filter((w: any) => w.field === 'gender');
+      const genderWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.gender');
       if (g === 'No Preference') {
         expect(genderWheres).toHaveLength(0);
       } else {
-        expect(genderWheres).toEqual([{ field: 'gender', op: '==', value: g }]);
+        expect(genderWheres).toEqual([{ field: 'userInfo.gender', op: '==', value: g }]);
       }
     });
 
@@ -261,11 +261,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, status: s }, 'u'));
-      const statusWheres = mockQuery._wheres.filter((w: any) => w.field === 'status');
+      const statusWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.status');
       if (s === 'No Preference') {
         expect(statusWheres).toHaveLength(0);
       } else {
-        expect(statusWheres).toEqual([{ field: 'status', op: '==', value: s }]);
+        expect(statusWheres).toEqual([{ field: 'userInfo.status', op: '==', value: s }]);
       }
     });
 
@@ -279,11 +279,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, sexualOrientation: o }, 'u'));
-      const orientWheres = mockQuery._wheres.filter((w: any) => w.field === 'sexualOrientation');
+      const orientWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.sexualOrientation');
       if (o === 'No Preference') {
         expect(orientWheres).toHaveLength(0);
       } else {
-        expect(orientWheres).toEqual([{ field: 'sexualOrientation', op: '==', value: o }]);
+        expect(orientWheres).toEqual([{ field: 'userInfo.sexualOrientation', op: '==', value: o }]);
       }
     });
 
@@ -404,9 +404,9 @@ describe('searchItineraries RPC (Firestore)', () => {
       const wheres = mockQuery._wheres;
       expect(wheres).toEqual(expect.arrayContaining([
         { field: 'destination', op: '==', value: 'Austin, TX, USA' },
-        { field: 'gender', op: '==', value: 'Female' },
-        { field: 'status', op: '==', value: 'Single' },
-        { field: 'sexualOrientation', op: '==', value: 'Bisexual' },
+        { field: 'userInfo.gender', op: '==', value: 'Female' },
+        { field: 'userInfo.status', op: '==', value: 'Single' },
+        { field: 'userInfo.sexualOrientation', op: '==', value: 'Bisexual' },
         { field: 'endDay', op: '>=', value: now },
         { field: 'startDay', op: '<=', value: now + 86400000 },
       ]));
@@ -430,9 +430,9 @@ describe('searchItineraries RPC (Firestore)', () => {
 
       const fields = mockQuery._wheres.map((w: any) => w.field);
       expect(fields).toContain('destination');
-      expect(fields).toContain('status');
-      expect(fields).not.toContain('gender');
-      expect(fields).not.toContain('sexualOrientation');
+      expect(fields).toContain('userInfo.status');
+      expect(fields).not.toContain('userInfo.gender');
+      expect(fields).not.toContain('userInfo.sexualOrientation');
     });
   });
 
