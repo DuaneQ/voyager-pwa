@@ -231,15 +231,12 @@ export const searchItineraries = onCall(async (req) => {
     if (data.destination) {
       query = query.where('destination', '==', data.destination);
     }
-    if (data.gender && data.gender !== 'No Preference') {
-      query = query.where('gender', '==', data.gender);
-    }
-    if (data.status && data.status !== 'No Preference') {
-      query = query.where('status', '==', data.status);
-    }
-    if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') {
-      query = query.where('sexualOrientation', '==', data.sexualOrientation);
-    }
+    // gender, status and sexualOrientation are NOT filtered by Firestore.
+    // The itinerary fields represent "who I want to travel with" (a preference),
+    // while userInfo.*  holds the candidate's actual attributes.
+    // Strict Firestore equality on itinerary.gender would silently exclude candidates
+    // who have 'No Preference' on their itinerary but DO match on userInfo.gender.
+    // We apply these filters in post-processing below.
 
     // Date overlap filtering using startDay/endDay (epoch ms numbers)
     // For overlap: candidate.endDay >= user.startDay AND candidate.startDay <= user.endDay
@@ -289,6 +286,19 @@ export const searchItineraries = onCall(async (req) => {
       if (hasAgeFilter && item.age != null) {
         const age = Number(item.age);
         if (age < lowerRange! || age > upperRange!) return false;
+      }
+
+      // Preference field matching: compare against the candidate's actual userInfo attributes,
+      // not itinerary preference fields, so 'No Preference' itineraries are included when
+      // the candidate's real gender/status/orientation matches what the searcher wants.
+      if (data.gender && data.gender !== 'No Preference') {
+        if (item.userInfo?.gender !== data.gender) return false;
+      }
+      if (data.status && data.status !== 'No Preference') {
+        if (item.userInfo?.status !== data.status) return false;
+      }
+      if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') {
+        if (item.userInfo?.sexualOrientation !== data.sexualOrientation) return false;
       }
 
       // Bidirectional blocking
