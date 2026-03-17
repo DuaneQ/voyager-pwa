@@ -5,6 +5,8 @@
  * Stripe SDK and Firestore are fully mocked; no real API calls are made.
  */
 
+export {};
+
 // ─── Mocks ─────────────────────────────────────────────────────────────────
 
 const mockSessionCreate = jest.fn();
