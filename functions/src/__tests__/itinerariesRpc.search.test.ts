@@ -539,6 +539,25 @@ describe('searchItineraries RPC (Firestore)', () => {
       expect(res.data.map((d: any) => d.id)).toContain('has-age');
     });
   });
+
+  describe('maxEndDay-only date range', () => {
+    it('maps maxEndDay-only to startDay <= query with endDay >= 0 default', async () => {
+      const future = Date.now() + 86400000;
+      mockQuery = createMockQuery([]);
+      mockCollection.mockImplementation(() => ({
+        doc: mockDoc, add: mockAdd,
+        where: mockQuery.where, orderBy: mockQuery.orderBy,
+        limit: mockQuery.limit, get: mockQuery.get,
+      }));
+
+      await captured.searchItineraries(makeReq({ pageSize: 10, maxEndDay: future }, 'u'));
+      const dateWheres = mockQuery._wheres.filter((w: any) => w.field === 'endDay' || w.field === 'startDay');
+      expect(dateWheres).toEqual(expect.arrayContaining([
+        expect.objectContaining({ field: 'endDay', op: '>=', value: 0 }),
+        expect.objectContaining({ field: 'startDay', op: '<=', value: future }),
+      ]));
+    });
+  });
 });
 
 describe('createItinerary RPC (Firestore)', () => {
