@@ -8,6 +8,8 @@
  * jest.isolateModules to load it after the env var is set.
  */
 
+export {};
+
 // ─── Mocks ─────────────────────────────────────────────────────────────────
 
 jest.mock('firebase-functions/v1', () => ({

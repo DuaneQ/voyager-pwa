@@ -9,6 +9,8 @@
  * OpenAI fetch calls are mocked to avoid real API costs.
  */
 
+export {};
+
 // ─── Mocks ─────────────────────────────────────────────────────────────────
 
 jest.mock('firebase-functions/v1', () => ({
