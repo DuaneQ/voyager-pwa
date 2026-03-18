@@ -9,6 +9,27 @@ const ITINERARIES_COLLECTION = 'itineraries';
  */
 const getDb = () => admin.firestore();
 
+const normalizePreference = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+};
+
+const canonicalizeGenderPreference = (value: unknown): string => {
+  const normalized = normalizePreference(value);
+  const map: Record<string, string> = {
+    male: 'Male',
+    female: 'Female',
+    'non-binary': 'Non-binary',
+    'prefer not to say': 'Prefer not to say',
+    'transgender woman': 'Transgender Woman',
+    'transgender man': 'Transgender Man',
+    'gender neutral': 'Gender Neutral',
+  };
+
+  if (map[normalized]) return map[normalized];
+  return typeof value === 'string' ? value.trim() : '';
+};
+
 /**
  * Convert Firestore Timestamps to ISO strings and other Firestore types to JSON-safe values.
  * Replaces the old Prisma sanitizeDeep that handled BigInt/Date.
@@ -226,6 +247,13 @@ export const searchItineraries = onCall(async (req) => {
     const data = req.data || {};
     const db = getDb();
     let query: admin.firestore.Query = db.collection(ITINERARIES_COLLECTION);
+    const normalizedGenderPreference = normalizePreference(data.gender);
+    const hasGenderPreference = normalizedGenderPreference !== '' && normalizedGenderPreference !== 'no preference';
+    const canonicalGenderPreference = canonicalizeGenderPreference(data.gender);
+    const normalizedStatusPreference = normalizePreference(data.status);
+    const hasStatusPreference = normalizedStatusPreference !== '' && normalizedStatusPreference !== 'no preference';
+    const normalizedOrientationPreference = normalizePreference(data.sexualOrientation);
+    const hasOrientationPreference = normalizedOrientationPreference !== '' && normalizedOrientationPreference !== 'no preference';
 
     console.log('[SEARCH CF] ── searchItineraries CALLED ──────────────────────');
     console.log('[SEARCH CF] caller uid:', req.auth?.uid ?? 'unauthenticated');
@@ -244,14 +272,14 @@ export const searchItineraries = onCall(async (req) => {
     if (data.destination) {
       query = query.where('destination', '==', data.destination);
     }
-    if (data.gender && data.gender !== 'No Preference') {
-      query = query.where('userInfo.gender', '==', data.gender);
+    if (hasGenderPreference && canonicalGenderPreference) {
+      query = query.where('userInfo.gender', '==', canonicalGenderPreference);
     }
-    if (data.status && data.status !== 'No Preference') {
-      query = query.where('userInfo.status', '==', data.status);
+    if (hasStatusPreference) {
+      query = query.where('userInfo.status', '==', normalizedStatusPreference);
     }
-    if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') {
-      query = query.where('userInfo.sexualOrientation', '==', data.sexualOrientation);
+    if (hasOrientationPreference) {
+      query = query.where('userInfo.sexualOrientation', '==', normalizedOrientationPreference);
     }
 
     const userStartDay = data.minStartDay ? Number(data.minStartDay) : 0;
@@ -287,6 +315,32 @@ export const searchItineraries = onCall(async (req) => {
       if (currentUserId && item.userId === currentUserId) {
         console.log(`[SEARCH CF] EXCLUDED (own itinerary): id=${item.id} userId=${item.userId}`);
         return false;
+      }
+
+      if (hasGenderPreference) {
+        const candidateGender = normalizePreference(item.userInfo?.gender ?? item.gender);
+        if (candidateGender !== normalizedGenderPreference) {
+          console.log(`[SEARCH CF] EXCLUDED (gender mismatch): id=${item.id} candidateGender=${candidateGender} requestedGender=${normalizedGenderPreference}`);
+          return false;
+        }
+      }
+
+      // Status filter (case-insensitive): user profile status is stored lower-case
+      // while itinerary preferences are often title-case from mobile/web pickers.
+      if (hasStatusPreference) {
+        const candidateStatus = normalizePreference(item.userInfo?.status ?? item.status);
+        if (candidateStatus !== normalizedStatusPreference) {
+          console.log(`[SEARCH CF] EXCLUDED (status mismatch): id=${item.id} candidateStatus=${candidateStatus} requestedStatus=${normalizedStatusPreference}`);
+          return false;
+        }
+      }
+
+      if (hasOrientationPreference) {
+        const candidateOrientation = normalizePreference(item.userInfo?.sexualOrientation ?? item.sexualOrientation);
+        if (candidateOrientation !== normalizedOrientationPreference) {
+          console.log(`[SEARCH CF] EXCLUDED (orientation mismatch): id=${item.id} candidateOrientation=${candidateOrientation} requestedOrientation=${normalizedOrientationPreference}`);
+          return false;
+        }
       }
 
       // Exclude viewed/excluded itineraries

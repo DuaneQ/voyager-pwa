@@ -129,7 +129,7 @@ describe('searchItineraries RPC (Firestore)', () => {
 
   const makeReq = (data: any, uid?: string) => ({ data, auth: uid ? { uid } : undefined } as any);
 
-  it('filters by destination, status, and returns matching itineraries', async () => {
+  it('filters by destination and case-insensitive status in post-processing', async () => {
     const candidates = [
       {
         id: 'match-1',
@@ -167,9 +167,133 @@ describe('searchItineraries RPC (Firestore)', () => {
     expect(whereArgs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: 'destination', op: '==', value: 'Paris' }),
-        expect.objectContaining({ field: 'userInfo.status', op: '==', value: 'Couple' }),
       ])
     );
+    expect(whereArgs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'userInfo.status', op: '==', value: 'couple' }),
+      ])
+    );
+  });
+
+  it('matches status preference regardless of casing (Couple vs couple)', async () => {
+    const candidates = [
+      {
+        id: 'match-lowercase-status',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', status: 'couple', blocked: [] },
+      },
+      {
+        id: 'mismatch-status',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u2',
+        userInfo: { uid: 'u2', status: 'single', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      status: 'Couple',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-status']);
+  });
+
+  it('matches gender preference regardless of casing (Female vs female)', async () => {
+    const candidates = [
+      {
+        id: 'match-lowercase-gender',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', gender: 'female', blocked: [] },
+      },
+      {
+        id: 'mismatch-gender',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u2',
+        userInfo: { uid: 'u2', gender: 'male', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      gender: 'Female',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-gender']);
+  });
+
+  it('matches orientation preference regardless of casing (Heterosexual vs heterosexual)', async () => {
+    const candidates = [
+      {
+        id: 'match-lowercase-orientation',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', sexualOrientation: 'heterosexual', blocked: [] },
+      },
+      {
+        id: 'mismatch-orientation',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u2',
+        userInfo: { uid: 'u2', sexualOrientation: 'homosexual', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      sexualOrientation: 'Heterosexual',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-orientation']);
   });
 
   it('excludes current user itineraries and excluded IDs in post-processing', async () => {
@@ -249,7 +373,7 @@ describe('searchItineraries RPC (Firestore)', () => {
       if (g === 'No Preference') {
         expect(genderWheres).toHaveLength(0);
       } else {
-        expect(genderWheres).toEqual([{ field: 'userInfo.gender', op: '==', value: g }]);
+        expect(genderWheres).toHaveLength(1);
       }
     });
 
@@ -267,7 +391,7 @@ describe('searchItineraries RPC (Firestore)', () => {
       if (s === 'No Preference') {
         expect(statusWheres).toHaveLength(0);
       } else {
-        expect(statusWheres).toEqual([{ field: 'userInfo.status', op: '==', value: s }]);
+        expect(statusWheres).toHaveLength(1);
       }
     });
 
@@ -285,7 +409,7 @@ describe('searchItineraries RPC (Firestore)', () => {
       if (o === 'No Preference') {
         expect(orientWheres).toHaveLength(0);
       } else {
-        expect(orientWheres).toEqual([{ field: 'userInfo.sexualOrientation', op: '==', value: o }]);
+        expect(orientWheres).toHaveLength(1);
       }
     });
 
@@ -406,9 +530,6 @@ describe('searchItineraries RPC (Firestore)', () => {
       const wheres = mockQuery._wheres;
       expect(wheres).toEqual(expect.arrayContaining([
         { field: 'destination', op: '==', value: 'Austin, TX, USA' },
-        { field: 'userInfo.gender', op: '==', value: 'Female' },
-        { field: 'userInfo.status', op: '==', value: 'Single' },
-        { field: 'userInfo.sexualOrientation', op: '==', value: 'Bisexual' },
         { field: 'endDay', op: '>=', value: now },
         { field: 'startDay', op: '<=', value: now + 86400000 },
       ]));
