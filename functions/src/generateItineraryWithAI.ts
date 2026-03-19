@@ -57,12 +57,10 @@ CRITICAL: Evaluate if the requested transport mode is physically possible and pr
 - When providing this warning, still include the practical alternative mode's data in the other fields
 
 Focus the response on the requested transportType when provided. Use reasonable routing/speed assumptions for calculations. Be concise and factual.`;
-  console.log('system prompt', systemPrompt);
 
   const startDateLine = payload.startDate ? `StartDate: ${payload.startDate}\n` : '';
   const endDateLine = payload.endDate ? `EndDate: ${payload.endDate}\n` : '';
   const userPrompt = `Origin: ${origin || ''}\nDestination: ${destination}\n${startDateLine}${endDateLine}TransportType: ${transportType}\nReturn only JSON meeting the schema described.`;
-  console.log('user prompt', userPrompt);
 
   const body = {
     model: 'gpt-4o-mini',
@@ -90,8 +88,6 @@ Focus the response on the requested transportType when provided. Use reasonable 
 
   const json = await res.json();
   const assistant = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.text || '';
-
-  console.log('[generateItineraryWithAI] OpenAI response:', assistant);
 
   // Return the raw assistant output unchanged.
   return { success: true, data: { assistant } };

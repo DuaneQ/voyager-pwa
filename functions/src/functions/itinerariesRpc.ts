@@ -233,19 +233,6 @@ export const searchItineraries = onCall(async (req) => {
     const hasStatusPreference = statusPreference !== '' && statusPreference !== 'No Preference';
     const hasOrientationPreference = orientationPreference !== '' && orientationPreference !== 'No Preference';
 
-    console.log('[SEARCH CF] ── searchItineraries CALLED ──────────────────────');
-    console.log('[SEARCH CF] caller uid:', req.auth?.uid ?? 'unauthenticated');
-    console.log('[SEARCH CF] data.currentUserId:', data.currentUserId);
-    console.log('[SEARCH CF] data.destination:', data.destination);
-    console.log('[SEARCH CF] data.gender:', data.gender);
-    console.log('[SEARCH CF] data.status:', data.status);
-    console.log('[SEARCH CF] data.sexualOrientation:', data.sexualOrientation);
-    console.log('[SEARCH CF] data.minStartDay:', data.minStartDay, '→', data.minStartDay ? new Date(Number(data.minStartDay)).toISOString() : 'N/A');
-    console.log('[SEARCH CF] data.maxEndDay:', data.maxEndDay, '→', data.maxEndDay ? new Date(Number(data.maxEndDay)).toISOString() : 'N/A');
-    console.log('[SEARCH CF] data.lowerRange:', data.lowerRange, 'data.upperRange:', data.upperRange);
-    console.log('[SEARCH CF] data.excludedIds:', JSON.stringify(data.excludedIds));
-    console.log('[SEARCH CF] data.blockedUserIds:', JSON.stringify(data.blockedUserIds));
-
     // Equality filters (Firestore handles these natively with composite indexes)
     if (data.destination) {
       query = query.where('destination', '==', data.destination);
@@ -262,7 +249,6 @@ export const searchItineraries = onCall(async (req) => {
 
     const userStartDay = data.minStartDay ? Number(data.minStartDay) : 0;
     const userEndDay = data.maxEndDay ? Number(data.maxEndDay) : Number.MAX_SAFE_INTEGER;
-    console.log('[SEARCH CF] Firestore range: endDay >=', userStartDay, ' AND startDay <=', userEndDay);
     query = query.where('endDay', '>=', userStartDay);
     query = query.where('startDay', '<=', userEndDay);
     query = query.orderBy('endDay', 'asc');
@@ -272,10 +258,8 @@ export const searchItineraries = onCall(async (req) => {
     query = query.limit(overFetch);
 
     const snapshot = await query.get();
-    console.log('[SEARCH CF] Firestore snapshot size (before post-filter):', snapshot.size);
     snapshot.docs.forEach((doc, i) => {
       const d = doc.data() as any;
-      console.log(`[SEARCH CF] doc[${i}]: id=${doc.id} destination=${d.destination} userId=${d.userId} userInfo.uid=${d.userInfo?.uid} startDay=${d.startDay} endDay=${d.endDay} age=${d.age}`);
     });
 
     let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -291,13 +275,11 @@ export const searchItineraries = onCall(async (req) => {
     items = items.filter((item: any) => {
       // Exclude current user's own itineraries
       if (currentUserId && item.userId === currentUserId) {
-        console.log(`[SEARCH CF] EXCLUDED (own itinerary): id=${item.id} userId=${item.userId}`);
         return false;
       }
 
       // Exclude viewed/excluded itineraries
       if (excludedIds.has(item.id)) {
-        console.log(`[SEARCH CF] EXCLUDED (in excludedIds): id=${item.id}`);
         return false;
       }
 
@@ -305,7 +287,6 @@ export const searchItineraries = onCall(async (req) => {
       if (hasAgeFilter && item.age != null) {
         const age = Number(item.age);
         if (age < lowerRange! || age > upperRange!) {
-          console.log(`[SEARCH CF] EXCLUDED (age ${age} outside [${lowerRange},${upperRange}]): id=${item.id}`);
           return false;
         }
       }
@@ -314,22 +295,17 @@ export const searchItineraries = onCall(async (req) => {
       const candidateBlockedList = Array.isArray(item.userInfo?.blocked) ? item.userInfo.blocked : [];
 
       if (currentUserId && candidateUserId && currentUserBlockedIds.includes(candidateUserId)) {
-        console.log(`[SEARCH CF] EXCLUDED (current user blocked candidate): id=${item.id} candidateUid=${candidateUserId}`);
         return false;
       }
 
       if (currentUserId && candidateBlockedList.includes(currentUserId)) {
-        console.log(`[SEARCH CF] EXCLUDED (candidate blocked current user): id=${item.id} candidateUid=${candidateUserId}`);
         return false;
       }
 
       return true;
     });
 
-    console.log('[SEARCH CF] items after post-filter:', items.length);
-
     const finalItems = items.slice(0, take);
-    console.log('[SEARCH CF] finalItems returned:', finalItems.length);
 
     return { success: true, data: sanitizeDeep(finalItems) };
   } catch (err: any) {

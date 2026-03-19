@@ -71,14 +71,9 @@ const db = admin.firestore();
 // Use v2 Firestore onDocumentCreated trigger
 export const notifyNewConnection = onDocumentCreated("connections/{connectionId}", async (event) => {
   const connectionId = event.params?.connectionId;
-  console.log(`[notifyNewConnection] FIRED for connectionId: ${connectionId}`);
-
   const snap = event.data;
   // In v2 the event.data is a DocumentSnapshot-like object. Call data() if available.
   const connection = snap && typeof (snap as any).data === 'function' ? (snap as any).data() : snap;
-
-  console.log(`[notifyNewConnection] connection.users:`, JSON.stringify(connection?.users));
-  console.log(`[notifyNewConnection] connection.emails (from doc):`, JSON.stringify(connection?.emails));
 
   if (!connection) {
     console.error(`[notifyNewConnection] No connection data found for connectionId: ${connectionId}`);
@@ -96,13 +91,10 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
     ? (connection.users as string[]).filter(Boolean)
     : [];
 
-  console.log(`[notifyNewConnection] docEmails: ${JSON.stringify(docEmails)}, userIds: ${JSON.stringify(userIds)}`);
-
   let resolvedEmails = [...docEmails];
 
   // If the doc is missing emails (or has fewer than the number of users), fetch from users collection
   if (resolvedEmails.length < userIds.length) {
-    console.log(`[notifyNewConnection] docEmails count (${resolvedEmails.length}) < userIds count (${userIds.length}) — fetching from users collection`);
     const userFetches = await Promise.all(
       userIds.map(uid => db.collection('users').doc(uid).get())
     );
@@ -110,14 +102,12 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
       const email = userDoc.data()?.email;
       if (email && !resolvedEmails.includes(email)) {
         resolvedEmails.push(email);
-        console.log(`[notifyNewConnection] Fetched email from users/${userDoc.id}: ${email}`);
       }
     }
   }
 
   // Remove duplicates and blanks
   const uniqueEmails = (Array.from(new Set(resolvedEmails)) as string[]).filter(Boolean);
-  console.log(`[notifyNewConnection] Sending to ${uniqueEmails.length} unique emails:`, uniqueEmails);
 
   if (uniqueEmails.length === 0) {
     console.error(`[notifyNewConnection] No valid emails found — neither connection doc nor users collection had emails. userIds: ${JSON.stringify(userIds)}`);
@@ -149,14 +139,12 @@ export const notifyNewConnection = onDocumentCreated("connections/{connectionId}
 
     try {
       const mailRef = await db.collection("mail").add(mailDoc);
-      console.log(`[notifyNewConnection] Mail doc written for ${email} at mail/${mailRef.id}`);
     } catch (err) {
       console.error(`[notifyNewConnection] Failed to write mail doc for ${email}:`, err);
     }
   });
 
   await Promise.all(mailPromises);
-  console.log(`[notifyNewConnection] All mail promises resolved for connectionId: ${connectionId}`);
   return null;
 });
 
@@ -227,7 +215,6 @@ Review it in the admin panel: https://ads.travalpass.com/admin`,
 
   try {
     const mailRef = await db.collection('mail').add(mailDoc);
-    console.log(`[notifyNewAdCampaign] Mail doc written at mail/${mailRef.id} for campaign ${campaignId}`);
   } catch (err) {
     console.error('[notifyNewAdCampaign] Failed to write mail doc:', err);
   }
@@ -241,7 +228,6 @@ export const notifyFeedbackSubmission = onDocumentCreated("feedback/{feedbackId}
   const feedbackId = event.params?.feedbackId as string;
 
   if (!feedback) {
-    console.log("❌ No feedback data found:", feedback);
     return null;
   }
 
@@ -420,8 +406,6 @@ export const sendEmailCampaign = onCall(async (request) => {
   if (!campaignId) {
     throw new HttpsError('invalid-argument', 'Campaign ID is required');
   }
-
-  console.log(`[EMAIL CAMPAIGN] Starting campaign: ${campaignId}`);
   
   try {
     // Get all users from the database
@@ -429,7 +413,6 @@ export const sendEmailCampaign = onCall(async (request) => {
     const usersSnapshot = await usersRef.get();
     
     if (usersSnapshot.empty) {
-      console.log("[EMAIL CAMPAIGN] No users found in database");
       return { success: false, message: "No users found" };
     }
 
@@ -440,7 +423,6 @@ export const sendEmailCampaign = onCall(async (request) => {
 
     // If testEmail is provided, only send to that email
     if (testEmail) {
-      console.log(`[EMAIL CAMPAIGN] Test mode - sending only to: ${testEmail}`);
       
       // Look up the actual username for the test email
       let testUsername = "Test User";
@@ -452,13 +434,8 @@ export const sendEmailCampaign = onCall(async (request) => {
         
         if (userEmailLower === testEmailLower) {
           testUsername = userData.username || userData.displayName || userData.name || "Traveler";
-          console.log(`[EMAIL CAMPAIGN] Found user for ${testEmail}: ${testUsername}`);
           break;
         }
-      }
-      
-      if (testUsername === "Test User") {
-        console.log(`[EMAIL CAMPAIGN] Warning: Could not find user with email ${testEmail}, using default name`);
       }
       
       const mailDoc = createCampaignEmailContent(testEmail, campaignId, testUsername);
@@ -471,14 +448,12 @@ export const sendEmailCampaign = onCall(async (request) => {
         const userEmail = userData.email;
         
         if (!userEmail) {
-          console.log(`[EMAIL CAMPAIGN] Skipping user ${userDoc.id} - no email`);
           skippedCount++;
           continue;
         }
 
         // Check if user has already received this campaign
         if (userData.emailCampaigns && userData.emailCampaigns[campaignId]) {
-          console.log(`[EMAIL CAMPAIGN] Skipping user ${userDoc.id} - already received campaign ${campaignId}`);
           skippedCount++;
           continue;
         }
@@ -512,7 +487,6 @@ export const sendEmailCampaign = onCall(async (request) => {
       totalUsers: usersSnapshot.size
     };
 
-    console.log(`[EMAIL CAMPAIGN] Campaign ${campaignId} completed:`, result);
     return result;
 
   } catch (error) {
@@ -701,7 +675,6 @@ export const notifyViolationReport = onDocumentCreated("violations/{violationId}
   const violationId = event.params?.violationId as string;
 
   if (!violation) {
-    console.log("No violation data found:", violation);
     return null;
   }
 
@@ -787,7 +760,6 @@ export const notifyViolationReport = onDocumentCreated("violations/{violationId}
 
     // Send the email using the "mail" collection (for SendGrid or similar)
     const mailRef = await db.collection("mail").add(mailDoc);
-    console.log(`Violation report email sent, mail/${mailRef.id}`);
 
     // Update the violation document to mark the email as sent
     await db.collection("violations").doc(violationId).update({
@@ -818,7 +790,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
       sig as string,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-    console.log(`[STRIPE WEBHOOK] Event received: ${event.type}`);
   } catch (err: any) {
     console.error("[STRIPE WEBHOOK] Signature verification failed.", err.message, {
       headers: req.headers,
@@ -866,11 +837,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
             subscriptionEndDate: endDate,
             subscriptionCancelled: false
           }, { merge: true });
-          console.log(`[STRIPE WEBHOOK] User ${uid} updated after checkout.session.completed`, {
-            stripeCustomerId: customerId,
-            startDate,
-            endDate
-          });
         } catch (err) {
           console.error(`[STRIPE WEBHOOK] Failed to update user ${uid} after checkout.session.completed:`, err, {
             stripeCustomerId: customerId,
@@ -892,10 +858,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
               subscriptionStartDate: startDate,
               subscriptionEndDate: endDate,
               subscriptionCancelled: false,
-              stripeCustomerId: customerId
-            });
-            console.log(`[STRIPE WEBHOOK] User ${doc.id} updated by email after checkout.session.completed`, {
-              email: session.customer_email,
               stripeCustomerId: customerId
             });
           });
@@ -934,11 +896,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
             if (endDate) update.subscriptionEndDate = endDate;
             if (startDate) update.subscriptionStartDate = startDate;
             doc.ref.update(update);
-            console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription renewed/updated after customer.subscription.updated`, {
-              stripeCustomerId: customerId,
-              startDate,
-              endDate
-            });
           });
         } else {
           // Fallback: try to find by email if present in metadata
@@ -958,11 +915,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
               if (endDate) update.subscriptionEndDate = endDate;
               if (startDate) update.subscriptionStartDate = startDate;
               doc.ref.update(update);
-              console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription renewed/updated by email after customer.subscription.updated`, {
-                email,
-                startDate,
-                endDate
-              });
             });
           } else {
             console.warn(`[STRIPE WEBHOOK] No user found for customer.subscription.updated: no customerId or email`, {
@@ -993,10 +945,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
             const update: any = { subscriptionCancelled: true };
             if (endDate) update.subscriptionEndDate = endDate;
             doc.ref.update(update);
-            console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription cancelled after customer.subscription.deleted`, {
-              stripeCustomerId: customerId,
-              endDate
-            });
           });
         } else {
           const email = subscription.metadata?.email;
@@ -1011,10 +959,6 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
               const update: any = { subscriptionCancelled: true };
               if (endDate) update.subscriptionEndDate = endDate;
               doc.ref.update(update);
-              console.log(`[STRIPE WEBHOOK] User ${doc.id} subscription cancelled by email after customer.subscription.deleted`, {
-                email,
-                endDate
-              });
             });
           } else {
             console.warn(`[STRIPE WEBHOOK] No user found for customer.subscription.deleted: no customerId or email`, {

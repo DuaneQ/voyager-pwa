@@ -793,7 +793,6 @@ app.get('/video/:videoId', async (req, res) => {
 
     // For regular users, serve the client-side app
     // This should be handled by your hosting, but if it reaches here, redirect to main app
-    console.log('Redirecting regular user to client app');
     res.redirect(302, getBaseUrl());
 
   } catch (error) {

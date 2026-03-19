@@ -45,8 +45,6 @@ export const sendMatchNotification = onDocumentCreated(
     const connectionId = event.params.connectionId;
     const connection = snap.data() as ConnectionData;
 
-    console.log(`New connection created: ${connectionId}`);
-
     // Validate connection data
     if (!connection || !connection.users || !Array.isArray(connection.users)) {
       console.error(`Invalid connection data for ${connectionId}:`, connection);
@@ -72,7 +70,6 @@ export const sendMatchNotification = onDocumentCreated(
         const tokens = await getTokensForUser(userId);
         
         if (!tokens || tokens.length === 0) {
-          console.log(`No tokens for user ${userId}, skipping notification`);
           return;
         }
 
@@ -119,8 +116,6 @@ export const sendMatchNotification = onDocumentCreated(
         // Send notification
         const response = await admin.messaging().sendEachForMulticast(payload);
 
-        console.log(`Sent match notification to user ${userId}: ${response.successCount}/${tokens.length} succeeded`);
-
         // Clean up invalid tokens
         await cleanupInvalidTokens(userId, tokens, response);
 
@@ -131,7 +126,6 @@ export const sendMatchNotification = onDocumentCreated(
     });
 
     await Promise.all(notificationPromises);
-    console.log(`Match notification processing complete for connection ${connectionId}`);
   }
 );
 

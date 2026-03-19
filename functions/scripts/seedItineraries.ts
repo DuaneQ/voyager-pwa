@@ -133,8 +133,6 @@ async function upsertItineraries() {
     metadata: { filtering: { budget: 'mid', preferredActivities: ['Museums', 'Shopping'] } }
   } as any;
 
-  console.log('Upserting seeded itineraries...');
-
   // Use prisma proxy; methods are async and will initialize the real client.
   // We'll use upsert to be idempotent.
   await (prisma as any).itinerary.upsert({
@@ -148,8 +146,6 @@ async function upsertItineraries() {
     update: matchItinerary,
     create: matchItinerary
   });
-
-  console.log('Seed complete.');
 }
 
 upsertItineraries().then(() => process.exit(0)).catch((err) => {

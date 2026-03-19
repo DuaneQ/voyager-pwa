@@ -470,7 +470,6 @@ export const selectAds = onCall(
 
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
       campaignDocs = cached.docs
-      console.log(`[selectAds] cache HIT for placement=${placement} (${campaignDocs.length} docs, age=${Math.round((now - cached.fetchedAt) / 1000)}s)`)
     } else {
       const snapshot = await db
         .collection(COLLECTION)
@@ -488,7 +487,6 @@ export const selectAds = onCall(
         docs: campaignDocs,
         fetchedAt: now,
       })
-      console.log(`[selectAds] cache MISS for placement=${placement} — fetched ${campaignDocs.length} docs`)
     }
 
     if (campaignDocs.length === 0) {
@@ -504,8 +502,6 @@ export const selectAds = onCall(
         : ''
     const userSeed = (request.auth?.uid ?? clientSessionId) + '|' + today
 
-    console.log(`[selectAds] placement=${placement} today=${today} queryDocs=${campaignDocs.length} ctx=${JSON.stringify({ destination: ctx?.destination, travelStartDate: ctx?.travelStartDate, travelEndDate: ctx?.travelEndDate, age: ctx?.age, gender: ctx?.gender })}`)
-
     // ── Filter + Score ────────────────────────────────────────────────────
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
 
@@ -513,18 +509,15 @@ export const selectAds = onCall(
 
       // Hard filter: must not be under review
       if (doc.isUnderReview) {
-        console.log(`[selectAds] DROP ${id} isUnderReview=true`)
         continue
       }
 
       // Hard filter: campaign date range must include today
       // Uses string comparison — YYYY-MM-DD sorts lexicographically
       if (doc.startDate && doc.startDate > today) {
-        console.log(`[selectAds] DROP ${id} startDate=${doc.startDate} > today=${today}`)
         continue
       }
       if (doc.endDate && doc.endDate < today) {
-        console.log(`[selectAds] DROP ${id} endDate=${doc.endDate} < today=${today}`)
         continue
       }
 
@@ -542,7 +535,6 @@ export const selectAds = onCall(
 
       const dropReason = checkCampaignEligibility(doc, budgetCents)
       if (dropReason) {
-        console.log(`[selectAds] DROP ${id} ${dropReason}`)
         continue
       }
 
@@ -551,11 +543,8 @@ export const selectAds = onCall(
       // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
       // (max targeting score ≈ 14, so a seen ad caps at 14-5=9).
       const score = seenSet.has(id) ? rawScore - 5 : rawScore
-      console.log(`[selectAds] PASS ${id} rawScore=${rawScore} score=${score}`)
       scored.push({ id, doc, score })
     }
-
-    console.log(`[selectAds] eligible=${scored.length} returning=${Math.min(scored.length, limit)}`)
 
     // ── Sort by score (desc), then by id for stable ordering ──────────────
     scored.sort((a, b) => {

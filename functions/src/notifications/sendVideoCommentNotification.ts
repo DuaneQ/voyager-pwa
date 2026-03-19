@@ -63,11 +63,8 @@ export const sendVideoCommentNotification = onDocumentUpdated(
     const beforeComments = beforeData.comments || [];
     const afterComments = afterData.comments || [];
 
-    console.log(`📝 sendVideoCommentNotification: Video ${videoId} updated. Comments: ${beforeComments.length} → ${afterComments.length}`);
-
     // No new comments added — could be a like, view count, or other update
     if (afterComments.length <= beforeComments.length) {
-      console.log(`ℹ️ sendVideoCommentNotification: No new comments detected, skipping`);
       return;
     }
 
@@ -76,17 +73,13 @@ export const sendVideoCommentNotification = onDocumentUpdated(
     const newComments = afterComments.filter(c => !beforeIds.has(c.id));
 
     if (newComments.length === 0) {
-      console.log(`ℹ️ sendVideoCommentNotification: No new comment IDs found, skipping`);
       return;
     }
-
-    console.log(`📬 sendVideoCommentNotification: ${newComments.length} new comment(s) detected on video ${videoId}`);
 
     // Process each new comment (typically just one, but handle multiple)
     for (const comment of newComments) {
       // Don't notify the video owner about their own comments
       if (comment.userId === videoOwnerId) {
-        console.log(`ℹ️ sendVideoCommentNotification: Skipping self-comment by video owner ${videoOwnerId}`);
         continue;
       }
 
@@ -95,7 +88,6 @@ export const sendVideoCommentNotification = onDocumentUpdated(
         const tokens = await getTokensForUser(videoOwnerId);
 
         if (!tokens || tokens.length === 0) {
-          console.log(`⚠️ sendVideoCommentNotification: No tokens for video owner ${videoOwnerId}, skipping`);
           continue;
         }
 
@@ -103,8 +95,6 @@ export const sendVideoCommentNotification = onDocumentUpdated(
         const commenterName = await getUserDisplayName(comment.userId);
         const commentPreview = truncateText(comment.text, 100);
         const videoTitle = afterData.title ? truncateText(afterData.title, 50) : 'your video';
-
-        console.log(`📤 sendVideoCommentNotification: Sending to video owner ${videoOwnerId} (${tokens.length} tokens). Commenter: ${commenterName}`);
 
         // Build notification payload
         // Title: short and clear. Body: includes video title + comment text.
@@ -148,10 +138,6 @@ export const sendVideoCommentNotification = onDocumentUpdated(
         // Send notification
         const response = await admin.messaging().sendEachForMulticast(payload);
 
-        console.log(
-          `✅ sendVideoCommentNotification: Sent to video owner ${videoOwnerId}: ${response.successCount}/${tokens.length} succeeded`
-        );
-
         // Log individual failures for debugging
         response.responses.forEach((res, idx) => {
           if (!res.success) {
@@ -167,7 +153,5 @@ export const sendVideoCommentNotification = onDocumentUpdated(
         // Continue processing other comments even if one fails
       }
     }
-
-    console.log(`✅ sendVideoCommentNotification: Processing complete for video ${videoId}`);
   }
 );

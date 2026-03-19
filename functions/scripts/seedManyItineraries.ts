@@ -39,8 +39,6 @@ function daysFromNow(days: number) {
 }
 
 async function seed() {
-  console.log('Seeding 100 itineraries (50 past, 50 future)...');
-
   const tasks: Promise<any>[] = [];
 
   for (let i = 0; i < 100; i++) {
@@ -123,7 +121,6 @@ async function seed() {
   }
 
   await Promise.all(tasks);
-  console.log('Seeding complete.');
 }
 
 seed().then(() => process.exit(0)).catch((err) => {

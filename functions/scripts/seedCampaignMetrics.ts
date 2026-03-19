@@ -42,13 +42,11 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(envKeyPath),
       projectId: FIREBASE_PROJECT,
     })
-    console.log(`🔑  Using key file: ${envKeyPath}`)
   } else if (fs.existsSync(siblingKeyPath)) {
     admin.initializeApp({
       credential: admin.credential.cert(siblingKeyPath),
       projectId: FIREBASE_PROJECT,
     })
-    console.log(`🔑  Using dev key: ${siblingKeyPath}`)
   } else {
     // Fall back to ADC — operator must ensure gcloud project matches
     admin.initializeApp({ projectId: FIREBASE_PROJECT })
@@ -155,8 +153,6 @@ function generateFeedDay(date: Date): DailySnapshot {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log(`\n📊  Seeding metrics for campaign: ${campaignId}\n`)
-
   // Read campaign to determine placement
   const campaignRef = db.collection('ads_campaigns').doc(campaignId!)
   const campaignSnap = await campaignRef.get()
@@ -167,8 +163,6 @@ async function main() {
   }
 
   const placement = (campaignSnap.data()?.placement ?? 'itinerary_feed') as Placement
-  console.log(`Placement: ${placement}`)
-
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const startDate = addDays(today, -29) // 30 days including today
@@ -201,7 +195,6 @@ async function main() {
 
     if (opCount >= BATCH_SIZE) {
       await batch.commit()
-      console.log(`  Committed batch of ${opCount} documents`)
       batch = db.batch()
       opCount = 0
     }
@@ -216,18 +209,7 @@ async function main() {
 
   if (opCount > 0) {
     await batch.commit()
-    console.log(`  Committed final batch of ${opCount} documents`)
   }
-
-  console.log(`\n✅  Done!`)
-  console.log(`   Daily metric docs written : ${snapshots.length}`)
-  console.log(`   Total impressions added   : ${totalImpressions.toLocaleString()}`)
-  console.log(`   Total clicks added        : ${totalClicks.toLocaleString()}`)
-  console.log(
-    `   Avg CTR                   : ${((totalClicks / totalImpressions) * 100).toFixed(2)}%`
-  )
-  console.log(`\nRun "npx ts-node scripts/seedCampaignMetrics.ts --campaignId=${campaignId}" again`)
-  console.log(`to stack additional data (counters are incremented, docs overwritten).\n`)
 }
 
 main().catch(err => {
