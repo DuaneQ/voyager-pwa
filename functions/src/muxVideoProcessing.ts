@@ -94,6 +94,16 @@ const mux = new Mux({
   tokenSecret: MUX_TOKEN_SECRET,
 });
 
+function buildMuxAssetPayload(url: string, passthrough: Record<string, unknown>) {
+  return {
+    inputs: [{ url }],
+    playback_policy: ["public"] as ("public")[],
+    encoding_tier: "baseline" as const,
+    max_resolution_tier: "1080p" as const,
+    passthrough: JSON.stringify(passthrough),
+  };
+}
+
 /**
  * Triggered when a video is uploaded to Firebase Storage
  * Sends the video to Mux for transcoding
@@ -136,22 +146,14 @@ export const onVideoUploaded = onObjectFinalized(
       });
 
       // Create Mux asset from the video URL
-      const asset = await mux.video.assets.create({
-        inputs: [{ url: signedUrl }],
-        playback_policy: ["public"],
-        // Encoding settings for universal compatibility
-        encoding_tier: "baseline", // Use baseline for fastest encoding
-        max_resolution_tier: "1080p", // Cap at 1080p for mobile
-        // Standard MP4 renditions (free) so og:video works for Facebook/social sharing
-        mp4_support: "standard",
-        // Add metadata for tracking
-        passthrough: JSON.stringify({
+      const asset = await mux.video.assets.create(
+        buildMuxAssetPayload(signedUrl, {
           userId,
           videoId,
           originalPath: filePath,
           firebaseVideoDocId: "", // Will be updated by webhook
-        }),
-      });
+        })
+      );
 
       // Find the Firestore document for this video and update it with Mux info
       // The document might not exist yet if this trigger fires before Firestore write
@@ -424,17 +426,12 @@ export const processVideoWithMux = onCall(
 
     try {
       // Create Mux asset from the video URL
-      const asset = await mux.video.assets.create({
-        inputs: [{ url: videoUrl }],
-        playback_policy: ["public"],
-        encoding_tier: "baseline",
-        max_resolution_tier: "1080p",
-        mp4_support: "standard",
-        passthrough: JSON.stringify({
+      const asset = await mux.video.assets.create(
+        buildMuxAssetPayload(videoUrl, {
           videoId,
           userId: request.auth.uid,
-        }),
-      });
+        })
+      );
 
       // Update Firestore with Mux asset info
       await db.collection("videos").doc(videoId).update({
@@ -507,17 +504,12 @@ export const processAdVideoWithMux = onCall(
 
       // Create the Mux asset; embed campaignId in passthrough so the webhook
       // can route video.asset.ready to ads_campaigns (not videos).
-      const asset = await mux.video.assets.create({
-        inputs: [{ url: signedUrl }],
-        playback_policy: ["public"],
-        encoding_tier: "baseline",
-        max_resolution_tier: "1080p",
-        mp4_support: "standard",
-        passthrough: JSON.stringify({
+      const asset = await mux.video.assets.create(
+        buildMuxAssetPayload(signedUrl, {
           campaignId,
           type: "ad",
-        }),
-      });
+        })
+      );
 
       await campaignRef.update({
         muxAssetId: asset.id,
@@ -590,17 +582,12 @@ export const migrateVideosToMux = onCall(
 
       for (const video of videosToMigrate) {
         try {
-          const asset = await mux.video.assets.create({
-            inputs: [{ url: video.videoUrl }],
-            playback_policy: ["public"],
-            encoding_tier: "baseline",
-            max_resolution_tier: "1080p",
-            mp4_support: "standard",
-            passthrough: JSON.stringify({
+          const asset = await mux.video.assets.create(
+            buildMuxAssetPayload(video.videoUrl, {
               videoId: video.id,
               userId: video.userId,
-            }),
-          });
+            })
+          );
 
           await db.collection("videos").doc(video.id).update({
             muxAssetId: asset.id,
