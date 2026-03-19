@@ -129,17 +129,17 @@ describe('searchItineraries RPC (Firestore)', () => {
 
   const makeReq = (data: any, uid?: string) => ({ data, auth: uid ? { uid } : undefined } as any);
 
-  it('filters by destination and case-insensitive status in post-processing', async () => {
+  it('filters by destination and exact status value', async () => {
     const candidates = [
       {
         id: 'match-1',
         age: 30,
-        status: 'Couple',
+        status: 'couple',
         destination: 'Paris',
         startDay: Date.now() - 86400000,
         endDay: Date.now() + 86400000,
         userId: 'u1',
-        userInfo: { uid: 'u1', blocked: [] },
+        userInfo: { uid: 'u1', status: 'couple', blocked: [] },
       },
     ];
 
@@ -152,7 +152,7 @@ describe('searchItineraries RPC (Firestore)', () => {
 
     const payload = {
       destination: 'Paris',
-      status: 'Couple',
+      status: 'couple',
       lowerRange: 25,
       upperRange: 35,
       pageSize: 50,
@@ -176,7 +176,7 @@ describe('searchItineraries RPC (Firestore)', () => {
     );
   });
 
-  it('matches status preference regardless of casing (Couple vs couple)', async () => {
+  it('matches status preference using exact stored values', async () => {
     const candidates = [
       {
         id: 'match-lowercase-status',
@@ -207,7 +207,7 @@ describe('searchItineraries RPC (Firestore)', () => {
 
     const res = await captured.searchItineraries(makeReq({
       destination: 'Paris',
-      status: 'Couple',
+      status: 'couple',
       pageSize: 50,
       currentUserId: 'me',
     }, 'me'));
@@ -216,16 +216,16 @@ describe('searchItineraries RPC (Firestore)', () => {
     expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-status']);
   });
 
-  it('matches gender preference regardless of casing (Female vs female)', async () => {
+  it('matches gender preference using exact stored values', async () => {
     const candidates = [
       {
-        id: 'match-lowercase-gender',
+        id: 'match-gender',
         age: 30,
         destination: 'Paris',
         startDay: Date.now() - 86400000,
         endDay: Date.now() + 86400000,
         userId: 'u1',
-        userInfo: { uid: 'u1', gender: 'female', blocked: [] },
+        userInfo: { uid: 'u1', gender: 'Female', blocked: [] },
       },
       {
         id: 'mismatch-gender',
@@ -234,7 +234,7 @@ describe('searchItineraries RPC (Firestore)', () => {
         startDay: Date.now() - 86400000,
         endDay: Date.now() + 86400000,
         userId: 'u2',
-        userInfo: { uid: 'u2', gender: 'male', blocked: [] },
+        userInfo: { uid: 'u2', gender: 'Male', blocked: [] },
       },
     ];
 
@@ -253,13 +253,13 @@ describe('searchItineraries RPC (Firestore)', () => {
     }, 'me'));
 
     expect(res).toHaveProperty('success', true);
-    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-gender']);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-gender']);
   });
 
-  it('matches orientation preference regardless of casing (Heterosexual vs heterosexual)', async () => {
+  it('matches orientation preference using exact stored values', async () => {
     const candidates = [
       {
-        id: 'match-lowercase-orientation',
+        id: 'match-orientation',
         age: 30,
         destination: 'Paris',
         startDay: Date.now() - 86400000,
@@ -287,13 +287,13 @@ describe('searchItineraries RPC (Firestore)', () => {
 
     const res = await captured.searchItineraries(makeReq({
       destination: 'Paris',
-      sexualOrientation: 'Heterosexual',
+      sexualOrientation: 'heterosexual',
       pageSize: 50,
       currentUserId: 'me',
     }, 'me'));
 
     expect(res).toHaveProperty('success', true);
-    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-orientation']);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-orientation']);
   });
 
   it('excludes current user itineraries and excluded IDs in post-processing', async () => {
