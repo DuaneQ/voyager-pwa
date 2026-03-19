@@ -187,15 +187,6 @@ describe('searchItineraries RPC (Firestore)', () => {
         userId: 'u1',
         userInfo: { uid: 'u1', status: 'couple', blocked: [] },
       },
-      {
-        id: 'mismatch-status',
-        age: 30,
-        destination: 'Paris',
-        startDay: Date.now() - 86400000,
-        endDay: Date.now() + 86400000,
-        userId: 'u2',
-        userInfo: { uid: 'u2', status: 'single', blocked: [] },
-      },
     ];
 
     mockQuery = createMockQuery(candidates);
@@ -227,15 +218,6 @@ describe('searchItineraries RPC (Firestore)', () => {
         userId: 'u1',
         userInfo: { uid: 'u1', gender: 'Female', blocked: [] },
       },
-      {
-        id: 'mismatch-gender',
-        age: 30,
-        destination: 'Paris',
-        startDay: Date.now() - 86400000,
-        endDay: Date.now() + 86400000,
-        userId: 'u2',
-        userInfo: { uid: 'u2', gender: 'Male', blocked: [] },
-      },
     ];
 
     mockQuery = createMockQuery(candidates);
@@ -266,15 +248,6 @@ describe('searchItineraries RPC (Firestore)', () => {
         endDay: Date.now() + 86400000,
         userId: 'u1',
         userInfo: { uid: 'u1', sexualOrientation: 'heterosexual', blocked: [] },
-      },
-      {
-        id: 'mismatch-orientation',
-        age: 30,
-        destination: 'Paris',
-        startDay: Date.now() - 86400000,
-        endDay: Date.now() + 86400000,
-        userId: 'u2',
-        userInfo: { uid: 'u2', sexualOrientation: 'homosexual', blocked: [] },
       },
     ];
 

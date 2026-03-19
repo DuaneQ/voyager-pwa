@@ -295,30 +295,6 @@ export const searchItineraries = onCall(async (req) => {
         return false;
       }
 
-      if (hasGenderPreference) {
-        const candidateGender = item.userInfo?.gender ?? item.gender;
-        if (candidateGender !== genderPreference) {
-          console.log(`[SEARCH CF] EXCLUDED (gender mismatch): id=${item.id} candidateGender=${candidateGender} requestedGender=${genderPreference}`);
-          return false;
-        }
-      }
-
-      if (hasStatusPreference) {
-        const candidateStatus = item.userInfo?.status ?? item.status;
-        if (candidateStatus !== statusPreference) {
-          console.log(`[SEARCH CF] EXCLUDED (status mismatch): id=${item.id} candidateStatus=${candidateStatus} requestedStatus=${statusPreference}`);
-          return false;
-        }
-      }
-
-      if (hasOrientationPreference) {
-        const candidateOrientation = item.userInfo?.sexualOrientation ?? item.sexualOrientation;
-        if (candidateOrientation !== orientationPreference) {
-          console.log(`[SEARCH CF] EXCLUDED (orientation mismatch): id=${item.id} candidateOrientation=${candidateOrientation} requestedOrientation=${orientationPreference}`);
-          return false;
-        }
-      }
-
       // Exclude viewed/excluded itineraries
       if (excludedIds.has(item.id)) {
         console.log(`[SEARCH CF] EXCLUDED (in excludedIds): id=${item.id}`);
