@@ -111,22 +111,18 @@ export const onVideoUploaded = onObjectFinalized(
 
     // Only process video files in user video directories
     if (!filePath || !contentType?.startsWith("video/")) {
-      console.log(`[Mux] Skipping non-video file: ${filePath}`);
       return;
     }
 
     // Match pattern: users/{userId}/videos/{videoFileName}
     const videoPathMatch = filePath.match(/^users\/([^/]+)\/videos\/([^/]+)$/);
     if (!videoPathMatch) {
-      console.log(`[Mux] Skipping file not in video path: ${filePath}`);
       return;
     }
 
     const userId = videoPathMatch[1];
     const videoFileName = videoPathMatch[2];
     const videoId = videoFileName.replace(/\.[^.]+$/, ""); // Remove extension
-
-    console.log(`[Mux] Processing video upload: userId=${userId}, videoId=${videoId}`);
 
     try {
       // Get the download URL for the video
@@ -138,8 +134,6 @@ export const onVideoUploaded = onObjectFinalized(
         action: "read",
         expires: Date.now() + 3600 * 1000, // 1 hour
       });
-
-      console.log(`[Mux] Got signed URL for video, sending to Mux...`);
 
       // Create Mux asset from the video URL
       const asset = await mux.video.assets.create({
@@ -158,8 +152,6 @@ export const onVideoUploaded = onObjectFinalized(
           firebaseVideoDocId: "", // Will be updated by webhook
         }),
       });
-
-      console.log(`[Mux] Asset created: ${asset.id}, status: ${asset.status}`);
 
       // Find the Firestore document for this video and update it with Mux info
       // The document might not exist yet if this trigger fires before Firestore write
@@ -185,7 +177,6 @@ export const onVideoUploaded = onObjectFinalized(
           muxPlaybackId: asset.playback_ids?.[0]?.id || null,
           muxProcessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        console.log(`[Mux] Updated Firestore doc ${videoDocId} with Mux asset info`);
       } else {
         // Store mapping for later (webhook will use this)
         await db.collection("mux_pending").doc(asset.id).set({
@@ -194,7 +185,6 @@ export const onVideoUploaded = onObjectFinalized(
           originalPath: filePath,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        console.log(`[Mux] Created pending record for asset ${asset.id}`);
       }
 
       return { success: true, assetId: asset.id };
@@ -268,7 +258,6 @@ export const muxWebhook = onRequest(
     }
 
     const event = req.body;
-    console.log(`[Mux Webhook] Verified event: ${event.type}`);
 
     try {
       switch (event.type) {
@@ -288,8 +277,6 @@ export const muxWebhook = onRequest(
           const muxPlaybackUrl = `https://stream.mux.com/${playbackId}.m3u8`;
           const muxThumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg`;
 
-          console.log(`[Mux Webhook] Asset ready: ${assetId}, playbackUrl: ${muxPlaybackUrl}`);
-
           // Route to the correct Firestore collection based on passthrough metadata.
           // Ad campaigns set type:'ad' and campaignId; organic videos set videoId.
           let passthrough: Record<string, unknown> = {};
@@ -308,7 +295,6 @@ export const muxWebhook = onRequest(
               muxStatus: "ready",
               muxReadyAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            console.log(`[Mux Webhook] Updated ads_campaigns/${campaignId} with playback URL`);
             break;
           }
 
@@ -328,7 +314,6 @@ export const muxWebhook = onRequest(
               muxStatus: "ready",
               muxReadyAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            console.log(`[Mux Webhook] Updated video ${videoDoc.id} with playback URL`);
           } else {
             // Check pending records
             const pendingDoc = await db.collection("mux_pending").doc(assetId).get();
@@ -351,7 +336,6 @@ export const muxWebhook = onRequest(
                     muxStatus: "ready",
                     muxReadyAt: admin.firestore.FieldValue.serverTimestamp(),
                   });
-                  console.log(`[Mux Webhook] Updated video ${doc.id} from pending record`);
                   // Clean up pending record
                   await pendingDoc.ref.delete();
                   break;
@@ -406,7 +390,6 @@ export const muxWebhook = onRequest(
         }
 
         default:
-          console.log(`[Mux Webhook] Unhandled event type: ${event.type}`);
       }
 
       res.status(200).send("OK");
@@ -439,8 +422,6 @@ export const processVideoWithMux = onCall(
       throw new Error("videoId and videoUrl are required");
     }
 
-    console.log(`[Mux] Manual processing requested for video ${videoId}`);
-
     try {
       // Create Mux asset from the video URL
       const asset = await mux.video.assets.create({
@@ -462,8 +443,6 @@ export const processVideoWithMux = onCall(
         muxPlaybackId: asset.playback_ids?.[0]?.id || null,
         muxProcessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-
-      console.log(`[Mux] Asset created: ${asset.id} for video ${videoId}`);
 
       return {
         success: true,
@@ -516,8 +495,6 @@ export const processAdVideoWithMux = onCall(
       throw new Error("Unauthorized: caller does not own this campaign");
     }
 
-    console.log(`[Mux Ads] Processing ad video: campaignId=${campaignId}, storagePath=${storagePath}`);
-
     try {
       // Generate a signed URL that Mux can fetch (valid for 1 hour).
       // Use the default bucket so this works on both dev and prod projects.
@@ -549,8 +526,6 @@ export const processAdVideoWithMux = onCall(
         muxProcessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      console.log(`[Mux Ads] Asset created: ${asset.id} for campaign ${campaignId}`);
-
       return {
         success: true,
         assetId: asset.id,
@@ -581,8 +556,6 @@ export const migrateVideosToMux = onCall(
 
     const { limit: maxVideos = 10, dryRun = true } = request.data;
 
-    console.log(`[Mux Migration] Starting migration, limit=${maxVideos}, dryRun=${dryRun}`);
-
     try {
       // Find videos that don't have Mux processing yet
       // Note: Firestore can't query for "field doesn't exist", so we fetch all and filter
@@ -603,8 +576,6 @@ export const migrateVideosToMux = onCall(
           });
         }
       });
-
-      console.log(`[Mux Migration] Found ${videosToMigrate.length} videos to migrate`);
 
       if (dryRun) {
         return {
@@ -639,7 +610,6 @@ export const migrateVideosToMux = onCall(
           });
 
           results.push({ videoId: video.id, success: true, assetId: asset.id });
-          console.log(`[Mux Migration] Processed video ${video.id}, asset ${asset.id}`);
 
           // Small delay to avoid rate limiting
           await new Promise((resolve) => setTimeout(resolve, 500));

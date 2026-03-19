@@ -29,7 +29,6 @@ export const createStripeCheckoutSession = functions.https.onCall(async (data, c
   if (data && typeof data.origin === 'string' && data.origin.startsWith('http')) {
     origin = data.origin;
   }
-  console.log('[STRIPE CHECKOUT] Creating session with origin:', origin, { receivedOrigin: data?.origin, uid, email: user?.email });
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'subscription',

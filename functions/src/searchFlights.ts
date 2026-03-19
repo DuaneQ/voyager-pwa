@@ -536,9 +536,6 @@ export const searchFlights = functions
       flights = flights.filter(f => (f.stops <= 1) && (!f.return || f.return.stops <= 1));
     }
 
-    console.log('[searchFlights] Mapped flights count:', flights.length);
-    console.log('[searchFlights] Sample:', flights.slice(0, 3));
-
     // Add a note to metadata if cabinClass was specified, warning about possible label inaccuracy
     const metadata: any = { provider: 'SerpApi', count: flights.length };
     if (params.cabinClass) {

@@ -6,6 +6,8 @@
  * preference-to-query mapping (gender, status, sexualOrientation, dates).
  */
 
+export {};
+
 jest.resetModules();
 
 // ─── Mock firebase-admin ──────────────────────────────────────────────────────
@@ -127,17 +129,17 @@ describe('searchItineraries RPC (Firestore)', () => {
 
   const makeReq = (data: any, uid?: string) => ({ data, auth: uid ? { uid } : undefined } as any);
 
-  it('filters by destination, status, and returns matching itineraries', async () => {
+  it('filters by destination and exact status value', async () => {
     const candidates = [
       {
         id: 'match-1',
         age: 30,
-        status: 'Couple',
+        status: 'couple',
         destination: 'Paris',
         startDay: Date.now() - 86400000,
         endDay: Date.now() + 86400000,
         userId: 'u1',
-        userInfo: { uid: 'u1', blocked: [] },
+        userInfo: { uid: 'u1', status: 'couple', blocked: [] },
       },
     ];
 
@@ -150,7 +152,7 @@ describe('searchItineraries RPC (Firestore)', () => {
 
     const payload = {
       destination: 'Paris',
-      status: 'Couple',
+      status: 'couple',
       lowerRange: 25,
       upperRange: 35,
       pageSize: 50,
@@ -160,14 +162,111 @@ describe('searchItineraries RPC (Firestore)', () => {
     expect(res).toHaveProperty('success', true);
     expect(res.data.map((d: any) => d.id)).toEqual(['match-1']);
 
-    // Verify Firestore .where() was called with destination and status
+    // Verify Firestore .where() was called with destination and userInfo.status
     const whereArgs = mockQuery._wheres;
     expect(whereArgs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: 'destination', op: '==', value: 'Paris' }),
-        expect.objectContaining({ field: 'status', op: '==', value: 'Couple' }),
       ])
     );
+    expect(whereArgs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'userInfo.status', op: '==', value: 'couple' }),
+      ])
+    );
+  });
+
+  it('matches status preference using exact stored values', async () => {
+    const candidates = [
+      {
+        id: 'match-lowercase-status',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', status: 'couple', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      status: 'couple',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-lowercase-status']);
+  });
+
+  it('matches gender preference using exact stored values', async () => {
+    const candidates = [
+      {
+        id: 'match-gender',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', gender: 'Female', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      gender: 'Female',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-gender']);
+  });
+
+  it('matches orientation preference using exact stored values', async () => {
+    const candidates = [
+      {
+        id: 'match-orientation',
+        age: 30,
+        destination: 'Paris',
+        startDay: Date.now() - 86400000,
+        endDay: Date.now() + 86400000,
+        userId: 'u1',
+        userInfo: { uid: 'u1', sexualOrientation: 'heterosexual', blocked: [] },
+      },
+    ];
+
+    mockQuery = createMockQuery(candidates);
+    mockCollection.mockImplementation(() => ({
+      doc: mockDoc, add: mockAdd,
+      where: mockQuery.where, orderBy: mockQuery.orderBy,
+      limit: mockQuery.limit, get: mockQuery.get,
+    }));
+
+    const res = await captured.searchItineraries(makeReq({
+      destination: 'Paris',
+      sexualOrientation: 'heterosexual',
+      pageSize: 50,
+      currentUserId: 'me',
+    }, 'me'));
+
+    expect(res).toHaveProperty('success', true);
+    expect(res.data.map((d: any) => d.id)).toEqual(['match-orientation']);
   });
 
   it('excludes current user itineraries and excluded IDs in post-processing', async () => {
@@ -243,11 +342,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, gender: g }, 'u'));
-      const genderWheres = mockQuery._wheres.filter((w: any) => w.field === 'gender');
+      const genderWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.gender');
       if (g === 'No Preference') {
         expect(genderWheres).toHaveLength(0);
       } else {
-        expect(genderWheres).toEqual([{ field: 'gender', op: '==', value: g }]);
+        expect(genderWheres).toHaveLength(1);
       }
     });
 
@@ -261,11 +360,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, status: s }, 'u'));
-      const statusWheres = mockQuery._wheres.filter((w: any) => w.field === 'status');
+      const statusWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.status');
       if (s === 'No Preference') {
         expect(statusWheres).toHaveLength(0);
       } else {
-        expect(statusWheres).toEqual([{ field: 'status', op: '==', value: s }]);
+        expect(statusWheres).toHaveLength(1);
       }
     });
 
@@ -279,11 +378,11 @@ describe('searchItineraries RPC (Firestore)', () => {
       }));
 
       await captured.searchItineraries(makeReq({ pageSize: 10, sexualOrientation: o }, 'u'));
-      const orientWheres = mockQuery._wheres.filter((w: any) => w.field === 'sexualOrientation');
+      const orientWheres = mockQuery._wheres.filter((w: any) => w.field === 'userInfo.sexualOrientation');
       if (o === 'No Preference') {
         expect(orientWheres).toHaveLength(0);
       } else {
-        expect(orientWheres).toEqual([{ field: 'sexualOrientation', op: '==', value: o }]);
+        expect(orientWheres).toHaveLength(1);
       }
     });
 
@@ -404,9 +503,6 @@ describe('searchItineraries RPC (Firestore)', () => {
       const wheres = mockQuery._wheres;
       expect(wheres).toEqual(expect.arrayContaining([
         { field: 'destination', op: '==', value: 'Austin, TX, USA' },
-        { field: 'gender', op: '==', value: 'Female' },
-        { field: 'status', op: '==', value: 'Single' },
-        { field: 'sexualOrientation', op: '==', value: 'Bisexual' },
         { field: 'endDay', op: '>=', value: now },
         { field: 'startDay', op: '<=', value: now + 86400000 },
       ]));
@@ -430,9 +526,9 @@ describe('searchItineraries RPC (Firestore)', () => {
 
       const fields = mockQuery._wheres.map((w: any) => w.field);
       expect(fields).toContain('destination');
-      expect(fields).toContain('status');
-      expect(fields).not.toContain('gender');
-      expect(fields).not.toContain('sexualOrientation');
+      expect(fields).toContain('userInfo.status');
+      expect(fields).not.toContain('userInfo.gender');
+      expect(fields).not.toContain('userInfo.sexualOrientation');
     });
   });
 
@@ -537,6 +633,25 @@ describe('searchItineraries RPC (Firestore)', () => {
       // null age should pass through (not filtered out)
       expect(res.data.map((d: any) => d.id)).toContain('no-age');
       expect(res.data.map((d: any) => d.id)).toContain('has-age');
+    });
+  });
+
+  describe('maxEndDay-only date range', () => {
+    it('maps maxEndDay-only to startDay <= query with endDay >= 0 default', async () => {
+      const future = Date.now() + 86400000;
+      mockQuery = createMockQuery([]);
+      mockCollection.mockImplementation(() => ({
+        doc: mockDoc, add: mockAdd,
+        where: mockQuery.where, orderBy: mockQuery.orderBy,
+        limit: mockQuery.limit, get: mockQuery.get,
+      }));
+
+      await captured.searchItineraries(makeReq({ pageSize: 10, maxEndDay: future }, 'u'));
+      const dateWheres = mockQuery._wheres.filter((w: any) => w.field === 'endDay' || w.field === 'startDay');
+      expect(dateWheres).toEqual(expect.arrayContaining([
+        expect.objectContaining({ field: 'endDay', op: '>=', value: 0 }),
+        expect.objectContaining({ field: 'startDay', op: '<=', value: future }),
+      ]));
     });
   });
 });

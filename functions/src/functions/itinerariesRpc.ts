@@ -226,81 +226,78 @@ export const searchItineraries = onCall(async (req) => {
     const data = req.data || {};
     const db = getDb();
     let query: admin.firestore.Query = db.collection(ITINERARIES_COLLECTION);
+    const genderPreference = typeof data.gender === 'string' ? data.gender.trim() : '';
+    const statusPreference = typeof data.status === 'string' ? data.status.trim() : '';
+    const orientationPreference = typeof data.sexualOrientation === 'string' ? data.sexualOrientation.trim() : '';
+    const hasGenderPreference = genderPreference !== '' && genderPreference !== 'No Preference';
+    const hasStatusPreference = statusPreference !== '' && statusPreference !== 'No Preference';
+    const hasOrientationPreference = orientationPreference !== '' && orientationPreference !== 'No Preference';
 
     // Equality filters (Firestore handles these natively with composite indexes)
     if (data.destination) {
       query = query.where('destination', '==', data.destination);
     }
-    if (data.gender && data.gender !== 'No Preference') {
-      query = query.where('gender', '==', data.gender);
+    if (hasGenderPreference) {
+      query = query.where('userInfo.gender', '==', genderPreference);
     }
-    if (data.status && data.status !== 'No Preference') {
-      query = query.where('status', '==', data.status);
+    if (hasStatusPreference) {
+      query = query.where('userInfo.status', '==', statusPreference);
     }
-    if (data.sexualOrientation && data.sexualOrientation !== 'No Preference') {
-      query = query.where('sexualOrientation', '==', data.sexualOrientation);
+    if (hasOrientationPreference) {
+      query = query.where('userInfo.sexualOrientation', '==', orientationPreference);
     }
 
-    // Date overlap filtering using startDay/endDay (epoch ms numbers)
-    // For overlap: candidate.endDay >= user.startDay AND candidate.startDay <= user.endDay
-    // Firestore supports inequalities on multiple fields (added 2024).
-    //
-    // IMPORTANT: Always apply both range filters (with sensible defaults when not provided)
-    // so that ALL queries hit the composite indexes that include both endDay + startDay.
-    // Without this, queries like destination+gender+orderBy(endDay) would need separate
-    // indexes without the startDay field, doubling the index count.
     const userStartDay = data.minStartDay ? Number(data.minStartDay) : 0;
     const userEndDay = data.maxEndDay ? Number(data.maxEndDay) : Number.MAX_SAFE_INTEGER;
-    query = query.where('endDay', '>=', userStartDay);   // candidate ends after user starts (or endDay >= 0 = all)
-    query = query.where('startDay', '<=', userEndDay);    // candidate starts before user ends (or startDay <= MAX = all)
-
-    // Order by endDay ascending (Firestore requires orderBy on the first inequality field;
-    // endDay >= is our first range filter, so orderBy must match it for composite index usage)
+    query = query.where('endDay', '>=', userStartDay);
+    query = query.where('startDay', '<=', userEndDay);
     query = query.orderBy('endDay', 'asc');
 
-    // Fetch more than needed to account for post-processing filters
     const take = Math.min(100, Number(data.pageSize || 50));
-    const overFetch = take * 3; // Fetch extra to filter in post-processing
+    const overFetch = take * 3;
     query = query.limit(overFetch);
 
     const snapshot = await query.get();
-    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    snapshot.docs.forEach((doc, i) => {
+      const d = doc.data() as any;
+    });
 
-    // ── Post-processing filters ──────────────────────────────────────────────
-    // Filters that Firestore can't handle natively in a single compound query
+    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const currentUserId = data.currentUserId;
     const currentUserBlockedIds = Array.isArray(data.blockedUserIds) ? data.blockedUserIds : [];
     const excludedIds = new Set(Array.isArray(data.excludedIds) ? data.excludedIds : []);
 
-    // Age range filter (post-processing to avoid needing additional composite indexes)
     const hasAgeFilter = data.lowerRange != null && data.upperRange != null;
     const lowerRange = hasAgeFilter ? Number(data.lowerRange) : null;
     const upperRange = hasAgeFilter ? Number(data.upperRange) : null;
 
     items = items.filter((item: any) => {
       // Exclude current user's own itineraries
-      if (currentUserId && item.userId === currentUserId) return false;
+      if (currentUserId && item.userId === currentUserId) {
+        return false;
+      }
 
       // Exclude viewed/excluded itineraries
-      if (excludedIds.has(item.id)) return false;
+      if (excludedIds.has(item.id)) {
+        return false;
+      }
 
       // Age range filter
       if (hasAgeFilter && item.age != null) {
         const age = Number(item.age);
-        if (age < lowerRange! || age > upperRange!) return false;
+        if (age < lowerRange! || age > upperRange!) {
+          return false;
+        }
       }
 
-      // Bidirectional blocking
       const candidateUserId = item.userInfo?.uid;
       const candidateBlockedList = Array.isArray(item.userInfo?.blocked) ? item.userInfo.blocked : [];
 
-      // Exclude if current user blocked this candidate
       if (currentUserId && candidateUserId && currentUserBlockedIds.includes(candidateUserId)) {
         return false;
       }
 
-      // Exclude if candidate blocked current user
       if (currentUserId && candidateBlockedList.includes(currentUserId)) {
         return false;
       }
@@ -308,7 +305,6 @@ export const searchItineraries = onCall(async (req) => {
       return true;
     });
 
-    // Trim to requested page size
     const finalItems = items.slice(0, take);
 
     return { success: true, data: sanitizeDeep(finalItems) };

@@ -447,7 +447,6 @@ export const logAdEvents = onCall(
               status: 'paused',
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             })
-            console.log(`[logAdEvents] Campaign ${campaignId} budget exhausted — paused.`)
           }
         } catch (budgetErr) {
           // Non-fatal: events were already counted. Budget check will catch
@@ -527,8 +526,6 @@ export const backfillDailyMetricsDates = onCall(
         await batch.commit()
       }
     }
-
-    console.log(`[backfillDailyMetricsDates] updated=${totalUpdated} skipped=${totalSkipped}`)
     return { updated: totalUpdated, skipped: totalSkipped }
   },
 )

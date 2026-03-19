@@ -50,8 +50,6 @@ export const sendChatNotification = onDocumentCreated(
     const messageId = event.params.messageId;
     const message = snap.data() as MessageData;
 
-    console.log(`New message created in connection ${connectionId}: ${messageId}`);
-
     // Validate message data
     if (!message || !message.sender) {
       console.error(`Invalid message data for ${connectionId}/${messageId}:`, message);
@@ -79,7 +77,6 @@ export const sendChatNotification = onDocumentCreated(
     const recipients = connection.users.filter(userId => userId !== message.sender);
 
     if (recipients.length === 0) {
-      console.log(`No recipients for message in connection ${connectionId}`);
       return;
     }
 
@@ -105,7 +102,6 @@ export const sendChatNotification = onDocumentCreated(
         const tokens = await getTokensForUser(recipientId);
 
         if (!tokens || tokens.length === 0) {
-          console.log(`No tokens for recipient ${recipientId}, skipping notification`);
           return;
         }
 
@@ -149,10 +145,6 @@ export const sendChatNotification = onDocumentCreated(
         // Send notification
         const response = await admin.messaging().sendEachForMulticast(payload);
 
-        console.log(
-          `Sent chat notification to user ${recipientId}: ${response.successCount}/${tokens.length} succeeded`
-        );
-
         // Clean up invalid tokens
         await cleanupInvalidTokens(recipientId, tokens, response);
 
@@ -163,6 +155,5 @@ export const sendChatNotification = onDocumentCreated(
     });
 
     await Promise.all(notificationPromises);
-    console.log(`Chat notification processing complete for message ${messageId} in connection ${connectionId}`);
   }
 );

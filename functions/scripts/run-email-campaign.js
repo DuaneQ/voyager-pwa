@@ -25,19 +25,12 @@ async function runEmailCampaign() {
 
   if (!campaignId) {
     console.error('❌ Campaign ID is required');
-    console.log('Usage: node run-email-campaign.js <campaignId> [testEmail]');
-    console.log('Available campaigns: new-features-2025');
     process.exit(1);
   }
 
-  console.log(`🚀 Starting email campaign: ${campaignId}`);
   
   if (testEmail) {
-    console.log(`📧 Test mode - sending only to: ${testEmail}`);
-  } else {
-    console.log('📧 Production mode - sending to all users');
-    console.log('⚠️  This will send emails to ALL users in the database!');
-    
+  } else {    
     // Confirmation prompt for production
     const readline = require('readline').createInterface({
       input: process.stdin,
@@ -51,7 +44,6 @@ async function runEmailCampaign() {
     readline.close();
     
     if (answer.toLowerCase() !== 'yes') {
-      console.log('❌ Campaign cancelled');
       process.exit(0);
     }
   }
@@ -62,9 +54,6 @@ async function runEmailCampaign() {
       campaignId,
       testEmail
     });
-
-    console.log('✅ Campaign completed successfully!');
-    console.log('📊 Results:', result.data);
     
   } catch (error) {
     console.error('❌ Campaign failed:', error.message);

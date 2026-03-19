@@ -139,7 +139,6 @@ export const reviewCampaign = onCall({ region: 'us-central1' }, async (request) 
       }
 
       const mailRef = await db.collection('mail').add(mailDoc)
-      console.log(`[reviewCampaign] Mail doc written at mail/${mailRef.id} for ${userEmail} (${action})`)
     } else {
       console.warn(`[reviewCampaign] No userEmail on campaign ${campaignId} — skipping advertiser notification.`)
     }

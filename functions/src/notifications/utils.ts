@@ -27,7 +27,6 @@ export async function getTokensForUser(userId: string): Promise<string[]> {
     const fcmTokens = userDoc.data()?.fcmTokens;
     
     if (!fcmTokens || !Array.isArray(fcmTokens)) {
-      console.log(`No FCM tokens found for user: ${userId}`);
       return [];
     }
     
@@ -67,7 +66,6 @@ export async function cleanupInvalidTokens(
           error?.code === 'messaging/invalid-argument'
         ) {
           failedTokens.push(tokensSent[idx]);
-          console.log(`Invalid token detected for user ${userId}: ${tokensSent[idx]} (${error.code})`);
         } else {
           // Log other errors but don't remove tokens (might be temporary)
           console.warn(`Temporary FCM error for user ${userId}: ${error?.code} - ${error?.message}`);
@@ -76,7 +74,6 @@ export async function cleanupInvalidTokens(
     });
     
     if (failedTokens.length === 0) {
-      console.log(`No invalid tokens to clean up for user ${userId}`);
       return;
     }
     
@@ -84,9 +81,7 @@ export async function cleanupInvalidTokens(
     const userRef = admin.firestore().doc(`users/${userId}`);
     await userRef.update({
       fcmTokens: admin.firestore.FieldValue.arrayRemove(...failedTokens)
-    });
-    
-    console.log(`Cleaned up ${failedTokens.length} invalid tokens for user ${userId}`);
+    });    
   } catch (error) {
     console.error(`Error cleaning up tokens for user ${userId}:`, error);
     // Don't throw - token cleanup is best effort
