@@ -2,9 +2,8 @@
  * Unit tests for muxVideoProcessing Cloud Functions
  *
  * Critical regression coverage:
- * - mp4_support: "standard" must be set on ALL Mux asset creation calls.
- *   Without this, og:video Facebook/social sharing does not work because
- *   Mux will not generate the /high.mp4 rendition.
+ * - Deprecated mp4_support must NOT be sent on Mux basic assets.
+ *   Mux now returns HTTP 400 when mp4_support: "standard" is included.
  *
  * - muxWebhook signature verification must reject invalid signatures.
  * - processAdVideoWithMux must enforce campaign ownership.
@@ -98,7 +97,7 @@ function makeCallRequest(overrides: Record<string, unknown> = {}) {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('muxVideoProcessing — mp4_support regression guard', () => {
+describe('muxVideoProcessing — Mux payload regression guard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAssetsCreate.mockResolvedValue(makeMuxAsset());
@@ -122,7 +121,7 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
       handler = (onObjectFinalized as jest.Mock).mock.calls[0]?.[1];
     });
 
-    it('passes mp4_support: "standard" to mux.video.assets.create', async () => {
+    it('does not pass deprecated mp4_support to mux.video.assets.create', async () => {
       if (!handler) return; // guard if module structure changes
       const event = {
         data: {
@@ -134,9 +133,9 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
 
       await handler(event);
 
-      expect(mockAssetsCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ mp4_support: 'standard' })
-      );
+      expect(mockAssetsCreate).toHaveBeenCalled();
+      const call = mockAssetsCreate.mock.calls[0][0];
+      expect(call.mp4_support).toBeUndefined();
     });
 
     it('skips non-video files', async () => {
@@ -186,15 +185,15 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
       handler = calls.find((_: unknown[], i: number) => i === 0)?.[1];
     });
 
-    it('passes mp4_support: "standard" to mux.video.assets.create', async () => {
+    it('does not pass deprecated mp4_support to mux.video.assets.create', async () => {
       if (!handler) return;
       const req = makeCallRequest({ data: { videoId: 'vid-1', videoUrl: 'https://storage.example.com/video.mp4' } });
 
       await handler(req);
 
-      expect(mockAssetsCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ mp4_support: 'standard' })
-      );
+      expect(mockAssetsCreate).toHaveBeenCalled();
+      const call = mockAssetsCreate.mock.calls[0][0];
+      expect(call.mp4_support).toBeUndefined();
     });
 
     it('throws if not authenticated', async () => {
@@ -250,7 +249,7 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
       handler = calls[1]?.[1];
     });
 
-    it('passes mp4_support: "standard" to mux.video.assets.create', async () => {
+    it('does not pass deprecated mp4_support to mux.video.assets.create', async () => {
       if (!handler) return;
       // Campaign exists and belongs to the caller
       mockDocGet.mockResolvedValue({
@@ -263,9 +262,9 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
 
       await handler(req);
 
-      expect(mockAssetsCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ mp4_support: 'standard' })
-      );
+      expect(mockAssetsCreate).toHaveBeenCalled();
+      const call = mockAssetsCreate.mock.calls[0][0];
+      expect(call.mp4_support).toBeUndefined();
     });
 
     it('throws if not authenticated', async () => {
@@ -354,7 +353,7 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
       expect(result.dryRun).toBe(true);
     });
 
-    it('passes mp4_support: "standard" when dryRun is false', async () => {
+    it('does not pass deprecated mp4_support when dryRun is false', async () => {
       if (!handler) return;
       mockCollectionGet.mockResolvedValue({
         forEach: (cb: Function) => {
@@ -365,9 +364,9 @@ describe('muxVideoProcessing — mp4_support regression guard', () => {
 
       await handler(req);
 
-      expect(mockAssetsCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ mp4_support: 'standard' })
-      );
+      expect(mockAssetsCreate).toHaveBeenCalled();
+      const call = mockAssetsCreate.mock.calls[0][0];
+      expect(call.mp4_support).toBeUndefined();
     });
 
     it('throws if not authenticated', async () => {
