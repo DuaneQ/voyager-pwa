@@ -276,30 +276,56 @@ describe('billing constants', () => {
 // ─── Billing computation edge cases ─────────────────────────────────────────
 
 describe('billing computation edge cases', () => {
-  it('should compute CPM charge correctly for various impression counts', () => {
-    // Using the same formula as the CF: Math.round((impressionCount * CPM_RATE) / 1000)
-    const computeCharge = (impressions: number) =>
-      Math.round((impressions * CPM_RATE_CENTS) / 1000)
+  // Running-total CPM formula: floor((prev+new)*rate) - floor(prev*rate)
+  // This correctly tracks fractional-cent debt across batches using totalImpressions.
+  const computeCpmCharge = (prevImpressions: number, newImpressions: number) =>
+    Math.floor((prevImpressions + newImpressions) * CPM_RATE_CENTS / 1000) -
+    Math.floor(prevImpressions * CPM_RATE_CENTS / 1000)
 
-    // 1 impression: 0.5 cents → rounds to 1 (Math.round(0.5) = 1 in JS)
-    expect(computeCharge(1)).toBe(1)
+  it('should compute CPM charge correctly for various impression counts (new campaign, prev=0)', () => {
+    // prev=0, batch=1: floor(0.5) - floor(0) = 0 — sub-cent, no charge yet
+    expect(computeCpmCharge(0, 1)).toBe(0)
 
-    // 2 impressions: 1 cent
-    expect(computeCharge(2)).toBe(1)
+    // prev=0, batch=2: floor(1) - floor(0) = 1 cent ✓
+    expect(computeCpmCharge(0, 2)).toBe(1)
 
-    // 10 impressions: 5 cents
-    expect(computeCharge(10)).toBe(5)
+    // prev=0, batch=10: floor(5) - floor(0) = 5 cents ✓
+    expect(computeCpmCharge(0, 10)).toBe(5)
 
-    // 1000 impressions: exactly 500 cents ($5.00)
-    expect(computeCharge(1000)).toBe(500)
+    // prev=0, batch=1000: exactly 500 cents ($5.00) ✓
+    expect(computeCpmCharge(0, 1000)).toBe(500)
 
-    // 0 impressions: 0 cents
-    expect(computeCharge(0)).toBe(0)
+    // prev=0, batch=0: 0 cents ✓
+    expect(computeCpmCharge(0, 0)).toBe(0)
+  })
+
+  it('should recover the fractional-cent debt on the next impression', () => {
+    // 1st impression (prev=0→1): 0 cents owed, cost 0
+    expect(computeCpmCharge(0, 1)).toBe(0)
+    // 2nd impression (prev=1→2): crosses whole-cent boundary, costs 1 cent ✓
+    expect(computeCpmCharge(1, 1)).toBe(1)
+    // 3rd impression (prev=2→3): 0 again
+    expect(computeCpmCharge(2, 1)).toBe(0)
+    // 4th impression (prev=3→4): costs 1 cent again ✓
+    expect(computeCpmCharge(3, 1)).toBe(1)
+    // Average: 4 impressions → 2 charges = 0.5 cents each = $5 CPM ✓
+  })
+
+  it('should compute CPM correctly for ongoing campaign with large prev total', () => {
+    // Campaign has had 999 impressions; next batch of 1 tips to 1000 → 1 cent
+    expect(computeCpmCharge(999, 1)).toBe(1) // floor(1000*0.5) - floor(999*0.5) = 500 - 499 = 1
+    // Campaign at 1000; next 1 impression: floor(1000.5) - floor(500) = 500 - 500 = 0
+    expect(computeCpmCharge(1000, 1)).toBe(0)
+    // Campaign at 1000; next 100 impressions: floor(550) - floor(500) = 50 cents ✓
+    expect(computeCpmCharge(1000, 100)).toBe(50)
   })
 
   it('should compute CPC charge correctly — clicks only (zero impressions)', () => {
-    const computeCharge = (clicks: number, impressions: number) =>
-      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
+    const computeCharge = (clicks: number, impressions: number, prev = 0) => {
+      const floor = Math.floor((prev + impressions) * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000) -
+                    Math.floor(prev * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000)
+      return floor + clicks * CPC_RATE_CENTS
+    }
 
     expect(computeCharge(0, 0)).toBe(0)
     expect(computeCharge(1, 0)).toBe(50) // $0.50 per click, no floor
@@ -308,24 +334,28 @@ describe('billing computation edge cases', () => {
   })
 
   it('should compute CPC charge correctly — impressions only (zero clicks)', () => {
-    const computeCharge = (clicks: number, impressions: number) =>
-      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
+    const computeFloor = (impressions: number, prev = 0) =>
+      Math.floor((prev + impressions) * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000) -
+      Math.floor(prev * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000)
 
-    // 1,000 impressions × $0.50 / 1,000 = $0.50 floor
-    expect(computeCharge(0, 1000)).toBe(50)
-    // 0 impressions → 0 charge
-    expect(computeCharge(0, 0)).toBe(0)
-    // 500 impressions → Math.round(500 * 50 / 1000) = Math.round(25) = 25 cents
-    expect(computeCharge(0, 500)).toBe(25)
+    // 1,000 impressions × $0.50 / 1,000 = 50 cents floor ✓
+    expect(computeFloor(1000)).toBe(50)
+    // 0 impressions → 0 charge ✓
+    expect(computeFloor(0)).toBe(0)
+    // 500 impressions → floor(25) = 25 cents ✓
+    expect(computeFloor(500)).toBe(25)
   })
 
   it('should compute CPC charge correctly — combined clicks and impressions', () => {
-    const computeCharge = (clicks: number, impressions: number) =>
-      Math.round((impressions * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000) + clicks * CPC_RATE_CENTS
+    const computeCharge = (clicks: number, impressions: number, prev = 0) => {
+      const floor = Math.floor((prev + impressions) * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000) -
+                    Math.floor(prev * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000)
+      return floor + clicks * CPC_RATE_CENTS
+    }
 
-    // 5 clicks + 1,000 impressions → (50) + (5 × 50) = 50 + 250 = 300 cents
+    // 5 clicks + 1,000 impressions → (50) + (5 × 50) = 300 cents ✓
     expect(computeCharge(5, 1000)).toBe(300)
-    // 1 click + 2,000 impressions → (100) + (50) = 150 cents
+    // 1 click + 2,000 impressions → (100) + (50) = 150 cents ✓
     expect(computeCharge(1, 2000)).toBe(150)
   })
 })
@@ -334,6 +364,11 @@ describe('billing computation edge cases', () => {
 // Verifies that the proportional allocation algorithm distributes chargeCents
 // across days so the sum equals the total (no rounding divergence).
 describe('daily spend proportional allocation', () => {
+  // Running-total charge helper (mirrors logAdEvents production formula, prev=0 for new campaigns)
+  const runningTotalCharge = (impressions: number, prev = 0) =>
+    Math.floor((prev + impressions) * CPM_RATE_CENTS / 1000) -
+    Math.floor(prev * CPM_RATE_CENTS / 1000)
+
   // Helper mirrors the allocation logic from logAdEvents
   function allocateDayCharges(
     dailyImpressions: Map<string, number>,
@@ -363,9 +398,10 @@ describe('daily spend proportional allocation', () => {
   }
 
   it('should sum daily charges to exactly chargeCents for single day', () => {
+    // 3 impressions, prev=0 → floor(3*0.5) - floor(0) = 1 cent
     const daily = new Map([['2026-03-01', 3]])
     const total = 3
-    const charge = Math.round((total * CPM_RATE_CENTS) / 1000) // 2 cents
+    const charge = runningTotalCharge(total) // 1 cent
     const result = allocateDayCharges(daily, total, charge)
 
     const sum = Array.from(result.values()).reduce((a, b) => a + b, 0)
@@ -373,12 +409,12 @@ describe('daily spend proportional allocation', () => {
   })
 
   it('should sum daily charges to exactly chargeCents for two days — avoiding rounding divergence', () => {
-    // 1 impression per day, 2 total → chargeCents = Math.round(2*500/1000) = 1
-    // Independent rounding would give: Math.round(1*500/1000) = 1 per day → sum 2 ≠ 1
-    // Proportional allocation gives: floor(0.5*1) = 0 each, remainder 1 to largest → sum = 1
+    // 1 impression per day, 2 total → charge = floor(2*0.5) - 0 = 1 cent
+    // Independent rounding per-day would give: floor(1*0.5) = 0 each → sum 0 ≠ 1
+    // Proportional allocation gives: 0 each, remainder 1 to largest → sum = 1 ✓
     const daily = new Map([['2026-03-01', 1], ['2026-03-02', 1]])
     const total = 2
-    const charge = Math.round((total * CPM_RATE_CENTS) / 1000) // 1 cent
+    const charge = runningTotalCharge(total) // 1 cent
     const result = allocateDayCharges(daily, total, charge)
 
     const sum = Array.from(result.values()).reduce((a, b) => a + b, 0)
@@ -386,10 +422,10 @@ describe('daily spend proportional allocation', () => {
   })
 
   it('should handle uneven impression splits across days', () => {
-    // 7 on Day A, 3 on Day B → 10 total → chargeCents = 5
+    // 7 on Day A, 3 on Day B → 10 total → charge = floor(10*0.5) = 5 cents
     const daily = new Map([['2026-03-01', 7], ['2026-03-02', 3]])
     const total = 10
-    const charge = Math.round((total * CPM_RATE_CENTS) / 1000) // 5 cents
+    const charge = runningTotalCharge(total) // 5 cents
     const result = allocateDayCharges(daily, total, charge)
 
     const sum = Array.from(result.values()).reduce((a, b) => a + b, 0)
@@ -399,11 +435,11 @@ describe('daily spend proportional allocation', () => {
   })
 
   it('should handle three-day split with remainder', () => {
-    // 1 impression per day × 3 days → chargeCents = Math.round(3*500/1000) = 2
-    // floor(1/3 * 2) = 0 per day → remainder 2 goes to first (they're tied, first wins)
+    // 1 impression per day × 3 days → charge = floor(3*0.5) = 1 cent
+    // floor(1/3 * 1) = 0 per day → remainder 1 goes to first (largest; tied, first wins) → sum = 1 ✓
     const daily = new Map([['2026-03-01', 1], ['2026-03-02', 1], ['2026-03-03', 1]])
     const total = 3
-    const charge = Math.round((total * CPM_RATE_CENTS) / 1000) // 2 cents
+    const charge = runningTotalCharge(total) // 1 cent
     const result = allocateDayCharges(daily, total, charge)
 
     const sum = Array.from(result.values()).reduce((a, b) => a + b, 0)

@@ -6,7 +6,7 @@
  * depends on Firestore and firebase-admin which are mocked in integration tests.
  */
 
-import { _testing } from '../selectAds'
+import { _testing, checkGenderEligibility, checkAgeEligibility, applySeenPenalty } from '../selectAds'
 import { CampaignDoc, UserAdContext } from '../types/adDelivery'
 
 const {
@@ -880,5 +880,114 @@ describe('checkCampaignEligibility', () => {
       muxPlaybackUrl: 'https://stream.mux.com/abc.m3u8',
     })
     expect(checkCampaignEligibility(doc, 5000)).toBeNull()
+  })
+})
+
+// ─── checkGenderEligibility ──────────────────────────────────────────────────
+
+describe('checkGenderEligibility', () => {
+  it('returns null when campaign has no targetGender (no targeting)', () => {
+    expect(checkGenderEligibility(undefined, 'female')).toBeNull()
+    expect(checkGenderEligibility('', 'male')).toBeNull()
+  })
+
+  it('returns null when user gender is unknown', () => {
+    expect(checkGenderEligibility('female', undefined)).toBeNull()
+    expect(checkGenderEligibility('male', '')).toBeNull()
+  })
+
+  it('returns null when targetGender matches user gender (exact)', () => {
+    expect(checkGenderEligibility('female', 'female')).toBeNull()
+    expect(checkGenderEligibility('male', 'male')).toBeNull()
+  })
+
+  it('returns null when targetGender matches user gender (case-insensitive)', () => {
+    expect(checkGenderEligibility('Female', 'female')).toBeNull()
+    expect(checkGenderEligibility('MALE', 'Male')).toBeNull()
+  })
+
+  it('returns a non-null drop reason when targetGender mismatches user gender', () => {
+    const reason = checkGenderEligibility('female', 'male')
+    expect(reason).not.toBeNull()
+    expect(reason).toMatch(/targetGender/)
+  })
+})
+
+// ─── checkAgeEligibility ─────────────────────────────────────────────────────
+
+describe('checkAgeEligibility', () => {
+  it('returns null when campaign has no age range (no targeting)', () => {
+    expect(checkAgeEligibility(undefined, undefined, 30)).toBeNull()
+    expect(checkAgeEligibility('', '', 30)).toBeNull()
+  })
+
+  it('returns null when only one bound is set (partial range — treat as no filter)', () => {
+    expect(checkAgeEligibility('25', undefined, 30)).toBeNull()
+    expect(checkAgeEligibility(undefined, '45', 30)).toBeNull()
+  })
+
+  it('returns null when user age is unknown', () => {
+    expect(checkAgeEligibility('25', '45', undefined)).toBeNull()
+    expect(checkAgeEligibility('25', '45', 0)).toBeNull()
+  })
+
+  it('returns null when user age is within the range', () => {
+    expect(checkAgeEligibility('25', '45', 30)).toBeNull()
+    expect(checkAgeEligibility('25', '45', 25)).toBeNull() // lower boundary
+    expect(checkAgeEligibility('25', '45', 45)).toBeNull() // upper boundary
+  })
+
+  it('returns a drop reason when user age is below the range', () => {
+    const reason = checkAgeEligibility('35', '55', 25)
+    expect(reason).not.toBeNull()
+    expect(reason).toMatch(/age/)
+  })
+
+  it('returns a drop reason when user age is above the range', () => {
+    const reason = checkAgeEligibility('18', '34', 40)
+    expect(reason).not.toBeNull()
+    expect(reason).toMatch(/age/)
+  })
+
+  it('returns null when targetAgeTo is "65+" and user is 70 (open-ended upper bound)', () => {
+    expect(checkAgeEligibility('45', '65+', 70)).toBeNull()
+    expect(checkAgeEligibility('45', '65+', 100)).toBeNull()
+    expect(checkAgeEligibility('45', '65+', 65)).toBeNull()
+  })
+
+  it('returns a drop reason when user is below 65+ range lower bound', () => {
+    const reason = checkAgeEligibility('45', '65+', 30)
+    expect(reason).not.toBeNull()
+  })
+})
+
+// ─── applySeenPenalty ────────────────────────────────────────────────────────
+
+describe('applySeenPenalty', () => {
+  it('returns rawScore unchanged when seen=false', () => {
+    expect(applySeenPenalty(3, false)).toBe(3)
+    expect(applySeenPenalty(0, false)).toBe(0)
+    expect(applySeenPenalty(14, false)).toBe(14)
+  })
+
+  it('subtracts 5 from rawScore when seen=true', () => {
+    expect(applySeenPenalty(3, true)).toBe(-2)
+    expect(applySeenPenalty(0, true)).toBe(-5)
+    expect(applySeenPenalty(14, true)).toBe(9)
+  })
+
+  it('unseen score-0 beats any seen campaign (key invariant)', () => {
+    // An unseen ad with no targeting score (0) must always
+    // rank above a seen ad regardless of how well-targeted it is.
+    // Max video_feed rawScore = 3 (age 2 + gender 1).
+    const unseenScore = applySeenPenalty(0, false)   // 0
+    const seenMaxScore = applySeenPenalty(3, true)   // -2
+    expect(unseenScore).toBeGreaterThan(seenMaxScore)
+  })
+
+  it('unseen perfectly-targeted ad beats seen perfectly-targeted ad', () => {
+    const unseenPerfect = applySeenPenalty(14, false)  // 14
+    const seenPerfect = applySeenPenalty(14, true)     // 9
+    expect(unseenPerfect).toBeGreaterThan(seenPerfect)
   })
 })

@@ -43,6 +43,8 @@ export { getPendingCampaigns } from './getPendingCampaigns';
 // Export Ads delivery functions (consumer-side)
 export { selectAds } from './selectAds';
 export { logAdEvents, backfillDailyMetricsDates } from './logAdEvents';
+// Export Ads billing maintenance functions
+export { resetDailyBudgets } from './resetDailyBudgets';
 import bodyParser from "body-parser";
 
 /**

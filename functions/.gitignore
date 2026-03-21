@@ -13,3 +13,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Firebase CLI debug logs — may contain secrets printed during deployment
+firebase-debug.log
+firebase-debug.*.log

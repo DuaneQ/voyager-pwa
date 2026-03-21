@@ -191,6 +191,8 @@ export const logAdEvents = onCall(
       return { processed: 0, skipped }
     }
 
+    console.info(`[🎯 ADS-TEST] logAdEvents: ${validEvents.length} valid / ${skipped} skipped. Events: ${JSON.stringify(validEvents.map(e => ({ type: e.type, campaignId: e.campaignId, quartile: (e as any).quartile })))}`)
+
     // ── Group events by campaignId for efficient batched writes ────────────
     const byCampaign = new Map<string, AdEvent[]>()
     for (const event of validEvents) {
@@ -265,19 +267,42 @@ export const logAdEvents = onCall(
       }
 
       // ── Compute charges ───────────────────────────────────────────────
+      //
+      // Running-total approach: charge = floor((prev+new) * rate) - floor(prev * rate)
+      //
+      // This piggybacks on the `totalImpressions` counter already in the campaign doc
+      // to track fractional-cent debt implicitly — no extra Firestore field needed.
+      //
+      // Why it's correct:
+      //   CPM = 500 cents / 1000 impressions = 0.5 cents each
+      //   prev=0, batch=1  → floor(1×0.5) - floor(0×0.5) = 0     ← no charge (½ cent debt)
+      //   prev=1, batch=1  → floor(2×0.5) - floor(1×0.5) = 1     ← 1 cent charged ✓
+      //   prev=0, batch=10 → floor(10×0.5) - floor(0×0.5) = 5    ← 5 cents ✓
+      //   The debt from odd-impression batches is automatically recovered on the next even one.
+      //
+      // Math.floor vs Math.round:  Math.round overbills when batch size is 1 (rounds 0.5→1).
+      // Math.floor without running total underbills indefinitely for single-impression flushes.
+      // The running total is the only approach that is both accurate AND self-correcting.
+
       let chargeCents = 0
+      // prevImpressions is the total accumulated BEFORE this batch (stale read is intentional;
+      // see comment above regarding concurrent-call bounded error ≤ 1 cent/call).
+      const prevImpressions = typeof campaignData.totalImpressions === 'number' ? campaignData.totalImpressions : 0
+
       if (billingModel === 'cpm') {
-        // CPM: charge per impression (CPM_RATE / 1000 cents each)
-        // Use fractional math: (impressions * CPM_RATE) / 1000, rounded
-        chargeCents = Math.round((impressionCount * CPM_RATE_CENTS) / 1000)
+        chargeCents =
+          Math.floor((prevImpressions + impressionCount) * CPM_RATE_CENTS / 1000) -
+          Math.floor(prevImpressions * CPM_RATE_CENTS / 1000)
       } else if (billingModel === 'cpc') {
         // CPC: charge per click PLUS a small impression floor so that budgets
         // deplete even when CTR is zero (preventing indefinite free delivery).
-        // Floor rate: $0.50 per 1,000 impressions (CPC_IMPRESSION_FLOOR_RATE_CENTS).
-        const cpcFloorCents = Math.round((impressionCount * CPC_IMPRESSION_FLOOR_RATE_CENTS) / 1000)
+        // Apply same running-total approach for the floor rate.
+        const cpcFloorCents =
+          Math.floor((prevImpressions + impressionCount) * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000) -
+          Math.floor(prevImpressions * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000)
         chargeCents = cpcFloorCents + clickCount * CPC_RATE_CENTS
       }
-
+      console.info(`[🎯 ADS-TEST] campaign ${campaignId}: impressions=${impressionCount} clicks=${clickCount} billingModel=${billingModel} chargeCents=${chargeCents} (budgetCents before=${typeof campaignData.budgetCents === 'number' ? campaignData.budgetCents : 'unset—will init from budgetAmount='+campaignData.budgetAmount})`)
       // ── Batched Firestore writes ──────────────────────────────────────
       const batch = db.batch()
       const campaignRef = db.collection(COLLECTION).doc(campaignId)
@@ -434,6 +459,7 @@ export const logAdEvents = onCall(
       // Commit the batch atomically
       await batch.commit()
       processed += events.length
+      console.info(`[🎯 ADS-TEST] campaign ${campaignId}: batch committed. totalImpressions+=${impressionCount} totalClicks+=${clickCount} budgetCents-=${chargeCents} dailyDates=[${[...allDateKeys].join(', ')}]`)
 
       // ── Budget enforcement (post-commit check) ──────────────────────
       // After decrementing, check if budget has been exhausted.
