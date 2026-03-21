@@ -469,8 +469,10 @@ export const selectAds = onCall(
     let campaignDocs: Array<{ id: string; data: CampaignDoc }>
 
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
+      console.info(`[🎯 ADS-TEST] CACHE HIT for "${placement}": ${cached.docs.length} campaign(s), age=${Math.round((now - cached.fetchedAt) / 1000)}s / TTL=${CACHE_TTL_MS / 1000}s`)
       campaignDocs = cached.docs
     } else {
+      console.info(`[🎯 ADS-TEST] CACHE MISS for "${placement}": querying Firestore`)
       const snapshot = await db
         .collection(COLLECTION)
         .where('status', '==', 'active')
@@ -503,21 +505,46 @@ export const selectAds = onCall(
     const userSeed = (request.auth?.uid ?? clientSessionId) + '|' + today
 
     // ── Filter + Score ────────────────────────────────────────────────────
+    console.info(`[🎯 ADS-TEST] selectAds: placement="${placement}" today="${today}" candidates=${campaignDocs.length}`)
+    console.info(`[🎯 ADS-TEST] userContext: ${JSON.stringify(ctx ?? {})}`)
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
 
     for (const { id, data: doc } of campaignDocs) {
 
       // Hard filter: must not be under review
       if (doc.isUnderReview) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): still under review`)
         continue
       }
 
       // Hard filter: campaign date range must include today
       // Uses string comparison — YYYY-MM-DD sorts lexicographically
       if (doc.startDate && doc.startDate > today) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): startDate=${doc.startDate} > today=${today}`)
         continue
       }
       if (doc.endDate && doc.endDate < today) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): endDate=${doc.endDate} < today=${today}`)
+        continue
+      }
+
+      // Hard filter: gender targeting (Facebook/Google parity)
+      // If the campaign targets a specific gender AND the user's gender is known,
+      // drop the campaign on a mismatch.  Unknown user gender → still eligible
+      // (mirrors Facebook's "Include people whose demographics are unknown").
+      const genderDropReason = checkGenderEligibility(doc.targetGender, ctx?.gender)
+      if (genderDropReason) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${genderDropReason}`)
+        continue
+      }
+
+      // Hard filter: age range targeting (Facebook/Google parity)
+      // If the campaign sets an age range AND the user's age is known,
+      // drop the campaign when the user falls outside that range.
+      // Unknown user age → still eligible.
+      const ageDropReason = checkAgeEligibility(doc.ageFrom, doc.ageTo, ctx?.age)
+      if (ageDropReason) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${ageDropReason}`)
         continue
       }
 
@@ -535,14 +562,15 @@ export const selectAds = onCall(
 
       const dropReason = checkCampaignEligibility(doc, budgetCents)
       if (dropReason) {
+        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${dropReason}`)
         continue
       }
 
       const rawScore = scoreCampaign(doc, ctx)
       // Deprioritise campaigns the viewer has already seen this session.
-      // -5 is sufficient to push a seen ad below any unseen one with score ≤ 9
-      // (max targeting score ≈ 14, so a seen ad caps at 14-5=9).
-      const score = seenSet.has(id) ? rawScore - 5 : rawScore
+      const seen = seenSet.has(id)
+      const score = applySeenPenalty(rawScore, seen)
+      console.info(`[🎯 ADS-TEST] SCORED "${doc.name ?? id}" (${id}): rawScore=${rawScore} seen=${seen} finalScore=${score} [dest="${doc.targetDestination ?? doc.location ?? '-'}" gender="${doc.targetGender ?? '-'}" age=${doc.ageFrom ?? '-'}–${doc.ageTo ?? '-'} tripTypes=[${(doc.targetTripTypes ?? []).join('|') || '-'}]]`)
       scored.push({ id, doc, score })
     }
 
@@ -557,11 +585,78 @@ export const selectAds = onCall(
     // ── Return top N ──────────────────────────────────────────────────────
     const ads = scored.slice(0, limit).map((s) => campaignToAdUnit(s.id, s.doc))
 
+    console.info(`[🎯 ADS-TEST] RETURNING ${ads.length} / ${scored.length} eligible ads for "${placement}":`,
+      ads.map(a => ({ campaignId: a.campaignId, billingModel: a.billingModel, primaryText: (a.primaryText ?? '').slice(0, 50) })))
+
     return { ads }
   },
 )
 
 // ─── Exported for unit testing ────────────────────────────────────────────────
+
+/**
+ * Returns a drop reason string if gender targeting excludes the user, or null
+ * if eligible.  Mirrors the hard-filter logic inside the selectAds main loop.
+ * Exported for unit testing only.
+ *
+ * Rules (Facebook/Google parity):
+ *  - Campaign has no targetGender → eligible (broad targeting)
+ *  - User gender unknown (not provided) → eligible
+ *  - targetGender matches user gender (case-insensitive) → eligible
+ *  - targetGender does NOT match known user gender → DROPPED
+ */
+/**
+ * Apply the frequency-capping score penalty for already-seen campaigns.
+ *
+ * -5 is sufficient to push a seen ad below any unseen one:
+ *  - max video_feed score = 3 (age +2, gender +1)
+ *  - max intent-based score ≈ 14 (dest +10, dates +2, trip-types +1, ...)
+ * A seen ad's finalScore caps at rawScore - 5, so an unseen ad with score 0
+ * always beats a seen ad with score ≤ 4.
+ *
+ * Exported for unit testing only.
+ */
+export function applySeenPenalty(rawScore: number, seen: boolean): number {
+  return seen ? rawScore - 5 : rawScore
+}
+
+export function checkGenderEligibility(
+  targetGender: string | undefined,
+  userGender: string | undefined,
+): string | null {
+  if (!targetGender || targetGender === '') return null // no targeting
+  if (!userGender) return null // unknown gender → eligible
+  if (targetGender.toLowerCase() === userGender.toLowerCase()) return null // match
+  return `targetGender=${targetGender} ≠ userGender=${userGender}`
+}
+
+/**
+ * Returns a drop reason string if age targeting excludes the user, or null if
+ * eligible.  Mirrors the hard-filter logic inside the selectAds main loop.
+ * Exported for unit testing only.
+ *
+ * Rules (Facebook/Google parity):
+ *  - Campaign has no ageFrom/ageTo → eligible
+ *  - User age unknown (0 or not a number) → eligible
+ *  - User age within [ageFrom, ageTo] → eligible  ('65+' treated as 120)
+ *  - User age outside range → DROPPED
+ */
+export function checkAgeEligibility(
+  ageFrom: string | undefined,
+  ageTo: string | undefined,
+  userAge: number | undefined,
+): string | null {
+  if (!ageFrom || !ageTo) return null // no targeting
+  if (typeof userAge !== 'number' || userAge <= 0) return null // unknown age → eligible
+  const from = parseInt(ageFrom, 10)
+  const to = ageTo === '65+' ? 120 : parseInt(ageTo, 10)
+  if (isNaN(from) || isNaN(to)) return null // malformed range → eligible (safe default)
+  if (userAge < from || userAge > to) {
+    return `ageRange=${ageFrom}–${ageTo} excludes userAge=${userAge}`
+  }
+  return null
+}
+
 export const _testing = {
   parseDateToNoonUTC,
   todayYYYYMMDD,
@@ -569,7 +664,10 @@ export const _testing = {
   scoreCampaign,
   campaignToAdUnit,
   tieBreakKey,
+  applySeenPenalty,
   checkCampaignEligibility,
+  checkGenderEligibility,
+  checkAgeEligibility,
   /** Clear the in-memory campaign cache (for testing or admin use). */
   clearCampaignCache: () => campaignCache.clear(),
   CACHE_TTL_MS,
