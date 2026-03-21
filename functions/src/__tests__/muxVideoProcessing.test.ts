@@ -474,6 +474,245 @@ describe('muxVideoProcessing — Mux payload regression guard', () => {
     });
   });
 
+  // ─── muxWebhook — routing ─────────────────────────────────────────
+
+  describe('muxWebhook — routing', () => {
+    const TEST_WEBHOOK_SECRET = 'test-webhook-signing-secret-for-jest';
+    const FIXED_TIMESTAMP = '1711234567';
+    let handler: Function;
+
+    /** Compute a valid Mux webhook signature for a given body using the test secret. */
+    function signBody(body: unknown): string {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const crypto = require('crypto') as typeof import('crypto');
+      const payload = `${FIXED_TIMESTAMP}.${JSON.stringify(body)}`;
+      const sig = crypto.createHmac('sha256', TEST_WEBHOOK_SECRET).update(payload).digest('hex');
+      return `t=${FIXED_TIMESTAMP},v1=${sig}`;
+    }
+
+    function makeReq(body: unknown) {
+      return {
+        method: 'POST',
+        headers: { 'mux-signature': signBody(body) },
+        body,
+      };
+    }
+
+    function makeRes() {
+      const res = { status: jest.fn(), send: jest.fn() };
+      res.status.mockReturnValue(res);
+      return res;
+    }
+
+    function makeAdReadyEvent(campaignId: string, playbackId = 'playback-xyz') {
+      return {
+        type: 'video.asset.ready',
+        data: {
+          id: 'asset-abc',
+          playback_ids: [{ id: playbackId, policy: 'public' }],
+          passthrough: JSON.stringify({ type: 'ad', campaignId }),
+        },
+      };
+    }
+
+    function makeOrganicReadyEvent(assetId = 'asset-organic') {
+      return {
+        type: 'video.asset.ready',
+        data: {
+          id: assetId,
+          playback_ids: [{ id: 'playback-organic', policy: 'public' }],
+          passthrough: JSON.stringify({ videoId: 'vid-1', userId: 'user-1' }),
+        },
+      };
+    }
+
+    function makeAdErroredEvent(campaignId: string) {
+      return {
+        type: 'video.asset.errored',
+        data: {
+          id: 'asset-abc',
+          errors: { messages: ['Encoding failed', 'Unsupported codec'] },
+          passthrough: JSON.stringify({ type: 'ad', campaignId }),
+        },
+      };
+    }
+
+    beforeEach(() => {
+      jest.resetModules();
+      process.env.MUX_WEBHOOK_DEV_SIGNING_SECRET = TEST_WEBHOOK_SECRET;
+      const { onRequest } = require('firebase-functions/v2/https');
+      require('../muxVideoProcessing');
+      handler = (onRequest as jest.Mock).mock.calls[0]?.[1];
+    });
+
+    afterEach(() => {
+      delete process.env.MUX_WEBHOOK_DEV_SIGNING_SECRET;
+    });
+
+    // ── video.asset.ready → ads_campaigns ──────────────────────────
+
+    it('routes video.asset.ready to ads_campaigns when passthrough.type is "ad"', async () => {
+      if (!handler) return;
+      const body = makeAdReadyEvent('camp-test-1');
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).toContain('ads_campaigns');
+    });
+
+    it('writes muxPlaybackUrl, muxThumbnailUrl, muxPlaybackId, muxStatus:ready to ads_campaigns', async () => {
+      if (!handler) return;
+      const body = makeAdReadyEvent('camp-test-2', 'pb-id-42');
+
+      await handler(makeReq(body), makeRes());
+
+      expect(mockFirestoreUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          muxPlaybackUrl: 'https://stream.mux.com/pb-id-42.m3u8',
+          muxThumbnailUrl: 'https://image.mux.com/pb-id-42/thumbnail.jpg',
+          muxPlaybackId: 'pb-id-42',
+          muxStatus: 'ready',
+          muxReadyAt: 'SERVER_TIMESTAMP',
+        }),
+      );
+    });
+
+    it('does NOT query the videos collection when passthrough identifies an ad', async () => {
+      if (!handler) return;
+      const body = makeAdReadyEvent('camp-test-3');
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).not.toContain('videos');
+    });
+
+    it('returns HTTP 200 OK after routing video.asset.ready to ads_campaigns', async () => {
+      if (!handler) return;
+      const body = makeAdReadyEvent('camp-test-4');
+      const res = makeRes();
+
+      await handler(makeReq(body), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith('OK');
+    });
+
+    // ── video.asset.ready — edge cases ─────────────────────────────
+
+    it('returns 200 immediately without updating Firestore when asset has no playback ID', async () => {
+      if (!handler) return;
+      const body = {
+        type: 'video.asset.ready',
+        data: {
+          id: 'asset-no-pb',
+          playback_ids: [],
+          passthrough: JSON.stringify({ type: 'ad', campaignId: 'camp-x' }),
+        },
+      };
+      const res = makeRes();
+
+      await handler(makeReq(body), res);
+
+      expect(mockFirestoreUpdate).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('falls through to the videos query when passthrough JSON is malformed', async () => {
+      if (!handler) return;
+      const body = {
+        type: 'video.asset.ready',
+        data: {
+          id: 'asset-bad-pt',
+          playback_ids: [{ id: 'pb-bad', policy: 'public' }],
+          passthrough: '<<<NOT JSON>>>',
+        },
+      };
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).toContain('videos');
+    });
+
+    it('routes video.asset.ready to the videos collection for organic uploads', async () => {
+      if (!handler) return;
+      const docUpdateMock = jest.fn().mockResolvedValue({});
+      mockCollectionGet.mockResolvedValue({
+        empty: false,
+        docs: [{ ref: { update: docUpdateMock } }],
+      });
+      const body = makeOrganicReadyEvent('asset-organic-1');
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).toContain('videos');
+      expect(docUpdateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          muxPlaybackUrl: 'https://stream.mux.com/playback-organic.m3u8',
+          muxStatus: 'ready',
+        }),
+      );
+    });
+
+    // ── video.asset.errored → ads_campaigns ────────────────────────
+
+    it('routes video.asset.errored to ads_campaigns when passthrough.type is "ad"', async () => {
+      if (!handler) return;
+      const body = makeAdErroredEvent('camp-err-1');
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).toContain('ads_campaigns');
+    });
+
+    it('writes muxStatus:errored and muxError to ads_campaigns on video.asset.errored', async () => {
+      if (!handler) return;
+      const body = makeAdErroredEvent('camp-err-2');
+
+      await handler(makeReq(body), makeRes());
+
+      expect(mockFirestoreUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          muxStatus: 'errored',
+          muxError: 'Encoding failed, Unsupported codec',
+          muxErrorAt: 'SERVER_TIMESTAMP',
+        }),
+      );
+    });
+
+    it('returns HTTP 200 OK after routing video.asset.errored to ads_campaigns', async () => {
+      if (!handler) return;
+      const body = makeAdErroredEvent('camp-err-3');
+      const res = makeRes();
+
+      await handler(makeReq(body), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith('OK');
+    });
+
+    it('does NOT write to ads_campaigns for an errored organic video', async () => {
+      if (!handler) return;
+      const body = {
+        type: 'video.asset.errored',
+        data: {
+          id: 'asset-organic-err',
+          errors: { messages: ['Codec error'] },
+          passthrough: JSON.stringify({ videoId: 'vid-2', userId: 'user-2' }),
+        },
+      };
+
+      await handler(makeReq(body), makeRes());
+
+      const collectionCalls = mockCollection.mock.calls.map((c: unknown[]) => c[0]);
+      expect(collectionCalls).not.toContain('ads_campaigns');
+    });
+  });
+
   // ─── probeColorProfile ────────────────────────────────────────────
 
   describe('probeColorProfile', () => {
@@ -681,55 +920,14 @@ describe('muxVideoProcessing — Mux payload regression guard', () => {
       expect(result).toEqual(expect.objectContaining({ success: true, assetId: 'asset-123' }));
     });
 
-    it('transcodes to SDR when HLG (arib-std-b67) is detected', async () => {
+    // NOTE: HDR transcode tests removed 2026-03-21.
+    // The ffprobe + FFmpeg SDR transcode path was removed from processAdVideoWithMux
+    // because ffprobe-static crashes (SIGSEGV) inside Cloud Run's gVisor sandbox.
+    // Mux baseline encoding handles colour normalisation server-side.
+
+    it('still submits to Mux after a video with HDR VUI tags (Mux normalises)', async () => {
       if (!handler) return;
-      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
-
-      await handler(makeAdRequest());
-
-      expect(mockSpawnSync).toHaveBeenCalledWith(
-        '/mock/ffmpeg',
-        expect.arrayContaining(['-vf', 'colorspace=bt709:iall=bt2020:fast=1']),
-        expect.any(Object)
-      );
-    });
-
-    it('transcodes to SDR when HDR10 (smpte2084) is detected', async () => {
-      if (!handler) return;
-      mockExecFileSync.mockReturnValue('color_transfer=smpte2084\ncolor_primaries=bt2020\n');
-
-      await handler(makeAdRequest());
-
-      expect(mockSpawnSync).toHaveBeenCalled();
-    });
-
-    it('downloads the source file to a temp path before transcoding', async () => {
-      if (!handler) return;
-      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
-
-      await handler(makeAdRequest());
-
-      expect(mockFileDownload).toHaveBeenCalledWith(
-        expect.objectContaining({ destination: expect.stringContaining('ad_hlg_camp-1') })
-      );
-    });
-
-    it('uploads the SDR file to Storage with a _sdr.mp4 suffix', async () => {
-      if (!handler) return;
-      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
-
-      await handler(makeAdRequest());
-
-      expect(mockBucketUpload).toHaveBeenCalledWith(
-        expect.stringContaining('ad_sdr_camp-1'),
-        expect.objectContaining({ destination: 'ads/user-uid-1/video_sdr.mp4' })
-      );
-    });
-
-    it('still submits to Mux after HDR-to-SDR transcode', async () => {
-      if (!handler) return;
-      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
-
+      // Even if we were to probe and detect HLG, we now pass directly to Mux.
       const result = await handler(makeAdRequest());
 
       expect(mockAssetsCreate).toHaveBeenCalledTimes(1);

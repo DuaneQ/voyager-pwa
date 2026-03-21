@@ -566,12 +566,18 @@ export const processVideoWithMux = onCall(
  *   4. Writes muxAssetId / muxStatus:'preparing' to ads_campaigns/{campaignId}.
  *
  * The muxWebhook function completes the flow when Mux fires video.asset.ready.
+ *
+ * NOTE: HDR colour-space normalisation (ffprobe + ffmpeg SDR transcode) was
+ * removed because ffprobe-static crashes (SIGSEGV) inside Cloud Run's gVisor
+ * sandbox, which blocks the syscalls the binary requires.  Mux's baseline
+ * encoding tier performs its own colour normalisation, so the client-side
+ * transcode step is unnecessary.
  */
 export const processAdVideoWithMux = onCall(
   {
     region: "us-central1",
     memory: "512MiB",
-    timeoutSeconds: 540, // up to ~9 min — large video HDR transcode can take 2-3 min
+    timeoutSeconds: 540,
   },
   async (request) => {
     if (!request.auth) {
@@ -604,68 +610,9 @@ export const processAdVideoWithMux = onCall(
         expires: Date.now() + 3600 * 1000,
       });
 
-      // Detect HLG / BT.2020 colour metadata before sending to Mux.
-      // iPhones record Cinematic/HDR video with HLG (arib-std-b67) / BT.2020
-      // tags. iOS AVFoundation renders those via EDR — brighter than web.
-      // Re-encode to SDR BT.709 only when HDR tags are detected.
-      let muxInputUrl = signedUrl;
-      let colorTransfer = "unknown";
-      let colorPrimaries = "unknown";
-      try {
-        ({ colorTransfer, colorPrimaries } = probeColorProfile(signedUrl));
-      } catch (probeError) {
-        console.warn(
-          `[Mux Ads] Campaign ${campaignId}: ffprobe color profile probe failed — treating as SDR.`,
-          probeError
-        );
-      }
-
-      if (isHDRColorProfile(colorTransfer, colorPrimaries)) {
-        console.log(
-          `[Mux Ads] Campaign ${campaignId}: HDR detected ` +
-          `(transfer=${colorTransfer}, primaries=${colorPrimaries}) — transcoding to SDR BT.709`
-        );
-
-        // Sanitize campaignId before embedding in filesystem paths to prevent
-        // path traversal (e.g. a value like "../../etc/passwd" escaping os.tmpdir()).
-        const safeCampaignId = String(campaignId)
-          .replace(/[^a-zA-Z0-9_-]/g, "_")
-          .slice(0, 64);
-        const ext = nodePath.extname(storagePath) || ".mp4";
-        const tmpInput = nodePath.join(os.tmpdir(), `ad_hlg_${safeCampaignId}${ext}`);
-        const tmpOutput = nodePath.join(os.tmpdir(), `ad_sdr_${safeCampaignId}.mp4`);
-
-        try {
-          await file.download({ destination: tmpInput });
-          transcodeToSDR(tmpInput, tmpOutput);
-
-          // Use path.parse/format so the SDR key is always distinct from the
-          // source, even when storagePath has no extension.
-          const parsed = nodePath.parse(storagePath);
-          const sdrStoragePath = nodePath.format({
-            dir: parsed.dir,
-            name: `${parsed.name}_sdr`,
-            ext: ".mp4",
-          });
-          await bucket.upload(tmpOutput, { destination: sdrStoragePath });
-
-          const sdrFile = bucket.file(sdrStoragePath);
-          const [sdrSignedUrl] = await sdrFile.getSignedUrl({
-            action: "read",
-            expires: Date.now() + 3600 * 1000,
-          });
-          muxInputUrl = sdrSignedUrl;
-
-          console.log(`[Mux Ads] Campaign ${campaignId}: SDR version uploaded to ${sdrStoragePath}`);
-        } finally {
-          if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput);
-          if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput);
-        }
-      }
-
-      // Create the Mux asset from the (possibly SDR-normalised) URL.
+      // Create the Mux asset. Mux baseline encoding normalises colour space.
       const asset = await mux.video.assets.create(
-        buildMuxAssetPayload(muxInputUrl, {
+        buildMuxAssetPayload(signedUrl, {
           campaignId,
           type: "ad",
         })
