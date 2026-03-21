@@ -15,9 +15,11 @@ export {};
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockAssetsCreate = jest.fn();
+const mockFileDownload = jest.fn().mockResolvedValue([]);
+const mockBucketUpload = jest.fn().mockResolvedValue([]);
 const mockGetSignedUrl = jest.fn().mockResolvedValue(['https://signed-url.example.com/video.mp4']);
-const mockFileGet = jest.fn().mockReturnValue({ getSignedUrl: mockGetSignedUrl });
-const mockBucket = jest.fn().mockReturnValue({ file: mockFileGet });
+const mockFileGet = jest.fn().mockReturnValue({ getSignedUrl: mockGetSignedUrl, download: mockFileDownload });
+const mockBucket = jest.fn().mockReturnValue({ file: mockFileGet, upload: mockBucketUpload });
 
 const mockFirestoreUpdate = jest.fn().mockResolvedValue({});
 const mockFirestoreSet = jest.fn().mockResolvedValue({});
@@ -75,7 +77,20 @@ jest.mock('crypto', () => {
   const actual = jest.requireActual('crypto');
   return actual;
 });
+const mockExecFileSync = jest.fn();
+const mockSpawnSync = jest.fn();
+jest.mock('child_process', () => ({
+  execFileSync: mockExecFileSync,
+  spawnSync: mockSpawnSync,
+}));
 
+jest.mock('fs', () => ({
+  existsSync: jest.fn().mockReturnValue(false),
+  unlinkSync: jest.fn(),
+}));
+
+jest.mock('ffmpeg-static', () => '/mock/ffmpeg', { virtual: true });
+jest.mock('ffprobe-static', () => ({ path: '/mock/ffprobe' }), { virtual: true });
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeMuxAsset(overrides: Record<string, unknown> = {}) {
@@ -242,6 +257,9 @@ describe('muxVideoProcessing — Mux payload regression guard', () => {
     beforeEach(() => {
       jest.resetModules();
       mockAssetsCreate.mockResolvedValue(makeMuxAsset());
+      // Ensure probeColorProfile (now called inside handler) returns SDR by default
+      // so existing tests that reach Mux asset creation are not disrupted.
+      mockExecFileSync.mockReturnValue('color_transfer=bt709\ncolor_primaries=bt709\n');
       const { onCall } = require('firebase-functions/v2/https');
       require('../muxVideoProcessing');
       const calls = (onCall as jest.Mock).mock.calls;
@@ -453,6 +471,266 @@ describe('muxVideoProcessing — Mux payload regression guard', () => {
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(401);
+    });
+  });
+
+  // ─── probeColorProfile ────────────────────────────────────────────
+
+  describe('probeColorProfile', () => {
+    let probeColorProfile: (url: string) => { colorTransfer: string; colorPrimaries: string };
+
+    beforeEach(() => {
+      jest.resetModules();
+      const mod = require('../muxVideoProcessing');
+      probeColorProfile = mod.probeColorProfile;
+    });
+
+    it('parses color_transfer and color_primaries from ffprobe output', () => {
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      const result = probeColorProfile('https://example.com/video.mp4');
+
+      expect(result).toEqual({ colorTransfer: 'arib-std-b67', colorPrimaries: 'bt2020' });
+    });
+
+    it('returns "unknown" for color_transfer when field is absent', () => {
+      mockExecFileSync.mockReturnValue('color_primaries=bt2020\n');
+
+      const result = probeColorProfile('https://example.com/video.mp4');
+
+      expect(result.colorTransfer).toBe('unknown');
+      expect(result.colorPrimaries).toBe('bt2020');
+    });
+
+    it('returns "unknown" for both fields when ffprobe output is empty', () => {
+      mockExecFileSync.mockReturnValue('');
+
+      const result = probeColorProfile('https://example.com/video.mp4');
+
+      expect(result).toEqual({ colorTransfer: 'unknown', colorPrimaries: 'unknown' });
+    });
+
+    it('calls ffprobe with the correct stream-level arguments', () => {
+      mockExecFileSync.mockReturnValue('color_transfer=bt709\ncolor_primaries=bt709\n');
+
+      probeColorProfile('https://example.com/video.mp4');
+
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        '/mock/ffprobe',
+        expect.arrayContaining([
+          '-select_streams', 'v:0',
+          '-show_entries', 'stream=color_transfer,color_primaries',
+          'https://example.com/video.mp4',
+        ]),
+        expect.objectContaining({ encoding: 'utf8' })
+      );
+    });
+
+    it('passes the url directly to ffprobe', () => {
+      mockExecFileSync.mockReturnValue('color_transfer=bt709\ncolor_primaries=bt709\n');
+
+      probeColorProfile('https://stream.mux.com/abc123.m3u8');
+
+      const args: string[] = mockExecFileSync.mock.calls[0][1];
+      expect(args[args.length - 1]).toBe('https://stream.mux.com/abc123.m3u8');
+    });
+  });
+
+  // ─── isHDRColorProfile ─────────────────────────────────────────
+
+  describe('isHDRColorProfile', () => {
+    let isHDRColorProfile: (colorTransfer: string, colorPrimaries: string) => boolean;
+
+    beforeEach(() => {
+      jest.resetModules();
+      const mod = require('../muxVideoProcessing');
+      isHDRColorProfile = mod.isHDRColorProfile;
+    });
+
+    it('returns true for HLG transfer characteristic (arib-std-b67)', () => {
+      expect(isHDRColorProfile('arib-std-b67', 'bt709')).toBe(true);
+    });
+
+    it('returns true for HDR10 transfer characteristic (smpte2084)', () => {
+      expect(isHDRColorProfile('smpte2084', 'bt709')).toBe(true);
+    });
+
+    it('returns true when colour primaries are bt2020', () => {
+      expect(isHDRColorProfile('bt709', 'bt2020')).toBe(true);
+    });
+
+    it('returns true when both transfer and primaries indicate HDR', () => {
+      expect(isHDRColorProfile('arib-std-b67', 'bt2020')).toBe(true);
+    });
+
+    it('returns false for standard SDR bt709', () => {
+      expect(isHDRColorProfile('bt709', 'bt709')).toBe(false);
+    });
+
+    it('returns false for unknown / missing VUI metadata', () => {
+      expect(isHDRColorProfile('unknown', 'unknown')).toBe(false);
+    });
+  });
+
+  // ─── transcodeToSDR ─────────────────────────────────────────────
+
+  describe('transcodeToSDR', () => {
+    let transcodeToSDR: (inputPath: string, outputPath: string) => void;
+
+    beforeEach(() => {
+      jest.resetModules();
+      const mod = require('../muxVideoProcessing');
+      transcodeToSDR = mod.transcodeToSDR;
+      mockSpawnSync.mockReturnValue({ status: 0, stderr: Buffer.from('') });
+    });
+
+    it('calls ffmpeg with the BT.709 colorspace normalization filter', () => {
+      transcodeToSDR('/tmp/input.mp4', '/tmp/output.mp4');
+
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        '/mock/ffmpeg',
+        expect.arrayContaining([
+          '-vf', 'colorspace=bt709:iall=bt2020:fast=1',
+          '-color_primaries', 'bt709',
+          '-color_trc', 'bt709',
+          '-colorspace', 'bt709',
+          '-c:v', 'libx264',
+        ]),
+        expect.objectContaining({ timeout: 600_000 })
+      );
+    });
+
+    it('includes the input and output paths in the ffmpeg argument list', () => {
+      transcodeToSDR('/tmp/input.mp4', '/tmp/output.mp4');
+
+      const args: string[] = mockSpawnSync.mock.calls[0][1];
+      expect(args).toContain('/tmp/input.mp4');
+      expect(args).toContain('/tmp/output.mp4');
+    });
+
+    it('throws when ffmpeg exits with a non-zero status code', () => {
+      mockSpawnSync.mockReturnValue({ status: 1, stderr: Buffer.from('encoding failed') });
+
+      expect(() => transcodeToSDR('/tmp/input.mp4', '/tmp/output.mp4')).toThrow(
+        'FFmpeg SDR transcode failed'
+      );
+    });
+
+    it('includes the ffmpeg exit code in the error message', () => {
+      mockSpawnSync.mockReturnValue({ status: 2, stderr: Buffer.from('') });
+
+      expect(() => transcodeToSDR('/tmp/input.mp4', '/tmp/output.mp4')).toThrow('exit 2');
+    });
+  });
+
+  // ─── processAdVideoWithMux — HDR detection ──────────────────────────
+
+  describe('processAdVideoWithMux — HDR detection and normalization', () => {
+    let handler: Function;
+
+    beforeEach(() => {
+      jest.resetModules();
+      mockAssetsCreate.mockResolvedValue(makeMuxAsset());
+      mockDocGet.mockResolvedValue({ exists: true, data: () => ({ uid: 'user-uid-1' }) });
+      // Default: SDR source — no transcode path
+      mockExecFileSync.mockReturnValue('color_transfer=bt709\ncolor_primaries=bt709\n');
+      mockSpawnSync.mockReturnValue({ status: 0, stderr: Buffer.from('') });
+      const { onCall } = require('firebase-functions/v2/https');
+      require('../muxVideoProcessing');
+      const calls = (onCall as jest.Mock).mock.calls;
+      handler = calls[1]?.[1]; // processAdVideoWithMux is the 2nd onCall registration
+    });
+
+    function makeAdRequest() {
+      return makeCallRequest({
+        data: { campaignId: 'camp-1', storagePath: 'ads/user-uid-1/video.mp4' },
+      });
+    }
+
+    it('does NOT download or transcode when the source is already SDR BT.709', async () => {
+      if (!handler) return;
+
+      await handler(makeAdRequest());
+
+      expect(mockSpawnSync).not.toHaveBeenCalled();
+      expect(mockFileDownload).not.toHaveBeenCalled();
+      expect(mockBucketUpload).not.toHaveBeenCalled();
+    });
+
+    it('still submits to Mux for SDR videos without transcode', async () => {
+      if (!handler) return;
+
+      const result = await handler(makeAdRequest());
+
+      expect(mockAssetsCreate).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(expect.objectContaining({ success: true, assetId: 'asset-123' }));
+    });
+
+    it('transcodes to SDR when HLG (arib-std-b67) is detected', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      await handler(makeAdRequest());
+
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        '/mock/ffmpeg',
+        expect.arrayContaining(['-vf', 'colorspace=bt709:iall=bt2020:fast=1']),
+        expect.any(Object)
+      );
+    });
+
+    it('transcodes to SDR when HDR10 (smpte2084) is detected', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=smpte2084\ncolor_primaries=bt2020\n');
+
+      await handler(makeAdRequest());
+
+      expect(mockSpawnSync).toHaveBeenCalled();
+    });
+
+    it('downloads the source file to a temp path before transcoding', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      await handler(makeAdRequest());
+
+      expect(mockFileDownload).toHaveBeenCalledWith(
+        expect.objectContaining({ destination: expect.stringContaining('ad_hlg_camp-1') })
+      );
+    });
+
+    it('uploads the SDR file to Storage with a _sdr.mp4 suffix', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      await handler(makeAdRequest());
+
+      expect(mockBucketUpload).toHaveBeenCalledWith(
+        expect.stringContaining('ad_sdr_camp-1'),
+        expect.objectContaining({ destination: 'ads/user-uid-1/video_sdr.mp4' })
+      );
+    });
+
+    it('still submits to Mux after HDR-to-SDR transcode', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      const result = await handler(makeAdRequest());
+
+      expect(mockAssetsCreate).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(expect.objectContaining({ success: true, assetId: 'asset-123' }));
+    });
+
+    it('embeds type:"ad" and campaignId in the Mux passthrough after transcode', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockReturnValue('color_transfer=arib-std-b67\ncolor_primaries=bt2020\n');
+
+      await handler(makeAdRequest());
+
+      const call = mockAssetsCreate.mock.calls[0][0];
+      const passthrough = JSON.parse(call.passthrough);
+      expect(passthrough.type).toBe('ad');
+      expect(passthrough.campaignId).toBe('camp-1');
     });
   });
 });

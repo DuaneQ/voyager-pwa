@@ -72,6 +72,12 @@ import { onRequest, onCall } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import Mux from "@mux/mux-node";
 import * as crypto from "crypto";
+import { execFileSync, spawnSync } from "child_process";
+import * as os from "os";
+import * as nodePath from "path";
+import * as fs from "fs";
+import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 
 // Initialize admin if not already done
 if (!admin.apps.length) {
@@ -102,6 +108,102 @@ function buildMuxAssetPayload(url: string, passthrough: Record<string, unknown>)
     max_resolution_tier: "1080p" as const,
     passthrough: JSON.stringify(passthrough),
   };
+}
+
+// ─── HLG / BT.2020 colour-normalization helpers ───────────────────────────────
+//
+// iPhone videos recorded in Cinematic, HDR, or ProRes modes embed HLG
+// (arib-std-b67) or HDR10 (smpte2084) transfer characteristics and BT.2020
+// primaries in the stream's VUI metadata. iOS AVFoundation reads those tags
+// and renders via EDR (Extended Dynamic Range), making the video appear
+// brighter than on web browsers, which ignore VUI colour metadata.
+//
+// Fix: detect HDR VUI tags with ffprobe before submitting to Mux. When found,
+// transcode to H.264 SDR BT.709 so the output looks identical on every
+// platform. SDR uploads bypass this step entirely — zero extra cost.
+
+/** Transfer characteristics that trigger EDR rendering on iOS. */
+const HDR_TRANSFER_TAGS = new Set(["arib-std-b67", "smpte2084"]);
+
+/** Colour primaries that indicate a wide-gamut HDR source. */
+const HDR_PRIMARY_TAGS = new Set(["bt2020"]);
+
+/**
+ * Probe a video URL for colour-space metadata using ffprobe.
+ * Exported for unit testing.
+ *
+ * @param url - HTTP/HTTPS URL or local file path ffprobe can read.
+ * @returns Raw color_transfer and color_primaries values from the first
+ *   video stream, or "unknown" when the stream carries no VUI metadata.
+ */
+export function probeColorProfile(
+  url: string
+): { colorTransfer: string; colorPrimaries: string } {
+  const binary = ffprobeStatic.path;
+  const output = execFileSync(
+    binary,
+    [
+      "-v", "quiet",
+      "-select_streams", "v:0",
+      "-show_entries", "stream=color_transfer,color_primaries",
+      "-of", "default=noprint_wrappers=1",
+      url,
+    ],
+    { encoding: "utf8", timeout: 30_000 }
+  );
+  const colorTransfer = output.match(/color_transfer=(.+)/)?.[1]?.trim() ?? "unknown";
+  const colorPrimaries = output.match(/color_primaries=(.+)/)?.[1]?.trim() ?? "unknown";
+  return { colorTransfer, colorPrimaries };
+}
+
+/**
+ * Returns true when the colour profile indicates HLG or HDR10 content that
+ * iOS AVFoundation renders brighter than web browsers.
+ * Exported for unit testing.
+ */
+export function isHDRColorProfile(
+  colorTransfer: string,
+  colorPrimaries: string
+): boolean {
+  return HDR_TRANSFER_TAGS.has(colorTransfer) || HDR_PRIMARY_TAGS.has(colorPrimaries);
+}
+
+/**
+ * Re-encode a video from HLG/BT.2020 to SDR BT.709 using FFmpeg.
+ *
+ * The colorspace filter maps HLG/BT.2020 primaries and gamma to BT.709.
+ * Output VUI tags are explicitly set to bt709 so all decoders — including
+ * iOS AVFoundation — treat the result as standard SDR content.
+ *
+ * @param inputPath  - Local file path of the source video.
+ * @param outputPath - Local file path for the SDR output (.mp4).
+ * @throws When FFmpeg exits with a non-zero status code.
+ */
+export function transcodeToSDR(inputPath: string, outputPath: string): void {
+  const binary = ffmpegPath ?? "ffmpeg";
+  const result = spawnSync(
+    binary,
+    [
+      "-y",
+      "-i", inputPath,
+      "-vf", "colorspace=bt709:iall=bt2020:fast=1",
+      "-color_primaries", "bt709",
+      "-color_trc", "bt709",
+      "-colorspace", "bt709",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "18",
+      "-c:a", "copy",
+      outputPath,
+    ],
+    { timeout: 600_000 } // 10 min cap; a 45 s 4K clip transcodes in ~20 s
+  );
+  if (result.status !== 0) {
+    const stderr = result.stderr?.toString() ?? "";
+    throw new Error(
+      `FFmpeg SDR transcode failed (exit ${result.status}): ${stderr.slice(-500)}`
+    );
+  }
 }
 
 /**
@@ -468,8 +570,8 @@ export const processVideoWithMux = onCall(
 export const processAdVideoWithMux = onCall(
   {
     region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 120,
+    memory: "512MiB",
+    timeoutSeconds: 540, // up to ~9 min — large video HDR transcode can take 2-3 min
   },
   async (request) => {
     if (!request.auth) {
@@ -502,10 +604,47 @@ export const processAdVideoWithMux = onCall(
         expires: Date.now() + 3600 * 1000,
       });
 
-      // Create the Mux asset; embed campaignId in passthrough so the webhook
-      // can route video.asset.ready to ads_campaigns (not videos).
+      // Detect HLG / BT.2020 colour metadata before sending to Mux.
+      // iPhones record Cinematic/HDR video with HLG (arib-std-b67) / BT.2020
+      // tags. iOS AVFoundation renders those via EDR — brighter than web.
+      // Re-encode to SDR BT.709 only when HDR tags are detected.
+      let muxInputUrl = signedUrl;
+      const { colorTransfer, colorPrimaries } = probeColorProfile(signedUrl);
+
+      if (isHDRColorProfile(colorTransfer, colorPrimaries)) {
+        console.log(
+          `[Mux Ads] Campaign ${campaignId}: HDR detected ` +
+          `(transfer=${colorTransfer}, primaries=${colorPrimaries}) — transcoding to SDR BT.709`
+        );
+
+        const ext = nodePath.extname(storagePath) || ".mp4";
+        const tmpInput = nodePath.join(os.tmpdir(), `ad_hlg_${campaignId}${ext}`);
+        const tmpOutput = nodePath.join(os.tmpdir(), `ad_sdr_${campaignId}.mp4`);
+
+        try {
+          await file.download({ destination: tmpInput });
+          transcodeToSDR(tmpInput, tmpOutput);
+
+          const sdrStoragePath = storagePath.replace(/\.[^.]+$/, "_sdr.mp4");
+          await bucket.upload(tmpOutput, { destination: sdrStoragePath });
+
+          const sdrFile = bucket.file(sdrStoragePath);
+          const [sdrSignedUrl] = await sdrFile.getSignedUrl({
+            action: "read",
+            expires: Date.now() + 3600 * 1000,
+          });
+          muxInputUrl = sdrSignedUrl;
+
+          console.log(`[Mux Ads] Campaign ${campaignId}: SDR version uploaded to ${sdrStoragePath}`);
+        } finally {
+          if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput);
+          if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput);
+        }
+      }
+
+      // Create the Mux asset from the (possibly SDR-normalised) URL.
       const asset = await mux.video.assets.create(
-        buildMuxAssetPayload(signedUrl, {
+        buildMuxAssetPayload(muxInputUrl, {
           campaignId,
           type: "ad",
         })
