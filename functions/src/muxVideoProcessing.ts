@@ -609,7 +609,16 @@ export const processAdVideoWithMux = onCall(
       // tags. iOS AVFoundation renders those via EDR — brighter than web.
       // Re-encode to SDR BT.709 only when HDR tags are detected.
       let muxInputUrl = signedUrl;
-      const { colorTransfer, colorPrimaries } = probeColorProfile(signedUrl);
+      let colorTransfer = "unknown";
+      let colorPrimaries = "unknown";
+      try {
+        ({ colorTransfer, colorPrimaries } = probeColorProfile(signedUrl));
+      } catch (probeError) {
+        console.warn(
+          `[Mux Ads] Campaign ${campaignId}: ffprobe color profile probe failed — treating as SDR.`,
+          probeError
+        );
+      }
 
       if (isHDRColorProfile(colorTransfer, colorPrimaries)) {
         console.log(
@@ -617,15 +626,27 @@ export const processAdVideoWithMux = onCall(
           `(transfer=${colorTransfer}, primaries=${colorPrimaries}) — transcoding to SDR BT.709`
         );
 
+        // Sanitize campaignId before embedding in filesystem paths to prevent
+        // path traversal (e.g. a value like "../../etc/passwd" escaping os.tmpdir()).
+        const safeCampaignId = String(campaignId)
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .slice(0, 64);
         const ext = nodePath.extname(storagePath) || ".mp4";
-        const tmpInput = nodePath.join(os.tmpdir(), `ad_hlg_${campaignId}${ext}`);
-        const tmpOutput = nodePath.join(os.tmpdir(), `ad_sdr_${campaignId}.mp4`);
+        const tmpInput = nodePath.join(os.tmpdir(), `ad_hlg_${safeCampaignId}${ext}`);
+        const tmpOutput = nodePath.join(os.tmpdir(), `ad_sdr_${safeCampaignId}.mp4`);
 
         try {
           await file.download({ destination: tmpInput });
           transcodeToSDR(tmpInput, tmpOutput);
 
-          const sdrStoragePath = storagePath.replace(/\.[^.]+$/, "_sdr.mp4");
+          // Use path.parse/format so the SDR key is always distinct from the
+          // source, even when storagePath has no extension.
+          const parsed = nodePath.parse(storagePath);
+          const sdrStoragePath = nodePath.format({
+            dir: parsed.dir,
+            name: `${parsed.name}_sdr`,
+            ext: ".mp4",
+          });
           await bucket.upload(tmpOutput, { destination: sdrStoragePath });
 
           const sdrFile = bucket.file(sdrStoragePath);

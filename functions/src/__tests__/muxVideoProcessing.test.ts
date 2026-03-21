@@ -657,6 +657,21 @@ describe('muxVideoProcessing — Mux payload regression guard', () => {
       expect(mockBucketUpload).not.toHaveBeenCalled();
     });
 
+    it('treats upload as SDR and proceeds when ffprobe throws', async () => {
+      if (!handler) return;
+      mockExecFileSync.mockImplementation(() => { throw new Error('ffprobe: No such file'); });
+
+      // Should not throw — graceful fallback
+      const result = await handler(makeAdRequest());
+
+      // No transcode should happen
+      expect(mockSpawnSync).not.toHaveBeenCalled();
+      expect(mockFileDownload).not.toHaveBeenCalled();
+      // Campaign should still be submitted to Mux
+      expect(mockAssetsCreate).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(expect.objectContaining({ success: true }));
+    });
+
     it('still submits to Mux for SDR videos without transcode', async () => {
       if (!handler) return;
 

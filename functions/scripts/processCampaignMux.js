@@ -11,7 +11,6 @@
 const admin = require('firebase-admin');
 const Mux = require('@mux/mux-node').default;
 const path = require('path');
-const fs = require('fs');
 
 const CAMPAIGN_ID = process.argv[2];
 if (!CAMPAIGN_ID) {

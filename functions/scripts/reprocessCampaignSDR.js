@@ -27,6 +27,13 @@ if (!CAMPAIGN_ID) {
   process.exit(1);
 }
 
+// Sanitize to prevent shell metacharacters from escaping into temp file paths
+// or execSync command strings (belt-and-suspenders for a dev-only script).
+const SAFE_CAMPAIGN_ID = CAMPAIGN_ID.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+if (SAFE_CAMPAIGN_ID !== CAMPAIGN_ID) {
+  console.warn(`[reprocessCampaignSDR] campaignId sanitized: "${CAMPAIGN_ID}" → "${SAFE_CAMPAIGN_ID}"`);
+}
+
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
@@ -107,16 +114,16 @@ async function main() {
 
   console.log('\n[reprocessCampaignSDR] Running FFmpeg locally to strip HLG/BT.2020 color metadata...');
 
-  const { execSync } = require('child_process');
+  const { execFileSync } = require('child_process');
   const os = require('os');
   const fs = require('fs');
 
-  const tmpInput = path.join(os.tmpdir(), `ad_source_${CAMPAIGN_ID}.mov`);
-  const tmpOutput = path.join(os.tmpdir(), `ad_sdr_${CAMPAIGN_ID}.mp4`);
+  const tmpInput = path.join(os.tmpdir(), `ad_source_${SAFE_CAMPAIGN_ID}.mov`);
+  const tmpOutput = path.join(os.tmpdir(), `ad_sdr_${SAFE_CAMPAIGN_ID}.mp4`);
 
   // Download source via signed URL
   console.log(`  Downloading source to ${tmpInput}...`);
-  execSync(`curl -s -L -o "${tmpInput}" "${signedUrl}"`, { stdio: 'inherit' });
+  execFileSync('curl', ['-s', '-L', '-o', tmpInput, signedUrl], { stdio: 'inherit' });
   const sizeMB = (fs.statSync(tmpInput).size / 1024 / 1024).toFixed(1);
   console.log(`  Downloaded: ${sizeMB} MB`);
 
@@ -124,14 +131,16 @@ async function main() {
   // -vf colorspace: convert HLG BT.2020 → Rec.709
   // -color_primaries bt709 -color_trc bt709 -colorspace bt709: force BT.709 tags
   console.log(`  Converting to SDR BT.709...`);
-  execSync(
-    `ffmpeg -y -i "${tmpInput}" ` +
-    `-vf "colorspace=bt709:iall=bt2020:fast=1" ` +
-    `-color_primaries bt709 -color_trc bt709 -colorspace bt709 ` +
-    `-c:v libx264 -preset fast -crf 18 -c:a copy ` +
-    `"${tmpOutput}"`,
-    { stdio: 'inherit' }
-  );
+  execFileSync('ffmpeg', [
+    '-y', '-i', tmpInput,
+    '-vf', 'colorspace=bt709:iall=bt2020:fast=1',
+    '-color_primaries', 'bt709',
+    '-color_trc', 'bt709',
+    '-colorspace', 'bt709',
+    '-c:v', 'libx264', '-preset', 'fast', '-crf', '18',
+    '-c:a', 'copy',
+    tmpOutput,
+  ], { stdio: 'inherit' });
   console.log(`  SDR output written to ${tmpOutput}`);
 
   // Upload the SDR version to a new Storage path
