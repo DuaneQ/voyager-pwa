@@ -469,10 +469,8 @@ export const selectAds = onCall(
     let campaignDocs: Array<{ id: string; data: CampaignDoc }>
 
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
-      console.info(`[🎯 ADS-TEST] CACHE HIT for "${placement}": ${cached.docs.length} campaign(s), age=${Math.round((now - cached.fetchedAt) / 1000)}s / TTL=${CACHE_TTL_MS / 1000}s`)
       campaignDocs = cached.docs
     } else {
-      console.info(`[🎯 ADS-TEST] CACHE MISS for "${placement}": querying Firestore`)
       const snapshot = await db
         .collection(COLLECTION)
         .where('status', '==', 'active')
@@ -505,26 +503,21 @@ export const selectAds = onCall(
     const userSeed = (request.auth?.uid ?? clientSessionId) + '|' + today
 
     // ── Filter + Score ────────────────────────────────────────────────────
-    console.info(`[🎯 ADS-TEST] selectAds: placement="${placement}" today="${today}" candidates=${campaignDocs.length}`)
-    console.info(`[🎯 ADS-TEST] userContext: ${JSON.stringify(ctx ?? {})}`)
     const scored: Array<{ id: string; doc: CampaignDoc; score: number }> = []
 
     for (const { id, data: doc } of campaignDocs) {
 
       // Hard filter: must not be under review
       if (doc.isUnderReview) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): still under review`)
         continue
       }
 
       // Hard filter: campaign date range must include today
       // Uses string comparison — YYYY-MM-DD sorts lexicographically
       if (doc.startDate && doc.startDate > today) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): startDate=${doc.startDate} > today=${today}`)
         continue
       }
       if (doc.endDate && doc.endDate < today) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): endDate=${doc.endDate} < today=${today}`)
         continue
       }
 
@@ -534,7 +527,6 @@ export const selectAds = onCall(
       // (mirrors Facebook's "Include people whose demographics are unknown").
       const genderDropReason = checkGenderEligibility(doc.targetGender, ctx?.gender)
       if (genderDropReason) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${genderDropReason}`)
         continue
       }
 
@@ -544,7 +536,6 @@ export const selectAds = onCall(
       // Unknown user age → still eligible.
       const ageDropReason = checkAgeEligibility(doc.ageFrom, doc.ageTo, ctx?.age)
       if (ageDropReason) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${ageDropReason}`)
         continue
       }
 
@@ -562,7 +553,6 @@ export const selectAds = onCall(
 
       const dropReason = checkCampaignEligibility(doc, budgetCents)
       if (dropReason) {
-        console.info(`[🎯 ADS-TEST] DROPPED "${doc.name ?? id}" (${id}): ${dropReason}`)
         continue
       }
 
@@ -570,7 +560,6 @@ export const selectAds = onCall(
       // Deprioritise campaigns the viewer has already seen this session.
       const seen = seenSet.has(id)
       const score = applySeenPenalty(rawScore, seen)
-      console.info(`[🎯 ADS-TEST] SCORED "${doc.name ?? id}" (${id}): rawScore=${rawScore} seen=${seen} finalScore=${score} [dest="${doc.targetDestination ?? doc.location ?? '-'}" gender="${doc.targetGender ?? '-'}" age=${doc.ageFrom ?? '-'}–${doc.ageTo ?? '-'} tripTypes=[${(doc.targetTripTypes ?? []).join('|') || '-'}]]`)
       scored.push({ id, doc, score })
     }
 

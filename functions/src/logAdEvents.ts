@@ -190,9 +190,6 @@ export const logAdEvents = onCall(
     if (validEvents.length === 0) {
       return { processed: 0, skipped }
     }
-
-    console.info(`[🎯 ADS-TEST] logAdEvents: ${validEvents.length} valid / ${skipped} skipped. Events: ${JSON.stringify(validEvents.map(e => ({ type: e.type, campaignId: e.campaignId, quartile: (e as any).quartile })))}`)
-
     // ── Group events by campaignId for efficient batched writes ────────────
     const byCampaign = new Map<string, AdEvent[]>()
     for (const event of validEvents) {
@@ -302,7 +299,6 @@ export const logAdEvents = onCall(
           Math.floor(prevImpressions * CPC_IMPRESSION_FLOOR_RATE_CENTS / 1000)
         chargeCents = cpcFloorCents + clickCount * CPC_RATE_CENTS
       }
-      console.info(`[🎯 ADS-TEST] campaign ${campaignId}: impressions=${impressionCount} clicks=${clickCount} billingModel=${billingModel} chargeCents=${chargeCents} (budgetCents before=${typeof campaignData.budgetCents === 'number' ? campaignData.budgetCents : 'unset—will init from budgetAmount='+campaignData.budgetAmount})`)
       // ── Batched Firestore writes ──────────────────────────────────────
       const batch = db.batch()
       const campaignRef = db.collection(COLLECTION).doc(campaignId)
@@ -459,8 +455,6 @@ export const logAdEvents = onCall(
       // Commit the batch atomically
       await batch.commit()
       processed += events.length
-      console.info(`[🎯 ADS-TEST] campaign ${campaignId}: batch committed. totalImpressions+=${impressionCount} totalClicks+=${clickCount} budgetCents-=${chargeCents} dailyDates=[${[...allDateKeys].join(', ')}]`)
-
       // ── Budget enforcement (post-commit check) ──────────────────────
       // After decrementing, check if budget has been exhausted.
       // This is a separate read because FieldValue.increment is write-only.
