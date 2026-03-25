@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 
 // Firestore collection name for itineraries
@@ -326,8 +327,6 @@ export const searchItineraries = onCall(async (req) => {
 
 const DESTINATION_STATS_COLLECTION = 'destinationStats';
 
-import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
-
 /** Increment the counter when a new itinerary is created. */
 export const onItineraryCreated = onDocumentCreated(
   `${ITINERARIES_COLLECTION}/{docId}`,
@@ -341,21 +340,16 @@ export const onItineraryCreated = onDocumentCreated(
       encodeURIComponent(destination)
     );
 
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(statRef);
-      if (snap.exists) {
-        tx.update(statRef, {
-          count: admin.firestore.FieldValue.increment(1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } else {
-        tx.set(statRef, {
-          destination,
-          count: 1,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-    });
+    // merge:true creates the doc if it doesn't exist and initialises missing
+    // numeric fields to 0 before applying the increment — no read required.
+    await statRef.set(
+      {
+        destination,
+        count: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
   }
 );
 
@@ -389,9 +383,72 @@ export const onItineraryDeleted = onDocumentDeleted(
 );
 
 /**
- * One-time backfill: reads all itineraries and (re)builds destinationStats.
+ * Reconcile destinationStats when an itinerary's destination field changes.
+ * Decrements the old destination counter (deleting the doc if it reaches zero)
+ * and increments the new destination counter — all in a single transaction.
+ * No-op if the destination field did not change.
+ */
+export const onItineraryUpdated = onDocumentUpdated(
+  `${ITINERARIES_COLLECTION}/{docId}`,
+  async (event) => {
+    const before: string | undefined = event.data?.before.data()?.destination;
+    const after: string | undefined = event.data?.after.data()?.destination;
+
+    // No-op if destination didn't change or if neither value is present.
+    if (!before && !after) return;
+    if (before === after) return;
+
+    const db = getDb();
+
+    await db.runTransaction(async (tx) => {
+      // Decrement / remove old destination
+      if (before) {
+        const oldRef = db.collection(DESTINATION_STATS_COLLECTION).doc(
+          encodeURIComponent(before)
+        );
+        const oldSnap = await tx.get(oldRef);
+        if (oldSnap.exists) {
+          const oldCount = (oldSnap.data()?.count ?? 1) as number;
+          if (oldCount <= 1) {
+            tx.delete(oldRef);
+          } else {
+            tx.update(oldRef, {
+              count: admin.firestore.FieldValue.increment(-1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
+      }
+
+      // Increment / create new destination
+      if (after) {
+        const newRef = db.collection(DESTINATION_STATS_COLLECTION).doc(
+          encodeURIComponent(after)
+        );
+        const newSnap = await tx.get(newRef);
+        if (newSnap.exists) {
+          tx.update(newRef, {
+            count: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          tx.set(newRef, {
+            destination: after,
+            count: 1,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    });
+  }
+);
+
+/**
+ * One-time backfill: reads all itineraries and fully rebuilds destinationStats.
+ * - Deletes stale stat docs whose destination no longer exists in any itinerary.
+ * - Writes are chunked into batches of 500 to stay within Firestore's per-batch limit.
  * Call once via the Firebase console or CLI after deploying.
- * Safe to run multiple times — it overwrites existing counts.
+ * Safe to run multiple times.
  */
 export const backfillDestinationStats = onCall(async (req) => {
   const auth = req.auth;
@@ -399,7 +456,10 @@ export const backfillDestinationStats = onCall(async (req) => {
     throw new HttpsError('permission-denied', 'Admin only');
   }
 
+  const BATCH_SIZE = 500;
   const db = getDb();
+
+  // ── Step 1: tally counts from all itineraries ─────────────────────────────
   const snapshot = await db.collection(ITINERARIES_COLLECTION).get();
 
   const counts = new Map<string, number>();
@@ -408,18 +468,42 @@ export const backfillDestinationStats = onCall(async (req) => {
     if (dest) counts.set(dest, (counts.get(dest) ?? 0) + 1);
   });
 
-  const batch = db.batch();
-  counts.forEach((count, destination) => {
-    const ref = db.collection(DESTINATION_STATS_COLLECTION).doc(
-      encodeURIComponent(destination)
-    );
-    batch.set(ref, {
-      destination,
-      count,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-  await batch.commit();
+  // ── Step 2: delete stale destinationStats docs ────────────────────────────
+  const existingStats = await db.collection(DESTINATION_STATS_COLLECTION).get();
+  const staleRefs = existingStats.docs
+    .filter((doc) => {
+      const dest: string | undefined = doc.data().destination;
+      return !dest || !counts.has(dest);
+    })
+    .map((doc) => doc.ref);
 
-  return { success: true, processed: snapshot.size, destinations: counts.size };
+  for (let i = 0; i < staleRefs.length; i += BATCH_SIZE) {
+    const deleteBatch = db.batch();
+    staleRefs.slice(i, i + BATCH_SIZE).forEach((ref) => deleteBatch.delete(ref));
+    await deleteBatch.commit();
+  }
+
+  // ── Step 3: write current counts in chunks of 500 ─────────────────────────
+  const entries = Array.from(counts.entries());
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const writeBatch = db.batch();
+    entries.slice(i, i + BATCH_SIZE).forEach(([destination, count]) => {
+      const ref = db.collection(DESTINATION_STATS_COLLECTION).doc(
+        encodeURIComponent(destination)
+      );
+      writeBatch.set(ref, {
+        destination,
+        count,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    await writeBatch.commit();
+  }
+
+  return {
+    success: true,
+    processed: snapshot.size,
+    destinations: counts.size,
+    staleDeleted: staleRefs.length,
+  };
 });
