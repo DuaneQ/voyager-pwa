@@ -313,3 +313,113 @@ export const searchItineraries = onCall(async (req) => {
     throw new HttpsError('internal', err?.message || String(err));
   }
 });
+
+// ─── Destination Stats — denormalised counter collection ──────────────────────
+//
+// Each document in `destinationStats` has the shape:
+//   { destination: string, count: number, updatedAt: Timestamp }
+// The document ID is the destination string itself (URL-encoded for safety).
+//
+// Triggers keep the counts in sync automatically. The client reads
+// `destinationStats` directly with the Firebase SDK — no cloud function needed
+// for reads.
+
+const DESTINATION_STATS_COLLECTION = 'destinationStats';
+
+import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
+
+/** Increment the counter when a new itinerary is created. */
+export const onItineraryCreated = onDocumentCreated(
+  `${ITINERARIES_COLLECTION}/{docId}`,
+  async (event) => {
+    const data = event.data?.data();
+    const destination: string | undefined = data?.destination;
+    if (!destination) return;
+
+    const db = getDb();
+    const statRef = db.collection(DESTINATION_STATS_COLLECTION).doc(
+      encodeURIComponent(destination)
+    );
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(statRef);
+      if (snap.exists) {
+        tx.update(statRef, {
+          count: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        tx.set(statRef, {
+          destination,
+          count: 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    });
+  }
+);
+
+/** Decrement (and remove if zero) the counter when an itinerary is deleted. */
+export const onItineraryDeleted = onDocumentDeleted(
+  `${ITINERARIES_COLLECTION}/{docId}`,
+  async (event) => {
+    const data = event.data?.data();
+    const destination: string | undefined = data?.destination;
+    if (!destination) return;
+
+    const db = getDb();
+    const statRef = db.collection(DESTINATION_STATS_COLLECTION).doc(
+      encodeURIComponent(destination)
+    );
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(statRef);
+      if (!snap.exists) return;
+      const current = (snap.data()?.count ?? 1) as number;
+      if (current <= 1) {
+        tx.delete(statRef);
+      } else {
+        tx.update(statRef, {
+          count: admin.firestore.FieldValue.increment(-1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    });
+  }
+);
+
+/**
+ * One-time backfill: reads all itineraries and (re)builds destinationStats.
+ * Call once via the Firebase console or CLI after deploying.
+ * Safe to run multiple times — it overwrites existing counts.
+ */
+export const backfillDestinationStats = onCall(async (req) => {
+  const auth = req.auth;
+  if (!auth?.token?.admin) {
+    throw new HttpsError('permission-denied', 'Admin only');
+  }
+
+  const db = getDb();
+  const snapshot = await db.collection(ITINERARIES_COLLECTION).get();
+
+  const counts = new Map<string, number>();
+  snapshot.docs.forEach((doc) => {
+    const dest: string | undefined = doc.data().destination;
+    if (dest) counts.set(dest, (counts.get(dest) ?? 0) + 1);
+  });
+
+  const batch = db.batch();
+  counts.forEach((count, destination) => {
+    const ref = db.collection(DESTINATION_STATS_COLLECTION).doc(
+      encodeURIComponent(destination)
+    );
+    batch.set(ref, {
+      destination,
+      count,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+  await batch.commit();
+
+  return { success: true, processed: snapshot.size, destinations: counts.size };
+});
