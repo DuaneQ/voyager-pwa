@@ -16,6 +16,7 @@
   "engines": {
     "node": "20"
   },
+  "_todo": "Node 20 deprecated 2026-04-30, decommissioned 2026-10-30. Blocked on migrating stripeWebhook from 1st Gen to 2nd Gen (Node 22 requires 2nd Gen). Also upgrade firebase-functions from ^6.5.0 to ^7.x once Node is sorted.",
   "main": "lib/index.js",
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",
