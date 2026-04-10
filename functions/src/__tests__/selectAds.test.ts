@@ -29,6 +29,7 @@ function makeCampaign(overrides: Partial<CampaignDoc> = {}): CampaignDoc {
     uid: 'user123',
     name: 'Test Campaign',
     status: 'active',
+    paymentStatus: 'paid',
     placement: 'video_feed',
     isUnderReview: false,
     startDate: '2025-01-01',
@@ -851,6 +852,17 @@ describe('tieBreakKey with sessionId-based seeds', () => {
 // ─── checkCampaignEligibility ────────────────────────────────────────────────
 
 describe('checkCampaignEligibility', () => {
+  it('should drop campaigns with missing paymentStatus', () => {
+    const doc = makeCampaign()
+    delete (doc as any).paymentStatus
+    expect(checkCampaignEligibility(doc, 5000)).toMatch(/paymentStatus=missing/)
+  })
+
+  it('should drop campaigns that are not paid', () => {
+    const doc = makeCampaign({ paymentStatus: 'checkout_created' })
+    expect(checkCampaignEligibility(doc, 5000)).toMatch(/paymentStatus=checkout_created/)
+  })
+
   it('should drop campaigns with zero budget', () => {
     const doc = makeCampaign({ budgetAmount: '0' })
     expect(checkCampaignEligibility(doc, 0)).toMatch(/budgetCents=0/)

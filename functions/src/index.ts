@@ -19,6 +19,7 @@ import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import express from "express";
+import { applyAdsCheckoutSessionCompleted } from './adsStripeBilling';
 
 // Ensure the Firestore-based itineraryShare is exported so it is packaged and deployed.
 export { itineraryShare } from './itinerarySharing';
@@ -27,6 +28,7 @@ export * from './functions/itinerariesRpc';
 // Export Stripe checkout and portal session functions
 export { createStripeCheckoutSession } from './createStripeCheckoutSession';
 export { createStripePortalSession } from './createStripePortalSession';
+export { createAdsCampaignCheckoutSession } from './adsStripeBilling';
 // Export Mux video processing functions
 export { onVideoUploaded, muxWebhook, processVideoWithMux, migrateVideosToMux, processAdVideoWithMux } from './muxVideoProcessing';
 // Export Contact Discovery functions
@@ -806,6 +808,22 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // Ads prepaid campaign checkout flow (one-time payment, promo-compatible)
+      // is handled separately from premium subscription fulfillment.
+      if (session.metadata?.flow === 'ads') {
+        try {
+          await applyAdsCheckoutSessionCompleted(session, db)
+          return res.json({ received: true });
+        } catch (err) {
+          console.error('[STRIPE WEBHOOK] Failed to fulfill ads checkout.session.completed', err, {
+            sessionId: session.id,
+            campaignId: session.metadata?.campaignId,
+          });
+          return res.status(500).send('Ads checkout fulfillment failed');
+        }
+      }
+
       const uid = session.metadata?.uid;
       const customerId = session.customer as string;
       const now = new Date();
