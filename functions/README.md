@@ -115,6 +115,60 @@ npx firebase-tools@14.25.1 deploy --only functions --project mundo1-dev
 
 **Security Note:** Always use a pinned version (not `@latest`) to prevent supply-chain attacks. Update the version in both `package.json` and this README when upgrading.
 
+### Stripe Environment Resolution (Dev vs Production)
+
+This functions codebase reads Stripe settings from process environment variables:
+
+- `STRIPE_API_KEY` is used by checkout/session creation code and the webhook handler.
+- `STRIPE_WEBHOOK_SECRET` is used by the `stripeWebhook` signature verification logic.
+- `STRIPE_PRICE_ID` is used by the legacy subscription checkout flow.
+
+Firebase Functions loads env files with project-specific overrides:
+
+1. `.env` (base values)
+2. `.env.<projectId>` (overrides base values for the selected project)
+
+Effective values by project:
+
+- Deploy to `mundo1-dev`:
+   - Loaded: `.env` + `.env.mundo1-dev`
+   - Effective Stripe values come from `.env.mundo1-dev` (test keys), because project-specific values override base.
+- Deploy to `mundo1-1`:
+   - Loaded: `.env` + `.env.mundo1-1`
+   - If Stripe vars are not set in `.env.mundo1-1`, effective Stripe values come from `.env`.
+
+Important implication:
+
+- Current production behavior depends on `.env` containing production Stripe values.
+- Current dev behavior depends on `.env.mundo1-dev` overriding Stripe values with test credentials.
+
+### Runtime Safety Checks
+
+- `createAdsCampaignCheckoutSession` includes a guard that blocks live Stripe keys in `mundo1-dev` (`enforceStripeKeySafety`).
+- This protects Ads checkout creation in dev from accidental live-charge usage.
+- The webhook route still relies on whichever `STRIPE_WEBHOOK_SECRET` is active for the deployed project.
+
+### Pre-Deploy Verification Checklist
+
+Before any deploy, verify all of the following:
+
+1. Target project is explicit (`--project mundo1-dev` or `--project mundo1-1`).
+2. Dev deploy:
+    - `STRIPE_API_KEY` starts with `sk_test_` in `.env.mundo1-dev`.
+    - `STRIPE_WEBHOOK_SECRET` matches the dev Stripe webhook endpoint.
+3. Production deploy:
+    - Effective `STRIPE_API_KEY` is a live key.
+    - Effective `STRIPE_WEBHOOK_SECRET` matches the production Stripe webhook endpoint.
+4. Deploy logs should show which env files were loaded.
+
+### Recommended Hardening
+
+To reduce risk of misconfiguration:
+
+1. Move Stripe credentials to Google Secret Manager / Firebase params instead of plain `.env` files.
+2. Add a production guard that rejects test keys in production (mirrors existing dev guard).
+3. Keep Stripe values duplicated in `.env.mundo1-1` (instead of relying on `.env`) so production config is explicit.
+
 **Note:** If you encounter "Error generating the service identity for pubsub/eventarc", run:
 ```bash
 gcloud beta services identity create --service=pubsub.googleapis.com --project=mundo1-dev
