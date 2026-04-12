@@ -337,6 +337,10 @@ export function tieBreakKey(campaignId: string, seed: string): number {
  * Returns null if eligible, or a string reason if dropped.
  */
 function checkCampaignEligibility(doc: any, budgetCents: number): string | null {
+  if (doc.paymentStatus !== 'paid') {
+    return `paymentStatus=${String(doc.paymentStatus ?? 'missing')}`
+  }
+
   if (budgetCents <= 0) {
     return `budgetCents=${budgetCents} budgetAmount=${doc.budgetAmount}`
   }

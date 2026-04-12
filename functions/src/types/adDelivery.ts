@@ -141,6 +141,7 @@ export interface CampaignDoc {
   uid: string
   name: string
   status: string
+  paymentStatus?: 'unpaid' | 'checkout_created' | 'paid' | 'payment_failed'
   placement: Placement
   isUnderReview: boolean
   startDate: string // YYYY-MM-DD
