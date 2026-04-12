@@ -806,7 +806,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
 
   // Handle the event
   try {
-    if (event.type === "checkout.session.completed") {
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object as Stripe.Checkout.Session;
 
       // Ads prepaid campaign checkout flow (one-time payment, promo-compatible)
@@ -816,7 +816,7 @@ app.post("/", bodyParser.raw({ type: "application/json" }), async (req: any, res
           await applyAdsCheckoutSessionCompleted(session, db)
           return res.json({ received: true });
         } catch (err) {
-          console.error('[STRIPE WEBHOOK] Failed to fulfill ads checkout.session.completed', err, {
+          console.error(`[STRIPE WEBHOOK] Failed to fulfill ads ${event.type}`, err, {
             sessionId: session.id,
             campaignId: session.metadata?.campaignId,
           });

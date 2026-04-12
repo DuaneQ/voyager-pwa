@@ -233,15 +233,22 @@ describe('applyAdsCheckoutSessionCompleted', () => {
   });
 
   it('marks campaign paid and stores totals', async () => {
-    campaignStore.set('campPaid', { uid: 'user-1', budgetAmount: '100' });
+    campaignStore.set('campPaid', {
+      uid: 'user-1',
+      budgetAmount: '100',
+      paymentRequiredCents: 10000,
+      paymentSessionId: 'cs_paid_1',
+    });
 
     const session = {
       id: 'cs_paid_1',
+      payment_status: 'paid',
       currency: 'usd',
       amount_total: 7500,
       total_details: { amount_discount: 2500 },
       metadata: {
         flow: 'ads',
+        uid: 'user-1',
         campaignId: 'campPaid',
         paymentRequiredCents: '10000',
       },
@@ -262,10 +269,36 @@ describe('applyAdsCheckoutSessionCompleted', () => {
     );
   });
 
+  it('returns false and does not fulfill when session payment_status is not paid', async () => {
+    campaignStore.set('campPending', { uid: 'user-1', budgetAmount: '100', paymentStatus: 'checkout_created' });
+
+    const session = {
+      id: 'cs_pending_1',
+      payment_status: 'unpaid',
+      currency: 'usd',
+      amount_total: 10000,
+      metadata: {
+        flow: 'ads',
+        campaignId: 'campPending',
+        paymentRequiredCents: '10000',
+      },
+    };
+
+    const handled = await applyAdsCheckoutSessionCompleted(session as any);
+    expect(handled).toBe(false);
+
+    expect(campaignStore.get('campPending')).toEqual(
+      expect.objectContaining({
+        paymentStatus: 'checkout_created',
+      })
+    );
+  });
+
   it('throws when paymentRequiredCents metadata is missing or invalid', async () => {
     await expect(
       applyAdsCheckoutSessionCompleted({
         id: 'cs_missing_metadata',
+        payment_status: 'paid',
         metadata: {
           flow: 'ads',
           campaignId: 'camp1',
@@ -273,6 +306,72 @@ describe('applyAdsCheckoutSessionCompleted', () => {
         },
       } as any)
     ).rejects.toThrow('Invalid paymentRequiredCents');
+  });
+
+  it('throws when checkout metadata uid does not match campaign owner', async () => {
+    campaignStore.set('campUidMismatch', {
+      uid: 'owner-1',
+      budgetAmount: '100',
+      paymentRequiredCents: 10000,
+      paymentSessionId: 'cs_uid_mismatch',
+    });
+
+    await expect(
+      applyAdsCheckoutSessionCompleted({
+        id: 'cs_uid_mismatch',
+        payment_status: 'paid',
+        metadata: {
+          flow: 'ads',
+          uid: 'owner-2',
+          campaignId: 'campUidMismatch',
+          paymentRequiredCents: '10000',
+        },
+      } as any)
+    ).rejects.toThrow('Checkout metadata uid does not match campaign owner');
+  });
+
+  it('throws when checkout session id does not match campaign paymentSessionId', async () => {
+    campaignStore.set('campSessionMismatch', {
+      uid: 'user-1',
+      budgetAmount: '100',
+      paymentRequiredCents: 10000,
+      paymentSessionId: 'cs_expected',
+    });
+
+    await expect(
+      applyAdsCheckoutSessionCompleted({
+        id: 'cs_different',
+        payment_status: 'paid',
+        metadata: {
+          flow: 'ads',
+          uid: 'user-1',
+          campaignId: 'campSessionMismatch',
+          paymentRequiredCents: '10000',
+        },
+      } as any)
+    ).rejects.toThrow('Checkout session id does not match campaign paymentSessionId');
+  });
+
+  it('throws when metadata required cents does not match campaign paymentRequiredCents', async () => {
+    campaignStore.set('campAmountMismatch', {
+      uid: 'user-1',
+      budgetAmount: '100',
+      paymentRequiredCents: 10000,
+      paymentSessionId: 'cs_amount_match',
+    });
+
+    await expect(
+      applyAdsCheckoutSessionCompleted({
+        id: 'cs_amount_match',
+        payment_status: 'paid',
+        metadata: {
+          flow: 'ads',
+          uid: 'user-1',
+          campaignId: 'campAmountMismatch',
+          paymentRequiredCents: '9000',
+        },
+      } as any)
+    ).rejects.toThrow('Checkout metadata paymentRequiredCents does not match campaign amount');
   });
 
   it('is idempotent when campaign is already paid', async () => {
@@ -285,10 +384,12 @@ describe('applyAdsCheckoutSessionCompleted', () => {
 
     const session = {
       id: 'cs_duplicate',
+      payment_status: 'paid',
       currency: 'usd',
       amount_total: 10000,
       metadata: {
         flow: 'ads',
+        uid: 'user-1',
         campaignId: 'campAlreadyPaid',
         paymentRequiredCents: '10000',
       },

@@ -2,12 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 
-const stripeAds = new Stripe(process.env.STRIPE_API_KEY!, {
-  // 2023-08-16+ is required for no-cost orders in Checkout Sessions.
-  // Stripe SDK typings in this repo are pinned to an older literal version,
-  // so cast to keep runtime behavior without forcing a package-wide upgrade.
-  apiVersion: '2023-08-16' as any,
-});
+let stripeAdsClient: Stripe | null = null;
 
 const CAMPAIGNS_COLLECTION = 'ads_campaigns';
 const DEFAULT_ORIGIN = 'https://travalpass-ads.web.app';
@@ -57,6 +52,26 @@ function enforceStripeKeySafety(): void {
       'Dev project cannot create checkout with a live Stripe key. Configure STRIPE_API_KEY as sk_test_... for mundo1-dev.',
     );
   }
+}
+
+function getStripeAdsClient(): Stripe {
+  if (stripeAdsClient) {
+    return stripeAdsClient;
+  }
+
+  const stripeApiKey = process.env.STRIPE_API_KEY;
+  if (!stripeApiKey) {
+    throw new HttpsError('failed-precondition', 'Stripe API key is not configured');
+  }
+
+  stripeAdsClient = new Stripe(stripeApiKey, {
+    // 2023-08-16+ is required for no-cost orders in Checkout Sessions.
+    // Stripe SDK typings in this repo are pinned to an older literal version,
+    // so cast to keep runtime behavior without forcing a package-wide upgrade.
+    apiVersion: '2023-08-16' as any,
+  });
+
+  return stripeAdsClient;
 }
 
 function resolveOrigin(origin: unknown): string {
@@ -127,6 +142,7 @@ export const createAdsCampaignCheckoutSession = onCall(
     const resolvedOrigin = resolveOrigin(origin);
     const emailFromAuth =
       typeof request.auth?.token?.email === 'string' ? request.auth.token.email : undefined;
+    const stripeAds = getStripeAdsClient();
 
     const session = await stripeAds.checkout.sessions.create({
       mode: 'payment',
@@ -184,6 +200,11 @@ export async function applyAdsCheckoutSessionCompleted(
     return false;
   }
 
+  // Delay fulfillment until Stripe confirms the session is actually paid.
+  if (session.payment_status !== 'paid') {
+    return false;
+  }
+
   const campaignId = session.metadata?.campaignId;
   if (!campaignId) {
     throw new Error('Missing campaignId in ads checkout metadata');
@@ -204,10 +225,36 @@ export async function applyAdsCheckoutSessionCompleted(
   const campaignRef = db.collection(CAMPAIGNS_COLLECTION).doc(campaignId);
 
   const campaignSnap = await campaignRef.get();
+  if (!campaignSnap.exists) {
+    throw new Error('Campaign not found for ads checkout metadata');
+  }
+
   const existingData = campaignSnap.data() ?? {};
+
   if (existingData.paymentStatus === 'paid') {
     // Idempotent: campaign is already marked paid (webhook retry or race condition).
     return true;
+  }
+
+  const metadataUid = session.metadata?.uid;
+  if (!metadataUid || existingData.uid !== metadataUid) {
+    throw new Error('Checkout metadata uid does not match campaign owner');
+  }
+
+  const storedRequiredCents =
+    typeof existingData.paymentRequiredCents === 'number'
+      ? existingData.paymentRequiredCents
+      : parseRequiredCents(String(existingData.paymentRequiredCents ?? ''), 0);
+  if (storedRequiredCents > 0 && storedRequiredCents !== requiredCents) {
+    throw new Error('Checkout metadata paymentRequiredCents does not match campaign amount');
+  }
+
+  if (
+    typeof existingData.paymentSessionId === 'string' &&
+    existingData.paymentSessionId &&
+    existingData.paymentSessionId !== session.id
+  ) {
+    throw new Error('Checkout session id does not match campaign paymentSessionId');
   }
 
   const update: Record<string, unknown> = {
