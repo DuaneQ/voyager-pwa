@@ -221,6 +221,10 @@ export const searchAccommodations = functions
   .https.onCall(async (data, context) => {
   const startTime = Date.now();
   try {
+    if (!context?.auth?.uid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+    }
+
     // Accept either the callable-wrapped shape ({ data: { ... } }) or raw body ({ ... })
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const params: AccommodationSearchParams = normalized as AccommodationSearchParams;
