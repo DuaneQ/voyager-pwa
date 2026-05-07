@@ -30,6 +30,7 @@ const mockFetch = jest.fn();
 let placeSearch: (data: any, context: any) => Promise<any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let geocodePlace: (data: any, context: any) => Promise<any>;
+const AUTH_CONTEXT = { auth: { uid: 'test-user-123' } };
 
 beforeAll(() => {
   process.env.GOOGLE_PLACES_API_KEY = 'test-google-key';
@@ -69,13 +70,13 @@ describe('placeSearch', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('throws invalid-argument when q is missing', async () => {
-    await expect(placeSearch({}, {})).rejects.toThrow('Missing required field: q');
+    await expect(placeSearch({}, AUTH_CONTEXT)).rejects.toThrow('Missing required field: q');
   });
 
   it('returns success with empty results when Places API returns none', async () => {
     mockFetch.mockResolvedValue(makePlacesResponse([]));
 
-    const result = await placeSearch({ q: 'JFK Airport' }, {});
+    const result = await placeSearch({ q: 'JFK Airport' }, AUTH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.data.results).toHaveLength(0);
@@ -92,7 +93,7 @@ describe('placeSearch', () => {
     };
     mockFetch.mockResolvedValue(makePlacesResponse([rawPlace]));
 
-    const result = await placeSearch({ q: 'JFK Airport' }, {});
+    const result = await placeSearch({ q: 'JFK Airport' }, AUTH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.data.results[0]).toMatchObject({
@@ -114,7 +115,7 @@ describe('placeSearch', () => {
     mockFetch.mockResolvedValue(makePlacesResponse(places));
 
     // maxResults defaults to 10
-    const result = await placeSearch({ q: 'airport' }, {});
+    const result = await placeSearch({ q: 'airport' }, AUTH_CONTEXT);
     expect(result.data.results).toHaveLength(10);
   });
 
@@ -128,14 +129,14 @@ describe('placeSearch', () => {
     }));
     mockFetch.mockResolvedValue(makePlacesResponse(places));
 
-    const result = await placeSearch({ q: 'airport', maxResults: 5 }, {});
+    const result = await placeSearch({ q: 'airport', maxResults: 5 }, AUTH_CONTEXT);
     expect(result.data.results).toHaveLength(5);
   });
 
   it('includes location bias when lat/lng provided', async () => {
     mockFetch.mockResolvedValue(makePlacesResponse([]));
 
-    await placeSearch({ q: 'airport', location: { lat: 40.64, lng: -73.78 } }, {});
+    await placeSearch({ q: 'airport', location: { lat: 40.64, lng: -73.78 } }, AUTH_CONTEXT);
 
     const calledUrl: string = mockFetch.mock.calls[0][0];
     expect(calledUrl).toMatch(/location=40\.64/);
@@ -144,7 +145,7 @@ describe('placeSearch', () => {
   it('includes Authorization-like API key query param in Places URL', async () => {
     mockFetch.mockResolvedValue(makePlacesResponse([]));
 
-    await placeSearch({ q: 'LAX' }, {});
+    await placeSearch({ q: 'LAX' }, AUTH_CONTEXT);
 
     const calledUrl: string = mockFetch.mock.calls[0][0];
     expect(calledUrl).toMatch(/key=test-google-key/);
@@ -157,7 +158,7 @@ describe('placeSearch', () => {
       text: async () => 'REQUEST_DENIED',
     });
 
-    await expect(placeSearch({ q: 'LAX' }, {})).rejects.toThrow();
+    await expect(placeSearch({ q: 'LAX' }, AUTH_CONTEXT)).rejects.toThrow();
   });
 });
 
@@ -167,13 +168,13 @@ describe('geocodePlace', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('throws invalid-argument when address is missing', async () => {
-    await expect(geocodePlace({}, {})).rejects.toThrow('Missing required field: address');
+    await expect(geocodePlace({}, AUTH_CONTEXT)).rejects.toThrow('Missing required field: address');
   });
 
   it('returns lat/lng on successful geocode', async () => {
     mockFetch.mockResolvedValue(makeGeocodeResponse(40.6413, -73.7781));
 
-    const result = await geocodePlace({ address: 'JFK Airport, Queens NY' }, {});
+    const result = await geocodePlace({ address: 'JFK Airport, Queens NY' }, AUTH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.data).toMatchObject({ lat: 40.6413, lng: -73.7781 });
@@ -186,7 +187,7 @@ describe('geocodePlace', () => {
       text: async () => '',
     });
 
-    const result = await geocodePlace({ address: 'Nowhere Land' }, {});
+    const result = await geocodePlace({ address: 'Nowhere Land' }, AUTH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.data).toBeNull();
@@ -195,7 +196,7 @@ describe('geocodePlace', () => {
   it('accepts data wrapped in a data property', async () => {
     mockFetch.mockResolvedValue(makeGeocodeResponse(51.5074, -0.1278));
 
-    const result = await geocodePlace({ data: { address: 'London, UK' } }, {});
+    const result = await geocodePlace({ data: { address: 'London, UK' } }, AUTH_CONTEXT);
 
     expect(result.data).toMatchObject({ lat: 51.5074, lng: -0.1278 });
   });
