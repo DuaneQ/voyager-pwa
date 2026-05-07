@@ -558,6 +558,9 @@ export const sendEmailCampaign = onCall(async (request) => {
 });
 
 export const getEmailCampaignImpact = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required');
+  }
   const { campaignId } = request.data as { campaignId?: string };
 
   if (!campaignId) {

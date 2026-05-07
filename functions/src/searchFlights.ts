@@ -153,11 +153,10 @@ export const searchFlights = functions
     memory: '256MB'
   })
   .https.onCall(async (data, context) => {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
   try {
-    if (!context?.auth?.uid) {
-      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
-    }
-
     const params: FlightSearchParams = data || {};
     // Basic validation
     const required = ['departureAirportCode', 'destinationAirportCode', 'departureDate'];

@@ -14,11 +14,10 @@ const GEOCODE_BASE = 'https://maps.googleapis.com/maps/api/geocode/json';
  * or raw payload.
  */
 export const placeSearch = functions.https.onCall(async (data, context) => {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
   try {
-    if (!context?.auth?.uid) {
-      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
-    }
-
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const { q, location, maxResults = 10 } = normalized as any;
 
@@ -66,11 +65,10 @@ export const placeSearch = functions.https.onCall(async (data, context) => {
 });
 
 export const geocodePlace = functions.https.onCall(async (data, context) => {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
   try {
-    if (!context?.auth?.uid) {
-      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
-    }
-
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const { address } = normalized as any;
     if (!address) {

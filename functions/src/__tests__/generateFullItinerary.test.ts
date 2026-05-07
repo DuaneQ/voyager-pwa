@@ -16,8 +16,10 @@ export {};
 jest.mock('firebase-functions/v1', () => ({
   https: {
     HttpsError: class HttpsError extends Error {
-      constructor(public code: string, message: string) {
+      code: string;
+      constructor(code: string, message: string) {
         super(message);
+        this.code = code;
         this.name = 'HttpsError';
       }
     },
@@ -45,6 +47,7 @@ const mockFetch = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _generateFullItineraryImpl: (data: any, context: any) => Promise<any>;
+const AUTH_CONTEXT = { auth: { uid: 'test-user-123' } };
 
 beforeAll(() => {
   process.env.OPENAI_API_KEY = 'test-key';
@@ -97,7 +100,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
       await expect(
         _generateFullItineraryImpl(
           { data: { startDate: '2026-06-01', endDate: '2026-06-07' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow('destination');
     });
@@ -106,7 +109,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
       await expect(
         _generateFullItineraryImpl(
           { data: { destination: 'Paris', endDate: '2026-06-07' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow();
     });
@@ -115,7 +118,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
       await expect(
         _generateFullItineraryImpl(
           { data: { destination: 'Paris', startDate: '2026-06-01' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow();
     });
@@ -125,7 +128,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
 
       const result = await _generateFullItineraryImpl(
         { destination: 'Paris', startDate: '2026-06-01', endDate: '2026-06-01' },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(result.success).toBe(true);
@@ -146,7 +149,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
             endDate: '2026-07-03',
           },
         },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(result.success).toBe(true);
@@ -160,7 +163,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
 
       await _generateFullItineraryImpl(
         { data: { destination: 'Tokyo', startDate: '2026-08-01', endDate: '2026-08-01' } },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(mockFetch).toHaveBeenCalledWith(
@@ -182,7 +185,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
 
       const result = await _generateFullItineraryImpl(
         { data: { destination: 'Paris', startDate: '2026-06-01', endDate: '2026-06-01' } },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(result.success).toBe(false);
@@ -200,7 +203,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
             endDate: '2026-09-02',
           },
         },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(result.data?.metadata).toMatchObject({
@@ -216,7 +219,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
 
       await _generateFullItineraryImpl(
         { data: { destination: 'Amsterdam', startDate: '2026-10-01', endDate: '2026-10-01' } },
-        {}
+        AUTH_CONTEXT
       );
 
       // Only one fetch call (itinerary), no second call for transportation
@@ -235,7 +238,7 @@ describe('generateFullItinerary — _generateFullItineraryImpl', () => {
             preferenceProfile: { tripType: 'bachelor', budget: 'luxury' },
           },
         },
-        {}
+        AUTH_CONTEXT
       );
 
       // Verify the user prompt body sent to OpenAI mentions the trip type

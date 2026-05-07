@@ -52,21 +52,23 @@ const firestoreImpl = {
   })),
 };
 
-const firestoreFactory: any = jest.fn(() => firestoreImpl);
-firestoreFactory.FieldValue = {
+const mockFirestoreFactory: any = jest.fn(() => firestoreImpl);
+mockFirestoreFactory.FieldValue = {
   serverTimestamp: mockServerTimestamp,
 };
 
 jest.mock('firebase-admin', () => ({
   apps: [],
   initializeApp: jest.fn(),
-  firestore: firestoreFactory,
+  firestore: mockFirestoreFactory,
 }));
 
 jest.mock('firebase-functions/v2/https', () => ({
   HttpsError: class HttpsError extends Error {
-    constructor(public code: string, message: string) {
+    code: string;
+    constructor(code: string, message: string) {
       super(message);
+      this.code = code;
       this.name = 'HttpsError';
     }
   },
