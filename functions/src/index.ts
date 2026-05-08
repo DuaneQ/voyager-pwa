@@ -405,7 +405,17 @@ export const notifyFeedbackSubmission = onDocumentCreated("feedback/{feedbackId}
 });
 
 export const sendEmailCampaign = onCall(async (request) => {
-  const { campaignId, testEmail } = request.data;
+  const { campaignId, testEmail, targeting } = request.data as {
+    campaignId?: string;
+    testEmail?: string;
+    targeting?: {
+      audience?: 'all' | 'dormant' | 'explicit';
+      dormantDays?: number;
+      userIds?: string[];
+      emails?: string[];
+      requireNoItineraries?: boolean;
+    };
+  };
   
   if (!campaignId) {
     throw new HttpsError('invalid-argument', 'Campaign ID is required');
@@ -424,6 +434,16 @@ export const sendEmailCampaign = onCall(async (request) => {
     const campaignField = `emailCampaigns.${campaignId}`;
     let emailCount = 0;
     let skippedCount = 0;
+    let targetMatchedCount = 0;
+
+    const audience = targeting?.audience || 'all';
+    const dormantDays = Math.max(1, Math.min(365, Number(targeting?.dormantDays || 45)));
+    const dormantCutoff = new Date(Date.now() - dormantDays * 24 * 60 * 60 * 1000);
+    const dormantCutoffDay = toDateOnly(dormantCutoff);
+
+    const explicitUserIds = new Set((targeting?.userIds || []).filter(Boolean));
+    const explicitEmails = new Set((targeting?.emails || []).filter(Boolean).map(e => e.toLowerCase()));
+    const requireNoItineraries = Boolean(targeting?.requireNoItineraries);
 
     // If testEmail is provided, only send to that email
     if (testEmail) {
@@ -446,10 +466,42 @@ export const sendEmailCampaign = onCall(async (request) => {
       emailPromises.push(db.collection("mail").add(mailDoc));
       emailCount = 1;
     } else {
-      // Send to all users
+      // Send to targeted users
       for (const userDoc of usersSnapshot.docs) {
         const userData = userDoc.data();
         const userEmail = userData.email;
+        const userEmailLower = userEmail ? String(userEmail).toLowerCase() : '';
+        const userId = userDoc.id;
+
+        // Audience pre-filter
+        if (audience === 'explicit') {
+          const idMatch = explicitUserIds.size > 0 && explicitUserIds.has(userId);
+          const emailMatch = explicitEmails.size > 0 && userEmailLower && explicitEmails.has(userEmailLower);
+          if (!(idMatch || emailMatch)) {
+            continue;
+          }
+        }
+
+        if (audience === 'dormant') {
+          const usageDate = typeof userData?.dailyUsage?.date === 'string' ? userData.dailyUsage.date : null;
+          const isDormantByUsage = !usageDate || usageDate < dormantCutoffDay;
+          if (!isDormantByUsage) {
+            continue;
+          }
+
+          if (requireNoItineraries) {
+            const itinerarySnap = await db
+              .collection('itineraries')
+              .where('userId', '==', userId)
+              .limit(1)
+              .get();
+            if (!itinerarySnap.empty) {
+              continue;
+            }
+          }
+        }
+
+        targetMatchedCount++;
         
         if (!userEmail) {
           skippedCount++;
@@ -471,7 +523,9 @@ export const sendEmailCampaign = onCall(async (request) => {
           userDoc.ref.update({
             [campaignField]: {
               sentAt: admin.firestore.FieldValue.serverTimestamp(),
-              campaignId: campaignId
+              campaignId: campaignId,
+              audience,
+              dormantDays: audience === 'dormant' ? dormantDays : null,
             }
           })
         );
@@ -486,6 +540,9 @@ export const sendEmailCampaign = onCall(async (request) => {
     const result = {
       success: true,
       campaignId,
+      audience,
+      dormantDays: audience === 'dormant' ? dormantDays : null,
+      targetMatched: targetMatchedCount,
       emailsSent: emailCount,
       usersSkipped: skippedCount,
       totalUsers: usersSnapshot.size
@@ -500,10 +557,259 @@ export const sendEmailCampaign = onCall(async (request) => {
   }
 });
 
+export const getEmailCampaignImpact = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required');
+  }
+  const { campaignId } = request.data as { campaignId?: string };
+
+  if (!campaignId) {
+    throw new HttpsError('invalid-argument', 'Campaign ID is required');
+  }
+
+  const usersRef = db.collection('users');
+  const usersSnapshot = await usersRef.get();
+
+  const recipients: Array<{
+    userId: string;
+    sentAt: Date;
+    dailyUsageDate?: string;
+  }> = [];
+
+  for (const userDoc of usersSnapshot.docs) {
+    const data = userDoc.data() as any;
+    const sentMeta = data?.emailCampaigns?.[campaignId];
+    if (!sentMeta) continue;
+
+    const sentAt = toDate(sentMeta.sentAt);
+    if (!sentAt) continue;
+
+    recipients.push({
+      userId: userDoc.id,
+      sentAt,
+      dailyUsageDate: typeof data?.dailyUsage?.date === 'string' ? data.dailyUsage.date : undefined,
+    });
+  }
+
+  let reactivatedByUsage = 0;
+  let reactivatedByItinerary = 0;
+  const reactivatedUsers = new Set<string>();
+
+  for (const recipient of recipients) {
+    const sentDateOnly = toDateOnly(recipient.sentAt);
+    if (recipient.dailyUsageDate && recipient.dailyUsageDate >= sentDateOnly) {
+      reactivatedByUsage++;
+      reactivatedUsers.add(recipient.userId);
+    }
+
+    const itinerarySnap = await db
+      .collection('itineraries')
+      .where('userId', '==', recipient.userId)
+      .get();
+
+    const hasNewItinerary = itinerarySnap.docs.some((docSnap) => {
+      const itinerary = docSnap.data() as any;
+      const createdAt = toDate(itinerary?.createdAt);
+      return Boolean(createdAt && createdAt.getTime() >= recipient.sentAt.getTime());
+    });
+
+    if (hasNewItinerary) {
+      reactivatedByItinerary++;
+      reactivatedUsers.add(recipient.userId);
+    }
+  }
+
+  return {
+    success: true,
+    campaignId,
+    recipients: recipients.length,
+    reactivatedUsers: reactivatedUsers.size,
+    reactivatedByUsage,
+    reactivatedByItinerary,
+    reactivationRate: recipients.length > 0 ? Number(((reactivatedUsers.size / recipients.length) * 100).toFixed(2)) : 0,
+  };
+});
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (typeof value?.toDate === 'function') return value.toDate();
+  if (typeof value?.seconds === 'number') {
+    return new Date(value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6));
+  }
+  const asDate = new Date(value);
+  return isNaN(asDate.getTime()) ? null : asDate;
+}
+
+function toDateOnly(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
 // Helper function to create email content for campaigns
 function createCampaignEmailContent(userEmail: string, campaignId: string, username: string) {
   // Campaign-specific content
   const campaigns: { [key: string]: any } = {
+    "dormant-reactivation-2026-q2": {
+      subject: "New travelers are waiting - jump back into TravalPass",
+      htmlContent: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; color: #1f2937;">
+          <div style="background: linear-gradient(135deg, #0f2a4d 0%, #1d4d8f 100%); color: #ffffff; padding: 24px 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 26px;">TravalPass</h1>
+            <p style="margin: 8px 0 0 0; opacity: 0.92;">Find travel companions by matching real itineraries</p>
+          </div>
+
+          <div style="padding: 24px 20px;">
+            <h2 style="margin: 0 0 14px 0; color: #1565c0; font-size: 24px;">Hi ${username},</h2>
+
+            <p style="margin: 0 0 14px 0; line-height: 1.65;">
+              A lot has changed since you last visited. We shipped major fixes and new planning tools, and there are now active travelers looking for companions.
+            </p>
+
+            <div style="background: #f8fbff; border: 1px solid #dbeafe; border-radius: 10px; padding: 16px; margin: 18px 0;">
+              <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f2a4d;">What is new</p>
+              <ul style="margin: 0; padding-left: 20px; line-height: 1.7;">
+                <li>AI itinerary generation for full trip planning</li>
+                <li>Video feed to watch fellow travelers vlog their trips</li>
+                <li>Easier onboarding and smoother first-match flow</li>
+                <li>Stability fixes across core travel flows</li>
+                <li>More travelers are actively looking for travel partners</li>
+              </ul>
+            </div>
+
+            <div style="background: #eef6ff; border: 1px solid #cfe2ff; border-radius: 10px; padding: 14px 16px; margin: 18px 0;">
+              <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f2a4d;">Travelers looking for companions right now</p>
+              <p style="margin: 0; color: #374151; line-height: 1.6;">
+                <strong>Sara K.</strong> (Tokyo) · <strong>Marco L.</strong> (Bali) · <strong>Kenji T.</strong> (Lisbon) · <strong>Aisha R.</strong> (Barcelona) · <strong>Priya S.</strong> (Paris) + 76 more
+              </p>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin: 18px 0;">
+              <p style="margin: 0 0 8px 0; color: #f59e0b; letter-spacing: 2px;">★★★★★</p>
+              <p style="margin: 0; color: #111827; line-height: 1.7; font-style: italic;">
+                "I was nervous about traveling to Tokyo alone. TravalPass matched me with Sara - we had the exact same dates and both wanted to visit Kyoto. We ended up spending 5 days together. It felt completely safe because we could see each other's full itinerary before saying yes."
+              </p>
+              <p style="margin: 10px 0 0 0; color: #4b5563; font-size: 13px;">
+                <strong>Marco L.</strong> · Tokyo, Japan · March 2026 · Verified match
+              </p>
+            </div>
+
+            <div style="background: #eef8ef; border: 1px solid #cde9cf; border-radius: 10px; padding: 16px; margin: 18px 0;">
+              <p style="margin: 0; line-height: 1.6;"><strong>Fast restart:</strong> log in, create one itinerary, and start seeing travelers with overlapping dates and destination.</p>
+            </div>
+
+            <div style="margin: 18px 0;">
+              <p style="margin: 0 0 10px 0; font-weight: 700; color: #0f2a4d;">Popular destinations right now</p>
+              <p style="margin: 0 0 12px 0; color: #4b5563; font-size: 14px;">Browse these hotspots and see potential matches faster.</p>
+
+              <!-- Email-safe carousel-style layout (horizontal cards on wide clients, stacked on narrow clients) -->
+              <div style="white-space: nowrap; overflow-x: auto; padding-bottom: 4px;">
+                <a href="https://travalpass.com/search?destination=Tokyo&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; vertical-align: top; text-decoration: none; color: inherit; width: 160px; margin-right: 8px;">
+                  <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #ffffff;">
+                    <div style="font-size: 20px;">Tokyo</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Food + city nights</div>
+                  </div>
+                </a>
+                <a href="https://travalpass.com/search?destination=Bali&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; vertical-align: top; text-decoration: none; color: inherit; width: 160px; margin-right: 8px;">
+                  <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #ffffff;">
+                    <div style="font-size: 20px;">Bali</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Beach + wellness</div>
+                  </div>
+                </a>
+                <a href="https://travalpass.com/search?destination=Lisbon&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; vertical-align: top; text-decoration: none; color: inherit; width: 160px; margin-right: 8px;">
+                  <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #ffffff;">
+                    <div style="font-size: 20px;">Lisbon</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Culture + coast</div>
+                  </div>
+                </a>
+                <a href="https://travalpass.com/search?destination=Barcelona&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; vertical-align: top; text-decoration: none; color: inherit; width: 160px; margin-right: 8px;">
+                  <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #ffffff;">
+                    <div style="font-size: 20px;">Barcelona</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Sun + architecture</div>
+                  </div>
+                </a>
+                <a href="https://travalpass.com/search?destination=Paris&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; vertical-align: top; text-decoration: none; color: inherit; width: 160px; margin-right: 8px;">
+                  <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #ffffff;">
+                    <div style="font-size: 20px;">Paris</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Museums + cafes</div>
+                  </div>
+                </a>
+              </div>
+            </div>
+
+            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 16px; margin: 18px 0;">
+              <p style="margin: 0 0 10px 0; font-weight: 700; color: #9a3412;">Now on mobile</p>
+              <p style="margin: 0 0 12px 0; color: #7c2d12; line-height: 1.6;">
+                TravalPass now has mobile options too. Use the app on the go and check new matches faster.
+              </p>
+              <div style="text-align: left;">
+                <a href="https://apps.apple.com/us/app/travalpass-traval-together/id6756789856?utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; margin-right: 8px; margin-bottom: 8px; text-decoration: none;" aria-label="Download TravalPass on the App Store">
+                  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" style="height: 44px; width: auto; display: block; border: 0;" />
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.travalpass.app&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}" style="display: inline-block; margin-bottom: 8px; text-decoration: none;" aria-label="Get TravalPass on Google Play">
+                  <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" style="height: 58px; width: auto; display: block; border: 0;" />
+                </a>
+              </div>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0 12px;">
+              <a href="https://travalpass.com/Login?utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}"
+                 style="display: inline-block; background: #1565c0; color: #ffffff; text-decoration: none; padding: 13px 24px; border-radius: 8px; font-weight: 700;">
+                Log In and Create My Itinerary
+              </a>
+            </div>
+
+            <p style="margin: 0; text-align: center; color: #6b7280; font-size: 13px;">No card required. Matching and messaging are free.</p>
+          </div>
+
+          <div style="background: #f5f7fb; border-top: 1px solid #e5e7eb; padding: 16px 20px; text-align: center; color: #6b7280; font-size: 13px;">
+            <p style="margin: 0;">Need help? Reply to this email or contact feedback@travalpass.com</p>
+          </div>
+        </div>
+      `,
+      textContent: `
+Hi ${username},
+
+A lot has changed since you last visited TravalPass. We shipped major fixes and new planning tools, and there are now active travelers looking for companions.
+
+What is new:
+- AI itinerary generation for full trip planning
+- Video feed to watch fellow travelers vlog their trips
+- Easier onboarding and smoother first-match flow
+- Stability fixes across core travel flows
+- More travelers are actively looking for travel partners
+
+Travelers looking for companions right now:
+- Sara K. (Tokyo)
+- Marco L. (Bali)
+- Kenji T. (Lisbon)
+- Aisha R. (Barcelona)
+- Priya S. (Paris)
+- +76 more travelers
+
+Verified traveler testimonial:
+"I was nervous about traveling to Tokyo alone. TravalPass matched me with Sara - we had the exact same dates and both wanted to visit Kyoto. We ended up spending 5 days together. It felt completely safe because we could see each other's full itinerary before saying yes."
+- Marco L., Tokyo, Japan (Verified match, March 2026)
+
+Popular destinations right now:
+- Tokyo (Food + city nights)
+- Bali (Beach + wellness)
+- Lisbon (Culture + coast)
+- Barcelona (Sun + architecture)
+- Paris (Museums + cafes)
+
+Now on mobile:
+- App Store: https://apps.apple.com/us/app/travalpass-traval-together/id6756789856?utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}
+- Google Play: https://play.google.com/store/apps/details?id=com.travalpass.app&utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}
+
+Fast restart: log in, create one itinerary, and start seeing travelers with overlapping dates and destination.
+
+Log in now:
+https://travalpass.com/Login?utm_source=reactivation_email&utm_medium=email&utm_campaign=${campaignId}
+
+No card required. Matching and messaging are free.
+
+Need help? Reply to this email or contact feedback@travalpass.com
+      `
+    },
     "new-features-2025": {
       subject: "Thank you for being one of the first travelers on TravalPass ✈️",
       htmlContent: `
@@ -649,7 +955,12 @@ TravalPass.com | Find Travel Companions | © 2025 TravalPass
     }
   };
 
-  const campaign = campaigns[campaignId];
+  const campaignAliasMap: { [key: string]: string } = {
+    'dormant-reactivation-2026-q2-v2': 'dormant-reactivation-2026-q2',
+    'dormant-reactivation-2026-q2-v3': 'dormant-reactivation-2026-q2',
+  };
+  const resolvedCampaignId = campaignAliasMap[campaignId] || campaignId;
+  const campaign = campaigns[resolvedCampaignId];
   if (!campaign) {
     throw new HttpsError('not-found', `Unknown campaign ID: ${campaignId}`);
   }

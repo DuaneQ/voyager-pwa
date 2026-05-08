@@ -153,6 +153,9 @@ export const searchFlights = functions
     memory: '256MB'
   })
   .https.onCall(async (data, context) => {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
   try {
     const params: FlightSearchParams = data || {};
     // Basic validation

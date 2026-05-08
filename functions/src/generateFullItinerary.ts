@@ -546,6 +546,10 @@ export async function _generateFullItineraryImpl(
   const startTime = Date.now();
   
   try {
+    if (!context?.auth?.uid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+    }
+
     // Normalize input (support both { data: {...} } and direct payload)
     const payload = (data && data.data) ? data.data : data || {};
     const request: GenerateFullItineraryRequest = payload;

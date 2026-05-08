@@ -5,6 +5,10 @@ import * as functions from 'firebase-functions/v1';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
 export async function _generateItineraryWithAIImpl(data: any, context: any) {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
   const payload = (data && data.data) ? data.data : data || {};
   const origin = payload.origin || payload.departure || null;
   const destination = payload.destination || null;

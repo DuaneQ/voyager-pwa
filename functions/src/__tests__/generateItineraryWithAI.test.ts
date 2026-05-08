@@ -15,8 +15,10 @@ export {};
 jest.mock('firebase-functions/v1', () => ({
   https: {
     HttpsError: class HttpsError extends Error {
-      constructor(public code: string, message: string) {
+      code: string;
+      constructor(code: string, message: string) {
         super(message);
+        this.code = code;
         this.name = 'HttpsError';
       }
     },
@@ -41,6 +43,7 @@ function makeOpenAIResponse(content: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _generateItineraryWithAIImpl: (data: any, context: any) => Promise<any>;
+const AUTH_CONTEXT = { auth: { uid: 'test-user-123' } };
 
 beforeAll(() => {
   process.env.OPENAI_API_KEY = 'test-key';
@@ -64,13 +67,13 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
   describe('input validation', () => {
     it('throws invalid-argument when origin and destination are missing', async () => {
       await expect(
-        _generateItineraryWithAIImpl({ data: { transportType: 'driving' } }, {})
+        _generateItineraryWithAIImpl({ data: { transportType: 'driving' } }, AUTH_CONTEXT)
       ).rejects.toThrow('Missing required fields');
     });
 
     it('throws invalid-argument when only destination provided without dates or origin', async () => {
       await expect(
-        _generateItineraryWithAIImpl({ data: { destination: 'Paris' } }, {})
+        _generateItineraryWithAIImpl({ data: { destination: 'Paris' } }, AUTH_CONTEXT)
       ).rejects.toThrow();
     });
 
@@ -80,7 +83,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { origin: 'NYC', destination: 'LA', transportType: 'driving' } },
-          {}
+          AUTH_CONTEXT
         )
       ).resolves.toBeDefined();
     });
@@ -91,7 +94,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { destination: 'Paris', startDate: '2026-06-01', endDate: '2026-06-07', transportType: 'flight' } },
-          {}
+          AUTH_CONTEXT
         )
       ).resolves.toBeDefined();
     });
@@ -100,7 +103,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { origin: 'NYC', destination: 'LA' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow('Missing or generic transportType');
     });
@@ -109,7 +112,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { origin: 'NYC', destination: 'LA', transportType: 'any' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow('Missing or generic transportType');
     });
@@ -126,7 +129,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
               preferenceProfile: { transportation: { primaryMode: 'train' } },
             },
           },
-          {}
+          AUTH_CONTEXT
         )
       ).resolves.toBeDefined();
     });
@@ -141,7 +144,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { origin: 'NYC', destination: 'LA', transportType: 'driving' },
-          {}
+          AUTH_CONTEXT
         )
       ).resolves.toBeDefined();
     });
@@ -152,7 +155,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { departure: 'NYC', destination: 'LA', transportType: 'driving' } },
-          {}
+          AUTH_CONTEXT
         )
       ).resolves.toBeDefined();
     });
@@ -167,7 +170,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
 
       const result = await _generateItineraryWithAIImpl(
         { data: { origin: 'NYC', destination: 'LA', transportType: 'driving' } },
-        {}
+        AUTH_CONTEXT
       );
 
       expect(result).toEqual({ success: true, data: { assistant: assistantContent } });
@@ -183,7 +186,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
       await expect(
         _generateItineraryWithAIImpl(
           { data: { origin: 'NYC', destination: 'LA', transportType: 'driving' } },
-          {}
+          AUTH_CONTEXT
         )
       ).rejects.toThrow('OpenAI error');
     });
@@ -193,7 +196,7 @@ describe('generateItineraryWithAI — _generateItineraryWithAIImpl', () => {
 
       await _generateItineraryWithAIImpl(
         { data: { origin: 'NYC', destination: 'LA', transportType: 'driving' } },
-        {}
+        AUTH_CONTEXT
       ).catch(() => {});
 
       expect(mockFetch).toHaveBeenCalledWith(

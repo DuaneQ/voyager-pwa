@@ -1,3 +1,20 @@
+jest.mock('firebase-functions/v1', () => ({
+  https: {
+    HttpsError: class HttpsError extends Error {
+      code: string;
+      constructor(code: string, message: string) {
+        super(message);
+        this.code = code;
+        this.name = 'HttpsError';
+      }
+    },
+    onCall: jest.fn(),
+  },
+  runWith: jest.fn(() => ({
+    https: { onCall: jest.fn(() => jest.fn()) },
+  })),
+}));
+
 import { formatDurationMinutes, mapItineraryToFlight } from '../searchFlights';
 
 describe('searchFlights helpers', () => {

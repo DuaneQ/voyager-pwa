@@ -219,8 +219,12 @@ export const searchAccommodations = functions
     memory: '256MB'
   })
   .https.onCall(async (data, context) => {
+  if (!context?.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
   const startTime = Date.now();
   try {
+
     // Accept either the callable-wrapped shape ({ data: { ... } }) or raw body ({ ... })
     const normalized = (data && (data.data !== undefined ? data.data : data)) || {};
     const params: AccommodationSearchParams = normalized as AccommodationSearchParams;
